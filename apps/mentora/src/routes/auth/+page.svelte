@@ -57,7 +57,9 @@
     async function ensurePersistence() {
         try {
             await setPersistence(auth, browserLocalPersistence);
-        } catch {}
+        } catch {
+            // Ignore persistence errors
+        }
     }
 
     async function login() {
@@ -69,8 +71,8 @@
             user = cred.user;
             idToken = await cred.user.getIdToken();
             updateMetaFromToken(idToken);
-        } catch (e: any) {
-            error = e?.message ?? m.auth_sign_in_failed();
+        } catch (e: unknown) {
+            error = (e as Error)?.message ?? m.auth_sign_in_failed();
         } finally {
             loading = false;
         }
@@ -83,8 +85,8 @@
         try {
             idToken = await user.getIdToken(true);
             updateMetaFromToken(idToken);
-        } catch (e: any) {
-            error = e?.message ?? m.auth_refresh_token_failed();
+        } catch (e: unknown) {
+            error = (e as Error)?.message ?? m.auth_refresh_token_failed();
         } finally {
             refreshing = false;
         }
@@ -98,14 +100,14 @@
             user = null;
             idToken = null;
             meta = {};
-        } catch (e: any) {
-            error = e?.message ?? m.auth_sign_out_failed();
+        } catch (e: unknown) {
+            error = (e as Error)?.message ?? m.auth_sign_out_failed();
         } finally {
             loading = false;
         }
     }
 
-    function decodeJwt(token: string): any | null {
+    function decodeJwt(token: string): Record<string, unknown> | null {
         try {
             const [, payload] = token.split(".");
             const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
