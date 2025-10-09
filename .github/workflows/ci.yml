@@ -1,0 +1,63 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    quality:
+        name: Code Quality Checks
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 24
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build All Packages
+              run: pnpm -r build
+
+            - name: Format check
+              run: pnpm format --check
+
+            - name: Lint All Packages
+              run: pnpm -r lint
+
+            - name: Type check All Packages
+              run: pnpm -r check
+
+    build:
+        name: Build
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 24
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build All Packages
+              run: pnpm -r build
