@@ -1,0 +1,27 @@
+{
+    "private": true,
+    "name": "mentora-firebase",
+    "version": "0.1.0",
+    "type": "module",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "deploy": "firebase --project $FIREBASE_PROJECT_ID deploy --only firestore:rules,firestore:indexes"
+    },
+    "dependencies": {
+        "firebase": "^12.3.0",
+        "zod": "^4.1.12"
+    },
+    "devDependencies": {
+        "firebase-admin": "^13.5.0",
+        "firebase-tools": "^14.19.1",
+        "tsup": "^8.5.0",
+        "tsx": "^4.20.6",
+        "typescript": "^5.9.3"
+    }
+}

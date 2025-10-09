@@ -1,0 +1,179 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- Helpers ---------- */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
+    }
+
+    // Membership checks (active users should have roster doc id == uid)
+    function isClassMember(classId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/classes/$(classId)/roster/$(request.auth.uid));
+    }
+
+    function membershipDoc(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)/roster/$(request.auth.uid));
+    }
+
+    function hasRole(classId, role) {
+      return isClassMember(classId) &&
+             membershipDoc(classId).data.role == role;
+    }
+
+    function isTA(classId) {
+      return hasRole(classId, "ta");
+    }
+
+    function isStudent(classId) {
+      return hasRole(classId, "student");
+    }
+
+    function isInstructorOfClass(classId) {
+      // Either roster role == instructor
+      return isClassMember(classId) && hasRole(classId, "instructor");
+    }
+
+    /* ---------- Users ---------- */
+    match /users/{uid} {
+      allow read: if isSignedIn() && (uid == request.auth.uid);
+      allow create: if isSignedIn() && (uid == request.auth.uid);
+      allow update: if isSignedIn() && (uid == request.auth.uid);
+      allow delete: if false; // keep profiles
+    }
+
+    /* ---------- Classes ---------- */
+    match /classes/{classId} {
+      allow read: if isSignedIn() && (
+        isClassMember(classId) ||
+        // Instructors who own the class (defensive in case roster is missing)
+        (resource.data.ownerId == request.auth.uid)
+      );
+
+      allow create: if isSignedIn(); // anyone can create a class; app UI should gate this
+      allow update, delete: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid || isInstructorOfClass(classId)
+      );
+    }
+
+    /* ---------- Class Roster ---------- */
+    match /classes/{classId}/roster/{memberId} {
+      // Members can read the roster; or restrict to instructors/TAs only if desired
+      allow read: if isSignedIn() && isClassMember(classId);
+
+      // Only instructor (or owner) can invite / change roles / remove
+      allow create, update, delete: if isSignedIn() && (
+        isInstructorOfClass(classId) ||
+        get(/databases/$(database)/documents/classes/$(classId)).data.ownerId == request.auth.uid
+      );
+    }
+
+    /* ---------- Assignments (top-level) ---------- */
+    match /assignments/{aid} {
+      allow read: if isSignedIn() && (
+        // class-bound assignments: visible to class members
+        (resource.data.classId != null && isClassMember(resource.data.classId)) ||
+        // standalone: visible to creator
+        (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
+      );
+
+      // Create/update by class instructors/TAs or assignment creator for standalone
+      allow create: if isSignedIn() && (
+        (request.resource.data.classId != null &&
+           (isInstructorOfClass(request.resource.data.classId) || isTA(request.resource.data.classId))) ||
+        (request.resource.data.classId == null && request.resource.data.createdBy == request.auth.uid)
+      );
+
+      allow update, delete: if isSignedIn() && (
+        (resource.data.classId != null &&
+           (isInstructorOfClass(resource.data.classId) || isTA(resource.data.classId))) ||
+        (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
+      );
+
+      /* ------ Submissions subcollection ------ */
+      match /submissions/{userId} {
+        // READ:
+        // - The student may read their own submission
+        // - Instructors/TAs of the class may read all
+        allow read: if isSignedIn() && (
+          userId == request.auth.uid ||
+          (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
+           (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
+            isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
+        );
+
+        // CREATE/UPDATE by the student (their own doc id == uid)
+        allow create: if isSignedIn() && userId == request.auth.uid;
+        allow update: if isSignedIn() && (
+          // Student can edit their own while in progress
+          (userId == request.auth.uid &&
+           resource.data.state == "in_progress" &&
+           request.resource.data.userId == request.auth.uid &&
+           request.resource.data.assignmentId == aid) ||
+
+          // Instructor/TA can grade (move to graded_complete, set notes/score)
+          (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
+           (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
+            isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
+        );
+
+        // Prevent deletion by students; allow for instructors if you really need it
+        allow delete: if isSignedIn() && (
+          get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
+          isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)
+        );
+      }
+    }
+
+    /* ---------- Conversations (top-level) ---------- */
+    match /conversations/{cid} {
+      // READ:
+      // - Owner (student)
+      // - Instructors/TAs of linked assignment class
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        (
+          // Safely read assignment to resolve class
+          exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
+          (
+            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
+            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+          )
+        )
+      );
+
+      // CREATE: student creates their own conversation only
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // UPDATE:
+      // - Student can append turns / move through allowed states
+      // - Instructors/TAs can move to closed
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        (
+          exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
+          (
+            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
+            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+          )
+        )
+      );
+
+      // DELETE: typically disallow
+      allow delete: if false;
+    }
+
+    /* ---------- (Optional) collection-group rule for roster/submissions lookup ---------- */
+    match /{document=**} {
+      // Fallback deny
+      allow read, write: if false;
+    }
+  }
+}

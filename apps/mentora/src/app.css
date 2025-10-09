@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@plugin '@tailwindcss/typography';
+
+@plugin 'flowbite/plugin';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    /* Primary — Knowledge Blue: stability, focus, trust */
+    --color-primary-50: #f3f8ff;
+    --color-primary-100: #e1effe;
+    --color-primary-200: #c3defd;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6; /* main brand blue */
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
+
+    /* Secondary — Growth Green: motivation, progress, creativity */
+    --color-secondary-50: #f3faf7;
+    --color-secondary-100: #def7ec;
+    --color-secondary-200: #bcf0da;
+    --color-secondary-300: #84e1bc;
+    --color-secondary-400: #31c48d;
+    --color-secondary-500: #10b981; /* mint-emerald hybrid */
+    --color-secondary-600: #059669;
+    --color-secondary-700: #047857;
+    --color-secondary-800: #065f46;
+    --color-secondary-900: #064e3b;
+
+    /* Accent — Warm Coral: energy, human connection, call-to-action */
+    --color-accent-50: #fff5f3;
+    --color-accent-100: #ffe3de;
+    --color-accent-200: #ffc8c0;
+    --color-accent-300: #ffa094;
+    --color-accent-400: #ff7a6a;
+    --color-accent-500: #f87171; /* friendly CTA pink-coral */
+    --color-accent-600: #ef4444;
+    --color-accent-700: #dc2626;
+    --color-accent-800: #b91c1c;
+    --color-accent-900: #991b1b;
+
+    /* Neutral — Calm Grays for typography and surfaces */
+    --color-neutral-50: #f9fafb;
+    --color-neutral-100: #f3f4f6;
+    --color-neutral-200: #e5e7eb;
+    --color-neutral-300: #d1d5db;
+    --color-neutral-400: #9ca3af;
+    --color-neutral-500: #6b7280;
+    --color-neutral-600: #4b5563;
+    --color-neutral-700: #374151;
+    --color-neutral-800: #1f2937;
+    --color-neutral-900: #111827;
+
+    /* Semantic colors for feedback */
+    --color-success: #16a34a;
+    --color-warning: #f59e0b;
+    --color-danger: #dc2626;
+    --color-info: #0ea5e9;
+}
+
+@source "../node_modules/flowbite-svelte/dist";
+
+@layer base {
+    /* disable chrome cancel button */
+    input[type="search"]::-webkit-search-cancel-button {
+        display: none;
+    }
+}
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
