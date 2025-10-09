@@ -12,6 +12,7 @@ export default defineConfig({
         paraglideVitePlugin({
             project: "./project.inlang",
             outdir: "./src/lib/paraglide",
+            disableAsyncLocalStorage: !!process.env.CF_PAGES,
         }),
     ],
 });
