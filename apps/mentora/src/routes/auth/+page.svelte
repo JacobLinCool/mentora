@@ -136,9 +136,14 @@
         meta = {
             iat: typeof p.iat === "number" ? p.iat : undefined,
             exp: typeof p.exp === "number" ? p.exp : undefined,
-            email: p.email,
-            name: p.name,
-            uid: p.user_id || p.uid,
+            email: typeof p.email === "string" ? p.email : undefined,
+            name: typeof p.name === "string" ? p.name : undefined,
+            uid:
+                typeof p.user_id === "string"
+                    ? p.user_id
+                    : typeof p.uid === "string"
+                      ? p.uid
+                      : undefined,
         };
     }
 
