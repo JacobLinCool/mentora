@@ -64,8 +64,11 @@ service cloud.firestore {
 
     /* ---------- Class Roster ---------- */
     match /classes/{classId}/roster/{memberId} {
-      // Members can read the roster; or restrict to instructors/TAs only if desired
-      allow read: if isSignedIn() && isClassMember(classId);
+      // Members can read their own roster entry and the entire roster if they are a member
+      allow read: if isSignedIn() && (
+        memberId == request.auth.uid ||
+        isClassMember(classId)
+      );
 
       // Only instructor (or owner) can invite / change roles / remove
       allow create, update, delete: if isSignedIn() && (
@@ -108,14 +111,23 @@ service cloud.firestore {
             isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
         );
 
-        // CREATE/UPDATE by the student (their own doc id == uid)
-        allow create: if isSignedIn() && userId == request.auth.uid;
+        // CREATE by the student (their own doc id == uid)
+        allow create: if isSignedIn() && 
+          userId == request.auth.uid &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.state == "in_progress";
+        
+        // UPDATE by the student or instructor/TA
         allow update: if isSignedIn() && (
-          // Student can edit their own while in progress
+          // Student can edit their own while in progress or submit
           (userId == request.auth.uid &&
-           resource.data.state == "in_progress" &&
            request.resource.data.userId == request.auth.uid &&
-           request.resource.data.assignmentId == aid) ||
+           (
+             (resource.data.state == "in_progress" && 
+              request.resource.data.state in ["in_progress", "submitted"]) ||
+             (resource.data.state == "submitted" && 
+              request.resource.data.state == "submitted")
+           )) ||
 
           // Instructor/TA can grade (move to graded_complete, set notes/score)
           (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&

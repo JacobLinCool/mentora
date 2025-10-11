@@ -11,17 +11,24 @@
     },
     "scripts": {
         "build": "tsup",
-        "deploy": "firebase --project $FIREBASE_PROJECT_ID deploy --only firestore:rules,firestore:indexes"
+        "deploy": "firebase --project $FIREBASE_PROJECT_ID deploy --only firestore:rules,firestore:indexes",
+        "test": "firebase emulators:exec --only firestore 'vitest run'",
+        "test:watch": "firebase emulators:exec --only firestore 'vitest --watch'",
+        "test:ui": "firebase emulators:exec --only firestore 'vitest --ui'",
+        "test:coverage": "firebase emulators:exec --only firestore 'vitest run --coverage'"
     },
     "dependencies": {
         "firebase": "^12.3.0",
         "zod": "^4.1.12"
     },
     "devDependencies": {
+        "@firebase/rules-unit-testing": "^5.0.0",
+        "@types/node": "^24.7.1",
         "firebase-admin": "^13.5.0",
         "firebase-tools": "^14.19.1",
         "tsup": "^8.5.0",
         "tsx": "^4.20.6",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "vitest": "^3.2.4"
     }
 }
