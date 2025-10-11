@@ -1,5 +1,5 @@
 import type { RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
     assertFails,
     assertSucceeds,
@@ -151,6 +151,107 @@ describe("Class Roster Security Rules", () => {
                     .doc(classId)
                     .collection("roster")
                     .doc(userId)
+                    .get(),
+            );
+        });
+
+        it("should allow querying roster collection group for own entries", async () => {
+            const userId = "user123";
+            const classId1 = "class456";
+            const classId2 = "class789";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                // Create two classes with user as member
+                await fs.collection("classes").doc(classId1).set({
+                    id: classId1,
+                    title: "First Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("classes")
+                    .doc(classId1)
+                    .collection("roster")
+                    .doc(userId)
+                    .set({
+                        userId: userId,
+                        email: "user@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now() - 10000,
+                    });
+
+                await fs.collection("classes").doc(classId2).set({
+                    id: classId2,
+                    title: "Second Class",
+                    code: "XYZ789",
+                    ownerId: "owner888",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("classes")
+                    .doc(classId2)
+                    .collection("roster")
+                    .doc(userId)
+                    .set({
+                        userId: userId,
+                        email: "user@example.com",
+                        role: "ta",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            // User should be able to query their own roster entries across all classes
+            const result = await assertSucceeds(
+                db
+                    .collectionGroup("roster")
+                    .where("userId", "==", userId)
+                    .get(),
+            );
+            expect(result.size).toBe(2);
+        });
+
+        it("should deny querying roster collection group for other users' entries", async () => {
+            const userId = "user123";
+            const otherUserId = "user456";
+            const classId = "class789";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(otherUserId)
+                    .set({
+                        userId: otherUserId,
+                        email: "other@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            // User should NOT be able to query other users' roster entries
+            await assertFails(
+                db
+                    .collectionGroup("roster")
+                    .where("userId", "==", otherUserId)
                     .get(),
             );
         });

@@ -82,6 +82,20 @@ describe("User Profiles Security Rules", () => {
 
             await assertFails(db.collection("users").doc(userId).get());
         });
+
+        it("should deny querying users collection", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            // Users can only read their own document, not list/query the collection
+            await assertFails(db.collection("users").get());
+        });
+
+        it("should deny unauthenticated users from querying users collection", async () => {
+            const db = testEnv.unauthenticatedContext().firestore();
+
+            await assertFails(db.collection("users").get());
+        });
     });
 
     describe("Create Access", () => {

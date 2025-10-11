@@ -1,5 +1,5 @@
 import type { RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
     assertFails,
     assertSucceeds,
@@ -171,6 +171,202 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db.collection("assignments").doc(assignmentId).get(),
             );
+        });
+
+        it("should deny querying assignments collection without specific filters", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            // Querying the entire assignments collection fails because rules require
+            // either classId (for membership check) or createdBy (for ownership check)
+            await assertFails(db.collection("assignments").get());
+        });
+
+        it("should deny unauthenticated users from querying assignments", async () => {
+            const db = testEnv.unauthenticatedContext().firestore();
+
+            await assertFails(db.collection("assignments").get());
+        });
+
+        it("should allow querying empty assignments by classId for class members", async () => {
+            const classId = "class456";
+            const studentId = "student789";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+                // No assignments created - empty collection
+            });
+
+            // Should succeed with empty result when filtering by classId
+            await assertSucceeds(
+                db
+                    .collection("assignments")
+                    .where("classId", "==", classId)
+                    .get(),
+            );
+        });
+
+        it("should allow querying assignments by createdBy with actual data", async () => {
+            const creatorId = "creator456";
+            const assignmentId = "assignment123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                await context
+                    .firestore()
+                    .collection("assignments")
+                    .doc(assignmentId)
+                    .set({
+                        id: assignmentId,
+                        classId: null,
+                        title: "Standalone Assignment",
+                        prompt: "Do something",
+                        mode: "instant",
+                        startAt: Date.now(),
+                        dueAt: null,
+                        allowLate: false,
+                        allowResubmit: false,
+                        createdBy: creatorId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    });
+            });
+
+            // Should succeed when there's actual data
+            const result = await assertSucceeds(
+                db
+                    .collection("assignments")
+                    .where("createdBy", "==", creatorId)
+                    .get(),
+            );
+            expect(result.size).toBe(1);
+        });
+
+        it("should deny querying assignments by classId for non-members", async () => {
+            const classId = "class456";
+            const nonMemberId = "nonmember999";
+            const db = testEnv.authenticatedContext(nonMemberId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                // Non-member has no roster entry
+            });
+
+            // Should fail even on empty collection if not a member
+            await assertFails(
+                db
+                    .collection("assignments")
+                    .where("classId", "==", classId)
+                    .get(),
+            );
+        });
+
+        it("should allow querying assignments with startAt filter and ordering", async () => {
+            const classId = "class456";
+            const studentId = "student789";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                const now = Date.now();
+                // Create assignments with different startAt times
+                await fs
+                    .collection("assignments")
+                    .doc("assign1")
+                    .set({
+                        id: "assign1",
+                        classId: classId,
+                        title: "Future Assignment",
+                        prompt: "Do something",
+                        mode: "instant",
+                        startAt: now + 100000,
+                        dueAt: null,
+                        allowLate: false,
+                        allowResubmit: false,
+                        createdBy: "instructor123",
+                        createdAt: now,
+                        updatedAt: now,
+                    });
+                await fs
+                    .collection("assignments")
+                    .doc("assign2")
+                    .set({
+                        id: "assign2",
+                        classId: classId,
+                        title: "Available Assignment",
+                        prompt: "Do something",
+                        mode: "instant",
+                        startAt: now - 10000,
+                        dueAt: null,
+                        allowLate: false,
+                        allowResubmit: false,
+                        createdBy: "instructor123",
+                        createdAt: now,
+                        updatedAt: now,
+                    });
+            });
+
+            // Query for available assignments (startAt <= now)
+            const result = await assertSucceeds(
+                db
+                    .collection("assignments")
+                    .where("classId", "==", classId)
+                    .where("startAt", "<=", Date.now())
+                    .orderBy("startAt", "desc")
+                    .get(),
+            );
+            expect(result.size).toBe(1);
+            expect(result.docs[0]?.data().title).toBe("Available Assignment");
         });
     });
 

@@ -1,5 +1,5 @@
 import type { RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
     assertFails,
     assertSucceeds,
@@ -302,6 +302,142 @@ describe("Conversations Security Rules", () => {
             await assertFails(
                 db.collection("conversations").doc(conversationId).get(),
             );
+        });
+
+        it("should deny querying empty conversations collection", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            // Conversations don't have targetNotExists() rule, so querying should fail
+            await assertFails(db.collection("conversations").get());
+        });
+
+        it("should deny unauthenticated users from querying conversations", async () => {
+            const db = testEnv.unauthenticatedContext().firestore();
+
+            await assertFails(db.collection("conversations").get());
+        });
+
+        it("should allow querying empty conversations by userId", async () => {
+            const studentId = "student111";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            // No conversations created - should succeed with empty result when filtering by userId
+            await assertSucceeds(
+                db
+                    .collection("conversations")
+                    .where("userId", "==", studentId)
+                    .get(),
+            );
+        });
+
+        it("should allow querying empty conversations by assignmentId for class instructors", async () => {
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const instructorId = "instructor999";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do something",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: instructorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                // No conversations created
+            });
+
+            // Instructor should be able to query conversations for the assignment
+            await assertSucceeds(
+                db
+                    .collection("conversations")
+                    .where("assignmentId", "==", assignmentId)
+                    .get(),
+            );
+        });
+
+        it("should allow querying conversation by assignmentId and userId", async () => {
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const studentId = "student111";
+            const conversationId = "conversation123";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do something",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "instructor222",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs.collection("conversations").doc(conversationId).set({
+                    id: conversationId,
+                    assignmentId: assignmentId,
+                    userId: studentId,
+                    state: "in_progress",
+                    lastActionAt: Date.now(),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    turns: [],
+                });
+            });
+
+            // Student should be able to query their own conversation by assignmentId and userId
+            const result = await assertSucceeds(
+                db
+                    .collection("conversations")
+                    .where("assignmentId", "==", assignmentId)
+                    .where("userId", "==", studentId)
+                    .get(),
+            );
+            expect(result.size).toBe(1);
+            expect(result.docs[0]?.data().id).toBe(conversationId);
         });
     });
 

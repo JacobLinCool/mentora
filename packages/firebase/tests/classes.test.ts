@@ -1,5 +1,5 @@
 import type { RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
     assertFails,
     assertSucceeds,
@@ -124,6 +124,71 @@ describe("Classes Security Rules", () => {
             });
 
             await assertFails(db.collection("classes").doc(classId).get());
+        });
+
+        it("should deny querying classes collection without specific filters", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            // Querying the entire classes collection fails because rules require
+            // either class membership or ownership check which needs document data
+            await assertFails(db.collection("classes").get());
+        });
+
+        it("should deny unauthenticated users from querying classes", async () => {
+            const db = testEnv.unauthenticatedContext().firestore();
+
+            await assertFails(db.collection("classes").get());
+        });
+
+        it("should allow querying empty classes by ownerId", async () => {
+            const ownerId = "owner456";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            // No classes created - should succeed with empty result when filtering by owner
+            await assertSucceeds(
+                db.collection("classes").where("ownerId", "==", ownerId).get(),
+            );
+        });
+
+        it("should allow querying classes by ownerId with ordering", async () => {
+            const ownerId = "owner456";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                const now = Date.now();
+                await fs
+                    .collection("classes")
+                    .doc("class1")
+                    .set({
+                        id: "class1",
+                        title: "Older Class",
+                        code: "OLD123",
+                        ownerId: ownerId,
+                        createdAt: now - 10000,
+                        updatedAt: now - 10000,
+                    });
+                await fs.collection("classes").doc("class2").set({
+                    id: "class2",
+                    title: "Newer Class",
+                    code: "NEW456",
+                    ownerId: ownerId,
+                    createdAt: now,
+                    updatedAt: now,
+                });
+            });
+
+            // Should succeed with ordered results
+            const result = await assertSucceeds(
+                db
+                    .collection("classes")
+                    .where("ownerId", "==", ownerId)
+                    .orderBy("createdAt", "desc")
+                    .get(),
+            );
+            expect(result.size).toBe(2);
+            expect(result.docs[0]?.data().title).toBe("Newer Class");
         });
     });
 
