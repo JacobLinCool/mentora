@@ -219,16 +219,21 @@ service cloud.firestore {
       // UPDATE:
       // - Student can append turns / move through allowed states
       // - Instructors/TAs can move to closed
-      allow update: if isSignedIn() && (
-        request.auth.uid == resource.data.userId ||
+      // - If the last turn's pendingStartAt is not null, updates are denied
+      allow update: if isSignedIn() &&
         (
-          exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
+          // Disallow update if last turn's pendingStartAt is not null
+          (resource.data.turns.size() == 0 || resource.data.turns[resource.data.turns.size() - 1].pendingStartAt == null)
+        ) && (
+          request.auth.uid == resource.data.userId ||
           (
-            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+            exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
+            (
+              isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
+              isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+            )
           )
-        )
-      );
+        );
 
       // DELETE: typically disallow
       allow delete: if false;

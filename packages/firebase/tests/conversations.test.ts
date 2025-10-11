@@ -825,6 +825,68 @@ describe("Conversations Security Rules", () => {
                 }),
             );
         });
+
+        it("should deny update if last turn's pendingStartAt is not null", async () => {
+            const conversationId = "conversation123";
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const studentId = "student111";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do something",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "instructor222",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("conversations")
+                    .doc(conversationId)
+                    .set({
+                        id: conversationId,
+                        assignmentId: assignmentId,
+                        userId: studentId,
+                        state: "in_progress",
+                        lastActionAt: Date.now(),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        turns: [
+                            {
+                                id: "turn1",
+                                type: "topic",
+                                text: "Test turn",
+                                analysis: null,
+                                pendingStartAt: Date.now(),
+                                createdAt: Date.now(),
+                            },
+                        ],
+                    });
+            });
+
+            await assertFails(
+                db.collection("conversations").doc(conversationId).update({
+                    state: "closed",
+                }),
+            );
+        });
     });
 
     describe("Delete Access", () => {
