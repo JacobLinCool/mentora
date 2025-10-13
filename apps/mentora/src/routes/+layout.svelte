@@ -3,12 +3,13 @@
     import favicon from "$lib/assets/favicon.svg";
     import { m } from "$lib/paraglide/messages";
     import { api } from "$lib";
-    import { Button } from "flowbite-svelte";
+    import { Button, TextPlaceholder } from "flowbite-svelte";
     import { House, BookOpen, ClipboardList, LogIn } from "@lucide/svelte";
 
     let { children } = $props();
 
     const currentUser = $derived(api.currentUser);
+    const authReady = $derived(api.authReady);
 </script>
 
 <svelte:head>
@@ -58,7 +59,13 @@
     </header>
 
     <!-- Main Content -->
-    <main class="container mx-auto flex-1 px-4 py-8">
-        {@render children?.()}
-    </main>
+    {#await authReady}
+        <div class="flex flex-1 items-center justify-center">
+            <TextPlaceholder size="lg" class="h-8 w-48" />
+        </div>
+    {:then}
+        <main class="container mx-auto flex-1 px-4 py-8">
+            {@render children?.()}
+        </main>
+    {/await}
 </div>

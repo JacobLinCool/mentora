@@ -79,6 +79,9 @@ importers:
             firebase:
                 specifier: ^12.3.0
                 version: 12.3.0
+            firebase-rest-firestore:
+                specifier: ^1.5.0
+                version: 1.5.0
             flowbite:
                 specifier: ^3.1.2
                 version: 3.1.2(rollup@4.52.4)
@@ -4517,6 +4520,13 @@ packages:
                 integrity: sha512-QZOpv1DJRJpH8NcWiL1xXE10tw3L/bdPFlgjcWrqU3ufyOJDYfxB1MMtxiVTwxK16NlybQbEM6ciSich2uWEIQ==,
             }
         engines: { node: ">=18" }
+
+    firebase-rest-firestore@1.5.0:
+        resolution:
+            {
+                integrity: sha512-hFhvx5I8GRDilMwQjDqJcJVZeh25akhTAZFOITqHL13PGTVmkyN4B2IBd3A4EKQRchwqecD8wBmu+i6Sb3hz2A==,
+            }
+        engines: { node: ">=20.8.1" }
 
     firebase-tools@14.19.1:
         resolution:
@@ -11578,6 +11588,10 @@ snapshots:
         transitivePeerDependencies:
             - encoding
             - supports-color
+
+    firebase-rest-firestore@1.5.0:
+        dependencies:
+            jose: 4.15.9
 
     firebase-tools@14.19.1(@types/node@24.7.1)(encoding@0.1.13)(typescript@5.9.3):
         dependencies:

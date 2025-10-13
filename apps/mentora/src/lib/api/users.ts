@@ -67,14 +67,37 @@ export async function updateMyProfile(
 
     return tryCatch(async () => {
         const docRef = doc(config.db, UserProfiles.docPath(currentUser.uid));
-        await setDoc(
-            docRef,
-            {
-                ...profile,
-                updatedAt: Date.now(),
-            },
-            { merge: true },
-        );
+        const snapshot = await getDoc(docRef);
+        const now = Date.now();
+
+        if (!snapshot.exists()) {
+            // Create new profile with all required fields
+            await setDoc(docRef, {
+                uid: currentUser.uid,
+                displayName:
+                    profile.displayName ||
+                    currentUser.displayName ||
+                    currentUser.email?.split("@")[0] ||
+                    "User",
+                email: profile.email || currentUser.email || "",
+                photoURL:
+                    profile.photoURL !== undefined
+                        ? profile.photoURL
+                        : currentUser.photoURL,
+                createdAt: now,
+                updatedAt: now,
+            });
+        } else {
+            // Update existing profile
+            await setDoc(
+                docRef,
+                {
+                    ...profile,
+                    updatedAt: now,
+                },
+                { merge: true },
+            );
+        }
     });
 }
 

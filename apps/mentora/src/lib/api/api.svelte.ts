@@ -19,6 +19,7 @@ import * as AssignmentsModule from "./assignments";
 import * as BackendModule from "./backend";
 import * as ClassesModule from "./classes";
 import * as ConversationsModule from "./conversations";
+import { ProfileWatcher } from "./profile.svelte";
 import type { ReactiveState } from "./state.svelte";
 import { createState } from "./state.svelte";
 import * as SubmissionsModule from "./submissions";
@@ -39,6 +40,7 @@ export type { APIResult, MentoraAPIConfig, QueryOptions } from "./types";
 
 class MentoraAPI {
     #currentUser = $state<User | null>(null);
+    #profileWatcher: ProfileWatcher;
     private config: MentoraAPIConfig;
 
     constructor(config: Omit<MentoraAPIConfig, "getCurrentUser">) {
@@ -47,14 +49,21 @@ class MentoraAPI {
             getCurrentUser: () => this.#currentUser,
         };
 
+        this.#profileWatcher = new ProfileWatcher(this.config);
+
         if (browser) {
             auth.onAuthStateChanged((user) => {
                 this.#currentUser = user;
+                this.#profileWatcher.handleUserChange(user);
             });
         }
     }
 
-    get ready() {
+    get profileReady(): Promise<void> {
+        return this.#profileWatcher.ready;
+    }
+
+    get authReady() {
         return auth.authStateReady();
     }
 
@@ -62,24 +71,30 @@ class MentoraAPI {
         return this.#currentUser;
     }
 
+    get currentUserProfile() {
+        return this.#profileWatcher.profile;
+    }
+
     get isAuthenticated() {
         return this.#currentUser !== null;
     }
 
-    private async readyThen<T>(fn: () => Promise<T>): Promise<T> {
-        await this.ready;
+    private async authReadyThen<T>(fn: () => Promise<T>): Promise<T> {
+        await this.authReady;
         return fn();
     }
 
     users = {
         getMyProfile: (): Promise<APIResult<UserProfile>> =>
-            this.readyThen(() => UsersModule.getMyProfile(this.config)),
+            this.authReadyThen(() => UsersModule.getMyProfile(this.config)),
         getProfile: (uid: string): Promise<APIResult<UserProfile>> =>
-            this.readyThen(() => UsersModule.getUserProfile(this.config, uid)),
+            this.authReadyThen(() =>
+                UsersModule.getUserProfile(this.config, uid),
+            ),
         updateMyProfile: (
             profile: Partial<Omit<UserProfile, "uid" | "createdAt">>,
         ): Promise<APIResult<void>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 UsersModule.updateMyProfile(this.config, profile),
             ),
         subscribeToMyProfile: (state: ReactiveState<UserProfile>): void =>
@@ -88,44 +103,46 @@ class MentoraAPI {
 
     classes = {
         get: (classId: string): Promise<APIResult<ClassDoc>> =>
-            this.readyThen(() => ClassesModule.getClass(this.config, classId)),
+            this.authReadyThen(() =>
+                ClassesModule.getClass(this.config, classId),
+            ),
         listMine: (options?: QueryOptions): Promise<APIResult<ClassDoc[]>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 ClassesModule.listMyClasses(this.config, options),
             ),
         listEnrolled: (
             options?: QueryOptions,
         ): Promise<APIResult<ClassDoc[]>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 ClassesModule.listMyEnrolledClasses(this.config, options),
             ),
         create: (title: string, code: string): Promise<APIResult<string>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 ClassesModule.createClass(this.config, title, code),
             ),
         getRoster: (
             classId: string,
             options?: QueryOptions,
         ): Promise<APIResult<ClassMembership[]>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 ClassesModule.getClassRoster(this.config, classId, options),
             ),
         joinByCode: (code: string): Promise<APIResult<string>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 BackendModule.joinClassByCode(this.config, code),
             ),
     };
 
     assignments = {
         get: (assignmentId: string): Promise<APIResult<Assignment>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 AssignmentsModule.getAssignment(this.config, assignmentId),
             ),
         listForClass: (
             classId: string,
             options?: QueryOptions,
         ): Promise<APIResult<Assignment[]>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 AssignmentsModule.listClassAssignments(
                     this.config,
                     classId,
@@ -136,7 +153,7 @@ class MentoraAPI {
             classId: string,
             options?: QueryOptions,
         ): Promise<APIResult<Assignment[]>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 AssignmentsModule.listAvailableAssignments(
                     this.config,
                     classId,
@@ -149,7 +166,7 @@ class MentoraAPI {
                 "id" | "createdBy" | "createdAt" | "updatedAt"
             >,
         ): Promise<APIResult<string>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 AssignmentsModule.createAssignment(this.config, assignment),
             ),
     };
@@ -159,7 +176,7 @@ class MentoraAPI {
             assignmentId: string,
             userId: string,
         ): Promise<APIResult<Submission>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 SubmissionsModule.getSubmission(
                     this.config,
                     assignmentId,
@@ -167,14 +184,14 @@ class MentoraAPI {
                 ),
             ),
         getMine: (assignmentId: string): Promise<APIResult<Submission>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 SubmissionsModule.getMySubmission(this.config, assignmentId),
             ),
         listForAssignment: (
             assignmentId: string,
             options?: QueryOptions,
         ): Promise<APIResult<Submission[]>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 SubmissionsModule.listAssignmentSubmissions(
                     this.config,
                     assignmentId,
@@ -182,18 +199,18 @@ class MentoraAPI {
                 ),
             ),
         start: (assignmentId: string): Promise<APIResult<void>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 SubmissionsModule.startSubmission(this.config, assignmentId),
             ),
         submit: (assignmentId: string): Promise<APIResult<void>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 SubmissionsModule.submitAssignment(this.config, assignmentId),
             ),
     };
 
     conversations = {
         get: (conversationId: string): Promise<APIResult<Conversation>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 ConversationsModule.getConversation(
                     this.config,
                     conversationId,
@@ -203,7 +220,7 @@ class MentoraAPI {
             assignmentId: string,
             userId?: string,
         ): Promise<APIResult<Conversation>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 ConversationsModule.getAssignmentConversation(
                     this.config,
                     assignmentId,
@@ -226,7 +243,7 @@ class MentoraAPI {
             endpoint: string,
             options?: RequestInit,
         ): Promise<APIResult<T>> =>
-            this.readyThen(() =>
+            this.authReadyThen(() =>
                 BackendModule.callBackend<T>(this.config, endpoint, options),
             ),
     };
