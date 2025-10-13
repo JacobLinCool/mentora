@@ -4,7 +4,7 @@
     import { m } from "$lib/paraglide/messages";
     import { api } from "$lib";
     import { Button, TextPlaceholder } from "flowbite-svelte";
-    import { House, BookOpen, ClipboardList, LogIn } from "@lucide/svelte";
+    import { BookOpen, ClipboardList, LogIn } from "@lucide/svelte";
 
     let { children } = $props();
 
@@ -23,6 +23,7 @@
             class="container mx-auto flex w-full items-center justify-between px-4 py-3"
         >
             <div class="flex flex-1 items-center gap-4">
+                <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
                 <a href="/" class="text-xl font-bold text-blue-600">Mentora</a>
                 {#if currentUser}
                     <div class="flex gap-2 overflow-auto">
