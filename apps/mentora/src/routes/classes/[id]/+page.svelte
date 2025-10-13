@@ -16,8 +16,19 @@
         TableBodyCell,
         TableBodyRow,
         TableHeadCell,
+        Modal,
+        Label,
+        Input,
+        Textarea,
     } from "flowbite-svelte";
-    import { ArrowLeft, Users, ClipboardList } from "@lucide/svelte";
+    import {
+        ArrowLeft,
+        Users,
+        ClipboardList,
+        Plus,
+        Copy,
+        Check,
+    } from "@lucide/svelte";
 
     const classId = $derived(page.params.id);
 
@@ -26,6 +37,19 @@
     let roster = $state<ClassMembership[]>([]);
     let loading = $state(true);
     let error = $state<string | null>(null);
+
+    // Assignment creation
+    let showCreateAssignment = $state(false);
+    let assignmentTitle = $state("");
+    let assignmentPrompt = $state("");
+    let assignmentStartAt = $state("");
+    let assignmentDueAt = $state("");
+    let assignmentMode = $state<"instant">("instant");
+    let creatingAssignment = $state(false);
+    let createAssignmentError = $state<string | null>(null);
+
+    // Code copy state
+    let codeCopied = $state(false);
 
     async function loadClassDetails() {
         if (!classId) return;
@@ -55,6 +79,52 @@
         }
 
         loading = false;
+    }
+
+    async function handleCreateAssignment() {
+        if (
+            !classId ||
+            !assignmentTitle.trim() ||
+            !assignmentPrompt.trim() ||
+            !assignmentStartAt ||
+            !assignmentDueAt
+        )
+            return;
+
+        creatingAssignment = true;
+        createAssignmentError = null;
+
+        const result = await api.assignments.create({
+            classId,
+            title: assignmentTitle.trim(),
+            prompt: assignmentPrompt.trim(),
+            startAt: new Date(assignmentStartAt).getTime(),
+            dueAt: new Date(assignmentDueAt).getTime(),
+            mode: assignmentMode,
+            allowLate: false,
+            allowResubmit: false,
+        });
+
+        if (result.success) {
+            assignmentTitle = "";
+            assignmentPrompt = "";
+            assignmentStartAt = "";
+            assignmentDueAt = "";
+            assignmentMode = "instant";
+            showCreateAssignment = false;
+            await loadClassDetails();
+        } else {
+            createAssignmentError = result.error;
+        }
+
+        creatingAssignment = false;
+    }
+
+    async function copyClassCode() {
+        if (!classDoc?.code) return;
+        await navigator.clipboard.writeText(classDoc.code);
+        codeCopied = true;
+        setTimeout(() => (codeCopied = false), 2000);
     }
 
     onMount(() => {
@@ -95,13 +165,50 @@
             </div>
         </Card>
 
+        <!-- Invite Members Section -->
+        {#if api.currentUser && classDoc.ownerId === api.currentUser.uid}
+            <Card class="mb-6 p-4">
+                <h2 class="mb-3 text-xl font-semibold">
+                    {m.class_detail_invite()}
+                </h2>
+                <p class="mb-2 text-sm text-gray-600">
+                    {m.class_detail_share_code()}
+                </p>
+                <div class="flex items-center gap-2">
+                    <code
+                        class="flex-1 rounded bg-gray-100 px-3 py-2 font-mono text-lg"
+                    >
+                        {classDoc.code}
+                    </code>
+                    <Button onclick={copyClassCode} color="light" size="sm">
+                        {#if codeCopied}
+                            <Check class="h-4 w-4" />
+                        {:else}
+                            <Copy class="h-4 w-4" />
+                        {/if}
+                    </Button>
+                </div>
+            </Card>
+        {/if}
+
         <!-- Assignments Section -->
         <Card class="mb-6 p-4">
-            <div class="mb-4 flex items-center gap-2">
-                <ClipboardList class="h-6 w-6 text-blue-600" />
-                <h2 class="text-2xl font-semibold">
-                    {m.class_detail_assignments()}
-                </h2>
+            <div class="mb-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <ClipboardList class="h-6 w-6 text-blue-600" />
+                    <h2 class="text-2xl font-semibold">
+                        {m.class_detail_assignments()}
+                    </h2>
+                </div>
+                {#if api.currentUser && classDoc.ownerId === api.currentUser.uid}
+                    <Button
+                        onclick={() => (showCreateAssignment = true)}
+                        size="sm"
+                    >
+                        <Plus class="me-2 h-4 w-4" />
+                        {m.class_detail_create_assignment()}
+                    </Button>
+                {/if}
             </div>
             {#if assignments.length === 0}
                 <p class="py-4 text-center text-gray-600">
@@ -196,3 +303,117 @@
         </Card>
     {/if}
 </div>
+
+<!-- Create Assignment Modal -->
+<Modal
+    bind:open={showCreateAssignment}
+    size="md"
+    dismissable={!creatingAssignment}
+>
+    <h3 class="mb-4 text-xl font-semibold">
+        {m.class_detail_create_assignment()}
+    </h3>
+
+    <form
+        onsubmit={(e) => {
+            e.preventDefault();
+            handleCreateAssignment();
+        }}
+        class="space-y-4"
+    >
+        <div>
+            <Label for="assignment-title" class="mb-2"
+                >{m.assignment_create_title()}</Label
+            >
+            <Input
+                id="assignment-title"
+                bind:value={assignmentTitle}
+                placeholder={m.assignment_create_title()}
+                disabled={creatingAssignment}
+                required
+            />
+        </div>
+
+        <div>
+            <Label for="assignment-prompt" class="mb-2"
+                >{m.assignment_create_prompt()}</Label
+            >
+            <Textarea
+                id="assignment-prompt"
+                bind:value={assignmentPrompt}
+                placeholder={m.assignment_create_prompt()}
+                disabled={creatingAssignment}
+                rows={4}
+                required
+            />
+        </div>
+
+        <div>
+            <Label for="assignment-mode" class="mb-2"
+                >{m.assignment_create_mode()}</Label
+            >
+            <Input id="assignment-mode" value="instant" disabled readonly />
+            <p class="mt-1 text-sm text-gray-500">
+                Currently only instant mode is supported
+            </p>
+        </div>
+
+        <div>
+            <Label for="assignment-start" class="mb-2"
+                >{m.assignment_create_start_at()}</Label
+            >
+            <Input
+                id="assignment-start"
+                type="datetime-local"
+                bind:value={assignmentStartAt}
+                disabled={creatingAssignment}
+                required
+            />
+        </div>
+
+        <div>
+            <Label for="assignment-due" class="mb-2"
+                >{m.assignment_create_due_at()}</Label
+            >
+            <Input
+                id="assignment-due"
+                type="datetime-local"
+                bind:value={assignmentDueAt}
+                disabled={creatingAssignment}
+                required
+            />
+        </div>
+
+        {#if createAssignmentError}
+            <Alert color="red">{createAssignmentError}</Alert>
+        {/if}
+
+        <div class="flex justify-end gap-2">
+            <Button
+                color="alternative"
+                onclick={() => {
+                    if (!creatingAssignment) {
+                        showCreateAssignment = false;
+                        createAssignmentError = null;
+                    }
+                }}
+                disabled={creatingAssignment}
+            >
+                {m.cancel()}
+            </Button>
+            <Button
+                type="submit"
+                disabled={creatingAssignment ||
+                    !assignmentTitle.trim() ||
+                    !assignmentPrompt.trim() ||
+                    !assignmentStartAt ||
+                    !assignmentDueAt}
+            >
+                {#if creatingAssignment}
+                    <Spinner size="4" class="me-2" />
+                {/if}
+                {m.create()}
+            </Button>
+        </div>
+    </form>
+</Modal>

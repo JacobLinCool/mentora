@@ -16,29 +16,27 @@
     <link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="flex min-h-screen flex-col">
+<div class="flex h-full w-full flex-col">
     <!-- Navigation Header -->
     <header class="border-b border-gray-200 bg-white">
         <nav
-            class="container mx-auto flex items-center justify-between px-4 py-3"
+            class="container mx-auto flex w-full items-center justify-between px-4 py-3"
         >
-            <div class="flex items-center gap-4">
-                <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+            <div class="flex flex-1 items-center gap-4">
                 <a href="/" class="text-xl font-bold text-blue-600">Mentora</a>
                 {#if currentUser}
-                    <div class="flex gap-2">
-                        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-                        <Button href="/" size="sm" color="light">
-                            <House class="me-2 h-4 w-4" />
-                            {m.nav_home()}
-                        </Button>
+                    <div class="flex gap-2 overflow-auto">
                         <Button href="/classes" size="sm" color="light">
-                            <BookOpen class="me-2 h-4 w-4" />
-                            {m.nav_classes()}
+                            <BookOpen class="h-4 w-4" />
+                            <span class="ms-2 max-sm:hidden">
+                                {m.nav_classes()}
+                            </span>
                         </Button>
                         <Button href="/assignments" size="sm" color="light">
-                            <ClipboardList class="me-2 h-4 w-4" />
-                            {m.nav_assignments()}
+                            <ClipboardList class="h-4 w-4" />
+                            <span class="ms-2 max-sm:hidden">
+                                {m.nav_assignments()}
+                            </span>
                         </Button>
                     </div>
                 {/if}
@@ -64,7 +62,7 @@
             <TextPlaceholder size="lg" class="h-8 w-48" />
         </div>
     {:then}
-        <main class="container mx-auto flex-1 px-4 py-8">
+        <main class="container mx-auto flex-1 overflow-auto px-4 py-8">
             {@render children?.()}
         </main>
     {/await}

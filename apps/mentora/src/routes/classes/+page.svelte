@@ -1,10 +1,19 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
     import { m } from "$lib/paraglide/messages";
     import { api } from "$lib";
     import type { ClassDoc } from "$lib/api";
-    import { Button, Card, Input, Alert, Spinner } from "flowbite-svelte";
-    import { BookOpen } from "@lucide/svelte";
+    import {
+        Button,
+        Card,
+        Input,
+        Alert,
+        Spinner,
+        Modal,
+        Label,
+    } from "flowbite-svelte";
+    import { BookOpen, Plus } from "@lucide/svelte";
 
     let ownedClasses = $state<ClassDoc[]>([]);
     let enrolledClasses = $state<ClassDoc[]>([]);
@@ -13,6 +22,13 @@
     let joinCode = $state("");
     let joining = $state(false);
     let joinError = $state<string | null>(null);
+
+    // Create class modal
+    let showCreateModal = $state(false);
+    let createTitle = $state("");
+    let createCode = $state("");
+    let creating = $state(false);
+    let createError = $state<string | null>(null);
 
     async function loadClasses() {
         loading = true;
@@ -56,6 +72,32 @@
         joining = false;
     }
 
+    async function handleCreateClass() {
+        if (!createTitle.trim() || !createCode.trim()) return;
+
+        creating = true;
+        createError = null;
+
+        const result = await api.classes.create(
+            createTitle.trim(),
+            createCode.trim(),
+        );
+
+        if (result.success) {
+            createTitle = "";
+            createCode = "";
+            showCreateModal = false;
+            await loadClasses();
+            // Navigate to the new class
+            // eslint-disable-next-line svelte/no-navigation-without-resolve
+            goto(`/classes/${result.data}`);
+        } else {
+            createError = result.error;
+        }
+
+        creating = false;
+    }
+
     onMount(() => {
         loadClasses();
     });
@@ -64,10 +106,14 @@
 <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center justify-between">
         <h1 class="text-3xl font-bold">{m.classes_title()}</h1>
+        <Button onclick={() => (showCreateModal = true)}>
+            <Plus class="me-2 h-4 w-4" />
+            {m.classes_create()}
+        </Button>
     </div>
 
     <!-- Join by Code -->
-    <Card class="mb-6  p-4">
+    <Card class="mb-6 p-4">
         <h2 class="mb-4 text-xl font-semibold">{m.classes_join_by_code()}</h2>
         <div class="flex gap-2">
             <Input
@@ -164,3 +210,70 @@
         </div>
     {/if}
 </div>
+
+<!-- Create Class Modal -->
+<Modal bind:open={showCreateModal} size="sm" dismissable={!creating}>
+    <h3 class="mb-4 text-xl font-semibold">{m.classes_create()}</h3>
+
+    <form
+        onsubmit={(e) => {
+            e.preventDefault();
+            handleCreateClass();
+        }}
+        class="space-y-4"
+    >
+        <div>
+            <Label for="class-title" class="mb-2"
+                >{m.classes_create_title()}</Label
+            >
+            <Input
+                id="class-title"
+                bind:value={createTitle}
+                placeholder={m.classes_create_title()}
+                disabled={creating}
+                required
+            />
+        </div>
+
+        <div>
+            <Label for="class-code" class="mb-2"
+                >{m.classes_create_code()}</Label
+            >
+            <Input
+                id="class-code"
+                bind:value={createCode}
+                placeholder={m.classes_create_code()}
+                disabled={creating}
+                required
+            />
+        </div>
+
+        {#if createError}
+            <Alert color="red">{createError}</Alert>
+        {/if}
+
+        <div class="flex justify-end gap-2">
+            <Button
+                color="alternative"
+                onclick={() => {
+                    if (!creating) {
+                        showCreateModal = false;
+                        createError = null;
+                    }
+                }}
+                disabled={creating}
+            >
+                {m.cancel()}
+            </Button>
+            <Button
+                type="submit"
+                disabled={creating || !createTitle.trim() || !createCode.trim()}
+            >
+                {#if creating}
+                    <Spinner size="4" class="me-2" />
+                {/if}
+                {m.create()}
+            </Button>
+        </div>
+    </form>
+</Modal>
