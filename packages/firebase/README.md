@@ -123,12 +123,12 @@ The indexes are defined in `sync/firestore.indexes.json`.
 1. List class assignments newest first
     - **Query**: `where("classId", "==", classId).orderBy("startAt", "desc")`
     - **Index**: `(classId ASC, startAt DESC)`
-2. Created by instructor, admin view
+2. List class assignments oldest first
+    - **Query**: `where("classId", "==", classId).orderBy("startAt", "asc")`
+    - **Index**: `(classId ASC, startAt ASC)`
+3. Created by instructor, admin view
     - **Query**: `where("createdBy","==",uid).orderBy("createdAt","desc")`
     - **Index**: `(createdBy ASC, createdAt DESC)`
-3. Available assignments (already started)
-    - **Query**: `where("classId","==",classId).where("startAt","<=", now).orderBy("startAt","desc")`
-    - **Index**: `(classId ASC, startAt DESC)`
 
 #### Submissions
 
@@ -172,6 +172,10 @@ The indexes are defined in `sync/firestore.indexes.json`.
     - **Collection group**: `roster`
     - **Query**: `where("userId","==",uid).orderBy("joinedAt","desc")`
     - **Index**: `(userId ASC, joinedAt DESC)`
+4. Find all active classes a user is enrolled in
+    - **Collection group**: `roster`
+    - **Query**: `where("userId","==",uid).where("status","==","active").orderBy("joinedAt","desc")`
+    - **Index**: `(userId ASC, status ASC, joinedAt DESC)`
 
 ### Security rules
 
@@ -185,9 +189,8 @@ Per-collection behaviour (high level):
 
 - `users/{uid}`: users can read/create/update their own profile only; deletes are disallowed to keep profiles intact.
 - `classes/{classId}`: readable by any signed-in class member or the owning instructor; creation is open to signed-in users; updates/deletes are restricted to the owning instructor or an instructor listed in the roster.
-- `classes/{classId}/roster/{memberId}`: roster rows may be read by class members; create/update/delete of roster rows is restricted to instructors (or the class owner). A user may always read their own roster row.
-- `assignments/{aid}`: readable by class members for class-bound assignments, or by the creator for standalone assignments. Creation/update/delete requires instructor/TA privileges for class assignments or the original creator for standalone assignments.
-    - `assignments/{aid}/submissions/{userId}`: students may create their own submission and update it while it's `in_progress`. Instructors/TAs may read and update submissions for grading (move to `graded_complete`). Deletion is restricted to instructors.
+- `classes/{classId}/roster/{memberId}`: roster rows may be read by the roster member themselves or any class member; create/update/delete of roster rows is restricted to instructors (or the class owner).
+- `assignments/{aid}`: readable by class members for class-bound assignments, or by the creator for standalone assignments. Creation/update/delete requires instructor/TA privileges for class assignments or the original creator for standalone assignments. Submissions subcollection: students may create their own submission (must be in `in_progress` state initially) and update it while it's `in_progress` or transition it to `submitted`. Once submitted, students can no longer change the state but instructors/TAs can. Instructors/TAs may read and update all submissions for grading. Deletion is restricted to instructors.
 - `conversations/{cid}`: readable by the owning student or instructors/TAs of the linked assignment's class. Students may create conversations where `userId == request.auth.uid`. Updates may be performed by the student or by instructors/TAs (e.g., to close conversations). Deletions are disallowed.
 
 #### Safety and implementation notes

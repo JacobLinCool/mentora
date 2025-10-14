@@ -10,7 +10,7 @@
         signOut,
         type User,
     } from "firebase/auth";
-    import { auth } from "mentora-firebase";
+    import { auth } from "$lib/firebase";
     import { m } from "$lib/paraglide/messages.js";
 
     import {

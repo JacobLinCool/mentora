@@ -40,9 +40,15 @@ service cloud.firestore {
       return isClassMember(classId) && hasRole(classId, "instructor");
     }
 
+    function targetNotExists() {
+      // It's required for querying non-existent docs, e.g. an empty collection
+      return resource == null
+    }
+
     /* ---------- Users ---------- */
     match /users/{uid} {
-      allow read: if isSignedIn() && (uid == request.auth.uid);
+      allow get: if isSignedIn() && (uid == request.auth.uid);
+      allow list: if false; // users cannot list all users
       allow create: if isSignedIn() && (uid == request.auth.uid);
       allow update: if isSignedIn() && (uid == request.auth.uid);
       allow delete: if false; // keep profiles
@@ -50,7 +56,15 @@ service cloud.firestore {
 
     /* ---------- Classes ---------- */
     match /classes/{classId} {
-      allow read: if isSignedIn() && (
+      allow get: if isSignedIn() && (
+        targetNotExists() || // allow reading non-existent docs
+        isClassMember(classId) ||
+        // Instructors who own the class (defensive in case roster is missing)
+        (resource.data.ownerId == request.auth.uid)
+      );
+
+      allow list: if isSignedIn() && (
+        targetNotExists() || // allow listing empty collection
         isClassMember(classId) ||
         // Instructors who own the class (defensive in case roster is missing)
         (resource.data.ownerId == request.auth.uid)
@@ -64,8 +78,14 @@ service cloud.firestore {
 
     /* ---------- Class Roster ---------- */
     match /classes/{classId}/roster/{memberId} {
-      // Members can read the roster; or restrict to instructors/TAs only if desired
-      allow read: if isSignedIn() && isClassMember(classId);
+      // Members can read their own roster entry
+      allow get: if isSignedIn() && (
+        memberId == request.auth.uid ||
+        isClassMember(classId)
+      );
+
+      // Members can list the entire roster if they are a member
+      allow list: if isSignedIn() && isClassMember(classId);
 
       // Only instructor (or owner) can invite / change roles / remove
       allow create, update, delete: if isSignedIn() && (
@@ -76,11 +96,22 @@ service cloud.firestore {
 
     /* ---------- Assignments (top-level) ---------- */
     match /assignments/{aid} {
-      allow read: if isSignedIn() && (
+      allow get: if isSignedIn() && (
+        targetNotExists() || // allow reading non-existent docs
+        // standalone: visible to creator (check createdBy first)
+        ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid && 
+         (!('classId' in resource.data) || resource.data.classId == null)) ||
         // class-bound assignments: visible to class members
-        (resource.data.classId != null && isClassMember(resource.data.classId)) ||
-        // standalone: visible to creator
-        (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
+        ('classId' in resource.data && resource.data.classId != null && isClassMember(resource.data.classId))
+      );
+
+      allow list: if isSignedIn() && (
+        targetNotExists() || // allow listing empty collection
+        // standalone: visible to creator (check createdBy first)
+        ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid && 
+         (!('classId' in resource.data) || resource.data.classId == null)) ||
+        // class-bound assignments: visible to class members
+        ('classId' in resource.data && resource.data.classId != null && isClassMember(resource.data.classId))
       );
 
       // Create/update by class instructors/TAs or assignment creator for standalone
@@ -98,24 +129,42 @@ service cloud.firestore {
 
       /* ------ Submissions subcollection ------ */
       match /submissions/{userId} {
-        // READ:
+        // GET:
         // - The student may read their own submission
         // - Instructors/TAs of the class may read all
-        allow read: if isSignedIn() && (
+        allow get: if isSignedIn() && (
           userId == request.auth.uid ||
           (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
            (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
             isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
         );
 
-        // CREATE/UPDATE by the student (their own doc id == uid)
-        allow create: if isSignedIn() && userId == request.auth.uid;
+        // LIST:
+        // - Instructors/TAs can list all submissions
+        // - Students cannot list (can only get their own)
+        allow list: if isSignedIn() && (
+          get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
+          (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
+           isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
+        );
+
+        // CREATE by the student (their own doc id == uid)
+        allow create: if isSignedIn() && 
+          userId == request.auth.uid &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.state == "in_progress";
+        
+        // UPDATE by the student or instructor/TA
         allow update: if isSignedIn() && (
-          // Student can edit their own while in progress
+          // Student can edit their own while in progress or submit
           (userId == request.auth.uid &&
-           resource.data.state == "in_progress" &&
            request.resource.data.userId == request.auth.uid &&
-           request.resource.data.assignmentId == aid) ||
+           (
+             (resource.data.state == "in_progress" && 
+              request.resource.data.state in ["in_progress", "submitted"]) ||
+             (resource.data.state == "submitted" && 
+              request.resource.data.state == "submitted")
+           )) ||
 
           // Instructor/TA can grade (move to graded_complete, set notes/score)
           (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
@@ -133,10 +182,25 @@ service cloud.firestore {
 
     /* ---------- Conversations (top-level) ---------- */
     match /conversations/{cid} {
-      // READ:
+      // GET:
       // - Owner (student)
       // - Instructors/TAs of linked assignment class
-      allow read: if isSignedIn() && (
+      allow get: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        (
+          // Safely read assignment to resolve class
+          exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
+          (
+            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
+            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+          )
+        )
+      );
+
+      // LIST:
+      // - Owner (student) can list their own conversations
+      // - Instructors/TAs of linked assignment class can list
+      allow list: if isSignedIn() && (
         request.auth.uid == resource.data.userId ||
         (
           // Safely read assignment to resolve class
@@ -155,25 +219,42 @@ service cloud.firestore {
       // UPDATE:
       // - Student can append turns / move through allowed states
       // - Instructors/TAs can move to closed
-      allow update: if isSignedIn() && (
-        request.auth.uid == resource.data.userId ||
+      // - If the last turn's pendingStartAt is not null, updates are denied
+      allow update: if isSignedIn() &&
         (
-          exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
+          // Disallow update if last turn's pendingStartAt is not null
+          (resource.data.turns.size() == 0 || resource.data.turns[resource.data.turns.size() - 1].pendingStartAt == null)
+        ) && (
+          request.auth.uid == resource.data.userId ||
           (
-            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+            exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
+            (
+              isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
+              isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+            )
           )
-        )
-      );
+        );
 
       // DELETE: typically disallow
       allow delete: if false;
     }
 
-    /* ---------- (Optional) collection-group rule for roster/submissions lookup ---------- */
+    /* ---------- Collection Group Rules ---------- */
+    
+    // Roster collection group - allows users to query their own roster entries across all classes
+    match /{path=**}/roster/{memberId} {
+      // Users can only query their own roster entries across all classes
+      // This supports listMyEnrolledClasses API which queries: 
+      // collectionGroup("roster").where("userId", "==", currentUser.uid).where("status", "==", "active")
+      allow read: if isSignedIn() && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    /* ---------- Fallback ---------- */
     match /{document=**} {
       // Fallback deny
-      allow read, write: if false;
+      allow get, list: if false;
+      allow create, update, delete: if false;
     }
   }
 }

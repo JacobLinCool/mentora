@@ -27,6 +27,9 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
+            - name: Copy .env file
+              run: cp apps/mentora/.env.example apps/mentora/.env
+
             - name: Build All Packages
               run: pnpm -r build
 
@@ -58,6 +61,9 @@ jobs:
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
+
+            - name: Copy .env file
+              run: cp apps/mentora/.env.example apps/mentora/.env
 
             - name: Build All Packages
               run: pnpm -r build
