@@ -16,11 +16,18 @@ export const POST: RequestHandler = async (event) => {
         throw svelteError(400, "Invalid or missing join code");
     }
 
+    // Normalize and validate join code
+    const normalizedCode = code.trim().toUpperCase();
+    // Example: 6-10 uppercase letters/digits, adjust regex as needed
+    if (!/^[A-Z0-9]{6,10}$/.test(normalizedCode)) {
+        throw svelteError(400, "Join code format is invalid");
+    }
+
     try {
         // Query for class with matching code
         const classesSnapshot = await firestore
             .collection(Classes.collectionPath())
-            .where("code", "==", code)
+            .where("code", "==", normalizedCode)
             .limit(1)
             .get();
 
