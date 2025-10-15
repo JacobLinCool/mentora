@@ -860,4 +860,239 @@ describe("Assignments Security Rules", () => {
             );
         });
     });
+
+    describe("Data Shape Validation", () => {
+        it("should deny creating assignment with id shorter than 6 characters", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertFails(
+                db.collection("assignments").doc("short").set({
+                    id: "short",
+                    classId: null,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: creatorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should allow creating assignment with id at 6 character minimum", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertSucceeds(
+                db.collection("assignments").doc("assign").set({
+                    id: "assign",
+                    classId: null,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: creatorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating assignment with id exceeding 128 characters", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+            const longId = "a".repeat(129);
+
+            await assertFails(
+                db.collection("assignments").doc(longId).set({
+                    id: longId,
+                    classId: null,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: creatorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating assignment with empty title", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertFails(
+                db.collection("assignments").doc("assignment123").set({
+                    id: "assignment123",
+                    classId: null,
+                    title: "",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: creatorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating assignment with title exceeding 300 characters", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertFails(
+                db
+                    .collection("assignments")
+                    .doc("assignment123")
+                    .set({
+                        id: "assignment123",
+                        classId: null,
+                        title: "a".repeat(301),
+                        prompt: "Do the work",
+                        mode: "instant",
+                        startAt: Date.now(),
+                        dueAt: null,
+                        allowLate: false,
+                        allowResubmit: false,
+                        createdBy: creatorId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating assignment with title at 300 character limit", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("assignments")
+                    .doc("assignment123")
+                    .set({
+                        id: "assignment123",
+                        classId: null,
+                        title: "a".repeat(300),
+                        prompt: "Do the work",
+                        mode: "instant",
+                        startAt: Date.now(),
+                        dueAt: null,
+                        allowLate: false,
+                        allowResubmit: false,
+                        createdBy: creatorId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating assignment with empty prompt", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertFails(
+                db.collection("assignments").doc("assignment123").set({
+                    id: "assignment123",
+                    classId: null,
+                    title: "Test Assignment",
+                    prompt: "",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: creatorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating assignment with prompt exceeding 50000 characters", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertFails(
+                db
+                    .collection("assignments")
+                    .doc("assignment123")
+                    .set({
+                        id: "assignment123",
+                        classId: null,
+                        title: "Test Assignment",
+                        prompt: "a".repeat(50001),
+                        mode: "instant",
+                        startAt: Date.now(),
+                        dueAt: null,
+                        allowLate: false,
+                        allowResubmit: false,
+                        createdBy: creatorId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating assignment with prompt at 50000 character limit", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("assignments")
+                    .doc("assignment123")
+                    .set({
+                        id: "assignment123",
+                        classId: null,
+                        title: "Test Assignment",
+                        prompt: "a".repeat(50000),
+                        mode: "instant",
+                        startAt: Date.now(),
+                        dueAt: null,
+                        allowLate: false,
+                        allowResubmit: false,
+                        createdBy: creatorId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating assignment with invalid mode", async () => {
+            const creatorId = "creator123";
+            const db = testEnv.authenticatedContext(creatorId).firestore();
+
+            await assertFails(
+                db.collection("assignments").doc("assignment123").set({
+                    id: "assignment123",
+                    classId: null,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "invalid",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: creatorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+    });
 });

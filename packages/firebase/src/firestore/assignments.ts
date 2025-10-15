@@ -4,16 +4,27 @@ import { joinPath, zFirebaseTimestamp } from "./shared";
 
 export const zAssignment = z
     .object({
-        id: z.string().describe("Unique identifier for the assignment."),
+        id: z
+            .string()
+            .min(6)
+            .max(128)
+            .describe("Unique identifier for the assignment."),
         classId: z
             .string()
+            .max(128)
             .nullable()
             .describe(
                 "Class ID if the assignment belongs to a class, otherwise null.",
             ),
-        title: z.string().describe("Student-facing assignment title."),
+        title: z
+            .string()
+            .min(1)
+            .max(300)
+            .describe("Student-facing assignment title."),
         prompt: z
             .string()
+            .min(1)
+            .max(50000)
             .describe("Full prompt or directions provided to students."),
         mode: z
             .literal("instant")
@@ -32,6 +43,7 @@ export const zAssignment = z
             .describe("Whether students may resubmit after submitting."),
         createdBy: z
             .string()
+            .max(128)
             .describe("UID of the instructor who created the assignment."),
         createdAt: zFirebaseTimestamp.describe(
             "Timestamp when the assignment was created.",

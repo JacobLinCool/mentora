@@ -4,14 +4,24 @@ import { joinPath, zFirebaseTimestamp } from "./shared";
 
 export const zUserProfile = z
     .object({
-        uid: z.string().describe("Unique Firebase Authentication user ID."),
+        uid: z
+            .string()
+            .max(128)
+            .describe("Unique Firebase Authentication user ID."),
         displayName: z
             .string()
+            .min(1)
+            .max(100)
             .describe("Full name displayed within the product."),
         email: z
             .email()
+            .max(320)
             .describe("Verified email address associated with the account."),
-        photoURL: z.string().nullable().describe("Optional profile photo URL."),
+        photoURL: z
+            .string()
+            .max(2048)
+            .nullable()
+            .describe("Optional profile photo URL."),
         createdAt: zFirebaseTimestamp.describe(
             "Timestamp when the profile document was created.",
         ),

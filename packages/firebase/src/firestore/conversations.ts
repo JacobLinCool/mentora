@@ -32,11 +32,16 @@ export const zTurn = z
     .object({
         id: z
             .string()
+            .max(128)
             .describe(
                 "Unique identifier for the turn within the conversation.",
             ),
         type: zTurnType.describe("Categorization for the turn's purpose."),
-        text: z.string().describe("Raw message text for the turn."),
+        text: z
+            .string()
+            .min(1)
+            .max(20000)
+            .describe("Raw message text for the turn."),
         analysis: z
             .object({
                 stance: zMessageStance.describe(
@@ -59,12 +64,17 @@ export type Turn = z.infer<typeof zTurn>;
 
 export const zConversation = z
     .object({
-        id: z.string().describe("Unique identifier for the conversation."),
+        id: z
+            .string()
+            .max(128)
+            .describe("Unique identifier for the conversation."),
         assignmentId: z
             .string()
+            .max(128)
             .describe("Assignment this conversation is associated with."),
         userId: z
             .string()
+            .max(128)
             .describe("UID of the student participating in the conversation."),
         state: zConversationState.describe(
             "Current lifecycle state of the conversation.",
@@ -80,6 +90,7 @@ export const zConversation = z
         ),
         turns: z
             .array(zTurn)
+            .max(1000)
             .describe(
                 "Chronological list of conversational turns between student and AI.",
             ),

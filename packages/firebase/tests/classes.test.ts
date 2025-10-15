@@ -454,4 +454,163 @@ describe("Classes Security Rules", () => {
             await assertFails(db.collection("classes").doc(classId).delete());
         });
     });
+
+    describe("Data Shape Validation", () => {
+        it("should deny creating class with id shorter than 6 characters", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertFails(
+                db.collection("classes").doc("short").set({
+                    id: "short",
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: ownerId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should allow creating class with id at 6 character minimum", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertSucceeds(
+                db.collection("classes").doc("class1").set({
+                    id: "class1",
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: ownerId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating class with id exceeding 128 characters", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+            const longId = "a".repeat(129);
+
+            await assertFails(
+                db.collection("classes").doc(longId).set({
+                    id: longId,
+                    title: "Test Class",
+                    code: "ABC123",
+                    ownerId: ownerId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating class with empty title", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertFails(
+                db.collection("classes").doc("class123").set({
+                    id: "class123",
+                    title: "",
+                    code: "ABC123",
+                    ownerId: ownerId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating class with title exceeding 200 characters", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertFails(
+                db
+                    .collection("classes")
+                    .doc("class123")
+                    .set({
+                        id: "class123",
+                        title: "a".repeat(201),
+                        code: "ABC123",
+                        ownerId: ownerId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating class with title at 200 character limit", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("classes")
+                    .doc("class123")
+                    .set({
+                        id: "class123",
+                        title: "a".repeat(200),
+                        code: "ABC123",
+                        ownerId: ownerId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating class with empty code", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertFails(
+                db.collection("classes").doc("class123").set({
+                    id: "class123",
+                    title: "Test Class",
+                    code: "",
+                    ownerId: ownerId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating class with code exceeding 32 characters", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertFails(
+                db
+                    .collection("classes")
+                    .doc("class123")
+                    .set({
+                        id: "class123",
+                        title: "Test Class",
+                        code: "a".repeat(33),
+                        ownerId: ownerId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating class with code at 32 character limit", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("classes")
+                    .doc("class123")
+                    .set({
+                        id: "class123",
+                        title: "Test Class",
+                        code: "a".repeat(32),
+                        ownerId: ownerId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+    });
 });

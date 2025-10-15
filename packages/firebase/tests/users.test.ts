@@ -243,4 +243,187 @@ describe("User Profiles Security Rules", () => {
             await assertFails(db.collection("users").doc(otherUserId).delete());
         });
     });
+
+    describe("Data Shape Validation", () => {
+        it("should deny creating profile with uid exceeding 128 characters", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertFails(
+                db
+                    .collection("users")
+                    .doc(userId)
+                    .set({
+                        uid: "a".repeat(129),
+                        displayName: "Test User",
+                        email: "test@example.com",
+                        photoURL: null,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating profile with uid at 128 character limit", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("users")
+                    .doc(userId)
+                    .set({
+                        uid: "a".repeat(128),
+                        displayName: "Test User",
+                        email: "test@example.com",
+                        photoURL: null,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating profile with empty displayName", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertFails(
+                db.collection("users").doc(userId).set({
+                    uid: userId,
+                    displayName: "",
+                    email: "test@example.com",
+                    photoURL: null,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating profile with displayName exceeding 100 characters", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertFails(
+                db
+                    .collection("users")
+                    .doc(userId)
+                    .set({
+                        uid: userId,
+                        displayName: "a".repeat(101),
+                        email: "test@example.com",
+                        photoURL: null,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating profile with displayName at 100 character limit", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("users")
+                    .doc(userId)
+                    .set({
+                        uid: userId,
+                        displayName: "a".repeat(100),
+                        email: "test@example.com",
+                        photoURL: null,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating profile with email exceeding 320 characters", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertFails(
+                db
+                    .collection("users")
+                    .doc(userId)
+                    .set({
+                        uid: userId,
+                        displayName: "Test User",
+                        email: "a".repeat(321),
+                        photoURL: null,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating profile with photoURL exceeding 2048 characters", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertFails(
+                db
+                    .collection("users")
+                    .doc(userId)
+                    .set({
+                        uid: userId,
+                        displayName: "Test User",
+                        email: "test@example.com",
+                        photoURL: "https://example.com/" + "a".repeat(2030),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating profile with photoURL at 2048 character limit", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("users")
+                    .doc(userId)
+                    .set({
+                        uid: userId,
+                        displayName: "Test User",
+                        email: "test@example.com",
+                        photoURL: "a".repeat(2048),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating profile with missing required fields", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertFails(
+                db.collection("users").doc(userId).set({
+                    uid: userId,
+                    displayName: "Test User",
+                    // missing email
+                    photoURL: null,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+
+        it("should deny creating profile with invalid field types", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+
+            await assertFails(
+                db.collection("users").doc(userId).set({
+                    uid: userId,
+                    displayName: "Test User",
+                    email: "test@example.com",
+                    photoURL: null,
+                    createdAt: "not a number",
+                    updatedAt: Date.now(),
+                }),
+            );
+        });
+    });
 });
