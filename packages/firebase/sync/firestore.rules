@@ -164,12 +164,14 @@ service cloud.firestore {
 
       // Only instructor (or owner) can invite / change roles / remove
       allow create, update: if isSignedIn() && (
+        // allow if the class doc is not exists (initial setup)
+        !exists(/databases/$(database)/documents/classes/$(classId)) ||
         isInstructorOfClass(classId) ||
-        get(/databases/$(database)/documents/classes/$(classId)).data.ownerId == request.auth.uid
+        isOwnerOfClass(classId)
       ) && isValidRosterEntry(request.resource.data);
       allow delete: if isSignedIn() && (
         isInstructorOfClass(classId) ||
-        get(/databases/$(database)/documents/classes/$(classId)).data.ownerId == request.auth.uid
+        isOwnerOfClass(classId)
       );
     }
 
