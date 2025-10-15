@@ -135,32 +135,33 @@ export async function createClass(
         // Pre-generate document reference to get the ID
         const classRef = doc(collection(config.db, Classes.collectionPath()));
         const classId = classRef.id;
+        const classData = Classes.schema.parse({
+            id: classId,
+            title,
+            code,
+            ownerId: currentUser.uid,
+            createdAt: now,
+            updatedAt: now,
+        } satisfies ClassDoc);
+
+        const rosterRef = doc(
+            config.db,
+            Classes.roster.docPath(classId, currentUser.uid),
+        );
+        const rosterData = Classes.roster.schema.parse({
+            userId: currentUser.uid,
+            email: currentUser.email || "",
+            role: "instructor",
+            status: "active",
+            joinedAt: now,
+        } satisfies ClassMembership);
 
         // Use transaction to ensure atomicity
         await runTransaction(config.db, async (transaction) => {
             // Create class document
-            const classData: ClassDoc = {
-                id: classId,
-                title,
-                code,
-                ownerId: currentUser.uid,
-                createdAt: now,
-                updatedAt: now,
-            };
             transaction.set(classRef, classData);
 
             // Create owner's roster entry as instructor
-            const rosterRef = doc(
-                config.db,
-                Classes.roster.docPath(classId, currentUser.uid),
-            );
-            const rosterData: ClassMembership = {
-                userId: currentUser.uid,
-                email: currentUser.email || "",
-                role: "instructor",
-                status: "active",
-                joinedAt: now,
-            };
             transaction.set(rosterRef, rosterData);
         });
 
