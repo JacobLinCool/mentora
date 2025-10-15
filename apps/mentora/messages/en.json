@@ -102,5 +102,19 @@
     "assignment_create_submit": "Create Assignment",
     "cancel": "Cancel",
     "save": "Save",
-    "create": "Create"
+    "create": "Create",
+    "page_home_title": "Home",
+    "page_home_description": "Welcome to Mentora - Learn through conversation and reflection",
+    "page_auth_title": "Sign in",
+    "page_auth_description": "Sign in to your Mentora account using Google",
+    "page_classes_title": "My Classes",
+    "page_classes_description": "View and manage your classes",
+    "page_class_detail_title": "Class Details",
+    "page_class_detail_description": "View class details, roster, and assignments",
+    "page_assignments_title": "My Assignments",
+    "page_assignments_description": "View and manage your assignments",
+    "page_assignment_detail_title": "Assignment",
+    "page_assignment_detail_description": "View assignment details and submit your work",
+    "page_conversation_title": "Conversation",
+    "page_conversation_description": "Engage in a conversation with your mentor"
 }

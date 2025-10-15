@@ -33,6 +33,8 @@
         LogIn,
     } from "@lucide/svelte";
 
+    import PageHead from "$lib/components/PageHead.svelte";
+
     let user = $state<User | null>(null);
     let idToken = $state<string | null>(null);
     let error = $state<string | null>(null);
@@ -194,6 +196,8 @@
         };
     });
 </script>
+
+<PageHead title={m.page_auth_title()} description={m.page_auth_description()} />
 
 <div class="flex h-full w-full flex-col items-center justify-center p-4">
     {#if error}

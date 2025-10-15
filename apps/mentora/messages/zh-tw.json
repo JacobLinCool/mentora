@@ -102,5 +102,19 @@
     "assignment_create_submit": "建立作業",
     "cancel": "取消",
     "save": "儲存",
-    "create": "建立"
+    "create": "建立",
+    "page_home_title": "首頁",
+    "page_home_description": "歡迎使用 Mentora - 透過對話與反思學習",
+    "page_auth_title": "登入",
+    "page_auth_description": "使用 Google 帳戶登入您的 Mentora 帳戶",
+    "page_classes_title": "我的課程",
+    "page_classes_description": "查看並管理您的課程",
+    "page_class_detail_title": "課程詳情",
+    "page_class_detail_description": "查看課程詳情、名單與作業",
+    "page_assignments_title": "我的作業",
+    "page_assignments_description": "查看並管理您的作業",
+    "page_assignment_detail_title": "作業",
+    "page_assignment_detail_description": "查看作業詳情並提交您的作品",
+    "page_conversation_title": "對話",
+    "page_conversation_description": "與您的導師進行對話"
 }

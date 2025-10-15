@@ -1,9 +1,12 @@
 <script lang="ts">
     import { api } from "$lib/test";
+    import PageHead from "$lib/components/PageHead.svelte";
 
     const data = $derived(api.data);
     $inspect(data);
 </script>
+
+<PageHead title="Test API" description="Test page for API functionality" />
 
 <div class="container mx-auto p-8">
     <h1 class="mb-6 text-3xl font-bold">Test API Page</h1>
