@@ -40,6 +40,18 @@ service cloud.firestore {
       return isClassMember(classId) && hasRole(classId, "instructor");
     }
 
+    function isOwnerOfClass(classId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/classes/$(classId)) &&
+             get(/databases/$(database)/documents/classes/$(classId)).data.ownerId == request.auth.uid;
+    }
+
+    function canEditClassResource(classId) {
+      return isSignedIn() && (
+        isInstructorOfClass(classId) || isTA(classId) || isOwnerOfClass(classId)
+      );
+    }
+
     function targetNotExists() {
       // It's required for querying non-existent docs, e.g. an empty collection
       return resource == null
@@ -117,13 +129,13 @@ service cloud.firestore {
       // Create/update by class instructors/TAs or assignment creator for standalone
       allow create: if isSignedIn() && (
         (request.resource.data.classId != null &&
-           (isInstructorOfClass(request.resource.data.classId) || isTA(request.resource.data.classId))) ||
+           (canEditClassResource(request.resource.data.classId))) ||
         (request.resource.data.classId == null && request.resource.data.createdBy == request.auth.uid)
       );
 
       allow update, delete: if isSignedIn() && (
         (resource.data.classId != null &&
-           (isInstructorOfClass(resource.data.classId) || isTA(resource.data.classId))) ||
+           (canEditClassResource(resource.data.classId))) ||
         (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
       );
 
@@ -135,8 +147,7 @@ service cloud.firestore {
         allow get: if isSignedIn() && (
           userId == request.auth.uid ||
           (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-           (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
+           canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
         );
 
         // LIST:
@@ -144,8 +155,7 @@ service cloud.firestore {
         // - Students cannot list (can only get their own)
         allow list: if isSignedIn() && (
           get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-          (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
-           isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
+          canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)
         );
 
         // CREATE by the student (their own doc id == uid)
@@ -168,8 +178,7 @@ service cloud.firestore {
 
           // Instructor/TA can grade (move to graded_complete, set notes/score)
           (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-           (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
+           canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
         );
 
         // Prevent deletion by students; allow for instructors if you really need it
@@ -190,10 +199,7 @@ service cloud.firestore {
         (
           // Safely read assignment to resolve class
           exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-          (
-            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
-          )
+          canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
         )
       );
 
@@ -205,10 +211,7 @@ service cloud.firestore {
         (
           // Safely read assignment to resolve class
           exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-          (
-            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
-          )
+          canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
         )
       );
 
@@ -228,10 +231,7 @@ service cloud.firestore {
           request.auth.uid == resource.data.userId ||
           (
             exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-            (
-              isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-              isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
-            )
+            canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
           )
         );
 
