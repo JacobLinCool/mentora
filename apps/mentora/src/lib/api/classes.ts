@@ -75,7 +75,7 @@ export async function listMyClasses(
 }
 
 /**
- * List classes where current user is a member
+ * List classes where current user is a student
  */
 export async function listMyEnrolledClasses(
     config: MentoraAPIConfig,
@@ -92,6 +92,7 @@ export async function listMyEnrolledClasses(
             collectionGroup(config.db, "roster"),
             where("userId", "==", currentUser.uid),
             where("status", "==", "active"),
+            where("role", "==", "student"),
             orderBy("joinedAt", "desc"),
             ...(options?.limit ? [limit(options.limit)] : []),
         );
