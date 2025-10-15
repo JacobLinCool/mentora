@@ -2,7 +2,6 @@
  * Class management operations
  */
 import {
-    addDoc,
     collection,
     collectionGroup,
     doc,
@@ -11,7 +10,7 @@ import {
     limit,
     orderBy,
     query,
-    updateDoc,
+    runTransaction,
     where,
     type QueryConstraint,
 } from "firebase/firestore";
@@ -118,6 +117,7 @@ export async function listMyEnrolledClasses(
 
 /**
  * Create a new class
+ * Creates both the class document and the owner's roster entry atomically
  */
 export async function createClass(
     config: MentoraAPIConfig,
@@ -131,23 +131,40 @@ export async function createClass(
 
     return tryCatch(async () => {
         const now = Date.now();
-        const classData: Omit<ClassDoc, "id"> = {
-            title,
-            code,
-            ownerId: currentUser.uid,
-            createdAt: now,
-            updatedAt: now,
-        };
 
-        const docRef = await addDoc(
-            collection(config.db, Classes.collectionPath()),
-            classData,
-        );
+        // Pre-generate document reference to get the ID
+        const classRef = doc(collection(config.db, Classes.collectionPath()));
+        const classId = classRef.id;
 
-        // Update the document with its own ID
-        await updateDoc(docRef, { id: docRef.id });
+        // Use transaction to ensure atomicity
+        await runTransaction(config.db, async (transaction) => {
+            // Create class document
+            const classData: ClassDoc = {
+                id: classId,
+                title,
+                code,
+                ownerId: currentUser.uid,
+                createdAt: now,
+                updatedAt: now,
+            };
+            transaction.set(classRef, classData);
 
-        return docRef.id;
+            // Create owner's roster entry as instructor
+            const rosterRef = doc(
+                config.db,
+                Classes.roster.docPath(classId, currentUser.uid),
+            );
+            const rosterData: ClassMembership = {
+                userId: currentUser.uid,
+                email: currentUser.email || "",
+                role: "instructor",
+                status: "active",
+                joinedAt: now,
+            };
+            transaction.set(rosterRef, rosterData);
+        });
+
+        return classId;
     });
 }
 
