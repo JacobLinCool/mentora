@@ -575,7 +575,7 @@ describe("Classes Security Rules", () => {
             );
         });
 
-        it("should deny creating class with code exceeding 32 characters", async () => {
+        it("should deny creating class with code exceeding 64 characters", async () => {
             const ownerId = "owner123";
             const db = testEnv.authenticatedContext(ownerId).firestore();
 
@@ -586,7 +586,7 @@ describe("Classes Security Rules", () => {
                     .set({
                         id: "class123",
                         title: "Test Class",
-                        code: "a".repeat(33),
+                        code: "a".repeat(65),
                         ownerId: ownerId,
                         createdAt: Date.now(),
                         updatedAt: Date.now(),

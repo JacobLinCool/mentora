@@ -16,8 +16,8 @@ export const zClassDoc = z
             .describe("Human-friendly class name."),
         code: z
             .string()
-            .min(1)
-            .max(32)
+            .min(6)
+            .max(64)
             .describe("Join code shared with participants."),
         ownerId: z
             .string()

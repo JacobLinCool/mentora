@@ -68,7 +68,7 @@ service cloud.firestore {
     function isValidClassDoc(data) {
       return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
              data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
-             data.code is string && data.code.size() >= 1 && data.code.size() <= 32 &&
+             data.code is string && data.code.size() >= 6 && data.code.size() <= 64 &&
              data.ownerId is string && data.ownerId.size() <= 128 &&
              data.createdAt is number && data.updatedAt is number;
     }
