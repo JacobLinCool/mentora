@@ -2,7 +2,6 @@
  * Assignment operations
  */
 import {
-    addDoc,
     collection,
     doc,
     getDoc,
@@ -10,7 +9,7 @@ import {
     limit,
     orderBy,
     query,
-    updateDoc,
+    setDoc,
     where,
     type QueryConstraint,
 } from "firebase/firestore";
@@ -117,20 +116,16 @@ export async function createAssignment(
 
     return tryCatch(async () => {
         const now = Date.now();
-        const assignmentData: Omit<Assignment, "id"> = {
+        const docRef = doc(collection(config.db, Assignments.collectionPath()));
+        const assignmentData: Assignment = {
             ...assignment,
+            id: docRef.id,
             createdBy: currentUser.uid,
             createdAt: now,
             updatedAt: now,
         };
 
-        const docRef = await addDoc(
-            collection(config.db, Assignments.collectionPath()),
-            assignmentData,
-        );
-
-        // Update the document with its own ID
-        await updateDoc(docRef, { id: docRef.id });
+        await setDoc(docRef, assignmentData);
 
         return docRef.id;
     });

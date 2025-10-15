@@ -2,7 +2,6 @@
  * Class management operations
  */
 import {
-    addDoc,
     collection,
     collectionGroup,
     doc,
@@ -11,7 +10,7 @@ import {
     limit,
     orderBy,
     query,
-    updateDoc,
+    runTransaction,
     where,
     type QueryConstraint,
 } from "firebase/firestore";
@@ -76,7 +75,7 @@ export async function listMyClasses(
 }
 
 /**
- * List classes where current user is a member
+ * List classes where current user is a student
  */
 export async function listMyEnrolledClasses(
     config: MentoraAPIConfig,
@@ -93,6 +92,7 @@ export async function listMyEnrolledClasses(
             collectionGroup(config.db, "roster"),
             where("userId", "==", currentUser.uid),
             where("status", "==", "active"),
+            where("role", "==", "student"),
             orderBy("joinedAt", "desc"),
             ...(options?.limit ? [limit(options.limit)] : []),
         );
@@ -118,6 +118,7 @@ export async function listMyEnrolledClasses(
 
 /**
  * Create a new class
+ * Creates both the class document and the owner's roster entry atomically
  */
 export async function createClass(
     config: MentoraAPIConfig,
@@ -131,23 +132,41 @@ export async function createClass(
 
     return tryCatch(async () => {
         const now = Date.now();
-        const classData: Omit<ClassDoc, "id"> = {
+
+        // Pre-generate document reference to get the ID
+        const classRef = doc(collection(config.db, Classes.collectionPath()));
+        const classId = classRef.id;
+        const classData = Classes.schema.parse({
+            id: classId,
             title,
             code,
             ownerId: currentUser.uid,
             createdAt: now,
             updatedAt: now,
-        };
+        } satisfies ClassDoc);
 
-        const docRef = await addDoc(
-            collection(config.db, Classes.collectionPath()),
-            classData,
+        const rosterRef = doc(
+            config.db,
+            Classes.roster.docPath(classId, currentUser.uid),
         );
+        const rosterData = Classes.roster.schema.parse({
+            userId: currentUser.uid,
+            email: currentUser.email || "",
+            role: "instructor",
+            status: "active",
+            joinedAt: now,
+        } satisfies ClassMembership);
 
-        // Update the document with its own ID
-        await updateDoc(docRef, { id: docRef.id });
+        // Use transaction to ensure atomicity
+        await runTransaction(config.db, async (transaction) => {
+            // Create class document
+            transaction.set(classRef, classData);
 
-        return docRef.id;
+            // Create owner's roster entry as instructor
+            transaction.set(rosterRef, rosterData);
+        });
+
+        return classId;
     });
 }
 

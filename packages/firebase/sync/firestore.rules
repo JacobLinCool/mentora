@@ -40,17 +40,89 @@ service cloud.firestore {
       return isClassMember(classId) && hasRole(classId, "instructor");
     }
 
+    function isOwnerOfClass(classId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/classes/$(classId)) &&
+             get(/databases/$(database)/documents/classes/$(classId)).data.ownerId == request.auth.uid;
+    }
+
+    function canEditClassResource(classId) {
+      return isSignedIn() && (
+        isInstructorOfClass(classId) || isTA(classId) || isOwnerOfClass(classId)
+      );
+    }
+
     function targetNotExists() {
       // It's required for querying non-existent docs, e.g. an empty collection
       return resource == null
+    }
+
+    function isValidUserProfile(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() <= 320 &&
+             (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 2048)) &&
+             data.createdAt is number && data.updatedAt is number;
+    }
+
+    function isValidClassDoc(data) {
+      return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.code is string && data.code.size() >= 6 && data.code.size() <= 64 &&
+             data.ownerId is string && data.ownerId.size() <= 128 &&
+             data.createdAt is number && data.updatedAt is number;
+    }
+
+    function isValidRosterEntry(data) {
+      return (data.userId == null || (data.userId is string && data.userId.size() <= 128)) &&
+             data.email is string && data.email.size() <= 320 &&
+             data.role in ["student", "ta", "instructor"] &&
+             data.status in ["invited", "active", "removed"] &&
+             (data.joinedAt == null || data.joinedAt is number);
+    }
+
+    function isValidAssignment(data) {
+      return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
+             (data.classId == null || (data.classId is string && data.classId.size() <= 128)) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+             data.prompt is string && data.prompt.size() >= 1 && data.prompt.size() <= 50000 &&
+             data.mode == "instant" &&
+             data.startAt is number &&
+             (data.dueAt == null || data.dueAt is number) &&
+             data.allowLate is bool &&
+             data.allowResubmit is bool &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             data.createdAt is number && data.updatedAt is number;
+    }
+
+    function isValidSubmission(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.state in ["in_progress", "submitted", "graded_complete"] &&
+             data.startedAt is number &&
+             (data.submittedAt == null || data.submittedAt is number) &&
+             data.late is bool &&
+             (data.scoreCompletion == null || data.scoreCompletion is number) &&
+             (data.notes == null || (data.notes is string && data.notes.size() <= 10000));
+    }
+
+    function isValidConversation(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.assignmentId is string && data.assignmentId.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.state in ["awaiting_idea", "adding_counterpoint", "awaiting_followup", "adding_final_summary", "closed"] &&
+             data.lastActionAt is number &&
+             data.createdAt is number && data.updatedAt is number &&
+             data.turns is list && data.turns.size() <= 1000;
     }
 
     /* ---------- Users ---------- */
     match /users/{uid} {
       allow get: if isSignedIn() && (uid == request.auth.uid);
       allow list: if false; // users cannot list all users
-      allow create: if isSignedIn() && (uid == request.auth.uid);
-      allow update: if isSignedIn() && (uid == request.auth.uid);
+      allow create: if isSignedIn() && (uid == request.auth.uid) &&
+                       isValidUserProfile(request.resource.data);
+      allow update: if isSignedIn() && (uid == request.auth.uid) &&
+                       isValidUserProfile(request.resource.data);
       allow delete: if false; // keep profiles
     }
 
@@ -70,8 +142,11 @@ service cloud.firestore {
         (resource.data.ownerId == request.auth.uid)
       );
 
-      allow create: if isSignedIn(); // anyone can create a class; app UI should gate this
-      allow update, delete: if isSignedIn() && (
+      allow create: if isSignedIn() && isValidClassDoc(request.resource.data);
+      allow update: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid || isInstructorOfClass(classId)
+      ) && isValidClassDoc(request.resource.data);
+      allow delete: if isSignedIn() && (
         resource.data.ownerId == request.auth.uid || isInstructorOfClass(classId)
       );
     }
@@ -88,9 +163,15 @@ service cloud.firestore {
       allow list: if isSignedIn() && isClassMember(classId);
 
       // Only instructor (or owner) can invite / change roles / remove
-      allow create, update, delete: if isSignedIn() && (
+      allow create, update: if isSignedIn() && (
+        // allow if the class doc is not exists (initial setup)
+        !exists(/databases/$(database)/documents/classes/$(classId)) ||
         isInstructorOfClass(classId) ||
-        get(/databases/$(database)/documents/classes/$(classId)).data.ownerId == request.auth.uid
+        isOwnerOfClass(classId)
+      ) && isValidRosterEntry(request.resource.data);
+      allow delete: if isSignedIn() && (
+        isInstructorOfClass(classId) ||
+        isOwnerOfClass(classId)
       );
     }
 
@@ -117,13 +198,19 @@ service cloud.firestore {
       // Create/update by class instructors/TAs or assignment creator for standalone
       allow create: if isSignedIn() && (
         (request.resource.data.classId != null &&
-           (isInstructorOfClass(request.resource.data.classId) || isTA(request.resource.data.classId))) ||
+           (canEditClassResource(request.resource.data.classId))) ||
         (request.resource.data.classId == null && request.resource.data.createdBy == request.auth.uid)
-      );
+      ) && isValidAssignment(request.resource.data);
 
-      allow update, delete: if isSignedIn() && (
+      allow update: if isSignedIn() && (
         (resource.data.classId != null &&
-           (isInstructorOfClass(resource.data.classId) || isTA(resource.data.classId))) ||
+           (canEditClassResource(resource.data.classId))) ||
+        (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
+      ) && isValidAssignment(request.resource.data);
+
+      allow delete: if isSignedIn() && (
+        (resource.data.classId != null &&
+           (canEditClassResource(resource.data.classId))) ||
         (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
       );
 
@@ -135,8 +222,7 @@ service cloud.firestore {
         allow get: if isSignedIn() && (
           userId == request.auth.uid ||
           (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-           (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
+           canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
         );
 
         // LIST:
@@ -144,18 +230,18 @@ service cloud.firestore {
         // - Students cannot list (can only get their own)
         allow list: if isSignedIn() && (
           get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-          (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
-           isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
+          canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)
         );
 
         // CREATE by the student (their own doc id == uid)
         allow create: if isSignedIn() && 
           userId == request.auth.uid &&
           request.resource.data.userId == request.auth.uid &&
-          request.resource.data.state == "in_progress";
+          request.resource.data.state == "in_progress" &&
+          isValidSubmission(request.resource.data);
         
         // UPDATE by the student or instructor/TA
-        allow update: if isSignedIn() && (
+        allow update: if isSignedIn() && isValidSubmission(request.resource.data) && (
           // Student can edit their own while in progress or submit
           (userId == request.auth.uid &&
            request.resource.data.userId == request.auth.uid &&
@@ -168,8 +254,7 @@ service cloud.firestore {
 
           // Instructor/TA can grade (move to graded_complete, set notes/score)
           (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-           (isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)))
+           canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
         );
 
         // Prevent deletion by students; allow for instructors if you really need it
@@ -190,10 +275,7 @@ service cloud.firestore {
         (
           // Safely read assignment to resolve class
           exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-          (
-            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
-          )
+          canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
         )
       );
 
@@ -205,22 +287,21 @@ service cloud.firestore {
         (
           // Safely read assignment to resolve class
           exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-          (
-            isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-            isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
-          )
+          canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
         )
       );
 
       // CREATE: student creates their own conversation only
       allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
+        request.resource.data.userId == request.auth.uid &&
+        isValidConversation(request.resource.data);
 
       // UPDATE:
       // - Student can append turns / move through allowed states
       // - Instructors/TAs can move to closed
       // - If the last turn's pendingStartAt is not null, updates are denied
       allow update: if isSignedIn() &&
+        isValidConversation(request.resource.data) &&
         (
           // Disallow update if last turn's pendingStartAt is not null
           (resource.data.turns.size() == 0 || resource.data.turns[resource.data.turns.size() - 1].pendingStartAt == null)
@@ -228,10 +309,7 @@ service cloud.firestore {
           request.auth.uid == resource.data.userId ||
           (
             exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-            (
-              isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId) ||
-              isTA(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
-            )
+            canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
           )
         );
 

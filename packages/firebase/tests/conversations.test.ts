@@ -59,7 +59,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -120,7 +120,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -181,7 +181,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -242,7 +242,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -291,7 +291,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -420,7 +420,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -480,7 +480,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -528,7 +528,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: otherStudentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -548,7 +548,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -597,7 +597,7 @@ describe("Conversations Security Rules", () => {
                         id: conversationId,
                         assignmentId: assignmentId,
                         userId: studentId,
-                        state: "in_progress",
+                        state: "awaiting_idea",
                         lastActionAt: Date.now() - 1000,
                         createdAt: Date.now() - 1000,
                         updatedAt: Date.now() - 1000,
@@ -677,7 +677,7 @@ describe("Conversations Security Rules", () => {
                         id: conversationId,
                         assignmentId: assignmentId,
                         userId: studentId,
-                        state: "in_progress",
+                        state: "awaiting_idea",
                         lastActionAt: Date.now() - 1000,
                         createdAt: Date.now() - 1000,
                         updatedAt: Date.now() - 1000,
@@ -744,7 +744,7 @@ describe("Conversations Security Rules", () => {
                         id: conversationId,
                         assignmentId: assignmentId,
                         userId: studentId,
-                        state: "in_progress",
+                        state: "awaiting_idea",
                         lastActionAt: Date.now() - 1000,
                         createdAt: Date.now() - 1000,
                         updatedAt: Date.now() - 1000,
@@ -811,7 +811,7 @@ describe("Conversations Security Rules", () => {
                         id: conversationId,
                         assignmentId: assignmentId,
                         userId: studentId,
-                        state: "in_progress",
+                        state: "awaiting_idea",
                         lastActionAt: Date.now() - 1000,
                         createdAt: Date.now() - 1000,
                         updatedAt: Date.now() - 1000,
@@ -864,7 +864,7 @@ describe("Conversations Security Rules", () => {
                         id: conversationId,
                         assignmentId: assignmentId,
                         userId: studentId,
-                        state: "in_progress",
+                        state: "awaiting_idea",
                         lastActionAt: Date.now(),
                         createdAt: Date.now(),
                         updatedAt: Date.now(),
@@ -925,7 +925,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -986,7 +986,7 @@ describe("Conversations Security Rules", () => {
                     id: conversationId,
                     assignmentId: assignmentId,
                     userId: studentId,
-                    state: "in_progress",
+                    state: "awaiting_idea",
                     lastActionAt: Date.now(),
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
@@ -996,6 +996,337 @@ describe("Conversations Security Rules", () => {
 
             await assertFails(
                 db.collection("conversations").doc(conversationId).delete(),
+            );
+        });
+    });
+
+    describe("Data Shape Validation", () => {
+        it("should deny creating conversation with id exceeding 128 characters", async () => {
+            const conversationId = "conversation123";
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const studentId = "student111";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertFails(
+                db
+                    .collection("conversations")
+                    .doc(conversationId)
+                    .set({
+                        id: "a".repeat(129),
+                        assignmentId: assignmentId,
+                        userId: studentId,
+                        state: "awaiting_idea",
+                        lastActionAt: Date.now(),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        turns: [],
+                    }),
+            );
+        });
+
+        it("should allow creating conversation with id at 128 character limit", async () => {
+            const conversationId = "conversation123";
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const studentId = "student111";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertSucceeds(
+                db
+                    .collection("conversations")
+                    .doc(conversationId)
+                    .set({
+                        id: "a".repeat(128),
+                        assignmentId: assignmentId,
+                        userId: studentId,
+                        state: "awaiting_idea",
+                        lastActionAt: Date.now(),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        turns: [],
+                    }),
+            );
+        });
+
+        it("should deny creating conversation with invalid state", async () => {
+            const conversationId = "conversation123";
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const studentId = "student111";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertFails(
+                db.collection("conversations").doc(conversationId).set({
+                    id: conversationId,
+                    assignmentId: assignmentId,
+                    userId: studentId,
+                    state: "invalid_state",
+                    lastActionAt: Date.now(),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    turns: [],
+                }),
+            );
+        });
+
+        it("should deny creating conversation with turns exceeding 1000 items", async () => {
+            const conversationId = "conversation123";
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const studentId = "student111";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            const tooManyTurns = Array(1001).fill({
+                id: "turn1",
+                type: "idea",
+                text: "Test turn",
+                analysis: null,
+                pendingStartAt: null,
+                createdAt: Date.now(),
+            });
+
+            await assertFails(
+                db.collection("conversations").doc(conversationId).set({
+                    id: conversationId,
+                    assignmentId: assignmentId,
+                    userId: studentId,
+                    state: "awaiting_idea",
+                    lastActionAt: Date.now(),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    turns: tooManyTurns,
+                }),
+            );
+        });
+
+        it("should allow creating conversation with turns at 1000 item limit", async () => {
+            const conversationId = "conversation123";
+            const assignmentId = "assignment456";
+            const classId = "class789";
+            const studentId = "student111";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            const maxTurns = Array(1000).fill({
+                id: "turn1",
+                type: "idea",
+                text: "Test turn",
+                analysis: null,
+                pendingStartAt: null,
+                createdAt: Date.now(),
+            });
+
+            await assertSucceeds(
+                db.collection("conversations").doc(conversationId).set({
+                    id: conversationId,
+                    assignmentId: assignmentId,
+                    userId: studentId,
+                    state: "awaiting_idea",
+                    lastActionAt: Date.now(),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    turns: maxTurns,
+                }),
             );
         });
     });

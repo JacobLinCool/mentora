@@ -4,11 +4,24 @@ import { joinPath, zClassMemberRole, zFirebaseTimestamp } from "./shared";
 
 export const zClassDoc = z
     .object({
-        id: z.string().describe("Unique identifier for the class."),
-        title: z.string().describe("Human-friendly class name."),
-        code: z.string().describe("Join code shared with participants."),
+        id: z
+            .string()
+            .min(6)
+            .max(128)
+            .describe("Unique identifier for the class."),
+        title: z
+            .string()
+            .min(1)
+            .max(200)
+            .describe("Human-friendly class name."),
+        code: z
+            .string()
+            .min(6)
+            .max(64)
+            .describe("Join code shared with participants."),
         ownerId: z
             .string()
+            .max(128)
             .describe("UID of the instructor who owns the class."),
         createdAt: zFirebaseTimestamp.describe("Creation timestamp."),
         updatedAt: zFirebaseTimestamp.describe(
@@ -22,13 +35,14 @@ export const zClassMembership = z
     .object({
         userId: z
             .string()
+            .max(128)
             .nullable()
             .describe(
                 "UID of the enrolled user or null for pending invitations.",
             ),
         email: z
-            .string()
             .email()
+            .max(320)
             .describe("Email address used to invite or identify the member."),
         role: zClassMemberRole.describe("Role granted to the class member."),
         status: z

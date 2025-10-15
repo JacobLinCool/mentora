@@ -722,4 +722,241 @@ describe("Class Roster Security Rules", () => {
             );
         });
     });
+
+    describe("Data Shape Validation", () => {
+        it("should deny creating roster entry with userId exceeding 128 characters", async () => {
+            const classId = "class123";
+            const instructorId = "instructor456";
+            const newUserId = "newuser789";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            await assertFails(
+                db
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(newUserId)
+                    .set({
+                        userId: "a".repeat(129),
+                        email: "newuser@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating roster entry with email exceeding 320 characters", async () => {
+            const classId = "class123";
+            const instructorId = "instructor456";
+            const newUserId = "newuser789";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            await assertFails(
+                db
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(newUserId)
+                    .set({
+                        userId: newUserId,
+                        email: "a".repeat(321),
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating roster entry with invalid role", async () => {
+            const classId = "class123";
+            const instructorId = "instructor456";
+            const newUserId = "newuser789";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            await assertFails(
+                db
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(newUserId)
+                    .set({
+                        userId: newUserId,
+                        email: "newuser@example.com",
+                        role: "invalid_role",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should deny creating roster entry with invalid status", async () => {
+            const classId = "class123";
+            const instructorId = "instructor456";
+            const newUserId = "newuser789";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            await assertFails(
+                db
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(newUserId)
+                    .set({
+                        userId: newUserId,
+                        email: "newuser@example.com",
+                        role: "student",
+                        status: "invalid_status",
+                        joinedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating roster entry with null userId for invites", async () => {
+            const classId = "class123";
+            const instructorId = "instructor456";
+            const inviteId = "invite789";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            await assertSucceeds(
+                db
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(inviteId)
+                    .set({
+                        userId: null,
+                        email: "invited@example.com",
+                        role: "student",
+                        status: "invited",
+                        joinedAt: null,
+                    }),
+            );
+        });
+    });
 });

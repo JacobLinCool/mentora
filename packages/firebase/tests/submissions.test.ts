@@ -1273,4 +1273,262 @@ describe("Submissions Security Rules", () => {
             );
         });
     });
+
+    describe("Data Shape Validation", () => {
+        it("should deny creating submission with userId exceeding 128 characters", async () => {
+            const assignmentId = "assignment123";
+            const classId = "class456";
+            const studentId = "student789";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertFails(
+                db
+                    .collection("assignments")
+                    .doc(assignmentId)
+                    .collection("submissions")
+                    .doc(studentId)
+                    .set({
+                        userId: "a".repeat(129),
+                        state: "in_progress",
+                        startedAt: Date.now(),
+                        submittedAt: null,
+                        late: false,
+                        scoreCompletion: null,
+                        notes: null,
+                    }),
+            );
+        });
+
+        it("should deny creating submission with invalid state", async () => {
+            const assignmentId = "assignment123";
+            const classId = "class456";
+            const studentId = "student789";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertFails(
+                db
+                    .collection("assignments")
+                    .doc(assignmentId)
+                    .collection("submissions")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        state: "invalid_state",
+                        startedAt: Date.now(),
+                        submittedAt: null,
+                        late: false,
+                        scoreCompletion: null,
+                        notes: null,
+                    }),
+            );
+        });
+
+        it("should deny creating submission with notes exceeding 10000 characters", async () => {
+            const assignmentId = "assignment123";
+            const classId = "class456";
+            const studentId = "student789";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertFails(
+                db
+                    .collection("assignments")
+                    .doc(assignmentId)
+                    .collection("submissions")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        state: "in_progress",
+                        startedAt: Date.now(),
+                        submittedAt: null,
+                        late: false,
+                        scoreCompletion: null,
+                        notes: "a".repeat(10001),
+                    }),
+            );
+        });
+
+        it("should allow creating submission with notes at 10000 character limit", async () => {
+            const assignmentId = "assignment123";
+            const classId = "class456";
+            const studentId = "student789";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("classes").doc(classId).set({
+                    id: classId,
+                    title: "Test Class",
+                    code: "TEST123",
+                    ownerId: "owner123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+
+                await fs
+                    .collection("classes")
+                    .doc(classId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+
+                await fs.collection("assignments").doc(assignmentId).set({
+                    id: assignmentId,
+                    classId: classId,
+                    title: "Test Assignment",
+                    prompt: "Do the work",
+                    mode: "instant",
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "creator123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertSucceeds(
+                db
+                    .collection("assignments")
+                    .doc(assignmentId)
+                    .collection("submissions")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        state: "in_progress",
+                        startedAt: Date.now(),
+                        submittedAt: null,
+                        late: false,
+                        scoreCompletion: null,
+                        notes: "a".repeat(10000),
+                    }),
+            );
+        });
+    });
 });

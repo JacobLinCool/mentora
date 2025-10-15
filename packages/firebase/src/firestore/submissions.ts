@@ -6,6 +6,7 @@ export const zSubmission = z
     .object({
         userId: z
             .string()
+            .max(128)
             .describe("UID of the student who owns the submission."),
         state: z
             .union([
@@ -31,6 +32,7 @@ export const zSubmission = z
             .describe("Completion-style score assigned by the grader."),
         notes: z
             .string()
+            .max(10000)
             .nullable()
             .describe("Optional instructor notes or feedback."),
     })
