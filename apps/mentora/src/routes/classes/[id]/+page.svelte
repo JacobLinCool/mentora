@@ -29,6 +29,7 @@
         Copy,
         Check,
     } from "@lucide/svelte";
+    import PageHead from "$lib/components/PageHead.svelte";
 
     const classId = $derived(page.params.id);
 
@@ -135,6 +136,11 @@
         return new Date(timestamp).toLocaleDateString();
     }
 </script>
+
+<PageHead
+    title={classDoc?.title ?? m.page_class_detail_title()}
+    description={m.page_class_detail_description()}
+/>
 
 <div class="mx-auto max-w-6xl">
     <Button href="/classes" color="light" class="mb-4">

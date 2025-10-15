@@ -12,6 +12,7 @@
         Badge,
     } from "flowbite-svelte";
     import { ArrowLeft, Send, User, Bot } from "@lucide/svelte";
+    import PageHead from "$lib/components/PageHead.svelte";
 
     const conversationId = $derived(page.params.id);
 
@@ -99,6 +100,11 @@
         }
     }
 </script>
+
+<PageHead
+    title={m.page_conversation_title()}
+    description={m.page_conversation_description()}
+/>
 
 <div class="mx-auto flex h-[calc(100vh-12rem)] max-w-4xl flex-col">
     <div class="mb-4">

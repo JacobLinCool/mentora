@@ -13,6 +13,7 @@
         CirclePlay,
         MessageSquare,
     } from "@lucide/svelte";
+    import PageHead from "$lib/components/PageHead.svelte";
 
     const assignmentId = $derived(page.params.id);
 
@@ -117,6 +118,10 @@
         return submission !== null;
     }
 
+    const pageTitle = $derived(
+        assignment?.title ?? m.page_assignment_detail_title(),
+    );
+
     function isSubmitted() {
         return (
             submission?.state === "submitted" ||
@@ -128,6 +133,11 @@
         return assignment && assignment.startAt <= Date.now();
     }
 </script>
+
+<PageHead
+    title={pageTitle}
+    description={m.page_assignment_detail_description()}
+/>
 
 <div class="mx-auto max-w-4xl">
     <Button href="/assignments" color="light" class="mb-4">

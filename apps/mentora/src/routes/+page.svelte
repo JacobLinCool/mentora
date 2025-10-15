@@ -3,9 +3,12 @@
     import { api } from "$lib";
     import { Button, Card } from "flowbite-svelte";
     import { BookOpen, ClipboardList } from "@lucide/svelte";
+    import PageHead from "$lib/components/PageHead.svelte";
 
     const currentUser = $derived(api.currentUser);
 </script>
+
+<PageHead title={m.page_home_title()} description={m.page_home_description()} />
 
 <div class="mx-auto max-w-4xl">
     <div class="mb-12 text-center">

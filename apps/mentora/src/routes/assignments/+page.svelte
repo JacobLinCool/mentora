@@ -5,6 +5,7 @@
     import type { Assignment, Submission } from "$lib/api";
     import { Button, Card, Alert, Spinner, Badge } from "flowbite-svelte";
     import { ClipboardList, Calendar } from "@lucide/svelte";
+    import PageHead from "$lib/components/PageHead.svelte";
 
     type AssignmentWithClass = Assignment & {
         className: string;
@@ -107,6 +108,11 @@
         );
     }
 </script>
+
+<PageHead
+    title={m.page_assignments_title()}
+    description={m.page_assignments_description()}
+/>
 
 <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center gap-3">

@@ -14,6 +14,7 @@
         Label,
     } from "flowbite-svelte";
     import { BookOpen, Plus } from "@lucide/svelte";
+    import PageHead from "$lib/components/PageHead.svelte";
 
     let ownedClasses = $state<ClassDoc[]>([]);
     let enrolledClasses = $state<ClassDoc[]>([]);
@@ -102,6 +103,11 @@
         loadClasses();
     });
 </script>
+
+<PageHead
+    title={m.page_classes_title()}
+    description={m.page_classes_description()}
+/>
 
 <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center justify-between">
