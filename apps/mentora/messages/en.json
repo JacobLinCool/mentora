@@ -116,5 +116,10 @@
     "page_assignment_detail_title": "Assignment",
     "page_assignment_detail_description": "View assignment details and submit your work",
     "page_conversation_title": "Conversation",
-    "page_conversation_description": "Engage in a conversation with your mentor"
+    "page_conversation_description": "Engage in a conversation with your mentor",
+    "auth_account_details": "Account Details",
+    "auth_user_id": "User ID",
+    "auth_joined": "Joined",
+    "auth_last_sign_in": "Last Sign In",
+    "auth_signing_out": "Signing out..."
 }

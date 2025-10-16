@@ -116,5 +116,10 @@
     "page_assignment_detail_title": "作業",
     "page_assignment_detail_description": "查看作業詳情並提交您的作品",
     "page_conversation_title": "對話",
-    "page_conversation_description": "與您的導師進行對話"
+    "page_conversation_description": "與您的導師進行對話",
+    "auth_account_details": "帳戶詳情",
+    "auth_user_id": "使用者 ID",
+    "auth_joined": "加入時間",
+    "auth_last_sign_in": "最後登入",
+    "auth_signing_out": "登出中..."
 }
