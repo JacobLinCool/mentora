@@ -32,7 +32,7 @@
         try {
             await signInWithPopup(auth, provider);
             // eslint-disable-next-line svelte/no-navigation-without-resolve
-            await goto("/");
+            await goto("/", { invalidateAll: true });
         } catch (e: unknown) {
             error = (e as Error)?.message ?? m.auth_sign_in_failed();
         } finally {
