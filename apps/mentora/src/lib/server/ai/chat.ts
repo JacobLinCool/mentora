@@ -19,16 +19,16 @@ export async function chat<T>(
 
     const message = response.choices[0]?.message;
     if (message.refusal) {
-        throw new Error(`Transcription refused: ${message.refusal}`);
+        throw new Error(`Chat completion refused: ${message.refusal}`);
     }
 
     if (!message.content) {
-        throw new Error("No transcription content received");
+        throw new Error("No chat content received");
     }
 
     const parsed = format.safeParse(JSON.parse(message.content));
     if (!parsed.success) {
-        throw new Error("Failed to parse transcription result");
+        throw new Error("Failed to parse chat completion result");
     }
 
     return parsed.data;
