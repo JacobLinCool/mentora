@@ -27,7 +27,10 @@
 
     onMount(() => {
         if (conversationId) {
-            api.conversations.subscribe(conversationId, conversationState);
+            api.conversationsSubscribe.subscribe(
+                conversationId,
+                conversationState,
+            );
         }
     });
 

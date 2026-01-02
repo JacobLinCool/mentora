@@ -153,7 +153,7 @@ erDiagram
 | 8   | Assignment → Conversation      | 1 → N       | Assignment has many conversations              |
 | 9   | UserProfile → Conversation     | 1 → N       | Student has many conversations                 |
 | 10  | Conversation → Turn            | 1 → N       | Conversation contains multiple turns, embedded |
-| 11  | Submission ↔ Conversation     | 0..1 ↔ 1   | Each submission may link to one conversation   |
+| 11  | Submission ↔ Conversation      | 0..1 ↔ 1    | Each submission may link to one conversation   |
 
 > Note: Since our platform helps people learn to reshape their thinking through conversation and reflection, a `Conversation` itself becomes the submission for an assignment once it's completed.
 
