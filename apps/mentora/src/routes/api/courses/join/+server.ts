@@ -1,7 +1,7 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import { Classes, type ClassMembership } from "mentora-firebase";
+import { Courses, type CourseMembership } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async (event) => {
@@ -24,55 +24,55 @@ export const POST: RequestHandler = async (event) => {
     }
 
     try {
-        // Query for class with matching code
-        const classesSnapshot = await firestore
-            .collection(Classes.collectionPath())
+        // Query for course with matching code
+        const coursesSnapshot = await firestore
+            .collection(Courses.collectionPath())
             .where("code", "==", normalizedCode)
             .limit(1)
             .get();
 
-        if (classesSnapshot.docs.length === 0) {
-            throw svelteError(404, "Class not found with this code");
+        if (coursesSnapshot.docs.length === 0) {
+            throw svelteError(404, "Course not found with this code");
         }
 
-        const classDoc = classesSnapshot.docs[0];
-        const classId = classDoc.id;
-        const classData = classDoc.data();
+        const courseDoc = coursesSnapshot.docs[0];
+        const courseId = courseDoc.id;
+        const courseData = courseDoc.data();
 
-        // Validate class document
-        const validationResult = Classes.schema.safeParse({
-            id: classId,
-            ...classData,
+        // Validate course document
+        const validationResult = Courses.schema.safeParse({
+            id: courseId,
+            ...courseData,
         });
 
         if (!validationResult.success) {
-            console.error("Invalid class document:", validationResult.error);
-            throw svelteError(500, "Invalid class data");
+            console.error("Invalid course document:", validationResult.error);
+            throw svelteError(500, "Invalid course data");
         }
 
         // Check if user is already a member
         const existingMembership = await firestore
-            .doc(Classes.roster.docPath(classId, user.uid))
+            .doc(Courses.roster.docPath(courseId, user.uid))
             .get();
 
         if (existingMembership.exists) {
             const membershipData = existingMembership.data();
             if (membershipData?.status === "active") {
-                return json({ classId, alreadyMember: true });
+                return json({ courseId, alreadyMember: true });
             }
             // If user was previously removed or invited, update their status
             await firestore
-                .doc(Classes.roster.docPath(classId, user.uid))
+                .doc(Courses.roster.docPath(courseId, user.uid))
                 .update({
                     status: "active",
                     joinedAt: Date.now(),
                 });
 
-            return json({ classId, rejoined: true });
+            return json({ courseId, rejoined: true });
         }
 
         // Create new roster entry
-        const membership: ClassMembership = {
+        const membership: CourseMembership = {
             userId: user.uid,
             email: user.email,
             role: "student",
@@ -81,18 +81,18 @@ export const POST: RequestHandler = async (event) => {
         };
 
         await firestore
-            .doc(Classes.roster.docPath(classId, user.uid))
+            .doc(Courses.roster.docPath(courseId, user.uid))
             .set(membership);
 
-        return json({ classId, joined: true });
+        return json({ courseId, joined: true });
     } catch (err) {
-        console.error("Error joining class:", err);
+        console.error("Error joining course:", err);
 
         // Re-throw SvelteKit errors
         if (err && typeof err === "object" && "status" in err) {
             throw err;
         }
 
-        throw svelteError(500, "Failed to join class");
+        throw svelteError(500, "Failed to join course");
     }
 };

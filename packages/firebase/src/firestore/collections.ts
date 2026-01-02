@@ -1,13 +1,17 @@
 import { Assignments } from "./assignments";
-import { Classes } from "./classes";
 import { Conversations } from "./conversations";
+import { Courses } from "./courses";
 import { AssignmentSubmissions } from "./submissions";
+import { Topics } from "./topics";
 import { UserProfiles } from "./userProfiles";
+import { Wallets } from "./wallets";
 
 export const FirestoreCollections = {
     userProfiles: UserProfiles,
-    classes: Classes,
+    courses: Courses,
     assignments: Assignments,
     conversations: Conversations,
     assignmentSubmissions: AssignmentSubmissions,
+    topics: Topics,
+    wallets: Wallets,
 } as const;

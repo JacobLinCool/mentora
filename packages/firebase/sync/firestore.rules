@@ -13,48 +13,61 @@ service cloud.firestore {
     }
 
     // Membership checks (active users should have roster doc id == uid)
-    function isClassMember(classId) {
+    function isCourseMember(courseId) {
       return isSignedIn() &&
-             exists(/databases/$(database)/documents/classes/$(classId)/roster/$(request.auth.uid));
+             exists(/databases/$(database)/documents/courses/$(courseId)/roster/$(request.auth.uid));
     }
 
-    function membershipDoc(classId) {
-      return get(/databases/$(database)/documents/classes/$(classId)/roster/$(request.auth.uid));
+    function membershipDoc(courseId) {
+      return get(/databases/$(database)/documents/courses/$(courseId)/roster/$(request.auth.uid));
     }
 
-    function hasRole(classId, role) {
-      return isClassMember(classId) &&
-             membershipDoc(classId).data.role == role;
+    function hasRole(courseId, role) {
+      return isCourseMember(courseId) &&
+             membershipDoc(courseId).data.role == role;
     }
 
-    function isTA(classId) {
-      return hasRole(classId, "ta");
+    function isTA(courseId) {
+      return hasRole(courseId, "ta");
     }
 
-    function isStudent(classId) {
-      return hasRole(classId, "student");
+    function isStudent(courseId) {
+      return hasRole(courseId, "student");
     }
 
-    function isInstructorOfClass(classId) {
-      // Either roster role == instructor
-      return isClassMember(classId) && hasRole(classId, "instructor");
+    function isInstructorOfCourse(courseId) {
+      // hasRole already checks isCourseMember internally
+      return hasRole(courseId, "instructor");
     }
 
-    function isOwnerOfClass(classId) {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/classes/$(classId)) &&
-             get(/databases/$(database)/documents/classes/$(classId)).data.ownerId == request.auth.uid;
+    function isOwnerOfCourse(courseId) {
+      // get() returns null if doc doesn't exist, so exists() check is redundant
+      let course = courseDoc(courseId);
+      return isSignedIn() && course.data != null && course.data.ownerId == request.auth.uid;
     }
 
-    function canEditClassResource(classId) {
+    function courseDoc(courseId) {
+      return get(/databases/$(database)/documents/courses/$(courseId));
+    }
+
+    function isPublicCourse(courseId) {
+      let course = courseDoc(courseId);
+      return course.data != null && course.data.visibility == "public";
+    }
+
+    function canEditCourseResource(courseId) {
       return isSignedIn() && (
-        isInstructorOfClass(classId) || isTA(classId) || isOwnerOfClass(classId)
+        isInstructorOfCourse(courseId) || isTA(courseId) || isOwnerOfCourse(courseId)
       );
     }
 
     function targetNotExists() {
       // It's required for querying non-existent docs, e.g. an empty collection
-      return resource == null
+      return resource == null || resource.data == null;
+    }
+
+    function isPublicCourseResource() {
+      return (resource == null || resource.data == null) ? false : (resource.data.visibility == "public");
     }
 
     function isValidUserProfile(data) {
@@ -65,25 +78,44 @@ service cloud.firestore {
              data.createdAt is number && data.updatedAt is number;
     }
 
-    function isValidClassDoc(data) {
+    function isValidCourseDoc(data) {
       return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
              data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
              data.code is string && data.code.size() >= 6 && data.code.size() <= 64 &&
              data.ownerId is string && data.ownerId.size() <= 128 &&
+             (!('visibility' in data) || data.visibility in ["public", "unlisted", "private"]) &&
+             (!('passwordHash' in data) || data.passwordHash == null || (data.passwordHash is string && data.passwordHash.size() <= 512)) &&
+             (!('theme' in data) || data.theme == null || (data.theme is string && data.theme.size() <= 200)) &&
+             (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 5000)) &&
+             (!('thumbnail' in data) || data.thumbnail == null ||
+               (data.thumbnail is map &&
+                'storagePath' in data.thumbnail && data.thumbnail.storagePath is string && data.thumbnail.storagePath.size() <= 1024 &&
+                (!('url' in data.thumbnail) || data.thumbnail.url == null || (data.thumbnail.url is string && data.thumbnail.url.size() <= 2048))
+               )
+             ) &&
+             (!('isDemo' in data) || data.isDemo is bool) &&
+             (!('demoPolicy' in data) || data.demoPolicy == null ||
+               (data.demoPolicy is map &&
+                'maxFreeCreditsPerUser' in data.demoPolicy && data.demoPolicy.maxFreeCreditsPerUser is number && data.demoPolicy.maxFreeCreditsPerUser >= 0 &&
+                (!('maxTurnsPerConversation' in data.demoPolicy) || data.demoPolicy.maxTurnsPerConversation == null || (data.demoPolicy.maxTurnsPerConversation is number && data.demoPolicy.maxTurnsPerConversation > 0))
+               )
+             ) &&
              data.createdAt is number && data.updatedAt is number;
     }
 
     function isValidRosterEntry(data) {
       return (data.userId == null || (data.userId is string && data.userId.size() <= 128)) &&
              data.email is string && data.email.size() <= 320 &&
-             data.role in ["student", "ta", "instructor"] &&
+             data.role in ["student", "auditor", "ta", "instructor"] &&
              data.status in ["invited", "active", "removed"] &&
              (data.joinedAt == null || data.joinedAt is number);
     }
 
     function isValidAssignment(data) {
       return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
-             (data.classId == null || (data.classId is string && data.classId.size() <= 128)) &&
+             (data.courseId == null || (data.courseId is string && data.courseId.size() <= 128)) &&
+             (!('topicId' in data) || data.topicId == null || (data.topicId is string && data.topicId.size() <= 128)) &&
+             (!('orderInTopic' in data) || data.orderInTopic == null || (data.orderInTopic is number)) &&
              data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
              data.prompt is string && data.prompt.size() >= 1 && data.prompt.size() <= 50000 &&
              data.mode == "instant" &&
@@ -92,6 +124,24 @@ service cloud.firestore {
              data.allowLate is bool &&
              data.allowResubmit is bool &&
              data.createdBy is string && data.createdBy.size() <= 128 &&
+             data.createdAt is number && data.updatedAt is number;
+    }
+
+    function isValidTopic(data) {
+      return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
+             data.courseId is string && data.courseId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 2000)) &&
+             (!('order' in data) || data.order == null || (data.order is number)) &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             data.createdAt is number && data.updatedAt is number;
+    }
+
+    function isValidWallet(data) {
+      return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
+             data.ownerType in ["user", "host"] &&
+             data.ownerId is string && data.ownerId.size() <= 128 &&
+             data.balanceCredits is number && data.balanceCredits >= 0 &&
              data.createdAt is number && data.updatedAt is number;
     }
 
@@ -126,52 +176,91 @@ service cloud.firestore {
       allow delete: if false; // keep profiles
     }
 
-    /* ---------- Classes ---------- */
-    match /classes/{classId} {
-      allow get: if isSignedIn() && (
-        targetNotExists() || // allow reading non-existent docs
-        isClassMember(classId) ||
-        // Instructors who own the class (defensive in case roster is missing)
-        (resource.data.ownerId == request.auth.uid)
-      );
+    /* ---------- Courses ---------- */
+    match /courses/{courseId} {
+      // Public courses are readable without auth; private/unlisted require membership/ownership.
+      allow get: if targetNotExists() ||
+        (resource.data == null ? false : (resource.data.visibility == "public")) ||
+        (isSignedIn() && (resource.data == null ? false : (isCourseMember(courseId) || (resource.data.ownerId == request.auth.uid))));
 
-      allow list: if isSignedIn() && (
-        targetNotExists() || // allow listing empty collection
-        isClassMember(classId) ||
-        // Instructors who own the class (defensive in case roster is missing)
-        (resource.data.ownerId == request.auth.uid)
-      );
+      // Note: for queries, client must filter visibility == "public" to avoid permission-denied.
+      allow list: if targetNotExists() ||
+        (resource.data == null ? false : (resource.data.visibility == "public")) ||
+        (isSignedIn() && (resource.data == null ? false : (isCourseMember(courseId) || (resource.data.ownerId == request.auth.uid))));
 
-      allow create: if isSignedIn() && isValidClassDoc(request.resource.data);
+      allow create: if isSignedIn() && isValidCourseDoc(request.resource.data);
       allow update: if isSignedIn() && (
-        resource.data.ownerId == request.auth.uid || isInstructorOfClass(classId)
-      ) && isValidClassDoc(request.resource.data);
+        resource.data.ownerId == request.auth.uid || isInstructorOfCourse(courseId)
+      ) && isValidCourseDoc(request.resource.data);
       allow delete: if isSignedIn() && (
-        resource.data.ownerId == request.auth.uid || isInstructorOfClass(classId)
+        resource.data.ownerId == request.auth.uid || isInstructorOfCourse(courseId)
       );
     }
 
-    /* ---------- Class Roster ---------- */
-    match /classes/{classId}/roster/{memberId} {
+    /* ---------- Topics ---------- */
+    match /topics/{topicId} {
+      allow get: if targetNotExists() ||
+        ((resource == null || resource.data == null) ? false : (resource.data.courseId is string && isPublicCourse(resource.data.courseId))) ||
+        (isSignedIn() && ((resource == null || resource.data == null) ? false : (isCourseMember(resource.data.courseId) || canEditCourseResource(resource.data.courseId))));
+
+      allow list: if targetNotExists() ||
+        ((resource == null || resource.data == null) ? false : (resource.data.courseId is string && isPublicCourse(resource.data.courseId))) ||
+        (isSignedIn() && ((resource == null || resource.data == null) ? false : (isCourseMember(resource.data.courseId) || canEditCourseResource(resource.data.courseId))));
+
+      allow create: if isSignedIn() &&
+        canEditCourseResource(request.resource.data.courseId) &&
+        isValidTopic(request.resource.data);
+
+      allow update: if isSignedIn() &&
+        resource.data.courseId == request.resource.data.courseId &&
+        canEditCourseResource(resource.data.courseId) &&
+        isValidTopic(request.resource.data);
+
+      allow delete: if isSignedIn() &&
+        canEditCourseResource(resource.data.courseId);
+    }
+
+    /* ---------- Wallets / Ledger (read-only to clients) ---------- */
+    match /wallets/{walletId} {
+      allow get: if isSignedIn() && (
+        (resource.data.ownerId == request.auth.uid) &&
+        (resource.data.ownerType in ["user", "host"])
+      );
+      allow list: if false;
+
+      // Wallet creation/updates are server-side only.
+      allow create, update, delete: if false;
+
+      match /entries/{entryId} {
+        allow get, list: if isSignedIn() && (
+          get(/databases/$(database)/documents/wallets/$(walletId)).data.ownerId == request.auth.uid
+        );
+        // Ledger writes are server-side only.
+        allow create, update, delete: if false;
+      }
+    }
+
+    /* ---------- Course Roster ---------- */
+    match /courses/{courseId}/roster/{memberId} {
       // Members can read their own roster entry
       allow get: if isSignedIn() && (
         memberId == request.auth.uid ||
-        isClassMember(classId)
+        isCourseMember(courseId)
       );
 
       // Members can list the entire roster if they are a member
-      allow list: if isSignedIn() && isClassMember(classId);
+      allow list: if isSignedIn() && isCourseMember(courseId);
 
       // Only instructor (or owner) can invite / change roles / remove
       allow create, update: if isSignedIn() && (
-        // allow if the class doc is not exists (initial setup)
-        !exists(/databases/$(database)/documents/classes/$(classId)) ||
-        isInstructorOfClass(classId) ||
-        isOwnerOfClass(classId)
+        // allow if the course doc is not exists (initial setup)
+        !exists(/databases/$(database)/documents/courses/$(courseId)) ||
+        isInstructorOfCourse(courseId) ||
+        isOwnerOfCourse(courseId)
       ) && isValidRosterEntry(request.resource.data);
       allow delete: if isSignedIn() && (
-        isInstructorOfClass(classId) ||
-        isOwnerOfClass(classId)
+        isInstructorOfCourse(courseId) ||
+        isOwnerOfCourse(courseId)
       );
     }
 
@@ -181,56 +270,56 @@ service cloud.firestore {
         targetNotExists() || // allow reading non-existent docs
         // standalone: visible to creator (check createdBy first)
         ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid && 
-         (!('classId' in resource.data) || resource.data.classId == null)) ||
-        // class-bound assignments: visible to class members
-        ('classId' in resource.data && resource.data.classId != null && isClassMember(resource.data.classId))
+         (!('courseId' in resource.data) || resource.data.courseId == null)) ||
+        // course-bound assignments: visible to course members
+        ('courseId' in resource.data && resource.data.courseId != null && isCourseMember(resource.data.courseId))
       );
 
       allow list: if isSignedIn() && (
         targetNotExists() || // allow listing empty collection
         // standalone: visible to creator (check createdBy first)
         ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid && 
-         (!('classId' in resource.data) || resource.data.classId == null)) ||
-        // class-bound assignments: visible to class members
-        ('classId' in resource.data && resource.data.classId != null && isClassMember(resource.data.classId))
+         (!('courseId' in resource.data) || resource.data.courseId == null)) ||
+        // course-bound assignments: visible to course members
+        ('courseId' in resource.data && resource.data.courseId != null && isCourseMember(resource.data.courseId))
       );
 
-      // Create/update by class instructors/TAs or assignment creator for standalone
+      // Create/update by course instructors/TAs or assignment creator for standalone
       allow create: if isSignedIn() && (
-        (request.resource.data.classId != null &&
-           (canEditClassResource(request.resource.data.classId))) ||
-        (request.resource.data.classId == null && request.resource.data.createdBy == request.auth.uid)
+        (request.resource.data.courseId != null &&
+           (canEditCourseResource(request.resource.data.courseId))) ||
+        (request.resource.data.courseId == null && request.resource.data.createdBy == request.auth.uid)
       ) && isValidAssignment(request.resource.data);
 
       allow update: if isSignedIn() && (
-        (resource.data.classId != null &&
-           (canEditClassResource(resource.data.classId))) ||
-        (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
+        (resource.data.courseId != null &&
+           (canEditCourseResource(resource.data.courseId))) ||
+        (resource.data.courseId == null && resource.data.createdBy == request.auth.uid)
       ) && isValidAssignment(request.resource.data);
 
       allow delete: if isSignedIn() && (
-        (resource.data.classId != null &&
-           (canEditClassResource(resource.data.classId))) ||
-        (resource.data.classId == null && resource.data.createdBy == request.auth.uid)
+        (resource.data.courseId != null &&
+           (canEditCourseResource(resource.data.courseId))) ||
+        (resource.data.courseId == null && resource.data.createdBy == request.auth.uid)
       );
 
       /* ------ Submissions subcollection ------ */
       match /submissions/{userId} {
         // GET:
         // - The student may read their own submission
-        // - Instructors/TAs of the class may read all
+        // - Instructors/TAs of the course may read all
         allow get: if isSignedIn() && (
           userId == request.auth.uid ||
-          (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-           canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
+          (get(/databases/$(database)/documents/assignments/$(aid)).data.courseId != null &&
+           canEditCourseResource(get(/databases/$(database)/documents/assignments/$(aid)).data.courseId))
         );
 
         // LIST:
         // - Instructors/TAs can list all submissions
         // - Students cannot list (can only get their own)
         allow list: if isSignedIn() && (
-          get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-          canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)
+          get(/databases/$(database)/documents/assignments/$(aid)).data.courseId != null &&
+          canEditCourseResource(get(/databases/$(database)/documents/assignments/$(aid)).data.courseId)
         );
 
         // CREATE by the student (their own doc id == uid)
@@ -253,14 +342,14 @@ service cloud.firestore {
            )) ||
 
           // Instructor/TA can grade (move to graded_complete, set notes/score)
-          (get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-           canEditClassResource(get(/databases/$(database)/documents/assignments/$(aid)).data.classId))
+          (get(/databases/$(database)/documents/assignments/$(aid)).data.courseId != null &&
+           canEditCourseResource(get(/databases/$(database)/documents/assignments/$(aid)).data.courseId))
         );
 
         // Prevent deletion by students; allow for instructors if you really need it
         allow delete: if isSignedIn() && (
-          get(/databases/$(database)/documents/assignments/$(aid)).data.classId != null &&
-          isInstructorOfClass(get(/databases/$(database)/documents/assignments/$(aid)).data.classId)
+          get(/databases/$(database)/documents/assignments/$(aid)).data.courseId != null &&
+          isInstructorOfCourse(get(/databases/$(database)/documents/assignments/$(aid)).data.courseId)
         );
       }
     }
@@ -269,25 +358,25 @@ service cloud.firestore {
     match /conversations/{cid} {
       // GET:
       // - Owner (student)
-      // - Instructors/TAs of linked assignment class
+      // - Instructors/TAs of linked assignment course
       allow get: if isSignedIn() && (
         request.auth.uid == resource.data.userId ||
         (
-          // Safely read assignment to resolve class
+          // Safely read assignment to resolve course
           exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-          canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+          canEditCourseResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.courseId)
         )
       );
 
       // LIST:
       // - Owner (student) can list their own conversations
-      // - Instructors/TAs of linked assignment class can list
+      // - Instructors/TAs of linked assignment course can list
       allow list: if isSignedIn() && (
         request.auth.uid == resource.data.userId ||
         (
-          // Safely read assignment to resolve class
+          // Safely read assignment to resolve course
           exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-          canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+          canEditCourseResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.courseId)
         )
       );
 
@@ -309,7 +398,7 @@ service cloud.firestore {
           request.auth.uid == resource.data.userId ||
           (
             exists(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)) &&
-            canEditClassResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.classId)
+            canEditCourseResource(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data.courseId)
           )
         );
 
@@ -319,10 +408,10 @@ service cloud.firestore {
 
     /* ---------- Collection Group Rules ---------- */
     
-    // Roster collection group - allows users to query their own roster entries across all classes
+    // Roster collection group - allows users to query their own roster entries across all courses
     match /{path=**}/roster/{memberId} {
-      // Users can only query their own roster entries across all classes
-      // This supports listMyEnrolledClasses API which queries: 
+      // Users can only query their own roster entries across all courses
+      // This supports listMyEnrolledCourses API which queries: 
       // collectionGroup("roster").where("userId", "==", currentUser.uid).where("status", "==", "active")
       allow read: if isSignedIn() && 
         resource.data.userId == request.auth.uid;

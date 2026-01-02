@@ -27,10 +27,10 @@
                 <a href="/" class="text-xl font-bold text-blue-600">Mentora</a>
                 {#if currentUser}
                     <div class="flex gap-2 overflow-auto">
-                        <Button href="/classes" size="sm" color="light">
+                        <Button href="/courses" size="sm" color="light">
                             <BookOpen class="h-4 w-4" />
                             <span class="ms-2 max-sm:hidden">
-                                {m.nav_classes()}
+                                {m.nav_courses()}
                             </span>
                         </Button>
                         <Button href="/assignments" size="sm" color="light">

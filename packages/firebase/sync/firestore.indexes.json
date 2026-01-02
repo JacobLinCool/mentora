@@ -5,7 +5,7 @@
             "queryScope": "COLLECTION",
             "fields": [
                 {
-                    "fieldPath": "classId",
+                    "fieldPath": "courseId",
                     "order": "ASCENDING"
                 },
                 {
@@ -24,7 +24,7 @@
             "queryScope": "COLLECTION",
             "fields": [
                 {
-                    "fieldPath": "classId",
+                    "fieldPath": "courseId",
                     "order": "ASCENDING"
                 },
                 {
@@ -58,7 +58,64 @@
             "density": "SPARSE_ALL"
         },
         {
-            "collectionGroup": "classes",
+            "collectionGroup": "courses",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "visibility",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "topics",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "courseId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "order",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "ASCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "assignments",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "topicId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "orderInTopic",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "ASCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "courses",
             "queryScope": "COLLECTION",
             "fields": [
                 {

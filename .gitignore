@@ -141,3 +141,5 @@ apps/mentora/src/lib/paraglide/
 
 # we take .github/copilot-instructions.md as source of truth
 .cursor/rules/
+
+.DS_Store

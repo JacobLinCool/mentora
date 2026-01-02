@@ -33,6 +33,7 @@
         "flowbite-svelte": "^1.17.4",
         "globals": "^16.4.0",
         "jose": "^6.1.0",
+        "mentora-api": "workspace:*",
         "mentora-firebase": "workspace:*",
         "openai": "^6.2.0",
         "svelte": "^5.39.11",

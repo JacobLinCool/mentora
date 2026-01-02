@@ -7,12 +7,12 @@
     import { ClipboardList, Calendar } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
 
-    type AssignmentWithClass = Assignment & {
-        className: string;
+    type AssignmentWithCourse = Assignment & {
+        courseTitle: string;
         submission?: Submission;
     };
 
-    let assignments = $state<AssignmentWithClass[]>([]);
+    let assignments = $state<AssignmentWithCourse[]>([]);
     let loading = $state(true);
     let error = $state<string | null>(null);
 
@@ -21,25 +21,25 @@
         error = null;
 
         try {
-            // Get all enrolled classes
-            const classesResult = await api.classes.listEnrolled();
-            if (!classesResult.success) {
+            // Get all enrolled courses
+            const coursesResult = await api.courses.listEnrolled();
+            if (!coursesResult.success) {
                 console.error(
-                    "Failed to list enrolled classes:",
-                    classesResult.error,
+                    "Failed to list enrolled courses:",
+                    coursesResult.error,
                 );
-                error = classesResult.error;
+                error = coursesResult.error;
                 loading = false;
                 return;
             }
 
-            const classes = classesResult.data;
-            const assignmentsWithSubmissions: AssignmentWithClass[] = [];
+            const courses = coursesResult.data;
+            const assignmentsWithSubmissions: AssignmentWithCourse[] = [];
 
-            // Fetch assignments for each class
-            for (const classDoc of classes) {
-                const assignmentsResult = await api.assignments.listForClass(
-                    classDoc.id,
+            // Fetch assignments for each course
+            for (const courseDoc of courses) {
+                const assignmentsResult = await api.assignments.listForCourse(
+                    courseDoc.id,
                 );
                 if (assignmentsResult.success) {
                     for (const assignment of assignmentsResult.data) {
@@ -50,7 +50,7 @@
 
                         assignmentsWithSubmissions.push({
                             ...assignment,
-                            className: classDoc.title,
+                            courseTitle: courseDoc.title,
                             submission: submissionResult.success
                                 ? submissionResult.data
                                 : undefined,
@@ -78,7 +78,7 @@
         return new Date(timestamp).toLocaleString();
     }
 
-    function getAssignmentStatus(assignment: AssignmentWithClass) {
+    function getAssignmentStatus(assignment: AssignmentWithCourse) {
         if (!assignment.submission) {
             return { text: m.assignments_start(), color: "blue" as const };
         }
@@ -100,7 +100,7 @@
         }
     }
 
-    function isOverdue(assignment: AssignmentWithClass) {
+    function isOverdue(assignment: AssignmentWithCourse) {
         return (
             (assignment.dueAt ?? 0) < Date.now() &&
             (!assignment.submission ||
@@ -153,7 +153,7 @@
                                 {/if}
                             </div>
                             <p class="mb-2 text-sm text-gray-600">
-                                {assignment.className}
+                                {assignment.courseTitle}
                             </p>
                             <div class="flex gap-4 text-sm text-gray-600">
                                 <div class="flex items-center gap-1">

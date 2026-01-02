@@ -21,6 +21,8 @@ export const zUserProfile = z
             .string()
             .max(2048)
             .nullable()
+            .optional()
+            .default(null)
             .describe("Optional profile photo URL."),
         createdAt: zFirebaseTimestamp.describe(
             "Timestamp when the profile document was created.",

@@ -29,10 +29,10 @@
             <Card class="p-6 text-center">
                 <BookOpen class="mx-auto mb-4 h-12 w-12 text-blue-600" />
                 <h3 class="mb-2 text-xl font-semibold">
-                    {m.landing_feature_classes_title()}
+                    {m.landing_feature_courses_title()}
                 </h3>
                 <p class="text-gray-600">
-                    {m.landing_feature_classes_description()}
+                    {m.landing_feature_courses_description()}
                 </p>
             </Card>
 

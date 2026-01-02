@@ -22,26 +22,26 @@ beforeEach(async () => {
     await clearFirestore();
 });
 
-describe("Class Roster Security Rules", () => {
+describe("Course Roster Security Rules", () => {
     describe("Read Access", () => {
         it("should allow members to read their own roster entry", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const userId = "user123";
             const db = testEnv.authenticatedContext(userId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner456",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(userId)
                     .set({
@@ -55,33 +55,33 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(userId)
                     .get(),
             );
         });
 
-        it("should allow class members to read entire roster", async () => {
-            const classId = "class123";
+        it("should allow course members to read entire roster", async () => {
+            const courseId = "course123";
             const userId = "user123";
             const otherUserId = "user456";
             const db = testEnv.authenticatedContext(userId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner789",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(userId)
                     .set({
@@ -92,8 +92,8 @@ describe("Class Roster Security Rules", () => {
                         joinedAt: Date.now(),
                     });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherUserId)
                     .set({
@@ -107,8 +107,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherUserId)
                     .get(),
@@ -116,24 +116,24 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny non-members from reading roster", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const userId = "user123";
             const nonMemberId = "nonmember999";
             const db = testEnv.authenticatedContext(nonMemberId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner456",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(userId)
                     .set({
@@ -147,8 +147,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(userId)
                     .get(),
@@ -157,24 +157,24 @@ describe("Class Roster Security Rules", () => {
 
         it("should allow querying roster collection group for own entries", async () => {
             const userId = "user123";
-            const classId1 = "class456";
-            const classId2 = "class789";
+            const courseId1 = "course456";
+            const courseId2 = "course789";
             const db = testEnv.authenticatedContext(userId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                // Create two classes with user as member
-                await fs.collection("classes").doc(classId1).set({
-                    id: classId1,
-                    title: "First Class",
+                // Create two courses with user as member
+                await fs.collection("courses").doc(courseId1).set({
+                    id: courseId1,
+                    title: "First Course",
                     code: "ABC123",
                     ownerId: "owner999",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId1)
+                    .collection("courses")
+                    .doc(courseId1)
                     .collection("roster")
                     .doc(userId)
                     .set({
@@ -185,17 +185,17 @@ describe("Class Roster Security Rules", () => {
                         joinedAt: Date.now() - 10000,
                     });
 
-                await fs.collection("classes").doc(classId2).set({
-                    id: classId2,
-                    title: "Second Class",
+                await fs.collection("courses").doc(courseId2).set({
+                    id: courseId2,
+                    title: "Second Course",
                     code: "XYZ789",
                     ownerId: "owner888",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId2)
+                    .collection("courses")
+                    .doc(courseId2)
                     .collection("roster")
                     .doc(userId)
                     .set({
@@ -207,7 +207,7 @@ describe("Class Roster Security Rules", () => {
                     });
             });
 
-            // User should be able to query their own roster entries across all classes
+            // User should be able to query their own roster entries across all courses
             const result = await assertSucceeds(
                 db
                     .collectionGroup("roster")
@@ -220,22 +220,22 @@ describe("Class Roster Security Rules", () => {
         it("should deny querying roster collection group for other users' entries", async () => {
             const userId = "user123";
             const otherUserId = "user456";
-            const classId = "class789";
+            const courseId = "course789";
             const db = testEnv.authenticatedContext(userId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner999",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherUserId)
                     .set({
@@ -259,24 +259,24 @@ describe("Class Roster Security Rules", () => {
 
     describe("Create Access", () => {
         it("should allow instructors to add roster entries", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor123";
             const newMemberId = "newmember456";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner789",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -290,8 +290,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newMemberId)
                     .set({
@@ -303,9 +303,54 @@ describe("Class Roster Security Rules", () => {
                     }),
             );
         });
+        it("should allow instructors to add an auditor to roster", async () => {
+            const courseId = "course123";
+            const instructorId = "instructor123";
+            const auditorId = "auditor123";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
 
-        it("should allow class owner to add roster entries", async () => {
-            const classId = "class123";
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
+                    code: "ABC123",
+                    ownerId: instructorId,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("courses")
+                    .doc(courseId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+            });
+
+            await assertSucceeds(
+                db
+                    .collection("courses")
+                    .doc(courseId)
+                    .collection("roster")
+                    .doc(auditorId)
+                    .set({
+                        userId: auditorId,
+                        email: "auditor@example.com",
+                        role: "auditor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow course owner to add roster entries", async () => {
+            const courseId = "course123";
             const ownerId = "owner456";
             const newMemberId = "newmember789";
             const db = testEnv.authenticatedContext(ownerId).firestore();
@@ -313,11 +358,11 @@ describe("Class Roster Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 await context
                     .firestore()
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .set({
-                        id: classId,
-                        title: "Test Class",
+                        id: courseId,
+                        title: "Test Course",
                         code: "ABC123",
                         ownerId: ownerId,
                         createdAt: Date.now(),
@@ -327,8 +372,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newMemberId)
                     .set({
@@ -342,24 +387,24 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny students from adding roster entries", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const studentId = "student123";
             const newMemberId = "newmember456";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner789",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -373,8 +418,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newMemberId)
                     .set({
@@ -388,7 +433,7 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny non-members from adding roster entries", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const nonMemberId = "nonmember999";
             const newMemberId = "newmember456";
             const db = testEnv.authenticatedContext(nonMemberId).firestore();
@@ -396,11 +441,11 @@ describe("Class Roster Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 await context
                     .firestore()
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .set({
-                        id: classId,
-                        title: "Test Class",
+                        id: courseId,
+                        title: "Test Course",
                         code: "ABC123",
                         ownerId: "owner789",
                         createdAt: Date.now(),
@@ -410,8 +455,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newMemberId)
                     .set({
@@ -427,24 +472,24 @@ describe("Class Roster Security Rules", () => {
 
     describe("Update Access", () => {
         it("should allow instructors to update roster entries", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor123";
             const studentId = "student456";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner789",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -455,8 +500,8 @@ describe("Class Roster Security Rules", () => {
                         joinedAt: Date.now(),
                     });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -470,8 +515,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .update({
@@ -480,25 +525,25 @@ describe("Class Roster Security Rules", () => {
             );
         });
 
-        it("should allow class owner to update roster entries", async () => {
-            const classId = "class123";
+        it("should allow course owner to update roster entries", async () => {
+            const courseId = "course123";
             const ownerId = "owner456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(ownerId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: ownerId,
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -512,8 +557,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .update({
@@ -523,24 +568,24 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny students from updating roster entries", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const studentId = "student123";
             const otherStudentId = "student456";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner789",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -551,8 +596,8 @@ describe("Class Roster Security Rules", () => {
                         joinedAt: Date.now(),
                     });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherStudentId)
                     .set({
@@ -566,8 +611,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherStudentId)
                     .update({
@@ -579,24 +624,24 @@ describe("Class Roster Security Rules", () => {
 
     describe("Delete Access", () => {
         it("should allow instructors to delete roster entries", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor123";
             const studentId = "student456";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner789",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -607,8 +652,8 @@ describe("Class Roster Security Rules", () => {
                         joinedAt: Date.now(),
                     });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -622,33 +667,33 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .delete(),
             );
         });
 
-        it("should allow class owner to delete roster entries", async () => {
-            const classId = "class123";
+        it("should allow course owner to delete roster entries", async () => {
+            const courseId = "course123";
             const ownerId = "owner456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(ownerId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: ownerId,
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -662,8 +707,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .delete(),
@@ -671,24 +716,24 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny students from deleting roster entries", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const studentId = "student123";
             const otherStudentId = "student456";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "ABC123",
                     ownerId: "owner789",
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -699,8 +744,8 @@ describe("Class Roster Security Rules", () => {
                         joinedAt: Date.now(),
                     });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherStudentId)
                     .set({
@@ -714,8 +759,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherStudentId)
                     .delete(),
@@ -725,16 +770,16 @@ describe("Class Roster Security Rules", () => {
 
     describe("Data Shape Validation", () => {
         it("should deny creating roster entry with userId exceeding 128 characters", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor456";
             const newUserId = "newuser789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "TEST123",
                     ownerId: "owner123",
                     createdAt: Date.now(),
@@ -742,8 +787,8 @@ describe("Class Roster Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -757,8 +802,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newUserId)
                     .set({
@@ -772,16 +817,16 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny creating roster entry with email exceeding 320 characters", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor456";
             const newUserId = "newuser789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "TEST123",
                     ownerId: "owner123",
                     createdAt: Date.now(),
@@ -789,8 +834,8 @@ describe("Class Roster Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -804,8 +849,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newUserId)
                     .set({
@@ -819,16 +864,16 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny creating roster entry with invalid role", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor456";
             const newUserId = "newuser789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "TEST123",
                     ownerId: "owner123",
                     createdAt: Date.now(),
@@ -836,8 +881,8 @@ describe("Class Roster Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -851,8 +896,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newUserId)
                     .set({
@@ -866,16 +911,16 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should deny creating roster entry with invalid status", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor456";
             const newUserId = "newuser789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "TEST123",
                     ownerId: "owner123",
                     createdAt: Date.now(),
@@ -883,8 +928,8 @@ describe("Class Roster Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -898,8 +943,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertFails(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(newUserId)
                     .set({
@@ -913,16 +958,16 @@ describe("Class Roster Security Rules", () => {
         });
 
         it("should allow creating roster entry with null userId for invites", async () => {
-            const classId = "class123";
+            const courseId = "course123";
             const instructorId = "instructor456";
             const inviteId = "invite789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
-                    title: "Test Class",
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
                     code: "TEST123",
                     ownerId: "owner123",
                     createdAt: Date.now(),
@@ -930,8 +975,8 @@ describe("Class Roster Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -945,8 +990,8 @@ describe("Class Roster Security Rules", () => {
 
             await assertSucceeds(
                 db
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(inviteId)
                     .set({

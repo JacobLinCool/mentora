@@ -14,10 +14,10 @@
         <Card class="p-4 text-center">
             <BookOpen class="mx-auto mb-4 h-16 w-16 text-blue-600" />
             <h2 class="mb-4 text-2xl font-semibold">
-                {m.home_my_classes()}
+                {m.home_my_courses()}
             </h2>
-            <Button href="/classes" color="blue">
-                {m.classes_view()}
+            <Button href="/courses" color="blue">
+                {m.courses_view()}
             </Button>
         </Card>
 

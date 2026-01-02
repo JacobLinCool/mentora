@@ -3,7 +3,7 @@
     import { page } from "$app/state";
     import { m } from "$lib/paraglide/messages";
     import { api } from "$lib";
-    import type { ClassDoc, Assignment, ClassMembership } from "$lib/api";
+    import type { CourseDoc, Assignment, CourseMembership } from "$lib/api";
     import {
         Button,
         Card,
@@ -31,11 +31,11 @@
     } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
 
-    const classId = $derived(page.params.id);
+    const courseId = $derived(page.params.id);
 
-    let classDoc = $state<ClassDoc | null>(null);
+    let courseDoc = $state<CourseDoc | null>(null);
     let assignments = $state<Assignment[]>([]);
-    let roster = $state<ClassMembership[]>([]);
+    let roster = $state<CourseMembership[]>([]);
     let loading = $state(true);
     let error = $state<string | null>(null);
 
@@ -52,23 +52,23 @@
     // Code copy state
     let codeCopied = $state(false);
 
-    async function loadClassDetails() {
-        if (!classId) return;
+    async function loadCourseDetails() {
+        if (!courseId) return;
 
         loading = true;
         error = null;
 
-        const [classResult, assignmentsResult, rosterResult] =
+        const [courseResult, assignmentsResult, rosterResult] =
             await Promise.all([
-                api.classes.get(classId),
-                api.assignments.listForClass(classId),
-                api.classes.getRoster(classId),
+                api.courses.get(courseId),
+                api.assignments.listForCourse(courseId),
+                api.courses.getRoster(courseId),
             ]);
 
-        if (classResult.success) {
-            classDoc = classResult.data;
+        if (courseResult.success) {
+            courseDoc = courseResult.data;
         } else {
-            error = classResult.error;
+            error = courseResult.error;
         }
 
         if (assignmentsResult.success) {
@@ -84,7 +84,7 @@
 
     async function handleCreateAssignment() {
         if (
-            !classId ||
+            !courseId ||
             !assignmentTitle.trim() ||
             !assignmentPrompt.trim() ||
             !assignmentStartAt ||
@@ -96,7 +96,9 @@
         createAssignmentError = null;
 
         const result = await api.assignments.create({
-            classId,
+            courseId,
+            topicId: null,
+            orderInTopic: null,
             title: assignmentTitle.trim(),
             prompt: assignmentPrompt.trim(),
             startAt: new Date(assignmentStartAt).getTime(),
@@ -113,7 +115,7 @@
             assignmentDueAt = "";
             assignmentMode = "instant";
             showCreateAssignment = false;
-            await loadClassDetails();
+            await loadCourseDetails();
         } else {
             createAssignmentError = result.error;
         }
@@ -121,15 +123,15 @@
         creatingAssignment = false;
     }
 
-    async function copyClassCode() {
-        if (!classDoc?.code) return;
-        await navigator.clipboard.writeText(classDoc.code);
+    async function copyCourseCode() {
+        if (!courseDoc?.code) return;
+        await navigator.clipboard.writeText(courseDoc.code);
         codeCopied = true;
         setTimeout(() => (codeCopied = false), 2000);
     }
 
     onMount(() => {
-        loadClassDetails();
+        loadCourseDetails();
     });
 
     function formatDate(timestamp: number) {
@@ -138,12 +140,12 @@
 </script>
 
 <PageHead
-    title={classDoc?.title ?? m.page_class_detail_title()}
-    description={m.page_class_detail_description()}
+    title={courseDoc?.title ?? m.page_course_detail_title()}
+    description={m.page_course_detail_description()}
 />
 
 <div class="mx-auto max-w-6xl">
-    <Button href="/classes" color="light" class="mb-4">
+    <Button href="/courses" color="light" class="mb-4">
         <ArrowLeft class="me-2 h-4 w-4" />
         {m.back()}
     </Button>
@@ -151,42 +153,42 @@
     {#if loading}
         <div class="py-12 text-center">
             <Spinner size="12" />
-            <p class="mt-4 text-gray-600">{m.class_detail_loading()}</p>
+            <p class="mt-4 text-gray-600">{m.course_detail_loading()}</p>
         </div>
     {:else if error}
-        <Alert color="red">{m.class_detail_error()}: {error}</Alert>
-    {:else if classDoc}
-        <!-- Class Header -->
+        <Alert color="red">{m.course_detail_error()}: {error}</Alert>
+    {:else if courseDoc}
+        <!-- Course Header -->
         <Card class="mb-6 p-4">
-            <h1 class="mb-2 text-3xl font-bold">{classDoc.title}</h1>
+            <h1 class="mb-2 text-3xl font-bold">{courseDoc.title}</h1>
             <div class="flex gap-4 text-sm text-gray-600">
                 <div>
-                    <span class="font-semibold">{m.class_detail_code()}:</span>
-                    <Badge color="blue" class="ms-2">{classDoc.code}</Badge>
+                    <span class="font-semibold">{m.course_detail_code()}:</span>
+                    <Badge color="blue" class="ms-2">{courseDoc.code}</Badge>
                 </div>
                 <div>
                     <Users class="me-1 inline h-4 w-4" />
-                    {m.class_detail_members({ count: roster.length })}
+                    {m.course_detail_members({ count: roster.length })}
                 </div>
             </div>
         </Card>
 
         <!-- Invite Members Section -->
-        {#if api.currentUser && classDoc.ownerId === api.currentUser.uid}
+        {#if api.currentUser && courseDoc.ownerId === api.currentUser.uid}
             <Card class="mb-6 p-4">
                 <h2 class="mb-3 text-xl font-semibold">
-                    {m.class_detail_invite()}
+                    {m.course_detail_invite()}
                 </h2>
                 <p class="mb-2 text-sm text-gray-600">
-                    {m.class_detail_share_code()}
+                    {m.course_detail_share_code()}
                 </p>
                 <div class="flex items-center gap-2">
                     <code
                         class="flex-1 rounded bg-gray-100 px-3 py-2 font-mono text-lg"
                     >
-                        {classDoc.code}
+                        {courseDoc.code}
                     </code>
-                    <Button onclick={copyClassCode} color="light" size="sm">
+                    <Button onclick={copyCourseCode} color="light" size="sm">
                         {#if codeCopied}
                             <Check class="h-4 w-4" />
                         {:else}
@@ -203,22 +205,22 @@
                 <div class="flex items-center gap-2">
                     <ClipboardList class="h-6 w-6 text-blue-600" />
                     <h2 class="text-2xl font-semibold">
-                        {m.class_detail_assignments()}
+                        {m.course_detail_assignments()}
                     </h2>
                 </div>
-                {#if api.currentUser && classDoc.ownerId === api.currentUser.uid}
+                {#if api.currentUser && courseDoc.ownerId === api.currentUser.uid}
                     <Button
                         onclick={() => (showCreateAssignment = true)}
                         size="sm"
                     >
                         <Plus class="me-2 h-4 w-4" />
-                        {m.class_detail_create_assignment()}
+                        {m.course_detail_create_assignment()}
                     </Button>
                 {/if}
             </div>
             {#if assignments.length === 0}
                 <p class="py-4 text-center text-gray-600">
-                    {m.class_detail_no_assignments()}
+                    {m.course_detail_no_assignments()}
                 </p>
             {:else}
                 <div class="space-y-3">
@@ -257,12 +259,12 @@
             <div class="mb-4 flex items-center gap-2">
                 <Users class="h-6 w-6 text-green-600" />
                 <h2 class="text-2xl font-semibold">
-                    {m.class_detail_roster()}
+                    {m.course_detail_roster()}
                 </h2>
             </div>
             {#if roster.length === 0}
                 <p class="py-4 text-center text-gray-600">
-                    {m.classes_empty()}
+                    {m.courses_empty()}
                 </p>
             {:else}
                 <Table>
@@ -317,7 +319,7 @@
     dismissable={!creatingAssignment}
 >
     <h3 class="mb-4 text-xl font-semibold">
-        {m.class_detail_create_assignment()}
+        {m.course_detail_create_assignment()}
     </h3>
 
     <form

@@ -9,13 +9,31 @@ export const zAssignment = z
             .min(6)
             .max(128)
             .describe("Unique identifier for the assignment."),
-        classId: z
+        courseId: z
             .string()
             .max(128)
             .nullable()
+            .optional()
+            .default(null)
             .describe(
-                "Class ID if the assignment belongs to a class, otherwise null.",
+                "Course ID if the assignment belongs to a course, otherwise null.",
             ),
+        topicId: z
+            .string()
+            .max(128)
+            .nullable()
+            .optional()
+            .default(null)
+            .describe(
+                "Topic ID if the assignment belongs to a topic, otherwise null.",
+            ),
+        orderInTopic: z
+            .number()
+            .int()
+            .nullable()
+            .optional()
+            .default(null)
+            .describe("Optional ordering value within the topic."),
         title: z
             .string()
             .min(1)
@@ -34,6 +52,8 @@ export const zAssignment = z
         ),
         dueAt: zFirebaseTimestamp
             .nullable()
+            .optional()
+            .default(null)
             .describe("Due date, or null if there isn't one."),
         allowLate: z
             .boolean()
