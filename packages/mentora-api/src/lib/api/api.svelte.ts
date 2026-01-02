@@ -10,7 +10,6 @@ import { ProfileWatcher } from './profile.svelte.js';
 import type { ReactiveState } from './state.svelte.js';
 import { createState } from './state.svelte.js';
 import * as UsersModule from './users.js';
-import type { APIResult, QueryOptions } from './types.js';
 
 // Re-export types from base client
 export type {
