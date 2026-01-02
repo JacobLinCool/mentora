@@ -20,6 +20,8 @@ export const zSubmission = z
         ),
         submittedAt: zFirebaseTimestamp
             .nullable()
+            .optional()
+            .default(null)
             .describe(
                 "Timestamp when the student submitted their work, if submitted.",
             ),
@@ -29,11 +31,15 @@ export const zSubmission = z
         scoreCompletion: z
             .number()
             .nullable()
+            .optional()
+            .default(null)
             .describe("Completion-style score assigned by the grader."),
         notes: z
             .string()
             .max(10000)
             .nullable()
+            .optional()
+            .default(null)
             .describe("Optional instructor notes or feedback."),
     })
     .describe(

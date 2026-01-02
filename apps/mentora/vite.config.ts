@@ -1,7 +1,7 @@
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import devtoolsJson from "vite-plugin-devtools-json";
 
 export default defineConfig({
@@ -13,6 +13,6 @@ export default defineConfig({
             project: "./project.inlang",
             outdir: "./src/lib/paraglide",
             disableAsyncLocalStorage: !!process.env.CF_PAGES,
-        }),
+        }) as unknown as PluginOption,
     ],
 });

@@ -27,14 +27,14 @@ describe("Conversations Security Rules", () => {
         it("should allow students to read their own conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -43,7 +43,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -75,15 +75,15 @@ describe("Conversations Security Rules", () => {
         it("should allow instructors to read student conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const instructorId = "instructor222";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -91,8 +91,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -104,7 +104,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -136,15 +136,15 @@ describe("Conversations Security Rules", () => {
         it("should allow TAs to read student conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const taId = "ta333";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(taId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -152,8 +152,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(taId)
                     .set({
@@ -165,7 +165,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -197,15 +197,15 @@ describe("Conversations Security Rules", () => {
         it("should deny other students from reading conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const otherStudentId = "student444";
             const db = testEnv.authenticatedContext(otherStudentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -213,8 +213,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherStudentId)
                     .set({
@@ -226,7 +226,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -258,15 +258,15 @@ describe("Conversations Security Rules", () => {
         it("should deny non-class members from reading conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const nonMemberId = "nonmember999";
             const db = testEnv.authenticatedContext(nonMemberId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -275,7 +275,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -333,14 +333,14 @@ describe("Conversations Security Rules", () => {
 
         it("should allow querying empty conversations by assignmentId for class instructors", async () => {
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const instructorId = "instructor999";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -348,8 +348,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -361,7 +361,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -387,15 +387,15 @@ describe("Conversations Security Rules", () => {
 
         it("should allow querying conversation by assignmentId and userId", async () => {
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const conversationId = "conversation123";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -404,7 +404,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -445,14 +445,14 @@ describe("Conversations Security Rules", () => {
         it("should allow students to create their own conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -461,7 +461,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -492,15 +492,15 @@ describe("Conversations Security Rules", () => {
         it("should deny students from creating conversations for other users", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const otherStudentId = "student444";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -509,7 +509,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -562,14 +562,14 @@ describe("Conversations Security Rules", () => {
         it("should allow students to update their own conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -578,7 +578,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -629,15 +629,15 @@ describe("Conversations Security Rules", () => {
         it("should allow instructors to update conversations (e.g., close them)", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const instructorId = "instructor222";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -645,8 +645,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -658,7 +658,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -696,15 +696,15 @@ describe("Conversations Security Rules", () => {
         it("should allow TAs to update conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const taId = "ta333";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(taId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -712,8 +712,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(taId)
                     .set({
@@ -725,7 +725,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -763,15 +763,15 @@ describe("Conversations Security Rules", () => {
         it("should deny other students from updating conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const otherStudentId = "student444";
             const db = testEnv.authenticatedContext(otherStudentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -779,8 +779,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(otherStudentId)
                     .set({
@@ -792,7 +792,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -829,14 +829,14 @@ describe("Conversations Security Rules", () => {
         it("should deny update if last turn's pendingStartAt is not null", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -845,7 +845,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -893,14 +893,14 @@ describe("Conversations Security Rules", () => {
         it("should deny all users from deleting conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -909,7 +909,7 @@ describe("Conversations Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -941,15 +941,15 @@ describe("Conversations Security Rules", () => {
         it("should deny instructors from deleting conversations", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const instructorId = "instructor222";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -957,8 +957,8 @@ describe("Conversations Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -970,7 +970,7 @@ describe("Conversations Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -1004,14 +1004,14 @@ describe("Conversations Security Rules", () => {
         it("should deny creating conversation with id exceeding 128 characters", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "TEST123",
                     ownerId: "owner123",
@@ -1020,8 +1020,8 @@ describe("Conversations Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -1034,7 +1034,7 @@ describe("Conversations Security Rules", () => {
 
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",
@@ -1068,14 +1068,14 @@ describe("Conversations Security Rules", () => {
         it("should allow creating conversation with id at 128 character limit", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "TEST123",
                     ownerId: "owner123",
@@ -1084,8 +1084,8 @@ describe("Conversations Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -1098,7 +1098,7 @@ describe("Conversations Security Rules", () => {
 
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",
@@ -1132,14 +1132,14 @@ describe("Conversations Security Rules", () => {
         it("should deny creating conversation with invalid state", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "TEST123",
                     ownerId: "owner123",
@@ -1148,8 +1148,8 @@ describe("Conversations Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -1162,7 +1162,7 @@ describe("Conversations Security Rules", () => {
 
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",
@@ -1193,14 +1193,14 @@ describe("Conversations Security Rules", () => {
         it("should deny creating conversation with turns exceeding 1000 items", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "TEST123",
                     ownerId: "owner123",
@@ -1209,8 +1209,8 @@ describe("Conversations Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -1223,7 +1223,7 @@ describe("Conversations Security Rules", () => {
 
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",
@@ -1263,14 +1263,14 @@ describe("Conversations Security Rules", () => {
         it("should allow creating conversation with turns at 1000 item limit", async () => {
             const conversationId = "conversation123";
             const assignmentId = "assignment456";
-            const classId = "class789";
+            const courseId = "class789";
             const studentId = "student111";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "TEST123",
                     ownerId: "owner123",
@@ -1279,8 +1279,8 @@ describe("Conversations Security Rules", () => {
                 });
 
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -1293,7 +1293,7 @@ describe("Conversations Security Rules", () => {
 
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",

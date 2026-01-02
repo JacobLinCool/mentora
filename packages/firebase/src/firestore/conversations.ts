@@ -49,9 +49,13 @@ export const zTurn = z
                 ),
             })
             .nullable()
+            .optional()
+            .default(null)
             .describe("Optional AI-generated analysis for the turn."),
         pendingStartAt: zFirebaseTimestamp
             .nullable()
+            .optional()
+            .default(null)
             .describe(
                 "Timestamp marking when the turn entered a pending state, if any.",
             ),

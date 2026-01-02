@@ -1,0 +1,36 @@
+{
+    "name": "mentora-cli",
+    "version": "0.1.0",
+    "type": "module",
+    "bin": {
+        "mentora": "./dist/index.js"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "lint": "tsc --noEmit"
+    },
+    "dependencies": {
+        "chalk": "^5.6.2",
+        "commander": "^14.0.2",
+        "conf": "^15.0.2",
+        "firebase": "^12.7.0",
+        "mentora-api": "workspace:*",
+        "mentora-firebase": "workspace:*",
+        "ora": "^9.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.4",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3"
+    }
+}

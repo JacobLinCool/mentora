@@ -13,10 +13,15 @@ export const zFirebaseTimestamp = z
     .describe("Milliseconds since the Unix epoch.");
 export type FirebaseTimestamp = z.infer<typeof zFirebaseTimestamp>;
 
-export const zClassMemberRole = z
-    .union([z.literal("student"), z.literal("ta"), z.literal("instructor")])
-    .describe("Role a user holds within a class roster.");
-export type ClassMemberRole = z.infer<typeof zClassMemberRole>;
+export const zCourseMemberRole = z
+    .union([
+        z.literal("student"),
+        z.literal("auditor"),
+        z.literal("ta"),
+        z.literal("instructor"),
+    ])
+    .describe("Role a user holds within a course roster.");
+export type CourseMemberRole = z.infer<typeof zCourseMemberRole>;
 
 export const zConversationState = z
     .union([

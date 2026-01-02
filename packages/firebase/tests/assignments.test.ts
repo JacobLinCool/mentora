@@ -26,14 +26,14 @@ describe("Assignments Security Rules", () => {
     describe("Read Access", () => {
         it("should allow class members to read class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -41,8 +41,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -54,7 +54,7 @@ describe("Assignments Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -85,7 +85,7 @@ describe("Assignments Security Rules", () => {
                     .doc(assignmentId)
                     .set({
                         id: assignmentId,
-                        classId: null,
+                        courseId: null,
                         title: "Standalone Assignment",
                         prompt: "Do something",
                         mode: "instant",
@@ -106,14 +106,14 @@ describe("Assignments Security Rules", () => {
 
         it("should deny non-members from reading class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const nonMemberId = "nonmember999";
             const db = testEnv.authenticatedContext(nonMemberId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -122,7 +122,7 @@ describe("Assignments Security Rules", () => {
                 });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -154,7 +154,7 @@ describe("Assignments Security Rules", () => {
                     .doc(assignmentId)
                     .set({
                         id: assignmentId,
-                        classId: null,
+                        courseId: null,
                         title: "Standalone Assignment",
                         prompt: "Do something",
                         mode: "instant",
@@ -178,7 +178,7 @@ describe("Assignments Security Rules", () => {
             const db = testEnv.authenticatedContext(userId).firestore();
 
             // Querying the entire assignments collection fails because rules require
-            // either classId (for membership check) or createdBy (for ownership check)
+            // either courseId (for membership check) or createdBy (for ownership check)
             await assertFails(db.collection("assignments").get());
         });
 
@@ -188,15 +188,15 @@ describe("Assignments Security Rules", () => {
             await assertFails(db.collection("assignments").get());
         });
 
-        it("should allow querying empty assignments by classId for class members", async () => {
-            const classId = "class456";
+        it("should allow querying empty assignments by courseId for class members", async () => {
+            const courseId = "class456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -204,8 +204,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -218,11 +218,11 @@ describe("Assignments Security Rules", () => {
                 // No assignments created - empty collection
             });
 
-            // Should succeed with empty result when filtering by classId
+            // Should succeed with empty result when filtering by courseId
             await assertSucceeds(
                 db
                     .collection("assignments")
-                    .where("classId", "==", classId)
+                    .where("courseId", "==", courseId)
                     .get(),
             );
         });
@@ -239,7 +239,7 @@ describe("Assignments Security Rules", () => {
                     .doc(assignmentId)
                     .set({
                         id: assignmentId,
-                        classId: null,
+                        courseId: null,
                         title: "Standalone Assignment",
                         prompt: "Do something",
                         mode: "instant",
@@ -263,15 +263,15 @@ describe("Assignments Security Rules", () => {
             expect(result.size).toBe(1);
         });
 
-        it("should deny querying assignments by classId for non-members", async () => {
-            const classId = "class456";
+        it("should deny querying assignments by courseId for non-members", async () => {
+            const courseId = "class456";
             const nonMemberId = "nonmember999";
             const db = testEnv.authenticatedContext(nonMemberId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -285,20 +285,20 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db
                     .collection("assignments")
-                    .where("classId", "==", classId)
+                    .where("courseId", "==", courseId)
                     .get(),
             );
         });
 
         it("should allow querying assignments with startAt filter and ordering", async () => {
-            const classId = "class456";
+            const courseId = "class456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -306,8 +306,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -325,7 +325,7 @@ describe("Assignments Security Rules", () => {
                     .doc("assign1")
                     .set({
                         id: "assign1",
-                        classId: classId,
+                        courseId: courseId,
                         title: "Future Assignment",
                         prompt: "Do something",
                         mode: "instant",
@@ -342,7 +342,7 @@ describe("Assignments Security Rules", () => {
                     .doc("assign2")
                     .set({
                         id: "assign2",
-                        classId: classId,
+                        courseId: courseId,
                         title: "Available Assignment",
                         prompt: "Do something",
                         mode: "instant",
@@ -360,7 +360,7 @@ describe("Assignments Security Rules", () => {
             const result = await assertSucceeds(
                 db
                     .collection("assignments")
-                    .where("classId", "==", classId)
+                    .where("courseId", "==", courseId)
                     .where("startAt", "<=", Date.now())
                     .orderBy("startAt", "desc")
                     .get(),
@@ -373,14 +373,14 @@ describe("Assignments Security Rules", () => {
     describe("Create Access", () => {
         it("should allow instructors to create class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const instructorId = "instructor789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -388,8 +388,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -404,7 +404,7 @@ describe("Assignments Security Rules", () => {
             await assertSucceeds(
                 db.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "New Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -421,14 +421,14 @@ describe("Assignments Security Rules", () => {
 
         it("should allow TAs to create class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const taId = "ta789";
             const db = testEnv.authenticatedContext(taId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -436,8 +436,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(taId)
                     .set({
@@ -452,7 +452,7 @@ describe("Assignments Security Rules", () => {
             await assertSucceeds(
                 db.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "New Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -475,7 +475,7 @@ describe("Assignments Security Rules", () => {
             await assertSucceeds(
                 db.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: null,
+                    courseId: null,
                     title: "Standalone Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -492,14 +492,14 @@ describe("Assignments Security Rules", () => {
 
         it("should deny students from creating class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -507,8 +507,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -523,7 +523,7 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Hacked Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -542,14 +542,14 @@ describe("Assignments Security Rules", () => {
     describe("Update Access", () => {
         it("should allow instructors to update class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const instructorId = "instructor789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -557,8 +557,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -570,7 +570,7 @@ describe("Assignments Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -594,14 +594,14 @@ describe("Assignments Security Rules", () => {
 
         it("should allow TAs to update class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const taId = "ta789";
             const db = testEnv.authenticatedContext(taId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -609,8 +609,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(taId)
                     .set({
@@ -622,7 +622,7 @@ describe("Assignments Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -656,7 +656,7 @@ describe("Assignments Security Rules", () => {
                     .doc(assignmentId)
                     .set({
                         id: assignmentId,
-                        classId: null,
+                        courseId: null,
                         title: "Standalone Assignment",
                         prompt: "Do something",
                         mode: "instant",
@@ -680,14 +680,14 @@ describe("Assignments Security Rules", () => {
 
         it("should deny students from updating class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -695,8 +695,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -708,7 +708,7 @@ describe("Assignments Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -733,14 +733,14 @@ describe("Assignments Security Rules", () => {
     describe("Delete Access", () => {
         it("should allow instructors to delete class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const instructorId = "instructor789";
             const db = testEnv.authenticatedContext(instructorId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -748,8 +748,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(instructorId)
                     .set({
@@ -761,7 +761,7 @@ describe("Assignments Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -792,7 +792,7 @@ describe("Assignments Security Rules", () => {
                     .doc(assignmentId)
                     .set({
                         id: assignmentId,
-                        classId: null,
+                        courseId: null,
                         title: "Standalone Assignment",
                         prompt: "Do something",
                         mode: "instant",
@@ -813,14 +813,14 @@ describe("Assignments Security Rules", () => {
 
         it("should deny students from deleting class-bound assignments", async () => {
             const assignmentId = "assignment123";
-            const classId = "class456";
+            const courseId = "class456";
             const studentId = "student789";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
-                await fs.collection("classes").doc(classId).set({
-                    id: classId,
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
                     title: "Test Class",
                     code: "ABC123",
                     ownerId: "owner999",
@@ -828,8 +828,8 @@ describe("Assignments Security Rules", () => {
                     updatedAt: Date.now(),
                 });
                 await fs
-                    .collection("classes")
-                    .doc(classId)
+                    .collection("courses")
+                    .doc(courseId)
                     .collection("roster")
                     .doc(studentId)
                     .set({
@@ -841,7 +841,7 @@ describe("Assignments Security Rules", () => {
                     });
                 await fs.collection("assignments").doc(assignmentId).set({
                     id: assignmentId,
-                    classId: classId,
+                    courseId: courseId,
                     title: "Test Assignment",
                     prompt: "Do something",
                     mode: "instant",
@@ -869,7 +869,7 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db.collection("assignments").doc("short").set({
                     id: "short",
-                    classId: null,
+                    courseId: null,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",
@@ -891,7 +891,7 @@ describe("Assignments Security Rules", () => {
             await assertSucceeds(
                 db.collection("assignments").doc("assign").set({
                     id: "assign",
-                    classId: null,
+                    courseId: null,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",
@@ -914,7 +914,7 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db.collection("assignments").doc(longId).set({
                     id: longId,
-                    classId: null,
+                    courseId: null,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "instant",
@@ -936,7 +936,7 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db.collection("assignments").doc("assignment123").set({
                     id: "assignment123",
-                    classId: null,
+                    courseId: null,
                     title: "",
                     prompt: "Do the work",
                     mode: "instant",
@@ -961,7 +961,7 @@ describe("Assignments Security Rules", () => {
                     .doc("assignment123")
                     .set({
                         id: "assignment123",
-                        classId: null,
+                        courseId: null,
                         title: "a".repeat(301),
                         prompt: "Do the work",
                         mode: "instant",
@@ -986,7 +986,7 @@ describe("Assignments Security Rules", () => {
                     .doc("assignment123")
                     .set({
                         id: "assignment123",
-                        classId: null,
+                        courseId: null,
                         title: "a".repeat(300),
                         prompt: "Do the work",
                         mode: "instant",
@@ -1008,7 +1008,7 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db.collection("assignments").doc("assignment123").set({
                     id: "assignment123",
-                    classId: null,
+                    courseId: null,
                     title: "Test Assignment",
                     prompt: "",
                     mode: "instant",
@@ -1033,7 +1033,7 @@ describe("Assignments Security Rules", () => {
                     .doc("assignment123")
                     .set({
                         id: "assignment123",
-                        classId: null,
+                        courseId: null,
                         title: "Test Assignment",
                         prompt: "a".repeat(50001),
                         mode: "instant",
@@ -1058,7 +1058,7 @@ describe("Assignments Security Rules", () => {
                     .doc("assignment123")
                     .set({
                         id: "assignment123",
-                        classId: null,
+                        courseId: null,
                         title: "Test Assignment",
                         prompt: "a".repeat(50000),
                         mode: "instant",
@@ -1080,7 +1080,7 @@ describe("Assignments Security Rules", () => {
             await assertFails(
                 db.collection("assignments").doc("assignment123").set({
                     id: "assignment123",
-                    classId: null,
+                    courseId: null,
                     title: "Test Assignment",
                     prompt: "Do the work",
                     mode: "invalid",
