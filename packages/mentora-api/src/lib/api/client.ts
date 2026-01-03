@@ -19,6 +19,8 @@ import * as AssignmentsModule from './assignments.js';
 import * as BackendModule from './backend.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
+import * as StatisticsModule from './statistics.js';
+import * as StreamingModule from './streaming.js';
 import * as SubmissionsModule from './submissions.js';
 import * as TopicsModule from './topics.js';
 import type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
@@ -212,6 +214,64 @@ export class MentoraClient {
 		getForAssignment: (assignmentId: string, userId?: string): Promise<APIResult<Conversation>> =>
 			this.authReadyThen(() =>
 				ConversationsModule.getAssignmentConversation(this._config, assignmentId, userId)
+			)
+	};
+
+	// ============ Streaming ============
+	streaming = {
+		createClient: (
+			conversationId: string,
+			handlers?: StreamingModule.StreamingEventHandlers
+		): StreamingModule.StreamingClient =>
+			StreamingModule.createStreamingClient(this._config, conversationId, handlers),
+		getSession: (
+			sessionId: string
+		): Promise<APIResult<import('mentora-firebase').StreamingSession>> =>
+			this.authReadyThen(() => StreamingModule.getStreamingSession(this._config, sessionId))
+	};
+
+	// ============ Statistics ============
+	statistics = {
+		getForAssignment: (
+			assignmentId: string
+		): Promise<APIResult<StatisticsModule.AssignmentStatistics>> =>
+			this.authReadyThen(() =>
+				StatisticsModule.getAssignmentStatistics(this._config, assignmentId)
+			),
+		getForCourse: (courseId: string): Promise<APIResult<StatisticsModule.CourseStatistics>> =>
+			this.authReadyThen(() => StatisticsModule.getCourseStatistics(this._config, courseId)),
+		getStudentProgress: (
+			courseId: string
+		): Promise<APIResult<StatisticsModule.StudentProgress[]>> =>
+			this.authReadyThen(() => StatisticsModule.getCourseStudentProgress(this._config, courseId)),
+		exportAssignment: (assignmentId: string): Promise<APIResult<Blob>> =>
+			this.authReadyThen(() =>
+				StatisticsModule.exportAssignmentStatistics(this._config, assignmentId)
+			),
+		getConversationAnalytics: (
+			conversationId: string
+		): Promise<
+			APIResult<{
+				conversation: Conversation;
+				analytics: {
+					totalTurns: number;
+					userTurns: number;
+					aiTurns: number;
+					averageResponseLength: number;
+					stanceProgression: Array<{ turnId: string; stance: string | null }>;
+					strategiesUsed: string[];
+					duration: number;
+				};
+			}>
+		> =>
+			this.authReadyThen(() =>
+				StatisticsModule.getConversationAnalytics(this._config, conversationId)
+			),
+		getCompletionStatus: (
+			assignmentId: string
+		): Promise<APIResult<StatisticsModule.CompletionStatus>> =>
+			this.authReadyThen(() =>
+				StatisticsModule.getAssignmentCompletionStatus(this._config, assignmentId)
 			)
 	};
 

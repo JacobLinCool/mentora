@@ -11,6 +11,7 @@
     },
     "scripts": {
         "build": "tsup",
+        "dev": "tsup --watch",
         "deploy": "firebase --project $FIREBASE_PROJECT_ID deploy --only firestore:rules,firestore:indexes",
         "test": "firebase emulators:exec --only firestore 'vitest run'",
         "test:watch": "firebase emulators:exec --only firestore 'vitest --watch'",

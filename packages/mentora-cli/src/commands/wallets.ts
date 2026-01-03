@@ -9,6 +9,7 @@ import {
     info,
     outputData,
     outputList,
+    success,
 } from "../utils/output.js";
 
 export function createWalletsCommand(
@@ -21,9 +22,18 @@ export function createWalletsCommand(
     wallets
         .command("me")
         .description("Get my wallet")
-        .action(async () => {
+        .option("--ledger", "Include ledger entries")
+        .option("-l, --limit <n>", "Limit ledger entries", parseInt, 20)
+        .action(async (options: { ledger?: boolean; limit?: number }) => {
             const client = await getClient();
-            const result = await client.wallets.getMine();
+            const params = new URLSearchParams();
+            if (options.ledger) {
+                params.set("includeLedger", "true");
+                params.set("ledgerLimit", (options.limit || 20).toString());
+            }
+            const result = await client.backend.call(
+                `/api/wallets/me?${params.toString()}`,
+            );
             if (result.success) {
                 if (result.data) {
                     outputData(result.data);
@@ -35,6 +45,36 @@ export function createWalletsCommand(
                 process.exit(1);
             }
         });
+
+    wallets
+        .command("add-credits")
+        .description("Add credits to my wallet")
+        .argument("<amount>", "Amount of credits to add")
+        .option("--idempotency-key <key>", "Idempotency key for deduplication")
+        .action(
+            async (amount: string, options: { idempotencyKey?: string }) => {
+                const client = await getClient();
+                const result = await client.backend.call<{
+                    message: string;
+                    newBalance: number;
+                }>("/api/wallets/me/credits", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        amount: parseFloat(amount),
+                        idempotencyKey: options.idempotencyKey,
+                    }),
+                });
+                if (result.success) {
+                    success(`${result.data.message}`);
+                    console.log(
+                        `New balance: ${result.data.newBalance} credits`,
+                    );
+                } else {
+                    error(result.error);
+                    process.exit(1);
+                }
+            },
+        );
 
     wallets
         .command("get")

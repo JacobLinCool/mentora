@@ -112,5 +112,128 @@ export function createAssignmentsCommand(
             },
         );
 
+    assignments
+        .command("update")
+        .description("Update an assignment")
+        .argument("<assignmentId>", "Assignment ID")
+        .option("--title <title>", "Assignment title")
+        .option("--prompt <prompt>", "Assignment prompt")
+        .option("--due <timestamp>", "Due date (ISO date or Unix timestamp)")
+        .option("--allow-late", "Allow late submissions")
+        .option("--no-allow-late", "Disallow late submissions")
+        .action(
+            async (
+                assignmentId: string,
+                options: {
+                    title?: string;
+                    prompt?: string;
+                    due?: string;
+                    allowLate?: boolean;
+                },
+            ) => {
+                const client = await getClient();
+                const updates: Record<string, unknown> = {};
+                if (options.title) updates.title = options.title;
+                if (options.prompt) updates.prompt = options.prompt;
+                if (options.due) {
+                    const parsed = Date.parse(options.due);
+                    updates.dueAt = isNaN(parsed)
+                        ? parseInt(options.due, 10)
+                        : parsed;
+                }
+                if (options.allowLate !== undefined)
+                    updates.allowLate = options.allowLate;
+
+                if (Object.keys(updates).length === 0) {
+                    error("No updates provided.");
+                    process.exit(1);
+                }
+
+                const result = await client.backend.call(
+                    `/api/assignments/${assignmentId}`,
+                    {
+                        method: "PATCH",
+                        body: JSON.stringify(updates),
+                    },
+                );
+                if (result.success) {
+                    success("Assignment updated successfully.");
+                    outputData(result.data);
+                } else {
+                    error(result.error);
+                    process.exit(1);
+                }
+            },
+        );
+
+    assignments
+        .command("delete")
+        .description("Delete an assignment")
+        .argument("<assignmentId>", "Assignment ID")
+        .action(async (assignmentId: string) => {
+            const client = await getClient();
+            const result = await client.backend.call(
+                `/api/assignments/${assignmentId}`,
+                {
+                    method: "DELETE",
+                },
+            );
+            if (result.success) {
+                success("Assignment deleted successfully.");
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
+
+    assignments
+        .command("preview")
+        .description("Preview AI response for an assignment")
+        .argument("<assignmentId>", "Assignment ID")
+        .argument("<message>", "Test message to send")
+        .action(async (assignmentId: string, message: string) => {
+            const client = await getClient();
+            const result = await client.backend.call<{
+                response: string;
+                strategy: string;
+                estimatedTokens: number;
+                estimatedCost: number;
+            }>(`/api/assignments/${assignmentId}/preview`, {
+                method: "POST",
+                body: JSON.stringify({ testMessage: message }),
+            });
+            if (result.success) {
+                console.log("\n🤖 AI Response:\n");
+                console.log(result.data.response);
+                console.log(`\n📊 Strategy: ${result.data.strategy}`);
+                console.log(
+                    `📈 Estimated tokens: ${result.data.estimatedTokens}`,
+                );
+                console.log(
+                    `💰 Estimated cost: $${result.data.estimatedCost.toFixed(4)}`,
+                );
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
+
+    assignments
+        .command("statistics")
+        .description("Get assignment statistics")
+        .argument("<assignmentId>", "Assignment ID")
+        .action(async (assignmentId: string) => {
+            const client = await getClient();
+            const result = await client.backend.call(
+                `/api/assignments/${assignmentId}/statistics`,
+            );
+            if (result.success) {
+                outputData(result.data);
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
+
     return assignments;
 }

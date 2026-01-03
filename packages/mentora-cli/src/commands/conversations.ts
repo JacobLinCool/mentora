@@ -3,14 +3,41 @@
  */
 import { Command } from "commander";
 import type { MentoraCLIClient } from "../client.js";
-import { error, outputData } from "../utils/output.js";
+import { error, info, outputData, success } from "../utils/output.js";
 
 export function createConversationsCommand(
     getClient: () => Promise<MentoraCLIClient>,
 ): Command {
     const conversations = new Command("conversations").description(
-        "View conversations",
+        "View and manage conversations",
     );
+
+    conversations
+        .command("list")
+        .description("List my conversations")
+        .option("--assignment <assignmentId>", "Filter by assignment ID")
+        .option("-l, --limit <n>", "Limit number of results", parseInt)
+        .action(async (options: { assignment?: string; limit?: number }) => {
+            const client = await getClient();
+            const params = new URLSearchParams();
+            if (options.assignment)
+                params.set("assignmentId", options.assignment);
+            if (options.limit) params.set("limit", options.limit.toString());
+
+            const result = await client.backend.call<{
+                conversations: unknown[];
+            }>(`/api/conversations?${params.toString()}`);
+            if (result.success) {
+                if (result.data.conversations.length === 0) {
+                    info("No conversations found.");
+                } else {
+                    outputData(result.data.conversations);
+                }
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
 
     conversations
         .command("get")
@@ -21,6 +48,33 @@ export function createConversationsCommand(
             const result = await client.conversations.get(conversationId);
             if (result.success) {
                 outputData(result.data);
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
+
+    conversations
+        .command("create")
+        .description("Create a new conversation for an assignment")
+        .argument("<assignmentId>", "Assignment ID")
+        .action(async (assignmentId: string) => {
+            const client = await getClient();
+            const result = await client.backend.call<{
+                id: string;
+                state: string;
+                isExisting: boolean;
+            }>("/api/conversations", {
+                method: "POST",
+                body: JSON.stringify({ assignmentId }),
+            });
+            if (result.success) {
+                if (result.data.isExisting) {
+                    info(`Existing conversation found: ${result.data.id}`);
+                } else {
+                    success(`Conversation created: ${result.data.id}`);
+                }
+                console.log(`State: ${result.data.state}`);
             } else {
                 error(result.error);
                 process.exit(1);
@@ -40,6 +94,41 @@ export function createConversationsCommand(
             );
             if (result.success) {
                 outputData(result.data);
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
+
+    conversations
+        .command("end")
+        .description("End a conversation")
+        .argument("<conversationId>", "Conversation ID")
+        .action(async (conversationId: string) => {
+            const client = await getClient();
+            const result = await client.backend.call(
+                `/api/conversations/${conversationId}/end`,
+                { method: "POST" },
+            );
+            if (result.success) {
+                success("Conversation ended successfully.");
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
+
+    conversations
+        .command("summary")
+        .description("Get AI-generated summary of a conversation")
+        .argument("<conversationId>", "Conversation ID")
+        .action(async (conversationId: string) => {
+            const client = await getClient();
+            const result = await client.backend.call<{ summary: unknown }>(
+                `/api/conversations/${conversationId}/summary`,
+            );
+            if (result.success) {
+                outputData(result.data.summary);
             } else {
                 error(result.error);
                 process.exit(1);
