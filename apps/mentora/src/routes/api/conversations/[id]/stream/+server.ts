@@ -143,7 +143,7 @@ export const POST: RequestHandler = async (event) => {
 
                 // Call Gemini with streaming
                 const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
                     {
                         method: "POST",
                         headers: {

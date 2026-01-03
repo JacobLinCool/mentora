@@ -1,23 +1,42 @@
 <script lang="ts">
 	// Prompt Lab - Test and refine LLM prompts
+	import { subscribeToAuth, type AuthState } from '$lib/explorer/firebase';
+	import {
+		quickStartConfigs,
+		samplePrompts,
+		sampleStudentMessages,
+		sampleAssignments,
+		type QuickStartConfig
+	} from '$lib/explorer/test-fixtures';
+	import { onMount, onDestroy } from 'svelte';
+
+	// Auth state
+	let authState = $state<AuthState>({
+		user: null,
+		token: null,
+		loading: true,
+		error: null
+	});
+	let unsubscribe: (() => void) | null = null;
+
+	onMount(() => {
+		unsubscribe = subscribeToAuth((state) => {
+			authState = state;
+		});
+	});
+
+	onDestroy(() => {
+		unsubscribe?.();
+	});
 
 	// State
-	let systemPrompt =
-		$state(`You are a Socratic dialogue AI tutor. Your goal is to help students think critically about complex topics through thoughtful questioning.
-
-Guidelines:
-- Ask probing questions rather than giving direct answers
-- Challenge assumptions and encourage deeper thinking
-- Use one of these dialectical strategies: clarify, challenge, or devil's advocate
-- Keep responses concise but thought-provoking`);
-
+	let systemPrompt = $state(samplePrompts.socraticDefault);
 	let studentMessage = $state('I believe technology is making us more connected but less human.');
 	let dialecticalStrategy = $state<'clarify' | 'challenge' | 'devils_advocate'>('challenge');
 	let conversationHistory = $state<Array<{ role: 'user' | 'model'; text: string }>>([]);
 
 	let baseUrl = $state('http://localhost:5173');
-	let authToken = $state('');
-	let assignmentId = $state('');
+	let selectedAssignment = $state(sampleAssignments[0]);
 
 	// Response state
 	let isLoading = $state(false);
@@ -25,59 +44,19 @@ Guidelines:
 	let tokenUsage = $state<{ input: number; output: number } | null>(null);
 	let error = $state<string | null>(null);
 
-	// Preset prompts
+	// Preset prompts (use from test-fixtures)
 	const presetPrompts = [
-		{
-			name: 'Socratic Tutor (Default)',
-			prompt: `You are a Socratic dialogue AI tutor. Your goal is to help students think critically about complex topics through thoughtful questioning.
-
-Guidelines:
-- Ask probing questions rather than giving direct answers
-- Challenge assumptions and encourage deeper thinking
-- Use one of these dialectical strategies: clarify, challenge, or devil's advocate
-- Keep responses concise but thought-provoking`
-		},
-		{
-			name: 'Philosophy Guide',
-			prompt: `You are a philosophy guide leading a Socratic dialogue. Help students explore fundamental questions about existence, knowledge, ethics, and meaning.
-
-Your approach:
-- Use the Socratic method of questioning
-- Reference relevant philosophical traditions when appropriate
-- Help students recognize logical fallacies in their reasoning
-- Encourage students to define key terms precisely`
-		},
-		{
-			name: 'Critical Thinking Coach',
-			prompt: `You are a critical thinking coach. Your role is to help students develop stronger analytical skills through structured questioning.
-
-Focus areas:
-- Identify hidden assumptions
-- Evaluate evidence quality
-- Consider alternative perspectives
-- Recognize cognitive biases
-- Improve logical reasoning`
-		},
-		{
-			name: 'Debate Partner',
-			prompt: `You are a skilled debate partner. Take the opposing position to whatever the student argues, helping them strengthen their arguments.
-
-Rules:
-- Always argue the opposite position respectfully
-- Point out weaknesses in their reasoning
-- Provide counterarguments and counter-examples
-- Help them anticipate objections to their position`
-		}
+		{ name: 'Socratic Tutor', prompt: samplePrompts.socraticDefault },
+		{ name: 'Philosophy Guide', prompt: samplePrompts.philosophyGuide },
+		{ name: 'Critical Thinking', prompt: samplePrompts.criticalThinking },
+		{ name: 'Debate Partner', prompt: samplePrompts.debatePartner }
 	];
 
-	const sampleMessages = [
-		'I believe technology is making us more connected but less human.',
-		'Democracy is the best form of government for all societies.',
-		'Artificial intelligence will eventually replace most human jobs.',
-		'Climate change is primarily caused by human activities.',
-		'Social media does more harm than good to society.',
-		'Free will is an illusion - our choices are determined by prior causes.'
-	];
+	function loadQuickStart(config: QuickStartConfig) {
+		systemPrompt = config.systemPrompt;
+		studentMessage = config.studentMessage;
+		dialecticalStrategy = config.strategy;
+	}
 
 	function loadPreset(prompt: string) {
 		systemPrompt = prompt;
@@ -94,31 +73,29 @@ Rules:
 		tokenUsage = null;
 
 		try {
-			// Use the preview endpoint if assignmentId is provided
-			if (assignmentId) {
-				const res = await fetch(`${baseUrl}/api/assignments/${assignmentId}/preview`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-					},
-					body: JSON.stringify({
-						studentMessage,
-						strategy: dialecticalStrategy
-					})
-				});
+			// Use the preview endpoint with selected assignment
+			const res = await fetch(`${baseUrl}/api/assignments/${selectedAssignment.id}/preview`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...(authState.token ? { Authorization: `Bearer ${authState.token}` } : {})
+				},
+				body: JSON.stringify({
+					studentMessage,
+					strategy: dialecticalStrategy,
+					// Include custom prompt if modified from default
+					customPrompt: systemPrompt !== samplePrompts.socraticDefault ? systemPrompt : undefined
+				})
+			});
 
-				if (!res.ok) {
-					throw new Error(`API error: ${res.status} ${res.statusText}`);
-				}
-
-				const data = await res.json();
-				aiResponse = data.response?.text || data.text || JSON.stringify(data);
-				tokenUsage = data.response?.tokenUsage || data.tokenUsage;
-			} else {
-				// Direct test without assignment (simulated for demo)
-				aiResponse = `[Demo Mode - No API Call]\n\nTo test with actual AI responses:\n1. Enter an Assignment ID\n2. Provide your Auth Token\n3. Ensure the API server is running\n\nYour prompt would be:\n---\n${systemPrompt}\n---\n\nStudent message: "${studentMessage}"\nStrategy: ${dialecticalStrategy}`;
+			if (!res.ok) {
+				const errorData = await res.json().catch(() => ({}));
+				throw new Error(errorData.message || `API error: ${res.status} ${res.statusText}`);
 			}
+
+			const data = await res.json();
+			aiResponse = data.response?.text || data.text || JSON.stringify(data);
+			tokenUsage = data.response?.tokenUsage || data.tokenUsage;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Request failed';
 		} finally {
@@ -146,8 +123,25 @@ Rules:
 <div class="prompts-page">
 	<header class="page-header">
 		<h1>🤖 Prompt Lab</h1>
-		<p>Test and refine LLM prompts for Socratic dialogue</p>
+		<p>
+			Test and refine LLM prompts for Socratic dialogue {#if !authState.user}<span
+					class="auth-warning">⚠ 請先登入以測試 API</span
+				>{/if}
+		</p>
 	</header>
+
+	<!-- Quick Start -->
+	<div class="quick-start-section">
+		<h3>⚡ Quick Start</h3>
+		<div class="quick-start-grid">
+			{#each quickStartConfigs as config}
+				<button class="quick-start-card" onclick={() => loadQuickStart(config)}>
+					<span class="quick-start-name">{config.name}</span>
+					<span class="quick-start-desc">{config.description}</span>
+				</button>
+			{/each}
+		</div>
+	</div>
 
 	<div class="config-bar">
 		<div class="config-field">
@@ -155,17 +149,22 @@ Rules:
 			<input id="baseUrl" type="text" bind:value={baseUrl} />
 		</div>
 		<div class="config-field">
-			<label for="assignmentId">Assignment ID</label>
-			<input id="assignmentId" type="text" bind:value={assignmentId} placeholder="assignment_xyz" />
+			<label for="assignmentSelect">Assignment</label>
+			<select id="assignmentSelect" bind:value={selectedAssignment}>
+				{#each sampleAssignments as assignment}
+					<option value={assignment}>{assignment.name}</option>
+				{/each}
+			</select>
 		</div>
-		<div class="config-field auth-field">
-			<label for="authToken">Bearer Token</label>
-			<input
-				id="authToken"
-				type="password"
-				bind:value={authToken}
-				placeholder="Firebase ID token"
-			/>
+		<div class="config-field status-field">
+			<span class="status-label">認證狀態</span>
+			<div class="auth-status-display">
+				{#if authState.user}
+					<span class="status-indicator success">✓ {authState.user.displayName}</span>
+				{:else}
+					<span class="status-indicator warning">未登入</span>
+				{/if}
+			</div>
 		</div>
 	</div>
 
@@ -200,9 +199,10 @@ Rules:
 			</div>
 
 			<div class="sample-messages">
-				{#each sampleMessages as message}
-					<button class="sample-btn" onclick={() => loadSampleMessage(message)}>
-						"{message.substring(0, 40)}..."
+				{#each sampleStudentMessages as sample}
+					<button class="sample-btn" onclick={() => loadSampleMessage(sample.text)}>
+						<span class="sample-category">{sample.category}</span>
+						"{sample.text.substring(0, 35)}..."
 					</button>
 				{/each}
 			</div>
@@ -288,6 +288,61 @@ Rules:
 		margin: 0;
 	}
 
+	.auth-warning {
+		color: #f59e0b;
+		font-size: 0.875rem;
+		margin-left: 0.5rem;
+	}
+
+	.quick-start-section {
+		margin-bottom: 1.5rem;
+		padding: 1rem;
+		background: #1e293b;
+		border-radius: 8px;
+		border: 1px solid #334155;
+	}
+
+	.quick-start-section h3 {
+		font-size: 0.875rem;
+		color: #f8fafc;
+		margin: 0 0 0.75rem;
+	}
+
+	.quick-start-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		gap: 0.75rem;
+	}
+
+	.quick-start-card {
+		background: #0f172a;
+		border: 1px solid #334155;
+		border-radius: 6px;
+		padding: 0.75rem;
+		cursor: pointer;
+		text-align: left;
+		transition: all 0.15s ease;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.quick-start-card:hover {
+		border-color: #3b82f6;
+		background: #1e293b;
+	}
+
+	.quick-start-name {
+		color: #f8fafc;
+		font-weight: 500;
+		font-size: 0.875rem;
+	}
+
+	.quick-start-desc {
+		color: #64748b;
+		font-size: 0.75rem;
+	}
+
 	.config-bar {
 		display: flex;
 		gap: 1rem;
@@ -305,12 +360,14 @@ Rules:
 		gap: 0.25rem;
 	}
 
-	.config-field label {
+	.config-field label,
+	.config-field .status-label {
 		font-size: 0.75rem;
 		color: #64748b;
 	}
 
-	.config-field input {
+	.config-field input,
+	.config-field select {
 		background: #0f172a;
 		border: 1px solid #334155;
 		border-radius: 4px;
@@ -320,8 +377,30 @@ Rules:
 		width: 200px;
 	}
 
-	.auth-field input {
-		width: 300px;
+	.status-field {
+		flex: 1;
+	}
+
+	.auth-status-display {
+		padding: 0.5rem 0.75rem;
+		background: #0f172a;
+		border: 1px solid #334155;
+		border-radius: 4px;
+		font-size: 0.875rem;
+	}
+
+	.status-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.status-indicator.success {
+		color: #22c55e;
+	}
+
+	.status-indicator.warning {
+		color: #f59e0b;
 	}
 
 	.lab-layout {
@@ -407,17 +486,28 @@ Rules:
 	.sample-btn {
 		background: transparent;
 		border: 1px dashed #334155;
-		padding: 0.25rem 0.5rem;
+		padding: 0.5rem 0.75rem;
 		border-radius: 4px;
-		color: #64748b;
-		font-size: 0.7rem;
+		color: #94a3b8;
+		font-size: 0.75rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
+		text-align: left;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 
 	.sample-btn:hover {
 		border-color: #3b82f6;
 		color: #3b82f6;
+	}
+
+	.sample-category {
+		font-size: 0.65rem;
+		color: #64748b;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.action-buttons {

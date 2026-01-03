@@ -284,9 +284,9 @@ export function calculateTokenCost(
     inputTokens: number,
     outputTokens: number,
 ): number {
-    // Gemini 2.0 Flash pricing (approximate)
-    const inputCostPer1K = 0.000075; // $0.075 per 1M tokens
-    const outputCostPer1K = 0.0003; // $0.30 per 1M tokens
+    // Gemini 2.5 Flash pricing (approximate)
+    const inputCostPer1K = 1.0; // $1.0 per 1M tokens
+    const outputCostPer1K = 2.5; // $2.5 per 1M tokens
 
     const inputCost = (inputTokens / 1000) * inputCostPer1K;
     const outputCost = (outputTokens / 1000) * outputCostPer1K;
@@ -307,7 +307,7 @@ export async function generateAIResponse(
     inputTokens: number;
     outputTokens: number;
 }> {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     // Build contents array from history
     const contents = [

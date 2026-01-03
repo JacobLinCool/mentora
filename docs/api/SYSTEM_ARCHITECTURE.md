@@ -343,7 +343,7 @@ export async function GET({ params, request }) {
 ```typescript
 interface GeminiSessionConfig {
     // Model settings
-    model: "gemini-2.0-flash-exp";
+    model: "gemini-2.5-flash";
 
     // Audio config for voice conversations
     audioConfig?: {

@@ -4,3 +4,5 @@
  */
 
 export * from './api-spec.js';
+export * from './firebase.js';
+export * from './test-fixtures.js';

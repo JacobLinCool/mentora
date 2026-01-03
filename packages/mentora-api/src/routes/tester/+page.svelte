@@ -7,13 +7,34 @@
 		type APIEndpoint,
 		type APIParameter
 	} from '$lib/explorer/api-spec';
+	import { subscribeToAuth, type AuthState } from '$lib/explorer/firebase';
+	import { sampleCourses, sampleTopics, sampleAssignments } from '$lib/explorer/test-fixtures';
+	import { onMount, onDestroy } from 'svelte';
 
 	const endpointsByTag = getEndpointsByTag();
+
+	// Auth state
+	let authState = $state<AuthState>({
+		user: null,
+		token: null,
+		loading: true,
+		error: null
+	});
+	let unsubscribe: (() => void) | null = null;
+
+	onMount(() => {
+		unsubscribe = subscribeToAuth((state) => {
+			authState = state;
+		});
+	});
+
+	onDestroy(() => {
+		unsubscribe?.();
+	});
 
 	// State
 	let selectedEndpoint = $state<APIEndpoint | null>(null);
 	let baseUrl = $state('http://localhost:5173');
-	let authToken = $state('');
 
 	// Request state
 	let pathParams = $state<Record<string, string>>({});
@@ -27,6 +48,18 @@
 	);
 	let error = $state<string | null>(null);
 
+	// Preset ID mappings for quick fill
+	const presetIds: Record<string, { value: string; label: string }[]> = {
+		courseId: sampleCourses.map((c) => ({ value: c.id, label: c.name })),
+		topicId: sampleTopics.map((t) => ({ value: t.id, label: t.name })),
+		assignmentId: sampleAssignments.map((a) => ({ value: a.id, label: a.name })),
+		id: [
+			...sampleCourses.map((c) => ({ value: c.id, label: `Course: ${c.name}` })),
+			...sampleTopics.map((t) => ({ value: t.id, label: `Topic: ${t.name}` })),
+			...sampleAssignments.map((a) => ({ value: a.id, label: `Assignment: ${a.name}` }))
+		]
+	};
+
 	function selectEndpoint(endpoint: APIEndpoint) {
 		selectedEndpoint = endpoint;
 		pathParams = {};
@@ -35,9 +68,11 @@
 		response = null;
 		error = null;
 
-		// Initialize params with defaults
+		// Initialize params with defaults or presets
 		endpoint.pathParams?.forEach((p: APIParameter) => {
-			pathParams[p.name] = '';
+			// Try to use preset if available
+			const preset = presetIds[p.name]?.[0];
+			pathParams[p.name] = preset?.value || '';
 		});
 		endpoint.queryParams?.forEach((p: APIParameter) => {
 			if (p.default !== undefined) {
@@ -81,8 +116,9 @@
 				'Content-Type': 'application/json'
 			};
 
-			if (authToken) {
-				headers['Authorization'] = `Bearer ${authToken}`;
+			// Use token from auth state (Google Sign-in)
+			if (authState.token) {
+				headers['Authorization'] = `Bearer ${authState.token}`;
 			}
 
 			const options: RequestInit = {
@@ -129,7 +165,11 @@
 <div class="tester-page">
 	<header class="page-header">
 		<h1>🧪 API Tester</h1>
-		<p>Test API endpoints with live requests</p>
+		<p>
+			Test API endpoints with live requests {#if authState.user}<span class="auth-hint"
+					>✓ 已登入，Token 會自動帶入</span
+				>{:else}<span class="auth-warning">⚠ 請先登入以測試需要認證的 API</span>{/if}
+		</p>
 	</header>
 
 	<div class="config-bar">
@@ -137,14 +177,17 @@
 			<label for="baseUrl">Base URL</label>
 			<input id="baseUrl" type="text" bind:value={baseUrl} placeholder="http://localhost:5173" />
 		</div>
-		<div class="config-field auth-field">
-			<label for="authToken">Bearer Token</label>
-			<input
-				id="authToken"
-				type="password"
-				bind:value={authToken}
-				placeholder="Firebase ID token"
-			/>
+		<div class="config-field status-field">
+			<span class="status-label">認證狀態</span>
+			<div class="auth-status-display">
+				{#if authState.user}
+					<span class="status-indicator success"
+						>✓ {authState.user.displayName || authState.user.email}</span
+					>
+				{:else}
+					<span class="status-indicator warning">未登入 - 請使用上方 Google 登入</span>
+				{/if}
+			</div>
 		</div>
 	</div>
 
@@ -200,12 +243,28 @@
 										{param.name}
 										{#if param.required}<span class="required">*</span>{/if}
 									</label>
-									<input
-										id="path-{param.name}"
-										type="text"
-										bind:value={pathParams[param.name]}
-										placeholder={param.description}
-									/>
+									<div class="input-with-presets">
+										<input
+											id="path-{param.name}"
+											type="text"
+											bind:value={pathParams[param.name]}
+											placeholder={param.description}
+										/>
+										{#if presetIds[param.name]}
+											<select
+												class="preset-select"
+												onchange={(e) => {
+													const target = e.target as HTMLSelectElement;
+													if (target.value) pathParams[param.name] = target.value;
+												}}
+											>
+												<option value="">📋 Presets</option>
+												{#each presetIds[param.name] as preset}
+													<option value={preset.value}>{preset.label}</option>
+												{/each}
+											</select>
+										{/if}
+									</div>
 								</div>
 							{/each}
 						</div>
@@ -317,7 +376,8 @@
 		gap: 0.25rem;
 	}
 
-	.config-field label {
+	.config-field label,
+	.config-field .status-label {
 		font-size: 0.75rem;
 		color: #64748b;
 	}
@@ -331,10 +391,6 @@
 		font-family: 'SF Mono', Monaco, monospace;
 		font-size: 0.875rem;
 		width: 300px;
-	}
-
-	.auth-field input {
-		width: 400px;
 	}
 
 	.tester-layout {
@@ -611,5 +667,67 @@
 	.empty-state p {
 		color: #64748b;
 		margin: 0;
+	}
+
+	.auth-hint {
+		color: #22c55e;
+		font-size: 0.875rem;
+		margin-left: 0.5rem;
+	}
+
+	.auth-warning {
+		color: #f59e0b;
+		font-size: 0.875rem;
+		margin-left: 0.5rem;
+	}
+
+	.status-field {
+		flex: 1;
+	}
+
+	.auth-status-display {
+		padding: 0.5rem 0.75rem;
+		background: #0f172a;
+		border: 1px solid #334155;
+		border-radius: 4px;
+		font-size: 0.875rem;
+	}
+
+	.status-indicator {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.status-indicator.success {
+		color: #22c55e;
+	}
+
+	.status-indicator.warning {
+		color: #f59e0b;
+	}
+
+	.input-with-presets {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.input-with-presets input {
+		flex: 1;
+	}
+
+	.preset-select {
+		background: #334155;
+		border: 1px solid #475569;
+		border-radius: 4px;
+		padding: 0.5rem;
+		color: #e2e8f0;
+		font-size: 0.75rem;
+		cursor: pointer;
+		min-width: 100px;
+	}
+
+	.preset-select:hover {
+		background: #475569;
 	}
 </style>

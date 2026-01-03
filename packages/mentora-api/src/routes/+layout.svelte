@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import AuthBar from '$lib/components/AuthBar.svelte';
 
 	interface Props {
 		children: Snippet;
@@ -11,7 +12,8 @@
 		{ href: '/', label: 'Home', icon: '🏠' },
 		{ href: '/docs', label: 'API Docs', icon: '📖' },
 		{ href: '/tester', label: 'API Tester', icon: '🧪' },
-		{ href: '/prompts', label: 'Prompt Lab', icon: '🤖' }
+		{ href: '/prompts', label: 'Prompt Lab', icon: '🤖' },
+		{ href: '/voice', label: 'Voice Chat', icon: '🎙️' }
 	];
 </script>
 
@@ -38,9 +40,14 @@
 		</div>
 	</nav>
 
-	<main class="content">
-		{@render children()}
-	</main>
+	<div class="main-area">
+		<header class="top-bar">
+			<AuthBar />
+		</header>
+		<main class="content">
+			{@render children()}
+		</main>
+	</div>
 </div>
 
 <style>
@@ -131,8 +138,23 @@
 
 	.content {
 		flex: 1;
-		margin-left: 240px;
 		padding: 2rem;
-		min-height: 100vh;
+		min-height: calc(100vh - 60px);
+	}
+
+	.main-area {
+		flex: 1;
+		margin-left: 240px;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.top-bar {
+		padding: 1rem 2rem;
+		border-bottom: 1px solid #334155;
+		background: #0f172a;
+		position: sticky;
+		top: 0;
+		z-index: 10;
 	}
 </style>
