@@ -1,67 +1,125 @@
 @import "tailwindcss";
+
 @plugin "@tailwindcss/typography";
-
 @plugin "flowbite/plugin";
-
-@custom-variant dark (&:where(.dark, .dark *));
+@source "../node_modules/flowbite-svelte/dist";
 
 @theme {
-    /* Primary — Knowledge Blue: stability, focus, trust */
-    --color-primary-50: #f3f8ff;
-    --color-primary-100: #e1effe;
-    --color-primary-200: #c3defd;
-    --color-primary-300: #93c5fd;
-    --color-primary-400: #60a5fa;
-    --color-primary-500: #3b82f6; /* main brand blue */
-    --color-primary-600: #2563eb;
-    --color-primary-700: #1d4ed8;
-    --color-primary-800: #1e40af;
-    --color-primary-900: #1e3a8a;
+    /* --- 1. Typography: The Voice --- */
+    /* Authority and Elegance */
+    --font-serif: "Playfair Display", serif;
+    /* Logic and Clarity */
+    --font-sans: "Outfit", sans-serif;
 
-    /* Secondary — Growth Green: motivation, progress, creativity */
-    --color-secondary-50: #f3faf7;
-    --color-secondary-100: #def7ec;
-    --color-secondary-200: #bcf0da;
-    --color-secondary-300: #84e1bc;
-    --color-secondary-400: #31c48d;
-    --color-secondary-500: #10b981; /* mint-emerald hybrid */
-    --color-secondary-600: #059669;
-    --color-secondary-700: #047857;
-    --color-secondary-800: #065f46;
-    --color-secondary-900: #064e3b;
+    /* --- 2. Color Palette: Cosmic Wisdom --- */
+    /* Deep Space Backgrounds */
+    --color-canvas-deep: #0f172a; /* Slate-900 */
+    --color-canvas-accent: #1e1b4b; /* Indigo-950 */
 
-    /* Accent — Warm Coral: energy, human connection, call-to-action */
-    --color-accent-50: #fff5f3;
-    --color-accent-100: #ffe3de;
-    --color-accent-200: #ffc8c0;
-    --color-accent-300: #ffa094;
-    --color-accent-400: #ff7a6a;
-    --color-accent-500: #f87171; /* friendly CTA pink-coral */
-    --color-accent-600: #ef4444;
-    --color-accent-700: #dc2626;
-    --color-accent-800: #b91c1c;
-    --color-accent-900: #991b1b;
+    /* Glassmorphism System */
+    --color-glass-surface: rgba(255, 255, 255, 0.03);
+    --color-glass-border: rgba(255, 255, 255, 0.08);
+    --color-glass-highlight: rgba(255, 255, 255, 0.12);
 
-    /* Neutral — Calm Grays for typography and surfaces */
-    --color-neutral-50: #f9fafb;
-    --color-neutral-100: #f3f4f6;
-    --color-neutral-200: #e5e7eb;
-    --color-neutral-300: #d1d5db;
-    --color-neutral-400: #9ca3af;
-    --color-neutral-500: #6b7280;
-    --color-neutral-600: #4b5563;
-    --color-neutral-700: #374151;
-    --color-neutral-800: #1f2937;
-    --color-neutral-900: #111827;
+    /* Brand Accents */
+    --color-brand-gold: #fbbf24; /* Amber-400 */
+    --color-brand-silver: #cbd5e1; /* Slate-300 */
 
-    /* Semantic colors for feedback */
+    /* Status Indicators */
+    --color-status-success: #10b981;
+    --color-status-error: #ef4444;
+
+    /* Text Levels */
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+
+    /* --- 3. Animations: Organic Life --- */
+    --animate-float: float 20s infinite ease-in-out;
+    --animate-float-delayed: float 20s infinite ease-in-out -5s;
+    --animate-slide-up: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-scale-in: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --animate-spin-slow: spin 1s linear infinite;
+
+    /* --- 4. Custom Utilities --- */
+    /* Metallic Text Gradient */
+    --background-image-metallic: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+
+    /* --- 5. Flowbite Integration (Mapped to Cosmic Theme) --- */
+    /* Primary = Brand Gold (Amber Scale) */
+    --color-primary-50: #fffbeb;
+    --color-primary-100: #fef3c7;
+    --color-primary-200: #fde68a;
+    --color-primary-300: #fcd34d;
+    --color-primary-400: #fbbf24; /* Brand Gold */
+    --color-primary-500: #f59e0b;
+    --color-primary-600: #d97706;
+    --color-primary-700: #b45309;
+    --color-primary-800: #92400e;
+    --color-primary-900: #78350f;
+
+    /* Gray = Slate (Canvas Scale) */
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+
+    /* Semantic colors for feedback (from original Flowbite block) */
     --color-success: #16a34a;
     --color-warning: #f59e0b;
     --color-danger: #dc2626;
     --color-info: #0ea5e9;
 }
 
-@source "../node_modules/flowbite-svelte/dist";
+/* --- Keyframes Definition (Standard CSS) --- */
+@keyframes float {
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+    50% {
+        transform: translate(30px, 50px);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Optional: Custom Utility Class for Glass Card reuse */
+@utility card-glass {
+    @apply bg-glass-surface border-glass-border border shadow-2xl backdrop-blur-[20px];
+}
+
+body {
+    @apply bg-canvas-deep text-text-primary font-sans antialiased;
+}
+
+/* Helper to force dark mode styles if Flowbite relies on class="dark" */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
     /* disable chrome cancel button */
@@ -76,5 +134,4 @@ body {
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
 }

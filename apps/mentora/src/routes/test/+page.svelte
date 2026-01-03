@@ -3,6 +3,7 @@
     import PageHead from "$lib/components/PageHead.svelte";
 
     const data = $derived(api.data);
+    // eslint-disable-next-line svelte/no-inspect
     $inspect(data);
 </script>
 

@@ -77,7 +77,7 @@
 
             <div class="space-y-4">
                 <div class="flex items-start gap-4 rounded-lg bg-gray-50 p-4">
-                    <Mic class="h-6 w-6 flex-shrink-0 text-purple-600" />
+                    <Mic class="h-6 w-6 shrink-0 text-purple-600" />
                     <div class="flex-1">
                         <h4 class="mb-1 font-semibold">
                             {m.landing_pricing_transcribe_title()}
@@ -92,7 +92,7 @@
                 </div>
 
                 <div class="flex items-start gap-4 rounded-lg bg-gray-50 p-4">
-                    <Zap class="h-6 w-6 flex-shrink-0 text-green-600" />
+                    <Zap class="h-6 w-6 shrink-0 text-green-600" />
                     <div class="flex-1">
                         <h4 class="mb-1 font-semibold">
                             {m.landing_pricing_conversation_title()}

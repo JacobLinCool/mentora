@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { m } from "$lib/paraglide/messages";
     import { api } from "$lib";
     import type { CourseDoc } from "$lib/api";
@@ -14,7 +15,8 @@
         Label,
     } from "flowbite-svelte";
     import { BookOpen, Plus } from "@lucide/svelte";
-    import PageHead from "$lib/components/PageHead.svelte";
+
+    import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
 
     let ownedCourses = $state<CourseDoc[]>([]);
     let enrolledCourses = $state<CourseDoc[]>([]);
@@ -90,8 +92,8 @@
             showCreateModal = false;
             await loadCourses();
             // Navigate to the new course
-            // eslint-disable-next-line svelte/no-navigation-without-resolve
-            goto(`/courses/${result.data}`);
+
+            goto(resolve(`/courses/${result.data}`));
         } else {
             createError = result.error;
         }
@@ -104,118 +106,123 @@
     });
 </script>
 
-<PageHead
-    title={m.page_courses_title()}
-    description={m.page_courses_description()}
-/>
-
-<div class="mx-auto max-w-6xl">
-    <div class="mb-6 flex items-center justify-between">
-        <h1 class="text-3xl font-bold">{m.courses_title()}</h1>
-        <Button onclick={() => (showCreateModal = true)}>
-            <Plus class="me-2 h-4 w-4" />
-            {m.courses_create()}
-        </Button>
-    </div>
-
-    <!-- Join by Code -->
-    <Card class="mb-6 p-4">
-        <h2 class="mb-4 text-xl font-semibold">{m.courses_join_by_code()}</h2>
-        <div class="flex gap-2">
-            <Input
-                bind:value={joinCode}
-                placeholder={m.courses_code_placeholder()}
-                disabled={joining}
-                class="flex-1"
-            />
-            <Button
-                onclick={handleJoinCourse}
-                disabled={joining || !joinCode.trim()}
-            >
-                {#if joining}
-                    <Spinner size="4" class="me-2" />
-                {/if}
-                {m.courses_join()}
+<BaseLayout>
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-6 flex items-center justify-between">
+            <h1 class="text-3xl font-bold">{m.courses_title()}</h1>
+            <Button onclick={() => (showCreateModal = true)}>
+                <Plus class="me-2 h-4 w-4" />
+                {m.courses_create()}
             </Button>
         </div>
-        {#if joinError}
-            <Alert color="red" class="mt-2">{joinError}</Alert>
+
+        <!-- Join by Code -->
+        <Card class="mb-6 p-4">
+            <h2 class="mb-4 text-xl font-semibold">
+                {m.courses_join_by_code()}
+            </h2>
+            <div class="flex gap-2">
+                <Input
+                    bind:value={joinCode}
+                    placeholder={m.courses_code_placeholder()}
+                    disabled={joining}
+                    class="flex-1"
+                />
+                <Button
+                    onclick={handleJoinCourse}
+                    disabled={joining || !joinCode.trim()}
+                >
+                    {#if joining}
+                        <Spinner size="4" class="me-2" />
+                    {/if}
+                    {m.courses_join()}
+                </Button>
+            </div>
+            {#if joinError}
+                <Alert color="red" class="mt-2">{joinError}</Alert>
+            {/if}
+        </Card>
+
+        {#if loading}
+            <div class="py-12 text-center">
+                <Spinner size="12" />
+                <p class="mt-4 text-gray-600">{m.courses_loading()}</p>
+            </div>
+        {:else if error}
+            <Alert color="red">{m.courses_error()}: {error}</Alert>
+        {:else}
+            <!-- Owned Courses -->
+            <div class="mb-8">
+                <h2 class="mb-4 text-2xl font-semibold">{m.courses_owned()}</h2>
+                {#if ownedCourses.length === 0}
+                    <Card class="p-4">
+                        <p class="py-4 text-center text-gray-600">
+                            {m.courses_empty()}
+                        </p>
+                    </Card>
+                {:else}
+                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {#each ownedCourses as courseDoc (courseDoc.id)}
+                            <Card class="p-4" href={`/courses/${courseDoc.id}`}>
+                                <div class="flex items-start gap-3">
+                                    <BookOpen
+                                        class="h-6 w-6 shrink-0 text-blue-600"
+                                    />
+                                    <div class="min-w-0 flex-1">
+                                        <h3
+                                            class="truncate text-lg font-semibold"
+                                        >
+                                            {courseDoc.title}
+                                        </h3>
+                                        <p class="text-sm text-gray-600">
+                                            {courseDoc.code}
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                        {/each}
+                    </div>
+                {/if}
+            </div>
+
+            <!-- Enrolled Courses -->
+            <div>
+                <h2 class="mb-4 text-2xl font-semibold">
+                    {m.courses_enrolled()}
+                </h2>
+                {#if enrolledCourses.length === 0}
+                    <Card class="p-4">
+                        <p class="py-4 text-center text-gray-600">
+                            {m.courses_empty()}
+                        </p>
+                    </Card>
+                {:else}
+                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {#each enrolledCourses as courseDoc (courseDoc.id)}
+                            <Card class="p-4" href={`/courses/${courseDoc.id}`}>
+                                <div class="flex items-start gap-3">
+                                    <BookOpen
+                                        class="h-6 w-6 shrink-0 text-green-600"
+                                    />
+                                    <div class="min-w-0 flex-1">
+                                        <h3
+                                            class="truncate text-lg font-semibold"
+                                        >
+                                            {courseDoc.title}
+                                        </h3>
+                                        <p class="text-sm text-gray-600">
+                                            {courseDoc.code}
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                        {/each}
+                    </div>
+                {/if}
+            </div>
         {/if}
-    </Card>
-
-    {#if loading}
-        <div class="py-12 text-center">
-            <Spinner size="12" />
-            <p class="mt-4 text-gray-600">{m.courses_loading()}</p>
-        </div>
-    {:else if error}
-        <Alert color="red">{m.courses_error()}: {error}</Alert>
-    {:else}
-        <!-- Owned Courses -->
-        <div class="mb-8">
-            <h2 class="mb-4 text-2xl font-semibold">{m.courses_owned()}</h2>
-            {#if ownedCourses.length === 0}
-                <Card class="p-4">
-                    <p class="py-4 text-center text-gray-600">
-                        {m.courses_empty()}
-                    </p>
-                </Card>
-            {:else}
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {#each ownedCourses as courseDoc (courseDoc.id)}
-                        <Card class="p-4" href={`/courses/${courseDoc.id}`}>
-                            <div class="flex items-start gap-3">
-                                <BookOpen
-                                    class="h-6 w-6 flex-shrink-0 text-blue-600"
-                                />
-                                <div class="min-w-0 flex-1">
-                                    <h3 class="truncate text-lg font-semibold">
-                                        {courseDoc.title}
-                                    </h3>
-                                    <p class="text-sm text-gray-600">
-                                        {courseDoc.code}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                    {/each}
-                </div>
-            {/if}
-        </div>
-
-        <!-- Enrolled Courses -->
-        <div>
-            <h2 class="mb-4 text-2xl font-semibold">{m.courses_enrolled()}</h2>
-            {#if enrolledCourses.length === 0}
-                <Card class="p-4">
-                    <p class="py-4 text-center text-gray-600">
-                        {m.courses_empty()}
-                    </p>
-                </Card>
-            {:else}
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {#each enrolledCourses as courseDoc (courseDoc.id)}
-                        <Card class="p-4" href={`/courses/${courseDoc.id}`}>
-                            <div class="flex items-start gap-3">
-                                <BookOpen
-                                    class="h-6 w-6 flex-shrink-0 text-green-600"
-                                />
-                                <div class="min-w-0 flex-1">
-                                    <h3 class="truncate text-lg font-semibold">
-                                        {courseDoc.title}
-                                    </h3>
-                                    <p class="text-sm text-gray-600">
-                                        {courseDoc.code}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                    {/each}
-                </div>
-            {/if}
-        </div>
-    {/if}
-</div>
+    </div>
+</BaseLayout>
 
 <!-- Create Course Modal -->
 <Modal bind:open={showCreateModal} size="sm" dismissable={!creating}>

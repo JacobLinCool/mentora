@@ -10,6 +10,7 @@
     import { Button, Card, Alert } from "flowbite-svelte";
     import { LoaderCircle, LogIn } from "@lucide/svelte";
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
 
     let error = $state<string | null>(null);
     let loading = $state(false);
@@ -31,8 +32,8 @@
         await ensurePersistence();
         try {
             await signInWithPopup(auth, provider);
-            // eslint-disable-next-line svelte/no-navigation-without-resolve
-            await goto("/", { invalidateAll: true });
+
+            await goto(resolve("/"), { invalidateAll: true });
         } catch (e: unknown) {
             error = (e as Error)?.message ?? m.auth_sign_in_failed();
         } finally {

@@ -59,3 +59,19 @@
 - Generated folders: `.svelte-kit/`, `apps/mentora/src/lib/paraglide/**`, `apps/mentora/project.inlang/cache/**`, and `packages/firebase/dist/**` should not be committed or edited manually.
 - Keep shared UI primitives under `apps/mentora/src/lib`; expose new utilities through `index.ts` for consistent imports (`$lib/...`).
 - Favor TypeScript path aliases defined in `tsconfig.json` (`$lib`, `$lib/paraglide`, etc.) over relative `../../` chains.
+
+## 🔍 Code review
+
+Use the specialized review guidelines in `.github/code-review/` based on the type of changes:
+
+| Condition                                      | Guideline                              |
+| ---------------------------------------------- | -------------------------------------- |
+| Changes to Firebase Firestore Schema           | [schema.md](code-review/schema.md)     |
+| Changes to Frontend, UI, UX                    | [frontend.md](code-review/frontend.md) |
+| Changes to text strings, translations, or i18n | [i18n.md](code-review/i18n.md)         |
+| Changes to Backend, Server-side logic          | [backend.md](code-review/backend.md)   |
+| Changes to Firebase Security Rules             | [security.md](code-review/security.md) |
+
+**When multiple conditions apply**, review against all relevant guidelines. Security review is always recommended when modifying authentication, authorization, or data access patterns.
+
+Apply additional guidelines for best practices if relevant.
