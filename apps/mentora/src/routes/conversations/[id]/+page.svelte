@@ -3,16 +3,13 @@
     import { page } from "$app/state";
     import { m } from "$lib/paraglide/messages";
     import { api, type Conversation, type Turn } from "$lib";
-    import {
-        Button,
-        Card,
-        Alert,
-        Spinner,
-        Textarea,
-        Badge,
-    } from "flowbite-svelte";
-    import { ArrowLeft, Send, User, Bot } from "@lucide/svelte";
+    import { Alert, Spinner } from "flowbite-svelte";
+    import { ArrowLeft, Send, User, Bot, Sparkles } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
+    import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
+    import GlassCard from "$lib/components/ui/GlassCard.svelte";
+    import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
+    import StatusBadge from "$lib/components/ui/StatusBadge.svelte";
 
     const conversationId = $derived(page.params.id);
 
@@ -88,18 +85,24 @@
             : m.conversation_turn_system();
     }
 
-    function getStanceBadgeColor(stance?: string) {
+    // Helper to map backend stance to our StatusBadge types
+    // StatusBadge expecting: 'active' | 'success' | 'warning' | 'error' | 'revoked'
+    function getStanceStatus(
+        stance?: string,
+    ): "success" | "error" | "warning" | "active" {
         switch (stance) {
             case "pro-strong":
+                return "success";
             case "pro-weak":
-                return "green";
+                return "active";
             case "con-strong":
+                return "error";
             case "con-weak":
-                return "red";
+                return "warning"; // using warning for weak con/neutral for now
             case "neutral":
-                return "blue";
+                return "active";
             default:
-                return "gray";
+                return "active";
         }
     }
 </script>
@@ -109,133 +112,218 @@
     description={m.page_conversation_description()}
 />
 
-<div class="mx-auto flex h-[calc(100vh-12rem)] max-w-4xl flex-col">
-    <div class="mb-4">
-        <Button href="/assignments" color="light">
-            <ArrowLeft class="me-2 h-4 w-4" />
-            {m.back()}
-        </Button>
-    </div>
+<BaseLayout>
+    <div
+        class="mx-auto flex h-[calc(100vh-100px)] max-w-5xl flex-col px-4 py-8"
+    >
+        <div class="mb-6 flex items-center justify-between">
+            <CosmicButton
+                href="/assignments"
+                variant="secondary"
+                className="!py-2 !px-3"
+            >
+                <ArrowLeft class="me-2 h-4 w-4" />
+                {m.back()}
+            </CosmicButton>
 
-    {#if loading && !conversation}
-        <div class="py-12 text-center">
-            <Spinner size="12" />
-            <p class="mt-4 text-gray-600">{m.conversation_loading()}</p>
-        </div>
-    {:else if error && !conversation}
-        <Alert color="red">{m.conversation_error()}: {error}</Alert>
-    {:else if conversation}
-        <!-- Conversation Header -->
-        <Card class="mb-4 p-4">
-            <div class="flex items-center justify-between">
-                <h1 class="text-2xl font-bold">{m.conversation_title()}</h1>
-                <Badge
-                    color={conversation.state === "closed" ? "gray" : "green"}
-                >
-                    {conversation.state}
-                </Badge>
-            </div>
-        </Card>
-
-        <!-- Messages Container -->
-        <Card class="mb-4 flex-1 overflow-y-auto p-4">
-            {#if conversation.turns.length === 0}
-                <div class="py-8 text-center text-gray-500">
-                    <p>
-                        Start the conversation by typing your first message
-                        below.
-                    </p>
+            {#if conversation}
+                <div class="flex items-center gap-3">
+                    <span
+                        class="text-text-secondary text-sm font-medium tracking-widest uppercase"
+                        >Status</span
+                    >
+                    <StatusBadge
+                        status={conversation.state === "closed"
+                            ? "revoked"
+                            : "active"}
+                    >
+                        {conversation.state.toUpperCase()}
+                    </StatusBadge>
                 </div>
-            {:else}
-                <div class="space-y-4">
-                    {#each conversation.turns as turn (turn.id)}
-                        {@const Icon = getTurnIcon(turn)}
-                        {@const isUser =
-                            getTurnLabel(turn) === m.conversation_turn_user()}
+            {/if}
+        </div>
 
+        {#if loading && !conversation}
+            <div
+                class="flex h-full flex-col items-center justify-center py-24 text-center"
+            >
+                <div class="relative mb-8 h-20 w-20">
+                    <div
+                        class="border-brand-gold absolute inset-0 animate-spin rounded-full border-t-2"
+                    ></div>
+                    <div
+                        class="animate-spin-slow absolute inset-2 rounded-full border-r-2 border-white/20"
+                    ></div>
+                </div>
+                <p
+                    class="animate-pulse font-serif text-xl tracking-wide text-white"
+                >
+                    {m.conversation_loading()}
+                </p>
+            </div>
+        {:else if error && !conversation}
+            <Alert
+                color="red"
+                class="border-status-error bg-status-error/10 border-l-4 text-white"
+            >
+                <span class="font-bold">{m.conversation_error()}:</span>
+                {error}
+            </Alert>
+        {:else if conversation}
+            <!-- Messages Container -->
+            <GlassCard
+                className="flex-1 mb-6 overflow-hidden flex flex-col relative !p-0"
+            >
+                <div
+                    class="pointer-events-none absolute inset-0 z-10 bg-linear-to-b from-transparent via-transparent to-black/40"
+                ></div>
+
+                <div
+                    class="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 hover:scrollbar-thumb-brand-gold/20 flex-1 space-y-8 overflow-y-auto p-6"
+                >
+                    {#if conversation.turns.length === 0}
                         <div
-                            class={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+                            class="flex h-full flex-col items-center justify-center text-center opacity-70"
                         >
                             <div
-                                class={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${isUser ? "bg-blue-100" : "bg-gray-100"}`}
+                                class="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5"
                             >
-                                <Icon
-                                    class={`h-5 w-5 ${isUser ? "text-blue-600" : "text-gray-600"}`}
+                                <Sparkles
+                                    class="text-brand-gold h-8 w-8 animate-pulse"
                                 />
                             </div>
+                            <h3 class="mb-2 font-serif text-xl text-white">
+                                Begin the Dialogue
+                            </h3>
+                            <p class="text-text-secondary max-w-md">
+                                The prompt has been set. State your initial
+                                argument to commence the dialectic process.
+                            </p>
+                        </div>
+                    {:else}
+                        {#each conversation.turns as turn (turn.id)}
+                            {@const Icon = getTurnIcon(turn)}
+                            {@const isUser =
+                                getTurnLabel(turn) ===
+                                m.conversation_turn_user()}
 
-                            <div class={`flex-1 ${isUser ? "text-right" : ""}`}>
-                                <div class="mb-1 flex items-center gap-2">
-                                    <span class="text-sm font-semibold"
-                                        >{getTurnLabel(turn)}</span
-                                    >
-                                    <span class="text-xs text-gray-500"
-                                        >{formatTime(turn.createdAt)}</span
-                                    >
-                                    {#if turn.analysis?.stance}
-                                        <Badge
-                                            color={getStanceBadgeColor(
-                                                turn.analysis.stance,
-                                            )}
-                                        >
-                                            {turn.analysis.stance}
-                                        </Badge>
-                                    {/if}
-                                </div>
+                            <div
+                                class={`flex gap-4 ${isUser ? "flex-row-reverse" : ""} group animate-slide-up`}
+                            >
+                                <!-- Avatar -->
                                 <div
-                                    class={`inline-block rounded-lg px-4 py-2 ${isUser ? "bg-blue-100 text-blue-900" : "bg-gray-100 text-gray-900"}`}
+                                    class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-lg backdrop-blur-md ${
+                                        isUser
+                                            ? "bg-brand-gold/20 border-brand-gold/40 text-brand-gold"
+                                            : "bg-canvas-accent/80 shadow-brand-gold/5 border-white/10 text-white"
+                                    }`}
                                 >
-                                    <p class="whitespace-pre-wrap">
-                                        {turn.text}
-                                    </p>
+                                    <Icon class="h-5 w-5" />
+                                </div>
+
+                                <!-- Message Bubble -->
+                                <div
+                                    class={`max-w-[80%] flex-1 ${isUser ? "text-right" : ""}`}
+                                >
+                                    <div
+                                        class={`mb-2 flex items-center gap-3 ${isUser ? "justify-end" : ""}`}
+                                    >
+                                        <span
+                                            class="text-text-secondary/80 text-xs font-bold tracking-wider uppercase"
+                                        >
+                                            {getTurnLabel(turn)}
+                                        </span>
+                                        <span
+                                            class="text-text-secondary/50 font-mono text-[10px]"
+                                        >
+                                            {formatTime(turn.createdAt)}
+                                        </span>
+                                        {#if turn.analysis?.stance}
+                                            <StatusBadge
+                                                status={getStanceStatus(
+                                                    turn.analysis.stance,
+                                                )}
+                                            >
+                                                {turn.analysis.stance}
+                                            </StatusBadge>
+                                        {/if}
+                                    </div>
+
+                                    <div
+                                        class={`inline-block rounded-2xl border px-6 py-4 text-left shadow-xl backdrop-blur-sm ${
+                                            isUser
+                                                ? "from-brand-gold/10 to-brand-gold/5 border-brand-gold/20 rounded-tr-none bg-linear-to-br text-white"
+                                                : "rounded-tl-none border-white/10 bg-white/5 text-gray-100 transition-colors hover:bg-white/10"
+                                        }`}
+                                    >
+                                        <p
+                                            class="text-base leading-relaxed font-light whitespace-pre-wrap"
+                                        >
+                                            {turn.text}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    {/each}
+                        {/each}
+                    {/if}
                 </div>
-            {/if}
-        </Card>
+            </GlassCard>
 
-        <!-- Message Input -->
-        <Card class="p-4">
-            {#if sendError}
-                <Alert color="red" class="mb-3">{sendError}</Alert>
-            {/if}
+            <!-- Message Input -->
+            <div class="relative z-20">
+                {#if sendError}
+                    <div class="animate-slide-up mb-4">
+                        <Alert
+                            color="red"
+                            class="!bg-status-error/10 !text-status-error !border-status-error/20 !border"
+                        >
+                            <span class="font-bold">Error:</span>
+                            {sendError}
+                        </Alert>
+                    </div>
+                {/if}
 
-            {#if conversation.state !== "closed"}
-                <div class="flex gap-2">
-                    <Textarea
-                        bind:value={messageInput}
-                        placeholder={m.conversation_placeholder()}
-                        rows={3}
-                        disabled={sending}
-                        class="flex-1"
-                        onkeydown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendMessage();
-                            }
-                        }}
-                    />
-                    <Button
-                        onclick={handleSendMessage}
-                        disabled={sending || !messageInput.trim()}
-                        color="blue"
-                        class="self-end"
+                {#if conversation.state !== "closed"}
+                    <GlassCard
+                        className="!p-2 flex gap-2 items-end bg-black/40 backdrop-blur-xl border-t border-white/10"
                     >
-                        {#if sending}
-                            <Spinner size="4" class="me-2" />
-                        {:else}
-                            <Send class="me-2 h-4 w-4" />
-                        {/if}
-                        {m.conversation_send()}
-                    </Button>
-                </div>
-            {:else}
-                <Alert color="yellow">
-                    This conversation is {conversation.state}.
-                </Alert>
-            {/if}
-        </Card>
-    {/if}
-</div>
+                        <textarea
+                            bind:value={messageInput}
+                            placeholder={m.conversation_placeholder()}
+                            rows="2"
+                            disabled={sending}
+                            class="scrollbar-hide flex-1 resize-none border-0 bg-transparent px-4 py-3 leading-relaxed font-light text-white placeholder-white/20 focus:ring-0"
+                            onkeydown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSendMessage();
+                                }
+                            }}
+                        ></textarea>
+
+                        <CosmicButton
+                            on:click={handleSendMessage}
+                            disabled={sending || !messageInput.trim()}
+                            variant="primary"
+                            className="!h-10 !w-10 !p-0 !rounded-xl !flex !items-center !justify-center mb-1 mr-1"
+                        >
+                            {#if sending}
+                                <Spinner size="4" color="gray" />
+                            {:else}
+                                <Send class="h-4 w-4" />
+                            {/if}
+                        </CosmicButton>
+                    </GlassCard>
+                {:else}
+                    <GlassCard
+                        className="text-center py-6 border-brand-gold/20 bg-brand-gold/5"
+                    >
+                        <p class="text-brand-gold font-serif text-lg">
+                            This dialogue has concluded.
+                        </p>
+                    </GlassCard>
+                {/if}
+            </div>
+        {/if}
+    </div>
+</BaseLayout>

@@ -3,9 +3,12 @@
     import { m } from "$lib/paraglide/messages";
     import { api } from "$lib";
     import type { Assignment, Submission } from "$lib/api";
-    import { Button, Card, Alert, Spinner, Badge } from "flowbite-svelte";
-    import { ClipboardList, Calendar } from "@lucide/svelte";
+    import { ClipboardList, Calendar, ClipboardCheck } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
+    import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
+    import GlassCard from "$lib/components/ui/GlassCard.svelte";
+    import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
+    import StatusBadge from "$lib/components/ui/StatusBadge.svelte";
 
     type AssignmentWithCourse = Assignment & {
         courseTitle: string;
@@ -75,28 +78,43 @@
     });
 
     function formatTime(timestamp: number) {
-        return new Date(timestamp).toLocaleString();
+        return new Date(timestamp).toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
     }
 
-    function getAssignmentStatus(assignment: AssignmentWithCourse) {
+    function getAssignmentStatus(
+        assignment: AssignmentWithCourse,
+    ): "active" | "success" | "warning" | "error" {
         if (!assignment.submission) {
-            return { text: m.assignments_start(), color: "blue" as const };
+            return "active"; // Not started
         }
 
         switch (assignment.submission.state) {
             case "in_progress":
-                return {
-                    text: m.assignments_continue(),
-                    color: "yellow" as const,
-                };
+                return "warning";
             case "submitted":
             case "graded_complete":
-                return {
-                    text: m.assignment_detail_submitted(),
-                    color: "green" as const,
-                };
+                return "success";
             default:
-                return { text: m.assignments_start(), color: "blue" as const };
+                return "active";
+        }
+    }
+
+    function getStatusLabel(assignment: AssignmentWithCourse) {
+        if (!assignment.submission) return m.assignments_start();
+        switch (assignment.submission.state) {
+            case "in_progress":
+                return m.assignments_continue();
+            case "submitted":
+                return m.assignment_detail_submitted();
+            case "graded_complete":
+                return "Graded";
+            default:
+                return m.assignments_start();
         }
     }
 
@@ -114,86 +132,140 @@
     description={m.page_assignments_description()}
 />
 
-<div class="mx-auto max-w-6xl">
-    <div class="mb-6 flex items-center gap-3">
-        <ClipboardList class="h-8 w-8 text-blue-600" />
-        <h1 class="text-3xl font-bold">{m.assignments_title()}</h1>
-    </div>
-
-    {#if loading}
-        <div class="py-12 text-center">
-            <Spinner size="12" />
-            <p class="mt-4 text-gray-600">{m.assignments_loading()}</p>
-        </div>
-    {:else if error}
-        <Alert color="red">{m.assignments_error()}: {error}</Alert>
-    {:else if assignments.length === 0}
-        <Card class=" p-4">
-            <p class="py-8 text-center text-gray-600">
-                {m.assignments_empty()}
-            </p>
-        </Card>
-    {:else}
-        <div class="space-y-4">
-            {#each assignments as assignment (assignment.id)}
-                {@const status = getAssignmentStatus(assignment)}
-                {@const overdue = isOverdue(assignment)}
-
-                <Card
-                    class={`p-4 ${overdue ? "border-l-4 border-red-500" : ""}`}
+<BaseLayout>
+    <div class="container mx-auto max-w-7xl px-4 py-8">
+        <div class="mb-12 flex items-center justify-between">
+            <div>
+                <div
+                    class="text-text-secondary mb-2 text-sm font-medium tracking-wide uppercase"
                 >
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="mb-2 flex items-start gap-2">
-                                <h3 class="text-lg font-semibold">
-                                    {assignment.title}
-                                </h3>
-                                {#if overdue}
-                                    <Badge color="red">Overdue</Badge>
-                                {/if}
+                    My Tasks
+                </div>
+                <h1
+                    class="flex items-center gap-3 font-serif text-4xl text-white"
+                >
+                    <ClipboardList class="text-brand-gold h-8 w-8" />
+                    {m.assignments_title()}
+                </h1>
+            </div>
+        </div>
+
+        {#if loading}
+            <div class="flex flex-col items-center py-24 text-center">
+                <div
+                    class="border-brand-gold/30 border-t-brand-gold mb-4 h-12 w-12 animate-spin rounded-full border-4"
+                ></div>
+                <p class="text-text-secondary animate-pulse tracking-wide">
+                    {m.assignments_loading()}
+                </p>
+            </div>
+        {:else if error}
+            <GlassCard className="border-status-error/50 bg-status-error/10">
+                <div class="py-8 text-center">
+                    <p class="text-status-error mb-2 text-lg font-bold">
+                        {m.assignments_error()}
+                    </p>
+                    <p class="text-white/70">{error}</p>
+                </div>
+            </GlassCard>
+        {:else if assignments.length === 0}
+            <GlassCard>
+                <div class="py-16 text-center">
+                    <div
+                        class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-white/5"
+                    >
+                        <ClipboardCheck class="text-text-secondary h-10 w-10" />
+                    </div>
+                    <h3 class="mb-2 font-serif text-2xl text-white">
+                        All Caught Up
+                    </h3>
+                    <p class="text-text-secondary mx-auto max-w-md">
+                        {m.assignments_empty()}
+                    </p>
+                </div>
+            </GlassCard>
+        {:else}
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {#each assignments as assignment (assignment.id)}
+                    {@const status = getAssignmentStatus(assignment)}
+                    {@const statusLabel = getStatusLabel(assignment)}
+                    {@const overdue = isOverdue(assignment)}
+
+                    <GlassCard
+                        className={`group hover:border-brand-gold/30 transition-all duration-300 relative overflow-hidden flex flex-col h-full ${overdue ? "!border-status-error/40" : ""}`}
+                    >
+                        <!-- Overdue Indicator -->
+                        {#if overdue}
+                            <div
+                                class="pointer-events-none absolute top-0 right-0 h-16 w-16 overflow-hidden"
+                            >
+                                <div
+                                    class="bg-status-error absolute top-0 right-0 translate-x-4 translate-y-2 rotate-45 px-8 py-1 text-[10px] font-bold text-white shadow-lg"
+                                >
+                                    OVERDUE
+                                </div>
                             </div>
-                            <p class="mb-2 text-sm text-gray-600">
-                                {assignment.courseTitle}
-                            </p>
-                            <div class="flex gap-4 text-sm text-gray-600">
-                                <div class="flex items-center gap-1">
-                                    <Calendar class="h-4 w-4" />
+                        {/if}
+
+                        <div class="mb-4 flex items-start justify-between">
+                            <StatusBadge {status}>{statusLabel}</StatusBadge>
+                            <span
+                                class="text-text-secondary rounded border border-white/10 px-2 py-1 font-mono text-xs"
+                            >
+                                {assignment.mode.toUpperCase()}
+                            </span>
+                        </div>
+
+                        <h3
+                            class="group-hover:text-brand-gold mb-2 line-clamp-2 min-h-[4rem] font-serif text-2xl text-white transition-colors"
+                        >
+                            {assignment.title}
+                        </h3>
+
+                        <p
+                            class="text-brand-silver mb-6 flex items-center gap-2 text-sm"
+                        >
+                            <span
+                                class="bg-brand-gold/50 inline-block h-2 w-2 rounded-full"
+                            ></span>
+                            {assignment.courseTitle}
+                        </p>
+
+                        <div class="mt-auto space-y-4">
+                            <div
+                                class="text-text-secondary flex items-center gap-3 rounded-lg border border-white/5 bg-black/20 p-3 text-sm"
+                            >
+                                <Calendar class="text-brand-gold/70 h-4 w-4" />
+                                <div class="flex flex-col">
                                     <span
-                                        >{m.assignments_due()}: {formatTime(
+                                        class="text-text-secondary/60 text-[10px] tracking-wider uppercase"
+                                        >{m.assignments_due()}</span
+                                    >
+                                    <span class="font-mono text-white/90"
+                                        >{formatTime(
                                             assignment.dueAt ?? 0,
                                         )}</span
                                     >
                                 </div>
-                                <Badge color="gray">{assignment.mode}</Badge>
                             </div>
-                            {#if assignment.submission}
-                                <div class="mt-2 text-sm">
-                                    <Badge color={status.color}
-                                        >{status.text}</Badge
-                                    >
-                                    {#if assignment.submission.submittedAt}
-                                        <span class="ms-2 text-gray-600">
-                                            Submitted: {formatTime(
-                                                assignment.submission
-                                                    .submittedAt,
-                                            )}
-                                        </span>
-                                    {/if}
-                                </div>
-                            {/if}
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <Button
+
+                            <CosmicButton
                                 href={`/assignments/${assignment.id}`}
-                                size="sm"
-                                color={status.color}
+                                variant={status === "success"
+                                    ? "secondary"
+                                    : "primary"}
+                                className="w-full justify-center"
                             >
-                                {status.text}
-                            </Button>
+                                {status === "active"
+                                    ? m.assignments_start()
+                                    : status === "warning"
+                                      ? m.assignments_continue()
+                                      : "View Details"}
+                            </CosmicButton>
                         </div>
-                    </div>
-                </Card>
-            {/each}
-        </div>
-    {/if}
-</div>
+                    </GlassCard>
+                {/each}
+            </div>
+        {/if}
+    </div>
+</BaseLayout>```

@@ -143,3 +143,4 @@ apps/mentora/src/lib/paraglide/
 .cursor/rules/
 
 .DS_Store
+storybook-static/
