@@ -6,7 +6,7 @@
 	 * using the streaming conversation API.
 	 */
 	import { subscribeToAuth, type AuthState } from '$lib/explorer/firebase';
-	import { samplePrompts, sampleStudentMessages } from '$lib/explorer/test-fixtures';
+	import { sampleStudentMessages, sampleAssignments } from '$lib/explorer/test-fixtures';
 	import { onMount, onDestroy } from 'svelte';
 
 	// Auth state
@@ -32,11 +32,10 @@
 	// Configuration
 	let baseUrl = $state('http://localhost:5173');
 	let conversationId = $state('');
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	let systemPrompt = $state(samplePrompts.socraticDefault);
+	let selectedAssignment = $state(sampleAssignments[0]);
 
 	// Conversation state
-	type ConversationStatus = 'idle' | 'connecting' | 'ready' | 'streaming' | 'error';
+	type ConversationStatus = 'idle' | 'connecting' | 'ready' | 'streaming' | 'error' | 'creating';
 	let chatStatus: ConversationStatus = $state('idle');
 	let messages: Array<{ role: 'user' | 'assistant' | 'system'; text: string; timestamp: number }> =
 		$state([]);
@@ -47,33 +46,66 @@
 	// SSE connection
 	let eventSource: EventSource | null = null;
 
-	// Demo conversation for testing without real backend
-	const demoResponses = [
-		"That's an interesting perspective. What leads you to believe that?",
-		"I see what you're saying. Can you give me a specific example?",
-		'Let me challenge that assumption. What if the opposite were true?',
-		"That's a strong claim. What evidence supports this view?",
-		"I notice you're making several assumptions here. Which one is most central to your argument?",
-		'Interesting. How would you respond to someone who disagrees?',
-		"Let's explore that further. What are the implications of this position?",
-		"You've touched on something important. Can you define that key term more precisely?"
-	];
+	/**
+	 * Create a new conversation via API for testing
+	 */
+	async function createNewConversation() {
+		if (!authState.token) {
+			chatError = '請先登入以建立對話';
+			return;
+		}
 
-	function getRandomDemoResponse(): string {
-		return demoResponses[Math.floor(Math.random() * demoResponses.length)];
+		chatStatus = 'creating';
+		chatError = null;
+
+		try {
+			// First, we need to create a submission for the assignment
+			const response = await fetch(`${baseUrl}/api/conversations`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${authState.token}`
+				},
+				body: JSON.stringify({
+					assignmentId: selectedAssignment.id,
+					title: `測試對話 - ${new Date().toLocaleString()}`
+				})
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.message || `API error: ${response.status}`);
+			}
+
+			const result = await response.json();
+			conversationId = result.data?.conversationId || result.conversationId || '';
+
+			if (conversationId) {
+				messages = [
+					{
+						role: 'system',
+						text: `✅ 對話建立成功！ID: ${conversationId}`,
+						timestamp: Date.now()
+					}
+				];
+				chatStatus = 'ready';
+			} else {
+				throw new Error('未能取得對話 ID');
+			}
+		} catch (err) {
+			chatError = err instanceof Error ? err.message : '建立對話失敗';
+			chatStatus = 'error';
+		}
 	}
 
 	async function startConversation() {
 		if (!conversationId) {
-			// Demo mode - simulate conversation
-			chatStatus = 'ready';
-			messages = [
-				{
-					role: 'system',
-					text: '🎭 Demo Mode - 模擬對話（無需後端 API）',
-					timestamp: Date.now()
-				}
-			];
+			chatError = '請輸入對話 ID，或點擊「建立新對話」';
+			return;
+		}
+
+		if (!authState.token) {
+			chatError = '請先登入';
 			return;
 		}
 
@@ -81,8 +113,20 @@
 		chatError = null;
 
 		try {
-			// For real conversation, we'd connect to the streaming endpoint
-			// For now, show how it would work
+			// Verify conversation exists by fetching it
+			const response = await fetch(`${baseUrl}/api/conversations/${conversationId}`, {
+				headers: {
+					Authorization: `Bearer ${authState.token}`
+				}
+			});
+
+			if (!response.ok) {
+				if (response.status === 404) {
+					throw new Error('對話不存在');
+				}
+				throw new Error(`API error: ${response.status}`);
+			}
+
 			messages = [
 				{
 					role: 'system',
@@ -108,30 +152,16 @@
 	async function sendMessage() {
 		if (!currentInput.trim() || chatStatus !== 'ready') return;
 
+		if (!conversationId || !authState.token) {
+			chatError = '請先建立或連接對話';
+			return;
+		}
+
 		const userMessage = currentInput.trim();
 		currentInput = '';
 
 		// Add user message
 		messages = [...messages, { role: 'user', text: userMessage, timestamp: Date.now() }];
-
-		if (!conversationId) {
-			// Demo mode - simulate streaming response
-			chatStatus = 'streaming';
-			streamingText = '';
-
-			const response = getRandomDemoResponse();
-
-			// Simulate streaming effect
-			for (let i = 0; i < response.length; i++) {
-				await new Promise((resolve) => setTimeout(resolve, 30));
-				streamingText = response.substring(0, i + 1);
-			}
-
-			messages = [...messages, { role: 'assistant', text: response, timestamp: Date.now() }];
-			streamingText = '';
-			chatStatus = 'ready';
-			return;
-		}
 
 		// Real API call with streaming
 		chatStatus = 'streaming';
@@ -142,13 +172,14 @@
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					...(authState.token ? { Authorization: `Bearer ${authState.token}` } : {})
+					Authorization: `Bearer ${authState.token}`
 				},
 				body: JSON.stringify({ text: userMessage })
 			});
 
 			if (!response.ok) {
-				throw new Error(`API error: ${response.status}`);
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.message || `API error: ${response.status}`);
 			}
 
 			// Handle SSE stream
@@ -172,14 +203,19 @@
 									fullText += data.text;
 									streamingText = fullText;
 								}
+								if (data.done) {
+									break;
+								}
 							} catch {
-								// Ignore parse errors
+								// Ignore parse errors for incomplete chunks
 							}
 						}
 					}
 				}
 
-				messages = [...messages, { role: 'assistant', text: fullText, timestamp: Date.now() }];
+				if (fullText) {
+					messages = [...messages, { role: 'assistant', text: fullText, timestamp: Date.now() }];
+				}
 			}
 		} catch (err) {
 			chatError = err instanceof Error ? err.message : 'Failed to send message';
@@ -195,7 +231,7 @@
 			messages = [
 				{
 					role: 'system',
-					text: conversationId ? `已連接到對話 ${conversationId}` : '🎭 Demo Mode - 模擬對話',
+					text: `已連接到對話 ${conversationId}`,
 					timestamp: Date.now()
 				}
 			];
@@ -218,7 +254,7 @@
 	<header class="page-header">
 		<h1>🎙️ Voice Chat</h1>
 		<p>
-			Test real-time Socratic dialogues
+			即時測試 Gemini API 對話串流
 			{#if !authState.user}<span class="auth-warning">⚠ 請先登入以使用完整功能</span>{/if}
 		</p>
 	</header>
@@ -234,8 +270,16 @@
 						<input type="text" bind:value={baseUrl} />
 					</label>
 					<label>
-						<span>Conversation ID (optional)</span>
-						<input type="text" bind:value={conversationId} placeholder="Leave empty for demo" />
+						<span>Assignment Template</span>
+						<select bind:value={selectedAssignment}>
+							{#each sampleAssignments as assignment}
+								<option value={assignment}>{assignment.name}</option>
+							{/each}
+						</select>
+					</label>
+					<label>
+						<span>Conversation ID</span>
+						<input type="text" bind:value={conversationId} placeholder="或建立新對話" />
 					</label>
 				</div>
 			</div>
@@ -249,9 +293,11 @@
 						class:ready={chatStatus === 'ready'}
 						class:streaming={chatStatus === 'streaming'}
 						class:error={chatStatus === 'error'}
+						class:creating={chatStatus === 'creating'}
 					>
 						{#if chatStatus === 'idle'}⚪ Idle
 						{:else if chatStatus === 'connecting'}🔄 Connecting...
+						{:else if chatStatus === 'creating'}🔄 Creating...
 						{:else if chatStatus === 'ready'}🟢 Ready
 						{:else if chatStatus === 'streaming'}💬 Streaming...
 						{:else}🔴 Error{/if}
@@ -275,11 +321,26 @@
 			</div>
 
 			<div class="sidebar-actions">
-				{#if chatStatus === 'idle'}
-					<button class="action-btn primary" onclick={startConversation}> ▶️ Start Chat </button>
+				{#if chatStatus === 'idle' || chatStatus === 'error'}
+					<button
+						class="action-btn primary"
+						onclick={createNewConversation}
+						disabled={!authState.user}
+					>
+						🆕 建立新對話
+					</button>
+					<button
+						class="action-btn secondary"
+						onclick={startConversation}
+						disabled={!conversationId || !authState.user}
+					>
+						🔗 連接現有對話
+					</button>
+				{:else if chatStatus === 'creating' || chatStatus === 'connecting'}
+					<button class="action-btn" disabled> ⏳ 處理中... </button>
 				{:else}
-					<button class="action-btn secondary" onclick={stopConversation}> ⏹️ Stop </button>
-					<button class="action-btn" onclick={clearChat}> 🗑️ Clear </button>
+					<button class="action-btn secondary" onclick={stopConversation}> ⏹️ 停止 </button>
+					<button class="action-btn" onclick={clearChat}> 🗑️ 清除 </button>
 				{/if}
 			</div>
 		</aside>
@@ -290,9 +351,9 @@
 				{#if messages.length === 0}
 					<div class="empty-chat">
 						<div class="empty-icon">💬</div>
-						<h2>Start a Conversation</h2>
-						<p>Click "Start Chat" to begin a Socratic dialogue</p>
-						<p class="hint">Leave Conversation ID empty for demo mode</p>
+						<h2>開始對話</h2>
+						<p>點擊「建立新對話」開始即時測試 Gemini API</p>
+						<p class="hint">需要登入並確保 Mentora 服務正在運行</p>
 					</div>
 				{:else}
 					{#each messages as msg}
@@ -471,7 +532,8 @@
 		color: #22c55e;
 	}
 
-	.status-badge.streaming {
+	.status-badge.streaming,
+	.status-badge.creating {
 		background: rgba(59, 130, 246, 0.2);
 		color: #3b82f6;
 	}
