@@ -184,7 +184,7 @@ export const sampleStudentMessages = [
 ];
 
 /**
- * Quick-start configurations
+ * Quick-start configurations for Prompt Lab
  */
 export interface QuickStartConfig {
 	id: string;
@@ -230,6 +230,145 @@ export const quickStartConfigs: QuickStartConfig[] = [
 		systemPrompt: samplePrompts.socraticDefault,
 		studentMessage: 'Free will is an illusion - our choices are determined by prior causes.',
 		strategy: 'challenge'
+	}
+];
+
+/**
+ * Conversation themes for Voice Chat
+ * One-click setup with predefined topics, prompts, and starter questions
+ */
+export interface ConversationTheme {
+	id: string;
+	name: string;
+	emoji: string;
+	description: string;
+	category: string;
+	systemPrompt: string;
+	starterQuestions: string[];
+	suggestedStrategy: 'clarify' | 'challenge' | 'devils_advocate';
+	difficulty: 'beginner' | 'intermediate' | 'advanced';
+}
+
+export const conversationThemes: ConversationTheme[] = [
+	{
+		id: 'ethics-trolley',
+		name: '經典倫理困境',
+		emoji: '🚃',
+		description: '探討電車難題等經典道德哲學問題',
+		category: '倫理學',
+		systemPrompt: samplePrompts.philosophyGuide,
+		starterQuestions: [
+			'電車難題中，犧牲一人拯救五人是否符合道德？',
+			'在緊急情況下說謊是否可以被接受？',
+			'我們對陌生人是否有道德義務？'
+		],
+		suggestedStrategy: 'challenge',
+		difficulty: 'intermediate'
+	},
+	{
+		id: 'ai-ethics',
+		name: 'AI 與未來工作',
+		emoji: '🤖',
+		description: '討論人工智慧對就業市場和社會的影響',
+		category: '科技與社會',
+		systemPrompt: samplePrompts.criticalThinking,
+		starterQuestions: [
+			'AI 會取代大部分的人類工作嗎？',
+			'我們應該如何應對 AI 帶來的失業問題？',
+			'AI 是否應該擁有法律權利？'
+		],
+		suggestedStrategy: 'devils_advocate',
+		difficulty: 'intermediate'
+	},
+	{
+		id: 'free-will',
+		name: '自由意志之辯',
+		emoji: '🧠',
+		description: '探討人類是否真的擁有自由意志',
+		category: '心靈哲學',
+		systemPrompt: samplePrompts.socraticDefault,
+		starterQuestions: [
+			'我們的選擇是否真的自由，還是被過去所決定？',
+			'如果沒有自由意志，道德責任還有意義嗎？',
+			'量子力學的隨機性是否能拯救自由意志？'
+		],
+		suggestedStrategy: 'clarify',
+		difficulty: 'advanced'
+	},
+	{
+		id: 'social-media',
+		name: '社群媒體利弊',
+		emoji: '📱',
+		description: '分析社群媒體對個人和社會的影響',
+		category: '科技與社會',
+		systemPrompt: samplePrompts.debatePartner,
+		starterQuestions: [
+			'社群媒體讓我們更親近還是更疏離？',
+			'社群媒體是否應該為錯誤資訊負責？',
+			'我們能否在不使用社群媒體的情況下保持社交聯繫？'
+		],
+		suggestedStrategy: 'devils_advocate',
+		difficulty: 'beginner'
+	},
+	{
+		id: 'climate-action',
+		name: '氣候變遷與責任',
+		emoji: '🌍',
+		description: '討論氣候變遷的科學與政策問題',
+		category: '科學與政策',
+		systemPrompt: samplePrompts.criticalThinking,
+		starterQuestions: [
+			'個人行動對氣候變遷有多大影響？',
+			'發展中國家是否應該承擔減排責任？',
+			'科技能否解決氣候危機？'
+		],
+		suggestedStrategy: 'challenge',
+		difficulty: 'intermediate'
+	},
+	{
+		id: 'democracy-limits',
+		name: '民主的界限',
+		emoji: '🗳️',
+		description: '探討民主制度的優勢與限制',
+		category: '政治哲學',
+		systemPrompt: samplePrompts.philosophyGuide,
+		starterQuestions: [
+			'民主是否適合所有文化和社會？',
+			'多數決是否可能侵犯少數人權利？',
+			'專家治理與民主如何平衡？'
+		],
+		suggestedStrategy: 'challenge',
+		difficulty: 'advanced'
+	},
+	{
+		id: 'happiness-money',
+		name: '金錢與幸福',
+		emoji: '💰',
+		description: '探討財富與幸福感的關係',
+		category: '幸福哲學',
+		systemPrompt: samplePrompts.socraticDefault,
+		starterQuestions: [
+			'金錢真的買不到幸福嗎？',
+			'財富增加後幸福感為何會停滯？',
+			'追求財富與追求幸福是否矛盾？'
+		],
+		suggestedStrategy: 'clarify',
+		difficulty: 'beginner'
+	},
+	{
+		id: 'truth-relativism',
+		name: '真理與相對主義',
+		emoji: '🔍',
+		description: '討論真理的本質與道德相對主義',
+		category: '知識論',
+		systemPrompt: samplePrompts.philosophyGuide,
+		starterQuestions: [
+			'是否存在客觀真理？',
+			'不同文化的道德標準都同樣有效嗎？',
+			'科學真理與道德真理有何不同？'
+		],
+		suggestedStrategy: 'challenge',
+		difficulty: 'advanced'
 	}
 ];
 

@@ -1,12 +1,15 @@
 <script lang="ts">
 	/**
-	 * Voice Chat - Test Gemini Live API for real-time voice conversations
+	 * Voice Chat - Integrated conversation testing with themes and custom prompts
 	 *
-	 * This page provides a test interface for voice-based Socratic dialogues
-	 * using the streaming conversation API.
+	 * One-click conversation creation with predefined themes or custom prompts
 	 */
 	import { subscribeToAuth, type AuthState } from '$lib/explorer/firebase';
-	import { sampleStudentMessages, sampleAssignments } from '$lib/explorer/test-fixtures';
+	import {
+		conversationThemes,
+		samplePrompts,
+		type ConversationTheme
+	} from '$lib/explorer/test-fixtures';
 	import { onMount, onDestroy } from 'svelte';
 
 	// Auth state
@@ -32,7 +35,11 @@
 	// Configuration
 	let baseUrl = $state('http://localhost:5173');
 	let conversationId = $state('');
-	let selectedAssignment = $state(sampleAssignments[0]);
+
+	// Theme & Prompt Configuration
+	let selectedTheme = $state<ConversationTheme | null>(null);
+	let systemPrompt = $state(samplePrompts.socraticDefault);
+	let showPromptEditor = $state(false);
 
 	// Conversation state
 	type ConversationStatus = 'idle' | 'connecting' | 'ready' | 'streaming' | 'error' | 'creating';
@@ -47,9 +54,29 @@
 	let eventSource: EventSource | null = null;
 
 	/**
-	 * Create a new conversation via API for testing
+	 * Load a conversation theme
 	 */
-	async function createNewConversation() {
+	function selectTheme(theme: ConversationTheme) {
+		selectedTheme = theme;
+		systemPrompt = theme.systemPrompt;
+		// Auto-load first starter question
+		if (theme.starterQuestions.length > 0) {
+			currentInput = theme.starterQuestions[0];
+		}
+	}
+
+	/**
+	 * Load a preset prompt
+	 */
+	function loadPresetPrompt(prompt: string) {
+		systemPrompt = prompt;
+		showPromptEditor = true;
+	}
+
+	/**
+	 * One-click: Create assignment + conversation and start chat
+	 */
+	async function quickStartConversation() {
 		if (!authState.token) {
 			chatError = '請先登入以建立對話';
 			return;
@@ -59,32 +86,72 @@
 		chatError = null;
 
 		try {
-			// First, we need to create a submission for the assignment
-			const response = await fetch(`${baseUrl}/api/conversations`, {
+			// Step 1: Create a test assignment first
+			const assignmentTitle = selectedTheme
+				? `${selectedTheme.emoji} ${selectedTheme.name}`
+				: `測試對話 - ${new Date().toLocaleString('zh-TW')}`;
+
+			const assignmentPrompt = systemPrompt || samplePrompts.socraticDefault;
+
+			const assignmentResponse = await fetch(`${baseUrl}/api/assignments`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${authState.token}`
 				},
 				body: JSON.stringify({
-					assignmentId: selectedAssignment.id,
-					title: `測試對話 - ${new Date().toLocaleString()}`
+					title: assignmentTitle,
+					prompt: assignmentPrompt,
+					mode: 'instant',
+					startAt: Date.now(),
+					allowLate: true,
+					allowResubmit: true,
+					aiConfig: {
+						model: 'gemini-2.0-flash',
+						temperature: 0.7
+					}
 				})
 			});
 
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.message || `API error: ${response.status}`);
+			if (!assignmentResponse.ok) {
+				const errorData = await assignmentResponse.json().catch(() => ({}));
+				throw new Error(errorData.message || `建立 Assignment 失敗: ${assignmentResponse.status}`);
 			}
 
-			const result = await response.json();
-			conversationId = result.data?.conversationId || result.conversationId || '';
+			const assignmentResult = await assignmentResponse.json();
+			const assignmentId = assignmentResult.id || assignmentResult.data?.id;
+
+			if (!assignmentId) {
+				throw new Error('未能取得 Assignment ID');
+			}
+
+			// Step 2: Create conversation with the new assignment
+			const conversationResponse = await fetch(`${baseUrl}/api/conversations`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${authState.token}`
+				},
+				body: JSON.stringify({
+					assignmentId: assignmentId
+				})
+			});
+
+			if (!conversationResponse.ok) {
+				const errorData = await conversationResponse.json().catch(() => ({}));
+				throw new Error(errorData.message || `建立對話失敗: ${conversationResponse.status}`);
+			}
+
+			const conversationResult = await conversationResponse.json();
+			conversationId = conversationResult.id || conversationResult.data?.id || '';
 
 			if (conversationId) {
 				messages = [
 					{
 						role: 'system',
-						text: `✅ 對話建立成功！ID: ${conversationId}`,
+						text: selectedTheme
+							? `✅ 已開始「${selectedTheme.name}」對話！\n${selectedTheme.description}\n\n💡 試試這些問題：\n${selectedTheme.starterQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
+							: `✅ 對話建立成功！\n📝 Assignment: ${assignmentTitle}\n🆔 Conversation: ${conversationId}`,
 						timestamp: Date.now()
 					}
 				];
@@ -98,62 +165,22 @@
 		}
 	}
 
-	async function startConversation() {
-		if (!conversationId) {
-			chatError = '請輸入對話 ID，或點擊「建立新對話」';
-			return;
-		}
-
-		if (!authState.token) {
-			chatError = '請先登入';
-			return;
-		}
-
-		chatStatus = 'connecting';
-		chatError = null;
-
-		try {
-			// Verify conversation exists by fetching it
-			const response = await fetch(`${baseUrl}/api/conversations/${conversationId}`, {
-				headers: {
-					Authorization: `Bearer ${authState.token}`
-				}
-			});
-
-			if (!response.ok) {
-				if (response.status === 404) {
-					throw new Error('對話不存在');
-				}
-				throw new Error(`API error: ${response.status}`);
-			}
-
-			messages = [
-				{
-					role: 'system',
-					text: `已連接到對話 ${conversationId}`,
-					timestamp: Date.now()
-				}
-			];
-			chatStatus = 'ready';
-		} catch (err) {
-			chatError = err instanceof Error ? err.message : 'Failed to start conversation';
-			chatStatus = 'error';
-		}
-	}
-
 	function stopConversation() {
 		if (eventSource) {
 			eventSource.close();
 			eventSource = null;
 		}
+		conversationId = '';
+		selectedTheme = null;
 		chatStatus = 'idle';
+		messages = [];
 	}
 
 	async function sendMessage() {
 		if (!currentInput.trim() || chatStatus !== 'ready') return;
 
 		if (!conversationId || !authState.token) {
-			chatError = '請先建立或連接對話';
+			chatError = '請先建立對話';
 			return;
 		}
 
@@ -227,19 +254,10 @@
 
 	function clearChat() {
 		messages = [];
-		if (chatStatus === 'ready') {
-			messages = [
-				{
-					role: 'system',
-					text: `已連接到對話 ${conversationId}`,
-					timestamp: Date.now()
-				}
-			];
-		}
 	}
 
-	function loadQuickMessage(text: string) {
-		currentInput = text;
+	function loadStarterQuestion(question: string) {
+		currentInput = question;
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -252,96 +270,138 @@
 
 <div class="voice-page">
 	<header class="page-header">
-		<h1>🎙️ Voice Chat</h1>
+		<h1>💬 Voice Chat</h1>
 		<p>
-			即時測試 Gemini API 對話串流
-			{#if !authState.user}<span class="auth-warning">⚠ 請先登入以使用完整功能</span>{/if}
+			選擇主題一鍵開始對話，或自訂 Prompt 測試
+			{#if !authState.user}<span class="auth-warning">⚠ 請先登入</span>{/if}
 		</p>
 	</header>
 
 	<div class="chat-layout">
-		<!-- Sidebar: Config & Quick Actions -->
+		<!-- Sidebar: Themes & Configuration -->
 		<aside class="chat-sidebar">
-			<div class="sidebar-section">
-				<h3>Configuration</h3>
-				<div class="config-form">
-					<label>
-						<span>Base URL</span>
-						<input type="text" bind:value={baseUrl} />
-					</label>
-					<label>
-						<span>Assignment Template</span>
-						<select bind:value={selectedAssignment}>
-							{#each sampleAssignments as assignment}
-								<option value={assignment}>{assignment.name}</option>
-							{/each}
-						</select>
-					</label>
-					<label>
-						<span>Conversation ID</span>
-						<input type="text" bind:value={conversationId} placeholder="或建立新對話" />
-					</label>
+			{#if chatStatus === 'idle' || chatStatus === 'error' || chatStatus === 'creating'}
+				<!-- Theme Selection -->
+				<div class="sidebar-section">
+					<h3>🎯 對話主題</h3>
+					<div class="themes-grid">
+						{#each conversationThemes as theme}
+							<button
+								class="theme-card"
+								class:selected={selectedTheme?.id === theme.id}
+								onclick={() => selectTheme(theme)}
+							>
+								<div class="theme-header">
+									<span class="theme-emoji">{theme.emoji}</span>
+									<span class="theme-difficulty">{theme.difficulty}</span>
+								</div>
+								<div class="theme-name">{theme.name}</div>
+								<div class="theme-category">{theme.category}</div>
+							</button>
+						{/each}
+					</div>
 				</div>
-			</div>
 
-			<div class="sidebar-section">
-				<h3>Status</h3>
-				<div class="status-display">
-					<span
-						class="status-badge"
-						class:idle={chatStatus === 'idle'}
-						class:ready={chatStatus === 'ready'}
-						class:streaming={chatStatus === 'streaming'}
-						class:error={chatStatus === 'error'}
-						class:creating={chatStatus === 'creating'}
-					>
-						{#if chatStatus === 'idle'}⚪ Idle
-						{:else if chatStatus === 'connecting'}🔄 Connecting...
-						{:else if chatStatus === 'creating'}🔄 Creating...
-						{:else if chatStatus === 'ready'}🟢 Ready
-						{:else if chatStatus === 'streaming'}💬 Streaming...
-						{:else}🔴 Error{/if}
-					</span>
-					{#if authState.user}
-						<span class="auth-badge">✓ {authState.user.displayName}</span>
+				<!-- Prompt Configuration -->
+				<div class="sidebar-section">
+					<div class="section-header-row">
+						<h3>📝 System Prompt</h3>
+						<button class="toggle-btn" onclick={() => (showPromptEditor = !showPromptEditor)}>
+							{showPromptEditor ? '收起' : '展開'}
+						</button>
+					</div>
+
+					{#if showPromptEditor}
+						<div class="prompt-presets">
+							<button onclick={() => loadPresetPrompt(samplePrompts.socraticDefault)}>
+								Socratic
+							</button>
+							<button onclick={() => loadPresetPrompt(samplePrompts.philosophyGuide)}>
+								Philosophy
+							</button>
+							<button onclick={() => loadPresetPrompt(samplePrompts.criticalThinking)}>
+								Critical
+							</button>
+							<button onclick={() => loadPresetPrompt(samplePrompts.debatePartner)}>
+								Debate
+							</button>
+						</div>
+						<textarea bind:value={systemPrompt} rows="8" placeholder="輸入自訂 prompt..."
+						></textarea>
+					{:else}
+						<div class="prompt-preview">
+							{systemPrompt.substring(0, 100)}...
+						</div>
 					{/if}
 				</div>
-			</div>
 
-			<div class="sidebar-section">
-				<h3>Quick Messages</h3>
-				<div class="quick-messages">
-					{#each sampleStudentMessages.slice(0, 5) as sample}
-						<button class="quick-msg-btn" onclick={() => loadQuickMessage(sample.text)}>
-							<span class="category">{sample.category}</span>
-							{sample.text.substring(0, 30)}...
-						</button>
-					{/each}
+				<!-- Start Button -->
+				<div class="sidebar-actions">
+					<button
+						class="action-btn primary large"
+						onclick={quickStartConversation}
+						disabled={!authState.user || chatStatus === 'creating'}
+					>
+						{#if chatStatus === 'creating'}
+							⏳ 建立中...
+						{:else}
+							🚀 {selectedTheme ? `開始「${selectedTheme.name}」` : '開始對話'}
+						{/if}
+					</button>
 				</div>
-			</div>
+			{:else}
+				<!-- Active Conversation Sidebar -->
+				<div class="sidebar-section">
+					<h3>💬 進行中</h3>
+					<div class="status-display">
+						<span
+							class="status-badge"
+							class:ready={chatStatus === 'ready'}
+							class:streaming={chatStatus === 'streaming'}
+						>
+							{#if chatStatus === 'ready'}🟢 Ready
+							{:else if chatStatus === 'streaming'}💬 Streaming...
+							{/if}
+						</span>
+						{#if selectedTheme}
+							<div class="current-theme">
+								<span class="theme-emoji">{selectedTheme.emoji}</span>
+								{selectedTheme.name}
+							</div>
+						{/if}
+					</div>
+				</div>
 
-			<div class="sidebar-actions">
-				{#if chatStatus === 'idle' || chatStatus === 'error'}
-					<button
-						class="action-btn primary"
-						onclick={createNewConversation}
-						disabled={!authState.user}
-					>
-						🆕 建立新對話
-					</button>
-					<button
-						class="action-btn secondary"
-						onclick={startConversation}
-						disabled={!conversationId || !authState.user}
-					>
-						🔗 連接現有對話
-					</button>
-				{:else if chatStatus === 'creating' || chatStatus === 'connecting'}
-					<button class="action-btn" disabled> ⏳ 處理中... </button>
-				{:else}
-					<button class="action-btn secondary" onclick={stopConversation}> ⏹️ 停止 </button>
-					<button class="action-btn" onclick={clearChat}> 🗑️ 清除 </button>
+				<!-- Starter Questions -->
+				{#if selectedTheme}
+					<div class="sidebar-section">
+						<h3>💡 引導問題</h3>
+						<div class="starter-questions">
+							{#each selectedTheme.starterQuestions as question}
+								<button class="starter-btn" onclick={() => loadStarterQuestion(question)}>
+									{question}
+								</button>
+							{/each}
+						</div>
+					</div>
 				{/if}
+
+				<!-- Actions -->
+				<div class="sidebar-actions">
+					<button class="action-btn secondary" onclick={stopConversation}> 🔄 重新開始 </button>
+					<button class="action-btn" onclick={clearChat} disabled={messages.length === 0}>
+						🗑️ 清除訊息
+					</button>
+				</div>
+			{/if}
+
+			<!-- Settings -->
+			<div class="sidebar-section config-section">
+				<h3>⚙️ 設定</h3>
+				<label>
+					<span>Base URL</span>
+					<input type="text" bind:value={baseUrl} />
+				</label>
 			</div>
 		</aside>
 
@@ -351,9 +411,15 @@
 				{#if messages.length === 0}
 					<div class="empty-chat">
 						<div class="empty-icon">💬</div>
-						<h2>開始對話</h2>
-						<p>點擊「建立新對話」開始即時測試 Gemini API</p>
-						<p class="hint">需要登入並確保 Mentora 服務正在運行</p>
+						<h2>開始你的蘇格拉底對話</h2>
+						<p>選擇一個主題，或自訂 prompt，然後點擊「開始對話」</p>
+						{#if selectedTheme}
+							<div class="selected-theme-preview">
+								<span class="theme-emoji-large">{selectedTheme.emoji}</span>
+								<h3>{selectedTheme.name}</h3>
+								<p>{selectedTheme.description}</p>
+							</div>
+						{/if}
 					</div>
 				{:else}
 					{#each messages as msg}
@@ -403,9 +469,9 @@
 					onkeydown={handleKeydown}
 					placeholder={chatStatus === 'ready'
 						? 'Type your message... (Enter to send)'
-						: 'Start a chat first...'}
+						: '請先開始對話...'}
 					disabled={chatStatus !== 'ready'}
-					rows="2"
+					rows="3"
 				></textarea>
 				<button
 					class="send-btn"
@@ -425,7 +491,7 @@
 
 <style>
 	.voice-page {
-		max-width: 1400px;
+		max-width: 1600px;
 		margin: 0 auto;
 		height: calc(100vh - 120px);
 		display: flex;
@@ -449,7 +515,6 @@
 
 	.auth-warning {
 		color: #f59e0b;
-		font-size: 0.875rem;
 		margin-left: 0.5rem;
 	}
 
@@ -460,12 +525,15 @@
 		min-height: 0;
 	}
 
+	/* Sidebar Styles */
 	.chat-sidebar {
-		width: 280px;
+		width: 360px;
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		overflow-y: auto;
+		padding-right: 0.5rem;
 	}
 
 	.sidebar-section {
@@ -476,39 +544,140 @@
 	}
 
 	.sidebar-section h3 {
-		font-size: 0.75rem;
+		font-size: 0.875rem;
+		color: #94a3b8;
+		margin: 0 0 0.75rem;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+	}
+
+	.section-header-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.75rem;
+	}
+
+	.section-header-row h3 {
+		margin: 0;
+	}
+
+	.toggle-btn {
+		background: #334155;
+		border: none;
+		border-radius: 4px;
+		padding: 0.25rem 0.5rem;
+		color: #94a3b8;
+		font-size: 0.75rem;
+		cursor: pointer;
+	}
+
+	.toggle-btn:hover {
+		background: #475569;
+	}
+
+	/* Theme Cards */
+	.themes-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.5rem;
+	}
+
+	.theme-card {
+		background: #0f172a;
+		border: 2px solid #334155;
+		border-radius: 8px;
+		padding: 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s;
+		text-align: left;
+	}
+
+	.theme-card:hover {
+		border-color: #3b82f6;
+		background: #1e293b;
+	}
+
+	.theme-card.selected {
+		border-color: #3b82f6;
+		background: rgba(59, 130, 246, 0.1);
+	}
+
+	.theme-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.5rem;
+	}
+
+	.theme-emoji {
+		font-size: 1.5rem;
+	}
+
+	.theme-difficulty {
+		font-size: 0.625rem;
 		color: #64748b;
-		margin: 0 0 0.75rem;
+		text-transform: uppercase;
 	}
 
-	.config-form {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
+	.theme-name {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #f8fafc;
+		margin-bottom: 0.25rem;
 	}
 
-	.config-form label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.config-form label span {
+	.theme-category {
 		font-size: 0.75rem;
 		color: #94a3b8;
 	}
 
-	.config-form input {
+	/* Prompt Editor */
+	.prompt-presets {
+		display: flex;
+		gap: 0.25rem;
+		margin-bottom: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.prompt-presets button {
+		background: #334155;
+		border: none;
+		border-radius: 4px;
+		padding: 0.25rem 0.5rem;
+		color: #cbd5e1;
+		font-size: 0.75rem;
+		cursor: pointer;
+	}
+
+	.prompt-presets button:hover {
+		background: #475569;
+	}
+
+	.sidebar-section textarea {
+		width: 100%;
 		background: #0f172a;
 		border: 1px solid #334155;
 		border-radius: 4px;
 		padding: 0.5rem;
 		color: #e2e8f0;
-		font-size: 0.875rem;
+		font-family: 'SF Mono', Monaco, monospace;
+		font-size: 0.75rem;
+		resize: vertical;
 	}
 
+	.prompt-preview {
+		background: #0f172a;
+		border: 1px solid #334155;
+		border-radius: 4px;
+		padding: 0.5rem;
+		color: #94a3b8;
+		font-size: 0.75rem;
+		font-family: 'SF Mono', Monaco, monospace;
+		line-height: 1.4;
+	}
+
+	/* Status & Current Theme */
 	.status-display {
 		display: flex;
 		flex-direction: column;
@@ -516,15 +685,11 @@
 	}
 
 	.status-badge {
+		display: inline-block;
 		padding: 0.375rem 0.75rem;
-		border-radius: 4px;
+		border-radius: 999px;
 		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.status-badge.idle {
-		background: #334155;
-		color: #94a3b8;
+		font-weight: 600;
 	}
 
 	.status-badge.ready {
@@ -532,54 +697,48 @@
 		color: #22c55e;
 	}
 
-	.status-badge.streaming,
-	.status-badge.creating {
+	.status-badge.streaming {
 		background: rgba(59, 130, 246, 0.2);
 		color: #3b82f6;
 	}
 
-	.status-badge.error {
-		background: rgba(239, 68, 68, 0.2);
-		color: #ef4444;
+	.current-theme {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem;
+		background: #0f172a;
+		border-radius: 6px;
+		color: #f8fafc;
+		font-size: 0.875rem;
 	}
 
-	.auth-badge {
-		font-size: 0.75rem;
-		color: #22c55e;
-	}
-
-	.quick-messages {
+	/* Starter Questions */
+	.starter-questions {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 	}
 
-	.quick-msg-btn {
+	.starter-btn {
 		background: #0f172a;
 		border: 1px solid #334155;
-		border-radius: 4px;
-		padding: 0.5rem;
-		color: #94a3b8;
-		font-size: 0.75rem;
+		border-radius: 6px;
+		padding: 0.625rem;
+		color: #cbd5e1;
+		font-size: 0.8125rem;
 		text-align: left;
 		cursor: pointer;
-		transition: all 0.15s ease;
+		line-height: 1.4;
+		transition: all 0.2s;
 	}
 
-	.quick-msg-btn:hover {
+	.starter-btn:hover {
 		border-color: #3b82f6;
-		color: #e2e8f0;
+		background: #1e293b;
 	}
 
-	.quick-msg-btn .category {
-		display: block;
-		font-size: 0.65rem;
-		color: #64748b;
-		margin-bottom: 0.25rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
+	/* Actions */
 	.sidebar-actions {
 		display: flex;
 		flex-direction: column;
@@ -589,35 +748,59 @@
 	.action-btn {
 		background: #334155;
 		border: none;
-		padding: 0.75rem;
 		border-radius: 6px;
-		color: #e2e8f0;
+		padding: 0.75rem 1rem;
+		color: #f8fafc;
 		font-size: 0.875rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: background 0.15s ease;
+		transition: all 0.2s;
 	}
 
-	.action-btn:hover {
+	.action-btn:hover:not(:disabled) {
 		background: #475569;
 	}
 
 	.action-btn.primary {
-		background: #3b82f6;
+		background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 	}
 
-	.action-btn.primary:hover {
-		background: #2563eb;
+	.action-btn.primary:hover:not(:disabled) {
+		background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+	}
+
+	.action-btn.primary.large {
+		font-size: 1rem;
+		padding: 1rem 1.25rem;
 	}
 
 	.action-btn.secondary {
-		background: #ef4444;
+		background: #1e293b;
+		border: 1px solid #334155;
 	}
 
-	.action-btn.secondary:hover {
-		background: #dc2626;
+	.action-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
+	.config-section input {
+		width: 100%;
+		background: #0f172a;
+		border: 1px solid #334155;
+		border-radius: 4px;
+		padding: 0.5rem;
+		color: #e2e8f0;
+		font-size: 0.875rem;
+		margin-top: 0.25rem;
+	}
+
+	.config-section label span {
+		font-size: 0.75rem;
+		color: #94a3b8;
+	}
+
+	/* Main Chat Area */
 	.chat-main {
 		flex: 1;
 		display: flex;
@@ -645,6 +828,7 @@
 		justify-content: center;
 		text-align: center;
 		color: #64748b;
+		padding: 2rem;
 	}
 
 	.empty-icon {
@@ -653,31 +837,52 @@
 	}
 
 	.empty-chat h2 {
-		font-size: 1.25rem;
+		font-size: 1.5rem;
 		color: #f8fafc;
 		margin: 0 0 0.5rem;
 	}
 
 	.empty-chat p {
-		margin: 0;
+		margin: 0.25rem 0;
+		color: #94a3b8;
 	}
 
-	.empty-chat .hint {
-		font-size: 0.75rem;
-		margin-top: 0.5rem;
-		color: #475569;
+	.selected-theme-preview {
+		margin-top: 2rem;
+		padding: 1.5rem;
+		background: #0f172a;
+		border: 2px solid #3b82f6;
+		border-radius: 12px;
+		max-width: 400px;
+	}
+
+	.theme-emoji-large {
+		font-size: 3rem;
+		display: block;
+		margin-bottom: 1rem;
+	}
+
+	.selected-theme-preview h3 {
+		color: #f8fafc;
+		margin: 0 0 0.5rem;
+	}
+
+	.selected-theme-preview p {
+		color: #cbd5e1;
+		font-size: 0.875rem;
 	}
 
 	.message {
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		max-width: 80%;
+		padding: 0.875rem 1.125rem;
+		border-radius: 12px;
+		max-width: 75%;
 	}
 
 	.message.user {
-		background: #3b82f6;
+		background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 		color: white;
 		align-self: flex-end;
+		margin-left: auto;
 	}
 
 	.message.assistant {
@@ -687,42 +892,16 @@
 	}
 
 	.message.system {
-		background: rgba(245, 158, 11, 0.1);
-		border: 1px dashed #f59e0b;
-		color: #f59e0b;
+		background: rgba(34, 197, 94, 0.15);
+		color: #22c55e;
 		align-self: center;
+		max-width: 90%;
+		text-align: center;
 		font-size: 0.875rem;
-		max-width: 100%;
 	}
 
-	.message-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 0.5rem;
-		font-size: 0.75rem;
-		opacity: 0.8;
-	}
-
-	.message-role {
-		font-weight: 500;
-	}
-
-	.message-time {
-		opacity: 0.6;
-	}
-
-	.message-content {
-		line-height: 1.5;
-	}
-
-	.streaming-indicator {
-		color: #3b82f6;
-		animation: pulse 1s infinite;
-	}
-
-	.cursor {
-		animation: blink 0.8s infinite;
+	.message.streaming {
+		animation: pulse 2s infinite;
 	}
 
 	@keyframes pulse {
@@ -731,27 +910,60 @@
 			opacity: 1;
 		}
 		50% {
-			opacity: 0.5;
+			opacity: 0.8;
 		}
+	}
+
+	.message-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.5rem;
+		font-size: 0.75rem;
+	}
+
+	.message-role {
+		font-weight: 600;
+		opacity: 0.8;
+	}
+
+	.message-time {
+		opacity: 0.5;
+	}
+
+	.message-content {
+		line-height: 1.6;
+		white-space: pre-wrap;
+	}
+
+	.cursor {
+		animation: blink 1s infinite;
+		font-weight: bold;
 	}
 
 	@keyframes blink {
 		0%,
-		100% {
+		50% {
 			opacity: 1;
 		}
-		50% {
+		51%,
+		100% {
 			opacity: 0;
 		}
+	}
+
+	.streaming-indicator {
+		color: #3b82f6;
+		font-style: italic;
 	}
 
 	.error-bar {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.75rem;
 		padding: 0.75rem 1rem;
 		background: rgba(239, 68, 68, 0.1);
-		border-top: 1px solid #ef4444;
+		border-top: 1px solid #334155;
 		color: #ef4444;
 		font-size: 0.875rem;
 	}
@@ -760,11 +972,15 @@
 		margin-left: auto;
 		background: transparent;
 		border: 1px solid #ef4444;
-		color: #ef4444;
-		padding: 0.25rem 0.5rem;
 		border-radius: 4px;
-		font-size: 0.75rem;
+		padding: 0.25rem 0.75rem;
+		color: #ef4444;
 		cursor: pointer;
+		font-size: 0.75rem;
+	}
+
+	.error-bar button:hover {
+		background: rgba(239, 68, 68, 0.1);
 	}
 
 	.input-area {
@@ -772,18 +988,25 @@
 		gap: 0.75rem;
 		padding: 1rem;
 		border-top: 1px solid #334155;
+		background: #0f172a;
 	}
 
 	.input-area textarea {
 		flex: 1;
-		background: #0f172a;
+		background: #1e293b;
 		border: 1px solid #334155;
-		border-radius: 6px;
+		border-radius: 8px;
 		padding: 0.75rem;
-		color: #e2e8f0;
-		font-size: 0.875rem;
+		color: #f8fafc;
+		font-size: 0.9375rem;
+		line-height: 1.5;
 		resize: none;
 		font-family: inherit;
+	}
+
+	.input-area textarea:focus {
+		outline: none;
+		border-color: #3b82f6;
 	}
 
 	.input-area textarea:disabled {
@@ -792,29 +1015,30 @@
 	}
 
 	.send-btn {
-		background: #3b82f6;
-		color: white;
+		background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 		border: none;
-		padding: 0.75rem 1.5rem;
-		border-radius: 6px;
-		font-weight: 500;
+		border-radius: 8px;
+		padding: 0 1.5rem;
+		color: white;
+		font-weight: 600;
 		cursor: pointer;
-		transition: background 0.15s ease;
-		white-space: nowrap;
+		transition: all 0.2s;
+		font-size: 0.9375rem;
 	}
 
 	.send-btn:hover:not(:disabled) {
-		background: #2563eb;
+		background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+		transform: translateY(-1px);
 	}
 
 	.send-btn:disabled {
-		background: #64748b;
+		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
 	.spinner {
-		animation: spin 1s linear infinite;
 		display: inline-block;
+		animation: spin 1s linear infinite;
 	}
 
 	@keyframes spin {

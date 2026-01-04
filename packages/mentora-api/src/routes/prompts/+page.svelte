@@ -5,7 +5,6 @@
 		quickStartConfigs,
 		samplePrompts,
 		sampleStudentMessages,
-		sampleAssignments,
 		type QuickStartConfig
 	} from '$lib/explorer/test-fixtures';
 	import { onMount, onDestroy } from 'svelte';
@@ -36,7 +35,6 @@
 	let conversationHistory = $state<Array<{ role: 'user' | 'model'; text: string }>>([]);
 
 	let baseUrl = $state('http://localhost:5173');
-	let selectedAssignment = $state(sampleAssignments[0]);
 
 	// Response state
 	let isLoading = $state(false);
@@ -66,30 +64,91 @@
 		studentMessage = message;
 	}
 
+	// Cache created assignment for reuse
+	let cachedAssignmentId = $state<string | null>(null);
+
+	/**
+	 * Create or get a test assignment for preview
+	 */
+	async function ensureTestAssignment(): Promise<string> {
+		// Reuse cached assignment if we have one
+		if (cachedAssignmentId) {
+			return cachedAssignmentId;
+		}
+
+		// Create a new test assignment
+		const res = await fetch(`${baseUrl}/api/assignments`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${authState.token}`
+			},
+			body: JSON.stringify({
+				title: `Prompt Lab 測試 - ${new Date().toLocaleString('zh-TW')}`,
+				prompt: systemPrompt,
+				mode: 'instant',
+				startAt: Date.now(),
+				allowLate: true,
+				allowResubmit: true,
+				aiConfig: {
+					model: 'gemini-2.0-flash',
+					temperature: 0.7,
+					systemPrompt: systemPrompt
+				}
+			})
+		});
+
+		if (!res.ok) {
+			const errorData = await res.json().catch(() => ({}));
+			throw new Error(errorData.message || `建立 Assignment 失敗: ${res.status}`);
+		}
+
+		const data = await res.json();
+		const assignmentId = data.id || data.data?.id;
+
+		if (!assignmentId) {
+			throw new Error('未能取得 Assignment ID');
+		}
+
+		cachedAssignmentId = assignmentId;
+		return assignmentId;
+	}
+
 	async function testPrompt() {
+		if (!authState.token) {
+			error = '請先登入以測試 API';
+			return;
+		}
+
 		isLoading = true;
 		aiResponse = null;
 		error = null;
 		tokenUsage = null;
 
 		try {
-			// Use the preview endpoint with selected assignment
-			const res = await fetch(`${baseUrl}/api/assignments/${selectedAssignment.id}/preview`, {
+			// First ensure we have a test assignment
+			const assignmentId = await ensureTestAssignment();
+
+			// Use the preview endpoint with our created assignment
+			const res = await fetch(`${baseUrl}/api/assignments/${assignmentId}/preview`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					...(authState.token ? { Authorization: `Bearer ${authState.token}` } : {})
+					Authorization: `Bearer ${authState.token}`
 				},
 				body: JSON.stringify({
-					studentMessage,
-					strategy: dialecticalStrategy,
-					// Include custom prompt if modified from default
-					customPrompt: systemPrompt !== samplePrompts.socraticDefault ? systemPrompt : undefined
+					testMessage: studentMessage,
+					strategy: dialecticalStrategy
 				})
 			});
 
 			if (!res.ok) {
 				const errorData = await res.json().catch(() => ({}));
+				// If assignment not found, clear cache and retry once
+				if (res.status === 404 && cachedAssignmentId) {
+					cachedAssignmentId = null;
+					throw new Error('Assignment 已過期，請重試');
+				}
 				throw new Error(errorData.message || `API error: ${res.status} ${res.statusText}`);
 			}
 
@@ -148,24 +207,22 @@
 			<label for="baseUrl">Base URL</label>
 			<input id="baseUrl" type="text" bind:value={baseUrl} />
 		</div>
-		<div class="config-field">
-			<label for="assignmentSelect">Assignment</label>
-			<select id="assignmentSelect" bind:value={selectedAssignment}>
-				{#each sampleAssignments as assignment}
-					<option value={assignment}>{assignment.name}</option>
-				{/each}
-			</select>
-		</div>
 		<div class="config-field status-field">
 			<span class="status-label">認證狀態</span>
 			<div class="auth-status-display">
 				{#if authState.user}
 					<span class="status-indicator success">✓ {authState.user.displayName}</span>
 				{:else}
-					<span class="status-indicator warning">未登入</span>
+					<span class="status-indicator warning">⚠ 未登入 - 請先從首頁登入</span>
 				{/if}
 			</div>
 		</div>
+		{#if cachedAssignmentId}
+			<div class="config-field">
+				<span class="status-label">Assignment</span>
+				<span class="status-indicator info">📝 {cachedAssignmentId.substring(0, 20)}...</span>
+			</div>
+		{/if}
 	</div>
 
 	<div class="lab-layout">
@@ -366,8 +423,7 @@
 		color: #64748b;
 	}
 
-	.config-field input,
-	.config-field select {
+	.config-field input {
 		background: #0f172a;
 		border: 1px solid #334155;
 		border-radius: 4px;
@@ -401,6 +457,12 @@
 
 	.status-indicator.warning {
 		color: #f59e0b;
+	}
+
+	.status-indicator.info {
+		color: #38bdf8;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.75rem;
 	}
 
 	.lab-layout {
