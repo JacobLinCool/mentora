@@ -37,7 +37,7 @@ const handleCORS: Handle = async ({ event, resolve }) => {
             return new Response(null, {
                 status: 204,
                 headers: {
-                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Origin": origin!,
                     "Access-Control-Allow-Methods":
                         "GET, POST, PUT, DELETE, PATCH, OPTIONS",
                     "Access-Control-Allow-Headers":
@@ -53,7 +53,7 @@ const handleCORS: Handle = async ({ event, resolve }) => {
 
     // Add CORS headers to responses in development
     if (dev && isAllowedOrigin(origin)) {
-        response.headers.set("Access-Control-Allow-Origin", origin);
+        response.headers.set("Access-Control-Allow-Origin", origin!);
         response.headers.set("Access-Control-Allow-Credentials", "true");
     }
 

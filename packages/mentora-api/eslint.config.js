@@ -34,8 +34,7 @@ export default defineConfig(
 				projectService: true,
 				extraFileExtensions: ['.svelte'],
 				parser: ts.parser,
-				svelteConfig,
-				tsconfigRootDir: __dirname
+				svelteConfig
 			}
 		}
 	}
