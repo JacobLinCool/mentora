@@ -16,7 +16,7 @@
 
 	// Language state
 	let language = $state<Language>('en');
-	$: t = getTranslation(language);
+	const t = $derived(getTranslation(language));
 
 	// Auth state
 	let authState = $state<AuthState>({
