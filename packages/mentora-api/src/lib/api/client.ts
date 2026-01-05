@@ -13,7 +13,16 @@ import type {
 	Submission,
 	Topic,
 	UserProfile,
-	Wallet
+	Wallet,
+	// API DTOs
+	JoinCourseResult,
+	CourseWalletResult,
+	AddCreditsResult,
+	TranscriptionResult,
+	SynthesizeResult,
+	LLMResponse,
+	ConversationAnalysis,
+	ConversationSummary
 } from 'mentora-firebase';
 import * as AssignmentsModule from './assignments.js';
 import * as BackendModule from './backend.js';
@@ -38,7 +47,15 @@ export type {
 	Topic,
 	Turn,
 	UserProfile,
-	Wallet
+	Wallet,
+	JoinCourseResult,
+	CourseWalletResult,
+	AddCreditsResult,
+	TranscriptionResult,
+	SynthesizeResult,
+	LLMResponse,
+	ConversationAnalysis,
+	ConversationSummary
 } from 'mentora-firebase';
 export type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
 
@@ -154,7 +171,7 @@ export class MentoraClient {
 			role?: 'instructor' | 'student' | 'ta' | 'auditor'
 		): Promise<APIResult<string>> =>
 			this.authReadyThen(() => CoursesModule.inviteMember(this._config, courseId, email, role)),
-		joinByCode: (code: string): Promise<APIResult<CoursesModule.JoinCourseResult>> =>
+		joinByCode: (code: string): Promise<APIResult<JoinCourseResult>> =>
 			this.authReadyThen(() => CoursesModule.joinByCode(this._config, code)),
 		listPublic: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
 			CoursesModule.listPublicCourses(this._config, options),
@@ -180,7 +197,7 @@ export class MentoraClient {
 		getWallet: (
 			courseId: string,
 			options?: { includeLedger?: boolean; ledgerLimit?: number }
-		): Promise<APIResult<WalletsModule.CourseWalletResult>> =>
+		): Promise<APIResult<CourseWalletResult>> =>
 			this.authReadyThen(() => WalletsModule.getCourseWallet(this._config, courseId, options))
 	};
 
@@ -349,21 +366,15 @@ export class MentoraClient {
 			this.authReadyThen(() => WalletsModule.getMyWallet(this._config)),
 		listEntries: (walletId: string, options?: QueryOptions): Promise<APIResult<LedgerEntry[]>> =>
 			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options)),
-		addCredits: (
-			amount: number,
-			currency: string = 'usd'
-		): Promise<APIResult<WalletsModule.AddCreditsResult>> =>
+		addCredits: (amount: number, currency: string = 'usd'): Promise<APIResult<AddCreditsResult>> =>
 			this.authReadyThen(() => WalletsModule.addCredits(this._config, amount, currency))
 	};
 
 	// ============ Voice ============
 	voice = {
-		transcribe: (audioBlob: Blob): Promise<APIResult<VoiceModule.TranscriptionResult>> =>
+		transcribe: (audioBlob: Blob): Promise<APIResult<TranscriptionResult>> =>
 			this.authReadyThen(() => VoiceModule.transcribeAudio(this._config, audioBlob)),
-		synthesize: (
-			text: string,
-			voiceId?: string
-		): Promise<APIResult<VoiceModule.SynthesizeResult>> =>
+		synthesize: (text: string, voiceId?: string): Promise<APIResult<SynthesizeResult>> =>
 			this.authReadyThen(() => VoiceModule.synthesizeSpeech(this._config, text, voiceId))
 	};
 
@@ -378,17 +389,7 @@ export class MentoraClient {
 		/**
 		 * Submit a message and get AI response (non-streaming)
 		 */
-		submitMessage: (
-			conversationId: string,
-			text: string
-		): Promise<
-			APIResult<{
-				turnId: string;
-				text: string;
-				analysis?: { stance?: string; quality?: number; suggestions?: string[] };
-				tokenUsage?: { input: number; output: number };
-			}>
-		> =>
+		submitMessage: (conversationId: string, text: string): Promise<APIResult<LLMResponse>> =>
 			this.authReadyThen(() =>
 				BackendModule.callBackend(this._config, '/api/llm', {
 					method: 'POST',
@@ -399,22 +400,7 @@ export class MentoraClient {
 		/**
 		 * Analyze a conversation
 		 */
-		analyzeConversation: (
-			conversationId: string
-		): Promise<
-			APIResult<{
-				overallScore: number;
-				stanceProgression: Array<{ turnId: string; stance: string }>;
-				qualityMetrics: {
-					argumentClarity: number;
-					evidenceUsage: number;
-					criticalThinking: number;
-					responseToCounterpoints: number;
-				};
-				suggestions: string[];
-				summary: string;
-			}>
-		> =>
+		analyzeConversation: (conversationId: string): Promise<APIResult<ConversationAnalysis>> =>
 			this.authReadyThen(() =>
 				BackendModule.callBackend(this._config, '/api/llm', {
 					method: 'POST',
@@ -427,17 +413,7 @@ export class MentoraClient {
 		 */
 		generateSummary: (
 			conversationId: string
-		): Promise<
-			APIResult<{
-				summary: {
-					text: string;
-					initialStance: string;
-					finalStance: string;
-					turnsAnalyzed: number;
-				} | null;
-				message?: string;
-			}>
-		> =>
+		): Promise<APIResult<{ summary: ConversationSummary | null; message?: string }>> =>
 			this.authReadyThen(() =>
 				BackendModule.callBackend(this._config, '/api/llm', {
 					method: 'POST',
