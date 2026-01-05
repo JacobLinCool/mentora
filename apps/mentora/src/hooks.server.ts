@@ -2,17 +2,18 @@ import { dev } from "$app/environment";
 import { paraglideMiddleware } from "$lib/paraglide/server";
 import type { Handle } from "@sveltejs/kit";
 
-// Allowed origins for CORS in development (API Explorer)
-const ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    "http://localhost:5176",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:5175",
-    "http://127.0.0.1:5176",
-];
+/**
+ * Check if origin is allowed for CORS in development (all local origins)
+ */
+function isAllowedOrigin(origin: string | null): boolean {
+    if (!origin) return false;
+    try {
+        const url = new URL(origin);
+        return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    } catch {
+        return false;
+    }
+}
 
 const handleParaglide: Handle = ({ event, resolve }) =>
     paraglideMiddleware(event.request, ({ request, locale }) => {
@@ -32,7 +33,7 @@ const handleCORS: Handle = async ({ event, resolve }) => {
 
     // Handle preflight OPTIONS requests
     if (event.request.method === "OPTIONS") {
-        if (dev && origin && ALLOWED_ORIGINS.includes(origin)) {
+        if (dev && isAllowedOrigin(origin)) {
             return new Response(null, {
                 status: 204,
                 headers: {
@@ -51,7 +52,7 @@ const handleCORS: Handle = async ({ event, resolve }) => {
     const response = await resolve(event);
 
     // Add CORS headers to responses in development
-    if (dev && origin && ALLOWED_ORIGINS.includes(origin)) {
+    if (dev && isAllowedOrigin(origin)) {
         response.headers.set("Access-Control-Allow-Origin", origin);
         response.headers.set("Access-Control-Allow-Credentials", "true");
     }
