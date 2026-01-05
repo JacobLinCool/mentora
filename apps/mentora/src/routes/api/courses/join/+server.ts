@@ -1,3 +1,8 @@
+/**
+ * Courses API - Join by code
+ *
+ * Handled on backend to prevent exposing course list query permissions to frontend.
+ */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
@@ -18,8 +23,7 @@ export const POST: RequestHandler = async (event) => {
 
     // Normalize and validate join code
     const normalizedCode = code.trim().toUpperCase();
-    // Example: 6-10 uppercase letters/digits, adjust regex as needed
-    if (!/^[A-Z0-9]{6,10}$/.test(normalizedCode)) {
+    if (!/^[A-Z0-9]{6,64}$/.test(normalizedCode.replace(/[-_]/g, ""))) {
         throw svelteError(400, "Join code format is invalid");
     }
 
@@ -31,7 +35,7 @@ export const POST: RequestHandler = async (event) => {
             .limit(1)
             .get();
 
-        if (coursesSnapshot.docs.length === 0) {
+        if (coursesSnapshot.empty) {
             throw svelteError(404, "Course not found with this code");
         }
 
@@ -40,15 +44,10 @@ export const POST: RequestHandler = async (event) => {
         const courseData = courseDoc.data();
 
         // Validate course document
-        const validationResult = Courses.schema.safeParse({
+        Courses.schema.parse({
             id: courseId,
             ...courseData,
         });
-
-        if (!validationResult.success) {
-            console.error("Invalid course document:", validationResult.error);
-            throw svelteError(500, "Invalid course data");
-        }
 
         // Check if user is already a member
         const existingMembership = await firestore
@@ -58,7 +57,7 @@ export const POST: RequestHandler = async (event) => {
         if (existingMembership.exists) {
             const membershipData = existingMembership.data();
             if (membershipData?.status === "active") {
-                return json({ courseId, alreadyMember: true });
+                return json({ courseId, joined: false, alreadyMember: true });
             }
             // If user was previously removed or invited, update their status
             await firestore
@@ -68,7 +67,7 @@ export const POST: RequestHandler = async (event) => {
                     joinedAt: Date.now(),
                 });
 
-            return json({ courseId, rejoined: true });
+            return json({ courseId, joined: true, rejoined: true });
         }
 
         // Create new roster entry
@@ -87,12 +86,9 @@ export const POST: RequestHandler = async (event) => {
         return json({ courseId, joined: true });
     } catch (err) {
         console.error("Error joining course:", err);
-
-        // Re-throw SvelteKit errors
         if (err && typeof err === "object" && "status" in err) {
             throw err;
         }
-
         throw svelteError(500, "Failed to join course");
     }
 };

@@ -139,12 +139,25 @@ export class MentoraClient {
 			this.authReadyThen(() => CoursesModule.listMyCourses(this._config, options)),
 		listEnrolled: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
 			this.authReadyThen(() => CoursesModule.listMyEnrolledCourses(this._config, options)),
-		create: (title: string, code: string): Promise<APIResult<string>> =>
-			this.authReadyThen(() => CoursesModule.createCourse(this._config, title, code)),
+		create: (
+			title: string,
+			code?: string,
+			options?: CoursesModule.CreateCourseOptions
+		): Promise<APIResult<string>> =>
+			this.authReadyThen(() => CoursesModule.createCourse(this._config, title, code, options)),
 		getRoster: (courseId: string, options?: QueryOptions): Promise<APIResult<CourseMembership[]>> =>
 			this.authReadyThen(() => CoursesModule.getCourseRoster(this._config, courseId, options)),
-		joinByCode: (code: string): Promise<APIResult<string>> =>
-			this.authReadyThen(() => BackendModule.joinCourseByCode(this._config, code)),
+		inviteMember: (
+			courseId: string,
+			email: string,
+			role?: 'instructor' | 'student' | 'ta' | 'auditor'
+		): Promise<APIResult<string>> =>
+			this.authReadyThen(() => CoursesModule.inviteMember(this._config, courseId, email, role)),
+		joinByCode: (
+			code: string
+		): Promise<
+			APIResult<{ courseId: string; joined: boolean; alreadyMember?: boolean; rejoined?: boolean }>
+		> => this.authReadyThen(() => CoursesModule.joinByCode(this._config, code)),
 		listPublic: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
 			CoursesModule.listPublicCourses(this._config, options),
 		listAllEnrolled: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
@@ -155,7 +168,22 @@ export class MentoraClient {
 		): Promise<APIResult<CourseDoc>> =>
 			this.authReadyThen(() => CoursesModule.updateCourse(this._config, courseId, updates)),
 		delete: (courseId: string): Promise<APIResult<void>> =>
-			this.authReadyThen(() => CoursesModule.deleteCourse(this._config, courseId))
+			this.authReadyThen(() => CoursesModule.deleteCourse(this._config, courseId)),
+		updateMember: (
+			courseId: string,
+			memberId: string,
+			updates: { role?: 'instructor' | 'student' | 'ta' | 'auditor'; status?: 'active' | 'removed' }
+		): Promise<APIResult<CourseMembership>> =>
+			this.authReadyThen(() =>
+				CoursesModule.updateMember(this._config, courseId, memberId, updates)
+			),
+		removeMember: (courseId: string, memberId: string): Promise<APIResult<void>> =>
+			this.authReadyThen(() => CoursesModule.removeMember(this._config, courseId, memberId)),
+		getWallet: (
+			courseId: string,
+			options?: { includeLedger?: boolean; ledgerLimit?: number }
+		): Promise<APIResult<WalletsModule.CourseWalletResult>> =>
+			this.authReadyThen(() => WalletsModule.getCourseWallet(this._config, courseId, options))
 	};
 
 	// ============ Topics ============
@@ -238,6 +266,22 @@ export class MentoraClient {
 		getForAssignment: (assignmentId: string, userId?: string): Promise<APIResult<Conversation>> =>
 			this.authReadyThen(() =>
 				ConversationsModule.getAssignmentConversation(this._config, assignmentId, userId)
+			),
+		create: (
+			assignmentId: string
+		): Promise<APIResult<{ id: string; state: string; isExisting: boolean }>> =>
+			this.authReadyThen(() => ConversationsModule.createConversation(this._config, assignmentId)),
+		end: (
+			conversationId: string
+		): Promise<APIResult<{ state: string; conversation: Conversation }>> =>
+			this.authReadyThen(() => ConversationsModule.endConversation(this._config, conversationId)),
+		addTurn: (
+			conversationId: string,
+			text: string,
+			type: 'idea' | 'followup'
+		): Promise<APIResult<{ turnId: string; conversation: Conversation }>> =>
+			this.authReadyThen(() =>
+				ConversationsModule.addTurn(this._config, conversationId, text, type)
 			)
 	};
 
@@ -307,6 +351,84 @@ export class MentoraClient {
 			this.authReadyThen(() => WalletsModule.getMyWallet(this._config)),
 		listEntries: (walletId: string, options?: QueryOptions): Promise<APIResult<LedgerEntry[]>> =>
 			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options))
+	};
+
+	// ============ LLM Operations (Delegated to Backend) ============
+	/**
+	 * LLM-related operations that require backend processing.
+	 * These are delegated to the backend which handles LLM API calls.
+	 *
+	 * Note: The backend processes the LLM call and returns results.
+	 * The client is responsible for storing results in Firestore.
+	 */
+	llm = {
+		/**
+		 * Submit a message and get AI response (non-streaming)
+		 */
+		submitMessage: (
+			conversationId: string,
+			text: string
+		): Promise<
+			APIResult<{
+				turnId: string;
+				text: string;
+				analysis?: { stance?: string; quality?: number; suggestions?: string[] };
+				tokenUsage?: { input: number; output: number };
+			}>
+		> =>
+			this.authReadyThen(() =>
+				BackendModule.callBackend(this._config, `/api/conversations/${conversationId}/message`, {
+					method: 'POST',
+					body: JSON.stringify({ text })
+				})
+			),
+
+		/**
+		 * Analyze a conversation
+		 */
+		analyzeConversation: (
+			conversationId: string
+		): Promise<
+			APIResult<{
+				overallScore: number;
+				stanceProgression: Array<{ turnId: string; stance: string }>;
+				qualityMetrics: {
+					argumentClarity: number;
+					evidenceUsage: number;
+					criticalThinking: number;
+					responseToCounterpoints: number;
+				};
+				suggestions: string[];
+				summary: string;
+			}>
+		> =>
+			this.authReadyThen(() =>
+				BackendModule.callBackend(this._config, `/api/conversations/${conversationId}/analyze`, {
+					method: 'POST'
+				})
+			),
+
+		/**
+		 * Generate conversation summary
+		 */
+		generateSummary: (
+			conversationId: string
+		): Promise<
+			APIResult<{
+				summary: {
+					text: string;
+					initialStance: string;
+					finalStance: string;
+					turnsAnalyzed: number;
+				} | null;
+				message?: string;
+			}>
+		> =>
+			this.authReadyThen(() =>
+				BackendModule.callBackend(this._config, `/api/conversations/${conversationId}/summary`, {
+					method: 'GET'
+				})
+			)
 	};
 
 	// ============ Backend ============

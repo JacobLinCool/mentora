@@ -1,5 +1,12 @@
 /**
- * Wallet Credits API - Add credits to user's wallet
+ * Wallets API - Add credits to user's wallet
+ *
+ * POST /api/wallets
+ *
+ * This is the only wallet endpoint that requires backend processing
+ * due to idempotency checks and balance updates.
+ *
+ * All other wallet operations are handled via direct Firestore access.
  */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
@@ -14,7 +21,12 @@ export const POST: RequestHandler = async (event) => {
     const user = await requireAuth(event);
 
     const body = await event.request.json();
-    const { amount, paymentMethodId, idempotencyKey } = body;
+    const { action, amount, paymentMethodId, idempotencyKey } = body;
+
+    // Validate action
+    if (action && action !== "addCredits") {
+        throw svelteError(400, `Unknown action: ${action}`);
+    }
 
     if (typeof amount !== "number" || amount <= 0) {
         throw svelteError(400, "Amount must be a positive number");

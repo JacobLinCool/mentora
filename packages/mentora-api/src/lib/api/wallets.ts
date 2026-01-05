@@ -6,13 +6,14 @@ import {
 	doc,
 	getDoc,
 	getDocs,
+	setDoc,
 	limit,
 	orderBy,
 	query,
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
-import { Wallets, type LedgerEntry, type Wallet } from 'mentora-firebase';
+import { Courses, Wallets, type LedgerEntry, type Wallet } from 'mentora-firebase';
 import {
 	failure,
 	tryCatch,
@@ -99,5 +100,55 @@ export async function listWalletEntries(
 		const snapshot = await getDocs(q);
 
 		return snapshot.docs.map((doc) => Wallets.entries.schema.parse(doc.data()));
+	});
+}
+
+/**
+ * Course wallet result with stats
+ */
+export interface CourseWalletResult {
+	wallet: Wallet;
+	ledger?: LedgerEntry[];
+	stats: {
+		totalCharges: number;
+		transactionCount: number;
+	};
+}
+
+/**
+ * Get course wallet (host wallet) with optional ledger and stats
+ *
+ * Delegated to backend to handle secure creation and stats.
+ */
+export async function getCourseWallet(
+	config: MentoraAPIConfig,
+	courseId: string,
+	options?: { includeLedger?: boolean; ledgerLimit?: number }
+): Promise<APIResult<CourseWalletResult>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const token = await currentUser.getIdToken();
+
+		const params = new URLSearchParams();
+		if (options?.includeLedger) params.append('includeLedger', 'true');
+		if (options?.ledgerLimit) params.append('ledgerLimit', options.ledgerLimit.toString());
+
+		const response = await fetch(`/api/courses/${courseId}/wallet?${params.toString()}`, {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: 'Failed to get wallet' }));
+			throw new Error(error.message || `Failed to get wallet: ${response.status}`);
+		}
+
+		return await response.json();
 	});
 }

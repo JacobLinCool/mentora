@@ -1,5 +1,7 @@
 /**
- * Course Wallet API - Get wallet for a course (host wallet)
+ * Course Wallet API - Get/Create wallet for a course
+ *
+ * Handled on backend to securely manage wallet creation and stats calculation.
  */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
@@ -101,7 +103,7 @@ export const GET: RequestHandler = async (event) => {
     }, 0);
 
     return json({
-        ...wallet,
+        wallet,
         ledger: includeLedger ? ledger : undefined,
         stats: {
             totalCharges,

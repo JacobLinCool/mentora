@@ -116,6 +116,9 @@ export async function createAssignment(
 			updatedAt: now
 		};
 
+		// Validate against schema before sending
+		Assignments.schema.parse(assignmentData);
+
 		await setDoc(docRef, assignmentData);
 
 		return docRef.id;
