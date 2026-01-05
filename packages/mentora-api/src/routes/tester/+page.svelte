@@ -9,9 +9,14 @@
 	} from '$lib/explorer/api-spec';
 	import { subscribeToAuth, type AuthState } from '$lib/explorer/firebase';
 	import { sampleCourses, sampleTopics, sampleAssignments } from '$lib/explorer/test-fixtures';
+	import { getTranslation, type Language } from '$lib/i18n/tester';
 	import { onMount, onDestroy } from 'svelte';
 
 	const endpointsByTag = getEndpointsByTag();
+
+	// Language state
+	let language = $state<Language>('en');
+	$: t = getTranslation(language);
 
 	// Auth state
 	let authState = $state<AuthState>({
@@ -23,6 +28,12 @@
 	let unsubscribe: (() => void) | null = null;
 
 	onMount(() => {
+		// Load saved language preference
+		const saved = localStorage.getItem('tester-language');
+		if (saved === 'en' || saved === 'zh-TW') {
+			language = saved;
+		}
+
 		unsubscribe = subscribeToAuth((state) => {
 			authState = state;
 		});
@@ -31,6 +42,11 @@
 	onDestroy(() => {
 		unsubscribe?.();
 	});
+
+	function setLanguage(lang: Language) {
+		language = lang;
+		localStorage.setItem('tester-language', lang);
+	}
 
 	// State
 	let selectedEndpoint = $state<APIEndpoint | null>(null);
@@ -162,53 +178,87 @@
 	}
 </script>
 
-<div class="tester-page">
-	<header class="page-header">
-		<h1>🧪 API Tester</h1>
-		<p>
-			Test API endpoints with live requests {#if authState.user}<span class="auth-hint"
-					>✓ 已登入，Token 會自動帶入</span
-				>{:else}<span class="auth-warning">⚠ 請先登入以測試需要認證的 API</span>{/if}
-		</p>
+<div class="max-w-[1600px] mx-auto p-6">
+	<header class="mb-6 flex items-start justify-between">
+		<div>
+			<h1 class="text-3xl font-bold text-slate-50 mb-2">🧪 {t.title}</h1>
+			<p class="text-slate-400">
+				{t.subtitle}
+				{#if authState.user}
+					<span class="text-green-400 text-sm ml-2">✓ {t.authHint}</span>
+				{:else}
+					<span class="text-amber-400 text-sm ml-2">⚠ {t.authWarning}</span>
+				{/if}
+			</p>
+		</div>
+		<div class="flex gap-2">
+			<button
+				onclick={() => setLanguage('en')}
+				class="px-3 py-1.5 rounded text-sm font-medium transition-colors {language === 'en'
+					? 'bg-blue-600 text-white'
+					: 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
+			>
+				English
+			</button>
+			<button
+				onclick={() => setLanguage('zh-TW')}
+				class="px-3 py-1.5 rounded text-sm font-medium transition-colors {language === 'zh-TW'
+					? 'bg-blue-600 text-white'
+					: 'bg-slate-700 text-slate-300 hover:bg-slate-600'}"
+			>
+				繁體中文
+			</button>
+		</div>
 	</header>
 
-	<div class="config-bar">
-		<div class="config-field">
-			<label for="baseUrl">Base URL</label>
-			<input id="baseUrl" type="text" bind:value={baseUrl} placeholder="http://localhost:5173" />
+	<div class="flex gap-4 mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700">
+		<div class="flex flex-col gap-1 flex-1">
+			<label for="baseUrl" class="text-xs text-slate-500">{t.baseUrl}</label>
+			<input
+				id="baseUrl"
+				type="text"
+				bind:value={baseUrl}
+				placeholder="http://localhost:5173"
+				class="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+			/>
 		</div>
-		<div class="config-field status-field">
-			<span class="status-label">認證狀態</span>
-			<div class="auth-status-display">
+		<div class="flex flex-col gap-1 flex-1">
+			<span class="text-xs text-slate-500">{t.authStatus}</span>
+			<div class="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm">
 				{#if authState.user}
-					<span class="status-indicator success"
-						>✓ {authState.user.displayName || authState.user.email}</span
-					>
+					<span class="text-green-400">✓ {authState.user.displayName || authState.user.email}</span>
 				{:else}
-					<span class="status-indicator warning">未登入 - 請使用上方 Google 登入</span>
+					<span class="text-amber-400">{t.notLoggedIn}</span>
 				{/if}
 			</div>
 		</div>
 	</div>
 
-	<div class="tester-layout">
-		<aside class="endpoints-sidebar">
+	<div class="flex gap-6">
+		<aside class="w-72 flex-shrink-0 max-h-[calc(100vh-320px)] overflow-y-auto">
 			{#each apiTags as tag}
 				{@const endpoints = endpointsByTag.get(tag.name) || []}
-				<div class="sidebar-section">
-					<h3 style="color: {tag.color}">{tag.name}</h3>
-					<ul class="endpoint-list">
+				<div class="mb-6">
+					<h3 class="text-xs uppercase tracking-wider mb-2" style="color: {tag.color}">
+						{tag.name}
+					</h3>
+					<ul class="space-y-0.5">
 						{#each endpoints as endpoint}
 							<li>
 								<button
-									class="endpoint-btn"
-									class:active={selectedEndpoint === endpoint}
 									onclick={() => selectEndpoint(endpoint)}
+									class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm transition-colors {selectedEndpoint ===
+									endpoint
+										? 'bg-slate-700 text-slate-50'
+										: 'text-slate-400 hover:bg-slate-800'}"
 								>
-									<span class="method-mini" style="background: {getMethodColor(endpoint.method)}">
+									<span
+										class="px-1.5 py-0.5 rounded text-[10px] font-semibold text-white"
+										style="background: {getMethodColor(endpoint.method)}"
+									>
 										{endpoint.method.substring(0, 3)}
 									</span>
-									<span class="endpoint-path-mini">{endpoint.path}</span>
+									<span class="font-mono text-xs truncate">{endpoint.path}</span>
 								</button>
 							</li>
 						{/each}
@@ -217,48 +267,58 @@
 			{/each}
 		</aside>
 
-		<main class="request-panel">
+		<main class="flex-1 min-w-0">
 			{#if selectedEndpoint}
-				<div class="request-header">
-					<span class="method-badge" style="background: {getMethodColor(selectedEndpoint.method)}">
+				<div class="flex items-center gap-4 mb-4">
+					<span
+						class="px-3 py-1 rounded text-sm font-semibold text-white"
+						style="background: {getMethodColor(selectedEndpoint.method)}"
+					>
 						{selectedEndpoint.method}
 					</span>
-					<h2>{selectedEndpoint.summary}</h2>
+					<h2 class="text-xl font-medium text-slate-50">{selectedEndpoint.summary}</h2>
 				</div>
 
-				<div class="url-bar">
-					<code>{buildUrl()}</code>
-					<button class="send-btn" onclick={sendRequest} disabled={isLoading}>
-						{isLoading ? 'Sending...' : 'Send'}
+				<div
+					class="flex items-center gap-4 mb-6 p-3 bg-slate-800 rounded-lg border border-slate-700"
+				>
+					<code class="flex-1 text-sm text-cyan-400 font-mono overflow-x-auto">{buildUrl()}</code>
+					<button
+						onclick={sendRequest}
+						disabled={isLoading}
+						class="px-6 py-2 bg-blue-600 text-white rounded-md font-medium transition-colors hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed"
+					>
+						{isLoading ? t.sending : t.send}
 					</button>
 				</div>
 
-				<div class="params-forms">
+				<div class="space-y-6 mb-6">
 					{#if selectedEndpoint.pathParams && selectedEndpoint.pathParams.length > 0}
-						<div class="params-form">
-							<h3>Path Parameters</h3>
+						<div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+							<h3 class="text-sm font-medium text-slate-50 mb-4">{t.pathParams}</h3>
 							{#each selectedEndpoint.pathParams as param}
-								<div class="form-row">
-									<label for="path-{param.name}">
+								<div class="flex flex-col gap-1 mb-3">
+									<label for="path-{param.name}" class="text-xs text-slate-400">
 										{param.name}
-										{#if param.required}<span class="required">*</span>{/if}
+										{#if param.required}<span class="text-red-400">*</span>{/if}
 									</label>
-									<div class="input-with-presets">
+									<div class="flex gap-2">
 										<input
 											id="path-{param.name}"
 											type="text"
 											bind:value={pathParams[param.name]}
 											placeholder={param.description}
+											class="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 										/>
 										{#if presetIds[param.name]}
 											<select
-												class="preset-select"
 												onchange={(e) => {
 													const target = e.target as HTMLSelectElement;
 													if (target.value) pathParams[param.name] = target.value;
 												}}
+												class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-200 text-xs cursor-pointer hover:bg-slate-600 min-w-[100px]"
 											>
-												<option value="">📋 Presets</option>
+												<option value="">📋 {t.presets}</option>
 												{#each presetIds[param.name] as preset}
 													<option value={preset.value}>{preset.label}</option>
 												{/each}
@@ -271,16 +331,20 @@
 					{/if}
 
 					{#if selectedEndpoint.queryParams && selectedEndpoint.queryParams.length > 0}
-						<div class="params-form">
-							<h3>Query Parameters</h3>
+						<div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+							<h3 class="text-sm font-medium text-slate-50 mb-4">{t.queryParams}</h3>
 							{#each selectedEndpoint.queryParams as param}
-								<div class="form-row">
-									<label for="query-{param.name}">
+								<div class="flex flex-col gap-1 mb-3">
+									<label for="query-{param.name}" class="text-xs text-slate-400">
 										{param.name}
-										{#if param.required}<span class="required">*</span>{/if}
+										{#if param.required}<span class="text-red-400">*</span>{/if}
 									</label>
 									{#if param.enum}
-										<select id="query-{param.name}" bind:value={queryParams[param.name]}>
+										<select
+											id="query-{param.name}"
+											bind:value={queryParams[param.name]}
+											class="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+										>
 											<option value="">-- Select --</option>
 											{#each param.enum as opt}
 												<option value={opt}>{opt}</option>
@@ -292,6 +356,7 @@
 											type={param.type === 'number' ? 'number' : 'text'}
 											bind:value={queryParams[param.name]}
 											placeholder={param.description}
+											class="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 										/>
 									{/if}
 								</div>
@@ -300,434 +365,55 @@
 					{/if}
 
 					{#if selectedEndpoint.bodyParams && selectedEndpoint.bodyParams.length > 0}
-						<div class="params-form body-form">
-							<h3>Request Body</h3>
-							<textarea bind:value={bodyJson} placeholder={'{ "key": "value" }'} rows="10"
+						<div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+							<h3 class="text-sm font-medium text-slate-50 mb-4">{t.requestBody}</h3>
+							<textarea
+								bind:value={bodyJson}
+								placeholder={'{ "key": "value" }'}
+								rows="10"
+								class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 font-mono text-xs resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
 							></textarea>
 						</div>
 					{/if}
 				</div>
 
-				<div class="response-section">
-					<h3>Response</h3>
+				<div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
+					<h3 class="text-sm font-medium text-slate-50 mb-4">{t.response}</h3>
 					{#if error}
-						<div class="error-box">
-							<span class="error-icon">❌</span>
+						<div
+							class="flex items-center gap-2 p-4 bg-red-900/20 border border-red-700 rounded text-red-400"
+						>
+							<span class="text-lg">❌</span>
 							{error}
 						</div>
 					{:else if response}
-						<div class="response-meta">
-							<span class="status-badge" style="background: {getStatusColor(response.status)}">
+						<div class="flex items-center gap-4 mb-4">
+							<span
+								class="px-3 py-1 rounded text-sm font-medium text-white"
+								style="background: {getStatusColor(response.status)}"
+							>
 								{response.status}
 								{response.statusText}
 							</span>
-							<span class="response-time">{response.time}ms</span>
+							<span class="text-slate-500 text-sm">{response.time}ms</span>
 						</div>
-						<pre class="response-body">{JSON.stringify(response.data, null, 2)}</pre>
+						<pre
+							class="bg-slate-900 border border-slate-700 rounded p-4 overflow-x-auto font-mono text-xs text-slate-200 max-h-96 overflow-y-auto">{JSON.stringify(
+								response.data,
+								null,
+								2
+							)}</pre>
 					{:else}
-						<div class="empty-response">Click "Send" to make a request</div>
+						<div class="text-center py-8 text-slate-500">{t.clickToRequest}</div>
 					{/if}
 				</div>
 			{:else}
-				<div class="empty-state">
-					<div class="empty-icon">👈</div>
-					<h2>Select an endpoint</h2>
-					<p>Choose an API endpoint from the sidebar to start testing</p>
+				<div class="text-center py-16">
+					<div class="text-6xl mb-4">👈</div>
+					<h2 class="text-2xl font-medium text-slate-50 mb-2">{t.selectEndpoint}</h2>
+					<p class="text-slate-500">{t.selectEndpointDesc}</p>
 				</div>
 			{/if}
 		</main>
 	</div>
 </div>
-
-<style>
-	.tester-page {
-		max-width: 1600px;
-		margin: 0 auto;
-	}
-
-	.page-header {
-		margin-bottom: 1.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		color: #f8fafc;
-		margin: 0 0 0.5rem;
-	}
-
-	.page-header p {
-		color: #94a3b8;
-		margin: 0;
-	}
-
-	.config-bar {
-		display: flex;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background: #1e293b;
-		border-radius: 8px;
-		border: 1px solid #334155;
-	}
-
-	.config-field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.config-field label,
-	.config-field .status-label {
-		font-size: 0.75rem;
-		color: #64748b;
-	}
-
-	.config-field input {
-		background: #0f172a;
-		border: 1px solid #334155;
-		border-radius: 4px;
-		padding: 0.5rem 0.75rem;
-		color: #e2e8f0;
-		font-family: 'SF Mono', Monaco, monospace;
-		font-size: 0.875rem;
-		width: 300px;
-	}
-
-	.tester-layout {
-		display: flex;
-		gap: 1.5rem;
-	}
-
-	.endpoints-sidebar {
-		width: 280px;
-		flex-shrink: 0;
-		max-height: calc(100vh - 280px);
-		overflow-y: auto;
-	}
-
-	.sidebar-section {
-		margin-bottom: 1.5rem;
-	}
-
-	.sidebar-section h3 {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin: 0 0 0.5rem;
-	}
-
-	.endpoint-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.endpoint-btn {
-		width: 100%;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem;
-		background: transparent;
-		border: none;
-		color: #94a3b8;
-		cursor: pointer;
-		border-radius: 4px;
-		text-align: left;
-		font-size: 0.8rem;
-	}
-
-	.endpoint-btn:hover {
-		background: #1e293b;
-	}
-
-	.endpoint-btn.active {
-		background: #334155;
-		color: #f8fafc;
-	}
-
-	.method-mini {
-		padding: 0.125rem 0.25rem;
-		border-radius: 3px;
-		font-size: 0.65rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	.endpoint-path-mini {
-		font-family: 'SF Mono', Monaco, monospace;
-		font-size: 0.75rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.request-panel {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.request-header {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.method-badge {
-		padding: 0.25rem 0.75rem;
-		border-radius: 4px;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: white;
-	}
-
-	.request-header h2 {
-		font-size: 1.25rem;
-		color: #f8fafc;
-		margin: 0;
-	}
-
-	.url-bar {
-		display: flex;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-		padding: 0.75rem 1rem;
-		background: #1e293b;
-		border-radius: 8px;
-		border: 1px solid #334155;
-		align-items: center;
-	}
-
-	.url-bar code {
-		flex: 1;
-		font-family: 'SF Mono', Monaco, monospace;
-		font-size: 0.875rem;
-		color: #22d3ee;
-		overflow-x: auto;
-	}
-
-	.send-btn {
-		background: #3b82f6;
-		color: white;
-		border: none;
-		padding: 0.5rem 1.5rem;
-		border-radius: 6px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.15s ease;
-	}
-
-	.send-btn:hover:not(:disabled) {
-		background: #2563eb;
-	}
-
-	.send-btn:disabled {
-		background: #64748b;
-		cursor: not-allowed;
-	}
-
-	.params-forms {
-		display: grid;
-		gap: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.params-form {
-		background: #1e293b;
-		border: 1px solid #334155;
-		border-radius: 8px;
-		padding: 1rem;
-	}
-
-	.params-form h3 {
-		font-size: 0.875rem;
-		color: #f8fafc;
-		margin: 0 0 1rem;
-	}
-
-	.form-row {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		margin-bottom: 0.75rem;
-	}
-
-	.form-row label {
-		font-size: 0.75rem;
-		color: #94a3b8;
-	}
-
-	.required {
-		color: #ef4444;
-	}
-
-	.form-row input,
-	.form-row select {
-		background: #0f172a;
-		border: 1px solid #334155;
-		border-radius: 4px;
-		padding: 0.5rem 0.75rem;
-		color: #e2e8f0;
-		font-size: 0.875rem;
-	}
-
-	.body-form textarea {
-		width: 100%;
-		background: #0f172a;
-		border: 1px solid #334155;
-		border-radius: 4px;
-		padding: 0.75rem;
-		color: #e2e8f0;
-		font-family: 'SF Mono', Monaco, monospace;
-		font-size: 0.8rem;
-		resize: vertical;
-	}
-
-	.response-section {
-		background: #1e293b;
-		border: 1px solid #334155;
-		border-radius: 8px;
-		padding: 1rem;
-	}
-
-	.response-section h3 {
-		font-size: 0.875rem;
-		color: #f8fafc;
-		margin: 0 0 1rem;
-	}
-
-	.response-meta {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.status-badge {
-		padding: 0.25rem 0.75rem;
-		border-radius: 4px;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: white;
-	}
-
-	.response-time {
-		color: #64748b;
-		font-size: 0.875rem;
-	}
-
-	.response-body {
-		background: #0f172a;
-		border: 1px solid #334155;
-		border-radius: 4px;
-		padding: 1rem;
-		margin: 0;
-		overflow-x: auto;
-		font-family: 'SF Mono', Monaco, monospace;
-		font-size: 0.8rem;
-		color: #e2e8f0;
-		max-height: 400px;
-		overflow-y: auto;
-	}
-
-	.empty-response {
-		color: #64748b;
-		text-align: center;
-		padding: 2rem;
-	}
-
-	.error-box {
-		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid #ef4444;
-		border-radius: 4px;
-		padding: 1rem;
-		color: #ef4444;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 4rem 2rem;
-	}
-
-	.empty-icon {
-		font-size: 4rem;
-		margin-bottom: 1rem;
-	}
-
-	.empty-state h2 {
-		font-size: 1.5rem;
-		color: #f8fafc;
-		margin: 0 0 0.5rem;
-	}
-
-	.empty-state p {
-		color: #64748b;
-		margin: 0;
-	}
-
-	.auth-hint {
-		color: #22c55e;
-		font-size: 0.875rem;
-		margin-left: 0.5rem;
-	}
-
-	.auth-warning {
-		color: #f59e0b;
-		font-size: 0.875rem;
-		margin-left: 0.5rem;
-	}
-
-	.status-field {
-		flex: 1;
-	}
-
-	.auth-status-display {
-		padding: 0.5rem 0.75rem;
-		background: #0f172a;
-		border: 1px solid #334155;
-		border-radius: 4px;
-		font-size: 0.875rem;
-	}
-
-	.status-indicator {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.status-indicator.success {
-		color: #22c55e;
-	}
-
-	.status-indicator.warning {
-		color: #f59e0b;
-	}
-
-	.input-with-presets {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.input-with-presets input {
-		flex: 1;
-	}
-
-	.preset-select {
-		background: #334155;
-		border: 1px solid #475569;
-		border-radius: 4px;
-		padding: 0.5rem;
-		color: #e2e8f0;
-		font-size: 0.75rem;
-		cursor: pointer;
-		min-width: 100px;
-	}
-
-	.preset-select:hover {
-		background: #475569;
-	}
-</style>
