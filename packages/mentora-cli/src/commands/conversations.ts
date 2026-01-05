@@ -24,6 +24,7 @@ export function createConversationsCommand(
                 params.set("assignmentId", options.assignment);
             if (options.limit) params.set("limit", options.limit.toString());
 
+            // TODO: Backend-only endpoint - consider adding to API client
             const result = await client.backend.call<{
                 conversations: unknown[];
             }>(`/api/conversations?${params.toString()}`);
@@ -60,6 +61,7 @@ export function createConversationsCommand(
         .argument("<assignmentId>", "Assignment ID")
         .action(async (assignmentId: string) => {
             const client = await getClient();
+            // TODO: Backend-only endpoint - consider adding to API client
             const result = await client.backend.call<{
                 id: string;
                 state: string;
@@ -106,6 +108,7 @@ export function createConversationsCommand(
         .argument("<conversationId>", "Conversation ID")
         .action(async (conversationId: string) => {
             const client = await getClient();
+            // TODO: Backend-only endpoint - consider adding to API client
             const result = await client.backend.call(
                 `/api/conversations/${conversationId}/end`,
                 { method: "POST" },
@@ -124,6 +127,7 @@ export function createConversationsCommand(
         .argument("<conversationId>", "Conversation ID")
         .action(async (conversationId: string) => {
             const client = await getClient();
+            // TODO: Mock endpoint - will be replaced with real AI implementation
             const result = await client.backend.call<{ summary: unknown }>(
                 `/api/conversations/${conversationId}/summary`,
             );

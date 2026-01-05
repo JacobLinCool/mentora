@@ -33,23 +33,31 @@ export function createSubmissionsCommand(
                 options: { status?: string; limit?: number },
             ) => {
                 const client = await getClient();
-                const params = new URLSearchParams();
-                if (options.status) params.set("status", options.status);
-                if (options.limit)
-                    params.set("limit", options.limit.toString());
+                const queryOptions: {
+                    limit?: number;
+                    where?: Array<{
+                        field: string;
+                        op: string;
+                        value: unknown;
+                    }>;
+                } = {};
 
-                const result = await client.backend.call<{
-                    submissions: unknown[];
-                }>(
-                    `/api/assignments/${assignmentId}/submissions?${params.toString()}`,
+                if (options.limit) {
+                    queryOptions.limit = options.limit;
+                }
+                if (options.status) {
+                    queryOptions.where = [
+                        { field: "state", op: "==", value: options.status },
+                    ];
+                }
+
+                const result = await client.submissions.listForAssignment(
+                    assignmentId,
+                    queryOptions,
                 );
                 if (result.success) {
                     outputList(
-                        result.data.submissions as Array<{
-                            userId: string;
-                            state: string;
-                            startedAt: number;
-                        }>,
+                        result.data,
                         (submission) =>
                             `${submission.userId} - ${submission.state} - Started: ${formatTimestamp(submission.startedAt)}`,
                     );
@@ -67,14 +75,10 @@ export function createSubmissionsCommand(
         .argument("[userId]", "User ID (defaults to your own submission)")
         .action(async (assignmentId: string, userId?: string) => {
             const client = await getClient();
-            let result;
-            if (userId) {
-                result = await client.backend.call(
-                    `/api/assignments/${assignmentId}/submissions/${userId}`,
-                );
-            } else {
-                result = await client.submissions.getMine(assignmentId);
-            }
+            const result = userId
+                ? await client.submissions.get(assignmentId, userId)
+                : await client.submissions.getMine(assignmentId);
+
             if (result.success) {
                 outputData(result.data);
             } else {
@@ -111,12 +115,10 @@ export function createSubmissionsCommand(
                     process.exit(1);
                 }
 
-                const result = await client.backend.call(
-                    `/api/assignments/${assignmentId}/submissions/${userId}`,
-                    {
-                        method: "PATCH",
-                        body: JSON.stringify(updates),
-                    },
+                const result = await client.submissions.grade(
+                    assignmentId,
+                    userId,
+                    updates,
                 );
                 if (result.success) {
                     success("Submission graded successfully.");

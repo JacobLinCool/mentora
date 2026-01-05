@@ -145,3 +145,27 @@ export async function submitAssignment(
 		});
 	});
 }
+
+/**
+ * Grade a submission (instructor only)
+ */
+export async function gradeSubmission(
+	config: MentoraAPIConfig,
+	assignmentId: string,
+	userId: string,
+	updates: Partial<Pick<Submission, 'scoreCompletion' | 'notes' | 'state'>>
+): Promise<APIResult<Submission>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, AssignmentSubmissions.docPath(assignmentId, userId));
+
+		await updateDoc(docRef, updates);
+
+		// Return updated submission
+		const snapshot = await getDoc(docRef);
+		if (!snapshot.exists()) {
+			throw new Error('Submission not found');
+		}
+
+		return AssignmentSubmissions.schema.parse(snapshot.data());
+	});
+}

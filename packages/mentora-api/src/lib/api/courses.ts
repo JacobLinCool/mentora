@@ -7,6 +7,8 @@ import {
 	doc,
 	getDoc,
 	getDocs,
+	updateDoc,
+	deleteDoc,
 	limit,
 	orderBy,
 	query,
@@ -263,5 +265,43 @@ export async function listAllEnrolledCourses(
 		}
 
 		return courses;
+	});
+}
+
+/**
+ * Update a course
+ */
+export async function updateCourse(
+	config: MentoraAPIConfig,
+	courseId: string,
+	updates: Partial<Omit<CourseDoc, 'id' | 'ownerId' | 'createdAt'>>
+): Promise<APIResult<CourseDoc>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Courses.docPath(courseId));
+		await updateDoc(docRef, {
+			...updates,
+			updatedAt: Date.now()
+		});
+
+		// Return updated course
+		const snapshot = await getDoc(docRef);
+		if (!snapshot.exists()) {
+			throw new Error('Course not found');
+		}
+
+		return Courses.schema.parse(snapshot.data());
+	});
+}
+
+/**
+ * Delete a course
+ */
+export async function deleteCourse(
+	config: MentoraAPIConfig,
+	courseId: string
+): Promise<APIResult<void>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Courses.docPath(courseId));
+		await deleteDoc(docRef);
 	});
 }

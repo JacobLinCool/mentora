@@ -31,6 +31,7 @@ export function createWalletsCommand(
                 params.set("includeLedger", "true");
                 params.set("ledgerLimit", (options.limit || 20).toString());
             }
+            // TODO: Backend-only endpoint - consider adding to API client
             const result = await client.backend.call(
                 `/api/wallets/me?${params.toString()}`,
             );
@@ -54,6 +55,7 @@ export function createWalletsCommand(
         .action(
             async (amount: string, options: { idempotencyKey?: string }) => {
                 const client = await getClient();
+                // TODO: Backend-only endpoint - consider adding to API client
                 const result = await client.backend.call<{
                     message: string;
                     newBalance: number;

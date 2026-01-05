@@ -149,12 +149,9 @@ export function createAssignmentsCommand(
                     process.exit(1);
                 }
 
-                const result = await client.backend.call(
-                    `/api/assignments/${assignmentId}`,
-                    {
-                        method: "PATCH",
-                        body: JSON.stringify(updates),
-                    },
+                const result = await client.assignments.update(
+                    assignmentId,
+                    updates,
                 );
                 if (result.success) {
                     success("Assignment updated successfully.");
@@ -172,12 +169,7 @@ export function createAssignmentsCommand(
         .argument("<assignmentId>", "Assignment ID")
         .action(async (assignmentId: string) => {
             const client = await getClient();
-            const result = await client.backend.call(
-                `/api/assignments/${assignmentId}`,
-                {
-                    method: "DELETE",
-                },
-            );
+            const result = await client.assignments.delete(assignmentId);
             if (result.success) {
                 success("Assignment deleted successfully.");
             } else {
@@ -193,6 +185,7 @@ export function createAssignmentsCommand(
         .argument("<message>", "Test message to send")
         .action(async (assignmentId: string, message: string) => {
             const client = await getClient();
+            // TODO: Mock endpoint - will be replaced with real AI implementation
             const result = await client.backend.call<{
                 response: string;
                 strategy: string;
@@ -224,9 +217,8 @@ export function createAssignmentsCommand(
         .argument("<assignmentId>", "Assignment ID")
         .action(async (assignmentId: string) => {
             const client = await getClient();
-            const result = await client.backend.call(
-                `/api/assignments/${assignmentId}/statistics`,
-            );
+            const result =
+                await client.statistics.getForAssignment(assignmentId);
             if (result.success) {
                 outputData(result.data);
             } else {

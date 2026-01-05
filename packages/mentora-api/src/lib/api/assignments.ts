@@ -121,3 +121,44 @@ export async function createAssignment(
 		return docRef.id;
 	});
 }
+
+/**
+ * Update an assignment
+ */
+export async function updateAssignment(
+	config: MentoraAPIConfig,
+	assignmentId: string,
+	updates: Partial<Omit<Assignment, 'id' | 'createdBy' | 'createdAt'>>
+): Promise<APIResult<Assignment>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Assignments.docPath(assignmentId));
+
+		const { updateDoc } = await import('firebase/firestore');
+		await updateDoc(docRef, {
+			...updates,
+			updatedAt: Date.now()
+		});
+
+		// Return updated assignment
+		const snapshot = await getDoc(docRef);
+		if (!snapshot.exists()) {
+			throw new Error('Assignment not found');
+		}
+
+		return Assignments.schema.parse(snapshot.data());
+	});
+}
+
+/**
+ * Delete an assignment
+ */
+export async function deleteAssignment(
+	config: MentoraAPIConfig,
+	assignmentId: string
+): Promise<APIResult<void>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Assignments.docPath(assignmentId));
+		const { deleteDoc } = await import('firebase/firestore');
+		await deleteDoc(docRef);
+	});
+}

@@ -148,7 +148,14 @@ export class MentoraClient {
 		listPublic: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
 			CoursesModule.listPublicCourses(this._config, options),
 		listAllEnrolled: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
-			this.authReadyThen(() => CoursesModule.listAllEnrolledCourses(this._config, options))
+			this.authReadyThen(() => CoursesModule.listAllEnrolledCourses(this._config, options)),
+		update: (
+			courseId: string,
+			updates: Partial<Omit<CourseDoc, 'id' | 'ownerId' | 'createdAt'>>
+		): Promise<APIResult<CourseDoc>> =>
+			this.authReadyThen(() => CoursesModule.updateCourse(this._config, courseId, updates)),
+		delete: (courseId: string): Promise<APIResult<void>> =>
+			this.authReadyThen(() => CoursesModule.deleteCourse(this._config, courseId))
 	};
 
 	// ============ Topics ============
@@ -185,7 +192,16 @@ export class MentoraClient {
 		create: (
 			assignment: Omit<Assignment, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
 		): Promise<APIResult<string>> =>
-			this.authReadyThen(() => AssignmentsModule.createAssignment(this._config, assignment))
+			this.authReadyThen(() => AssignmentsModule.createAssignment(this._config, assignment)),
+		update: (
+			assignmentId: string,
+			updates: Partial<Omit<Assignment, 'id' | 'createdBy' | 'createdAt'>>
+		): Promise<APIResult<Assignment>> =>
+			this.authReadyThen(() =>
+				AssignmentsModule.updateAssignment(this._config, assignmentId, updates)
+			),
+		delete: (assignmentId: string): Promise<APIResult<void>> =>
+			this.authReadyThen(() => AssignmentsModule.deleteAssignment(this._config, assignmentId))
 	};
 
 	// ============ Submissions ============
@@ -204,7 +220,15 @@ export class MentoraClient {
 		start: (assignmentId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => SubmissionsModule.startSubmission(this._config, assignmentId)),
 		submit: (assignmentId: string): Promise<APIResult<void>> =>
-			this.authReadyThen(() => SubmissionsModule.submitAssignment(this._config, assignmentId))
+			this.authReadyThen(() => SubmissionsModule.submitAssignment(this._config, assignmentId)),
+		grade: (
+			assignmentId: string,
+			userId: string,
+			updates: Partial<Pick<Submission, 'scoreCompletion' | 'notes' | 'state'>>
+		): Promise<APIResult<Submission>> =>
+			this.authReadyThen(() =>
+				SubmissionsModule.gradeSubmission(this._config, assignmentId, userId, updates)
+			)
 	};
 
 	// ============ Conversations ============

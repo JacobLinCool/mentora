@@ -83,6 +83,7 @@ class CLIStreamingSession {
 
         try {
             // Use REST API to add turn
+            // TODO: Mock endpoint - will be replaced with real AI implementation
             const result = await this.client.backend.call<{
                 userTurn: { id: string; text: string };
                 aiTurn: {
@@ -217,6 +218,7 @@ export function createStreamingCommand(
             const client = await getClient();
 
             // Create new conversation via backend
+            // TODO: Backend-only endpoint - consider adding to API client
             const result = await client.backend.call<{
                 id: string;
                 state: string;

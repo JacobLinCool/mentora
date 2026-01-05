@@ -142,13 +142,7 @@ export function createCoursesCommand(
                     process.exit(1);
                 }
 
-                const result = await client.backend.call(
-                    `/api/courses/${courseId}`,
-                    {
-                        method: "PATCH",
-                        body: JSON.stringify(updates),
-                    },
-                );
+                const result = await client.courses.update(courseId, updates);
                 if (result.success) {
                     success("Course updated successfully.");
                     outputData(result.data);
@@ -165,12 +159,7 @@ export function createCoursesCommand(
         .argument("<courseId>", "Course ID")
         .action(async (courseId: string) => {
             const client = await getClient();
-            const result = await client.backend.call(
-                `/api/courses/${courseId}`,
-                {
-                    method: "DELETE",
-                },
-            );
+            const result = await client.courses.delete(courseId);
             if (result.success) {
                 success("Course deleted successfully.");
             } else {
@@ -192,6 +181,7 @@ export function createCoursesCommand(
                 options: { role: string },
             ) => {
                 const client = await getClient();
+                // TODO: Backend-only endpoint - consider adding to API client
                 const result = await client.backend.call(
                     `/api/courses/${courseId}/roster`,
                     {
@@ -216,6 +206,7 @@ export function createCoursesCommand(
         .action(async (courseId: string, options: { ledger?: boolean }) => {
             const client = await getClient();
             const params = options.ledger ? "?includeLedger=true" : "";
+            // TODO: Backend-only endpoint - consider adding to API client
             const result = await client.backend.call(
                 `/api/courses/${courseId}/wallet${params}`,
             );
