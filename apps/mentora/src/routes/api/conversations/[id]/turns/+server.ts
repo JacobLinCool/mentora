@@ -3,19 +3,12 @@
  *
  * This endpoint handles the core Socratic dialogue loop:
  * 1. Validate and save user's turn
- * 2. Generate AI response using Gemini
+ * 2. Generate mock AI response
  * 3. Analyze and save AI turn
  * 4. Update conversation state
  */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import {
-    analyzeStudentResponse,
-    buildSystemInstruction,
-    calculateTokenCost,
-    generateAIResponse,
-    shouldTerminateConversation,
-} from "$lib/server/gemini";
 import { json, error as svelteError } from "@sveltejs/kit";
 import {
     Assignments,
@@ -134,60 +127,58 @@ export const POST: RequestHandler = async (event) => {
     });
 
     try {
-        // Build conversation history for Gemini
-        const conversationHistory = conversation.turns.map((turn) => ({
-            role: (["idea", "followup"].includes(turn.type)
-                ? "user"
-                : "model") as "user" | "model",
-            text: turn.text,
-        }));
+        // TODO: Replace mock AI response with real LLM integration
+        // - Implement analyzeStudentResponse() to suggest dialectical strategy
+        // - Call generateAIResponse() with proper system instruction and conversation history
+        // - Use assignment.prompt and aiConfig to build context
+        const mockResponses = [
+            "That's an interesting perspective. Can you explain what led you to that conclusion?",
+            "I appreciate your thinking on this. What evidence supports your position?",
+            "Let me challenge that idea: Have you considered the alternative viewpoint?",
+            "That's a thoughtful observation. How might someone with a different background view this?",
+            "Good point. What assumptions are you making in your argument?",
+        ];
 
-        // Build system instruction
-        const systemInstruction = buildSystemInstruction(
-            assignment.prompt,
-            aiConfig,
-            assignment.title,
-        );
+        const aiResponseText =
+            mockResponses[Math.floor(Math.random() * mockResponses.length)];
 
-        // Analyze student response to suggest strategy
-        const analysis = analyzeStudentResponse(text, conversationHistory);
+        // TODO: Implement real analysis from LLM response
+        const analysis = {
+            suggestedStrategy: "clarify" as const,
+            confidence: 0.85,
+        };
 
-        // Generate AI response
-        const aiResponse = await generateAIResponse(
-            text,
-            systemInstruction,
-            conversationHistory,
-        );
-
-        // Calculate cost
-        const cost = calculateTokenCost(
-            aiResponse.inputTokens,
-            aiResponse.outputTokens,
-        );
+        // Mock token usage - roughly estimated
+        const inputTokens = text.length / 4;
+        const outputTokens = aiResponseText.length / 4;
+        const cost = (inputTokens * 0.00002 + outputTokens * 0.00006) / 100; // Small mock cost
 
         // Create AI turn
         const aiTurnId = `turn_${Date.now()}_ai`;
         const aiTurn: Turn = {
             id: aiTurnId,
             type: "counterpoint",
-            text: aiResponse.text,
+            text: aiResponseText,
             analysis: {
-                stance: "neutral", // Would be analyzed from response
+                stance: "neutral",
             },
             pendingStartAt: null,
             createdAt: Date.now(),
         };
 
-        // Check if conversation should end
+        // TODO: Implement intelligent conversation termination logic
+        // - Use shouldTerminateConversation() to analyze conversation flow
+        // - Check for student reaching conclusion, coherent position, etc.
+        // - Consider aiConfig.autoTermination settings
         const allTurns = [...conversation.turns, userTurn, aiTurn];
-        const termination = shouldTerminateConversation(
-            allTurns.map((t) => ({ type: t.type, text: t.text })),
-            aiConfig.maxTurns,
-        );
+        const shouldEnd = allTurns.length >= (aiConfig.maxTurns || 20) * 2;
 
         let newState: ConversationState = "awaiting_followup";
-        if (termination.shouldEnd) {
+        let terminationReason = null;
+
+        if (shouldEnd) {
             newState = "closed";
+            terminationReason = "max_turns_reached";
         }
 
         // Update conversation with AI response
@@ -204,8 +195,8 @@ export const POST: RequestHandler = async (event) => {
                 user.uid,
                 conversationId,
                 cost,
-                aiResponse.inputTokens,
-                aiResponse.outputTokens,
+                inputTokens,
+                outputTokens,
             );
         } catch (costError) {
             console.error("Failed to record cost:", costError);
@@ -230,15 +221,15 @@ export const POST: RequestHandler = async (event) => {
             },
             state: newState,
             tokenUsage: {
-                input: aiResponse.inputTokens,
-                output: aiResponse.outputTokens,
+                input: inputTokens,
+                output: outputTokens,
                 cost,
             },
-            terminated: termination.shouldEnd,
-            terminationReason: termination.reason,
+            terminated: shouldEnd,
+            terminationReason,
         });
     } catch (error) {
-        console.error("AI generation error:", error);
+        console.error("Mock AI generation error:", error);
 
         // Revert state on error
         await conversationRef.update({
@@ -246,7 +237,7 @@ export const POST: RequestHandler = async (event) => {
             updatedAt: Date.now(),
         });
 
-        throw svelteError(500, "Failed to generate AI response");
+        throw svelteError(500, "Failed to generate mock AI response");
     }
 };
 
@@ -291,7 +282,7 @@ async function recordConversationCost(
             conversationId,
         },
         provider: {
-            name: "gemini",
+            name: "mock-ai",
             ref: null,
         },
         metadata: {

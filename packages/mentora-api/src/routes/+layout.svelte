@@ -12,7 +12,6 @@
 		{ href: '/', label: 'Home', icon: '🏠' },
 		{ href: '/docs', label: 'API Docs', icon: '📖' },
 		{ href: '/tester', label: 'API Tester', icon: '🧪' },
-		{ href: '/prompts', label: 'Prompt Lab', icon: '🤖' },
 		{ href: '/voice', label: 'Voice Chat', icon: '🎙️' }
 	];
 </script>

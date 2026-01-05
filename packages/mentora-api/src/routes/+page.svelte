@@ -46,12 +46,6 @@
 				<h3>API Tester</h3>
 				<p>Interactive API testing with live requests, authentication, and response inspection</p>
 			</a>
-
-			<a href="/prompts" class="feature-card">
-				<div class="feature-icon">🤖</div>
-				<h3>Prompt Lab</h3>
-				<p>Test and refine LLM prompts with real-time Gemini API responses</p>
-			</a>
 		</div>
 	</section>
 
@@ -131,7 +125,7 @@
 
 	.features-grid {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(2, 1fr);
 		gap: 1.5rem;
 		margin-bottom: 3rem;
 	}

@@ -1,9 +1,8 @@
 /**
- * Assignment Preview API - Test AI response before publishing
+ * Assignment Preview API - Test mock AI response before publishing
  */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import { calculateTokenCost, generateAIResponse } from "$lib/server/gemini";
 import { json, error as svelteError } from "@sveltejs/kit";
 import { Assignments, Courses } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
@@ -67,33 +66,33 @@ export const POST: RequestHandler = async (event) => {
         throw svelteError(400, "Test message is required");
     }
 
-    // Get AI config from assignment
-    const aiConfig = (assignment.aiConfig as Record<string, unknown>) || {};
-    const systemPrompt =
-        (aiConfig.systemPrompt as string) ||
-        `You are a Socratic tutor helping students explore the topic: ${assignment.title}. 
-Use the Socratic method to guide students to discover insights through questioning rather than direct answers.`;
+    // TODO: Replace with real AI preview
+    // - Get AI config from assignment (systemPrompt, persona, etc.)
+    // - Build system instruction with assignment.title and prompt
+    // - Call generateAIResponse() with test message
+    // - Calculate actual token cost with calculateTokenCost()
+    const mockResponses = [
+        "That's an interesting question. What led you to consider this perspective?",
+        "I see where you're coming from. Can you elaborate on your reasoning?",
+        "Let me push back on that: Have you thought about the counterargument?",
+        "Good observation. What assumptions underlie your statement?",
+        "That's worth exploring. How would you defend this position to a skeptic?",
+    ];
 
-    try {
-        // Generate AI response
-        const result = await generateAIResponse(testMessage, systemPrompt, []);
+    const responseText =
+        mockResponses[Math.floor(Math.random() * mockResponses.length)];
 
-        // Calculate estimated cost
-        const tokenCost = calculateTokenCost(
-            result.inputTokens,
-            result.outputTokens,
-        );
+    // Mock token usage
+    const inputTokens = Math.floor(testMessage.length / 4);
+    const outputTokens = Math.floor(responseText.length / 4);
+    const tokenCost = (inputTokens * 0.00002 + outputTokens * 0.00006) / 100;
 
-        return json({
-            response: result.text,
-            strategy: "clarify", // Default strategy for preview
-            estimatedTokens: result.inputTokens + result.outputTokens,
-            estimatedCost: tokenCost,
-            inputTokens: result.inputTokens,
-            outputTokens: result.outputTokens,
-        });
-    } catch (err) {
-        console.error("AI preview failed:", err);
-        throw svelteError(500, "Failed to generate AI response");
-    }
+    return json({
+        response: responseText,
+        strategy: "clarify",
+        estimatedTokens: inputTokens + outputTokens,
+        estimatedCost: tokenCost,
+        inputTokens,
+        outputTokens,
+    });
 };

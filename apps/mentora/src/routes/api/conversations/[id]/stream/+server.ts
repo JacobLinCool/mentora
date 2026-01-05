@@ -1,19 +1,15 @@
 /**
  * Streaming conversation endpoint using Server-Sent Events (SSE)
  *
- * This provides real-time streaming for AI responses. For full duplex
- * communication (audio), a WebSocket implementation with Durable Objects
- * would be needed.
+ * This provides real-time streaming for mock AI responses.
  *
  * Flow:
  * 1. Client connects via GET request
- * 2. Server streams AI response chunks as SSE events
+ * 2. Server streams mock AI response chunks as SSE events
  * 3. Connection closes when response is complete
  */
-import { GEMINI_API_KEY } from "$env/static/private";
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import { buildSystemInstruction } from "$lib/server/gemini";
 import { error as svelteError } from "@sveltejs/kit";
 import {
     Assignments,
@@ -122,13 +118,7 @@ export const POST: RequestHandler = async (event) => {
         parts: [{ text: turn.text }],
     }));
 
-    const systemInstruction = buildSystemInstruction(
-        assignment.prompt,
-        aiConfig,
-        assignment.title,
-    );
-
-    // Create SSE response with streaming from Gemini
+    // Create SSE response with mock streaming
     const stream = new ReadableStream({
         async start(controller) {
             const encoder = new TextEncoder();
@@ -141,94 +131,42 @@ export const POST: RequestHandler = async (event) => {
                     ),
                 );
 
-                // Call Gemini with streaming
-                const response = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            systemInstruction: {
-                                parts: [{ text: systemInstruction }],
-                            },
-                            contents: [
-                                ...conversationHistory,
-                                {
-                                    role: "user",
-                                    parts: [{ text: text.trim() }],
-                                },
-                            ],
-                            generationConfig: {
-                                maxOutputTokens: 500,
-                                temperature: 0.8,
-                            },
-                        }),
-                    },
-                );
+                // TODO: Replace with real Gemini streaming API
+                // - Build system instruction with buildSystemInstruction()
+                // - Call Gemini streamGenerateContent endpoint
+                // - Parse SSE response and forward chunks to client
+                // - Extract token usage from final response metadata
+                const mockResponses = [
+                    "That's an interesting perspective. Can you explain what led you to that conclusion?",
+                    "I appreciate your thinking on this. What evidence supports your position?",
+                    "Let me challenge that idea: Have you considered the alternative viewpoint?",
+                    "That's a thoughtful observation. How might someone with a different background view this?",
+                    "Good point. What assumptions are you making in your argument?",
+                ];
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error("Gemini streaming error:", errorText);
+                const fullText =
+                    mockResponses[
+                        Math.floor(Math.random() * mockResponses.length)
+                    ];
+
+                // Simulate streaming by sending the text in chunks
+                const words = fullText.split(" ");
+                for (let i = 0; i < words.length; i++) {
+                    const chunk = (i === 0 ? "" : " ") + words[i];
+
+                    // Send chunk event
                     controller.enqueue(
                         encoder.encode(
-                            `event: error\ndata: ${JSON.stringify({ message: "AI generation failed" })}\n\n`,
+                            `event: chunk\ndata: ${JSON.stringify({ text: chunk })}\n\n`,
                         ),
                     );
-                    controller.close();
-                    return;
+
+                    // Small delay to simulate streaming
+                    await new Promise((resolve) => setTimeout(resolve, 50));
                 }
 
-                const reader = response.body?.getReader();
-                if (!reader) {
-                    throw new Error("No response body");
-                }
-
-                let fullText = "";
-                let inputTokens = 0;
-                let outputTokens = 0;
-                const decoder = new TextDecoder();
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split("\n");
-
-                    for (const line of lines) {
-                        if (line.startsWith("data: ")) {
-                            try {
-                                const data = JSON.parse(line.substring(6));
-                                const text =
-                                    data.candidates?.[0]?.content?.parts?.[0]
-                                        ?.text;
-
-                                if (text) {
-                                    fullText += text;
-                                    controller.enqueue(
-                                        encoder.encode(
-                                            `event: chunk\ndata: ${JSON.stringify({ text })}\n\n`,
-                                        ),
-                                    );
-                                }
-
-                                // Extract token counts from final chunk
-                                if (data.usageMetadata) {
-                                    inputTokens =
-                                        data.usageMetadata.promptTokenCount ||
-                                        0;
-                                    outputTokens =
-                                        data.usageMetadata
-                                            .candidatesTokenCount || 0;
-                                }
-                            } catch {
-                                // Skip invalid JSON
-                            }
-                        }
-                    }
-                }
+                const inputTokens = text.length / 4;
+                const outputTokens = fullText.length / 4;
 
                 // Save AI turn
                 const aiTurnId = `turn_${Date.now()}_ai`;

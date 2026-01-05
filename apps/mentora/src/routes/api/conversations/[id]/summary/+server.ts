@@ -1,9 +1,8 @@
 /**
- * Conversation Summary API - Get AI-generated summary
+ * Conversation Summary API - Get mock AI-generated summary
  */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import { generateAIResponse } from "$lib/server/gemini";
 import { json, error as svelteError } from "@sveltejs/kit";
 import { Assignments, Conversations, Courses } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
@@ -67,16 +66,6 @@ export const GET: RequestHandler = async (event) => {
         });
     }
 
-    // Build conversation text for summary
-    const conversationText = conversation.turns
-        .map((turn) => {
-            const speaker = ["idea", "followup"].includes(turn.type)
-                ? "Student"
-                : "AI";
-            return `${speaker}: ${turn.text}`;
-        })
-        .join("\n\n");
-
     // Analyze initial and final stances
     const studentTurns = conversation.turns.filter((t) =>
         ["idea", "followup"].includes(t.type),
@@ -86,53 +75,34 @@ export const GET: RequestHandler = async (event) => {
         studentTurns[studentTurns.length - 1]?.analysis?.stance ||
         "undetermined";
 
-    // Generate AI summary
-    try {
-        const systemPrompt = `You are an educational assessment AI. Analyze the following Socratic dialogue between a student and an AI tutor.
+    // TODO: Replace with real AI-generated summary
+    // - Build conversation text from all turns
+    // - Create educational assessment prompt
+    // - Call generateAIResponse() to create structured summary
+    // - Include analysis of critical thinking and stance evolution
+    const mockSummary = `**Main Topic**: The student explored questions related to the assignment topic.
 
-Provide a structured summary including:
-1. Main Topic: What was the central question or topic discussed?
-2. Initial Position: What was the student's initial stance?
-3. Key Arguments: What main points did the student make?
-4. Critical Thinking: Did the student demonstrate critical thinking? How?
-5. Stance Evolution: Did the student's position change during the dialogue?
-6. Final Position: What is the student's concluding stance?
-7. Areas for Growth: What aspects could the student explore further?
+**Initial Position**: The student began with ${initialStance === "undetermined" ? "an exploratory stance" : `a ${initialStance} position`}.
 
-Keep the summary concise but insightful.`;
+**Key Arguments**: Throughout ${studentTurns.length} turns, the student engaged in thoughtful dialogue, presenting various perspectives and questions.
 
-        const result = await generateAIResponse(
-            `Please summarize this Socratic dialogue:\n\n${conversationText}`,
-            systemPrompt,
-            [],
-        );
+**Critical Thinking**: The student demonstrated engagement with the topic through their questions and responses.
 
-        return json({
-            summary: {
-                text: result.text,
-                initialStance,
-                finalStance,
-                stanceChanged: initialStance !== finalStance,
-                totalTurns: conversation.turns.length,
-                studentTurns: studentTurns.length,
-                duration: conversation.updatedAt - conversation.createdAt,
-            },
-        });
-    } catch (err) {
-        console.error("Summary generation failed:", err);
+**Stance Evolution**: ${initialStance !== finalStance ? "The student's perspective evolved during the discussion." : "The student maintained a consistent approach to the topic."}
 
-        // Return basic summary without AI
-        return json({
-            summary: {
-                text: null,
-                initialStance,
-                finalStance,
-                stanceChanged: initialStance !== finalStance,
-                totalTurns: conversation.turns.length,
-                studentTurns: studentTurns.length,
-                duration: conversation.updatedAt - conversation.createdAt,
-                error: "AI summary generation failed",
-            },
-        });
-    }
+**Final Position**: By the end of the conversation, the student had ${finalStance === "undetermined" ? "continued their exploration" : `developed a ${finalStance} stance`}.
+
+**Areas for Growth**: Further exploration of specific examples and deeper analysis of alternative viewpoints could enhance understanding.`;
+
+    return json({
+        summary: {
+            text: mockSummary,
+            initialStance,
+            finalStance,
+            stanceChanged: initialStance !== finalStance,
+            totalTurns: conversation.turns.length,
+            studentTurns: studentTurns.length,
+            duration: conversation.updatedAt - conversation.createdAt,
+        },
+    });
 };
