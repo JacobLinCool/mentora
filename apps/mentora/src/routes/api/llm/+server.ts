@@ -19,6 +19,9 @@ import {
     Conversations,
     Courses,
     type Conversation,
+    type ConversationAnalysis,
+    type ConversationSummary,
+    type LLMResponse,
     type Turn,
 } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
@@ -116,7 +119,7 @@ export const POST: RequestHandler = async (event) => {
             const inputTokens = Math.floor(text.length / 4);
             const outputTokens = Math.floor(responseText.length / 4);
 
-            return json({
+            const response: LLMResponse = {
                 turnId: `turn_${Date.now()}_ai`,
                 text: responseText,
                 analysis: {
@@ -128,7 +131,8 @@ export const POST: RequestHandler = async (event) => {
                     input: inputTokens,
                     output: outputTokens,
                 },
-            });
+            };
+            return json(response);
         }
 
         case "analyze": {
@@ -157,7 +161,7 @@ export const POST: RequestHandler = async (event) => {
                     stance: t.analysis?.stance || "neutral",
                 }));
 
-            return json({
+            const response: ConversationAnalysis = {
                 overallScore: 0.65 + Math.random() * 0.25,
                 stanceProgression,
                 qualityMetrics: {
@@ -171,7 +175,8 @@ export const POST: RequestHandler = async (event) => {
                     "Try to anticipate potential counterarguments",
                 ].slice(0, 2),
                 summary: `Analysis of ${conversation.turns.length}-turn conversation.`,
-            });
+            };
+            return json(response);
         }
 
         case "summary": {
@@ -199,17 +204,17 @@ export const POST: RequestHandler = async (event) => {
                 studentTurns[studentTurns.length - 1]?.analysis?.stance ||
                 "undetermined";
 
-            return json({
-                summary: {
-                    text: `Student engaged in ${studentTurns.length} turns of dialogue.`,
-                    initialStance,
-                    finalStance,
-                    stanceChanged: initialStance !== finalStance,
-                    totalTurns: conversation.turns.length,
-                    studentTurns: studentTurns.length,
-                    duration: conversation.updatedAt - conversation.createdAt,
-                },
-            });
+            const summary: ConversationSummary = {
+                text: `Student engaged in ${studentTurns.length} turns of dialogue.`,
+                initialStance,
+                finalStance,
+                stanceChanged: initialStance !== finalStance,
+                totalTurns: conversation.turns.length,
+                studentTurns: studentTurns.length,
+                duration: conversation.updatedAt - conversation.createdAt,
+            };
+
+            return json({ summary });
         }
 
         case "preview": {

@@ -26,6 +26,7 @@ import * as TopicsModule from './topics.js';
 import type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
 import * as UsersModule from './users.js';
 import * as WalletsModule from './wallets.js';
+import * as VoiceModule from './voice.js';
 
 export type {
 	Assignment,
@@ -153,11 +154,8 @@ export class MentoraClient {
 			role?: 'instructor' | 'student' | 'ta' | 'auditor'
 		): Promise<APIResult<string>> =>
 			this.authReadyThen(() => CoursesModule.inviteMember(this._config, courseId, email, role)),
-		joinByCode: (
-			code: string
-		): Promise<
-			APIResult<{ courseId: string; joined: boolean; alreadyMember?: boolean; rejoined?: boolean }>
-		> => this.authReadyThen(() => CoursesModule.joinByCode(this._config, code)),
+		joinByCode: (code: string): Promise<APIResult<CoursesModule.JoinCourseResult>> =>
+			this.authReadyThen(() => CoursesModule.joinByCode(this._config, code)),
 		listPublic: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
 			CoursesModule.listPublicCourses(this._config, options),
 		listAllEnrolled: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
@@ -350,7 +348,23 @@ export class MentoraClient {
 		getMine: (): Promise<APIResult<Wallet | null>> =>
 			this.authReadyThen(() => WalletsModule.getMyWallet(this._config)),
 		listEntries: (walletId: string, options?: QueryOptions): Promise<APIResult<LedgerEntry[]>> =>
-			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options))
+			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options)),
+		addCredits: (
+			amount: number,
+			currency: string = 'usd'
+		): Promise<APIResult<WalletsModule.AddCreditsResult>> =>
+			this.authReadyThen(() => WalletsModule.addCredits(this._config, amount, currency))
+	};
+
+	// ============ Voice ============
+	voice = {
+		transcribe: (audioBlob: Blob): Promise<APIResult<VoiceModule.TranscriptionResult>> =>
+			this.authReadyThen(() => VoiceModule.transcribeAudio(this._config, audioBlob)),
+		synthesize: (
+			text: string,
+			voiceId?: string
+		): Promise<APIResult<VoiceModule.SynthesizeResult>> =>
+			this.authReadyThen(() => VoiceModule.synthesizeSpeech(this._config, text, voiceId))
 	};
 
 	// ============ LLM Operations (Delegated to Backend) ============
@@ -359,7 +373,6 @@ export class MentoraClient {
 	 * These are delegated to the backend which handles LLM API calls.
 	 *
 	 * Note: The backend processes the LLM call and returns results.
-	 * The client is responsible for storing results in Firestore.
 	 */
 	llm = {
 		/**
@@ -377,9 +390,9 @@ export class MentoraClient {
 			}>
 		> =>
 			this.authReadyThen(() =>
-				BackendModule.callBackend(this._config, `/api/conversations/${conversationId}/message`, {
+				BackendModule.callBackend(this._config, '/api/llm', {
 					method: 'POST',
-					body: JSON.stringify({ text })
+					body: JSON.stringify({ action: 'message', conversationId, text })
 				})
 			),
 
@@ -403,8 +416,9 @@ export class MentoraClient {
 			}>
 		> =>
 			this.authReadyThen(() =>
-				BackendModule.callBackend(this._config, `/api/conversations/${conversationId}/analyze`, {
-					method: 'POST'
+				BackendModule.callBackend(this._config, '/api/llm', {
+					method: 'POST',
+					body: JSON.stringify({ action: 'analyze', conversationId })
 				})
 			),
 
@@ -425,8 +439,9 @@ export class MentoraClient {
 			}>
 		> =>
 			this.authReadyThen(() =>
-				BackendModule.callBackend(this._config, `/api/conversations/${conversationId}/summary`, {
-					method: 'GET'
+				BackendModule.callBackend(this._config, '/api/llm', {
+					method: 'POST',
+					body: JSON.stringify({ action: 'summary', conversationId })
 				})
 			)
 	};

@@ -1,7 +1,5 @@
 /**
  * Courses API - Create course only
- *
- * GET operations are now handled via direct Firestore access in mentora-api.
  */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";

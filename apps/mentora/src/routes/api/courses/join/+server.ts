@@ -6,7 +6,11 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import { Courses, type CourseMembership } from "mentora-firebase";
+import {
+    Courses,
+    type CourseMembership,
+    type JoinCourseResult,
+} from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async (event) => {
@@ -57,7 +61,12 @@ export const POST: RequestHandler = async (event) => {
         if (existingMembership.exists) {
             const membershipData = existingMembership.data();
             if (membershipData?.status === "active") {
-                return json({ courseId, joined: false, alreadyMember: true });
+                const result: JoinCourseResult = {
+                    courseId,
+                    joined: false,
+                    alreadyMember: true,
+                };
+                return json(result);
             }
             // If user was previously removed or invited, update their status
             await firestore
@@ -67,7 +76,12 @@ export const POST: RequestHandler = async (event) => {
                     joinedAt: Date.now(),
                 });
 
-            return json({ courseId, joined: true, rejoined: true });
+            const result: JoinCourseResult = {
+                courseId,
+                joined: true,
+                rejoined: true,
+            };
+            return json(result);
         }
 
         // Create new roster entry
@@ -83,7 +97,8 @@ export const POST: RequestHandler = async (event) => {
             .doc(Courses.roster.docPath(courseId, user.uid))
             .set(membership);
 
-        return json({ courseId, joined: true });
+        const result: JoinCourseResult = { courseId, joined: true };
+        return json(result);
     } catch (err) {
         console.error("Error joining course:", err);
         if (err && typeof err === "object" && "status" in err) {

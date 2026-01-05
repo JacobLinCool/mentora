@@ -11,7 +11,11 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import { Wallets, type LedgerEntry } from "mentora-firebase";
+import {
+    Wallets,
+    type AddCreditsResult,
+    type LedgerEntry,
+} from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -73,13 +77,18 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         if (!existingEntry.empty) {
-            return json({
-                message: "Credit already applied (idempotent)",
-                entry: {
-                    id: existingEntry.docs[0].id,
-                    ...existingEntry.docs[0].data(),
-                },
+            const entryData = existingEntry.docs[0].data();
+            const entry = Wallets.entries.schema.parse({
+                id: existingEntry.docs[0].id,
+                ...entryData,
             });
+
+            const result: AddCreditsResult = {
+                message: "Credit already applied (idempotent)",
+                entry,
+                newBalance: currentBalance,
+            };
+            return json(result);
         }
     }
 
@@ -122,12 +131,11 @@ export const POST: RequestHandler = async (event) => {
         .doc(Wallets.entries.docPath(walletId, entryId))
         .set(validatedEntry);
 
-    return json(
-        {
-            message: "Credits added successfully",
-            entry: validatedEntry,
-            newBalance,
-        },
-        { status: 201 },
-    );
+    const result: AddCreditsResult = {
+        message: "Credits added successfully",
+        entry: validatedEntry,
+        newBalance,
+    };
+
+    return json(result, { status: 201 });
 };

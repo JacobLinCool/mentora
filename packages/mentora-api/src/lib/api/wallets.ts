@@ -13,7 +13,14 @@ import {
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
-import { Courses, Wallets, type LedgerEntry, type Wallet } from 'mentora-firebase';
+import {
+	Courses,
+	Wallets,
+	type LedgerEntry,
+	type Wallet,
+	type CourseWalletResult,
+	type AddCreditsResult
+} from 'mentora-firebase';
 import {
 	failure,
 	tryCatch,
@@ -104,18 +111,6 @@ export async function listWalletEntries(
 }
 
 /**
- * Course wallet result with stats
- */
-export interface CourseWalletResult {
-	wallet: Wallet;
-	ledger?: LedgerEntry[];
-	stats: {
-		totalCharges: number;
-		transactionCount: number;
-	};
-}
-
-/**
  * Get course wallet (host wallet) with optional ledger and stats
  *
  * Delegated to backend to handle secure creation and stats.
@@ -147,6 +142,46 @@ export async function getCourseWallet(
 		if (!response.ok) {
 			const error = await response.json().catch(() => ({ message: 'Failed to get wallet' }));
 			throw new Error(error.message || `Failed to get wallet: ${response.status}`);
+		}
+
+		return await response.json();
+	});
+}
+
+/**
+ * Add credits to current user's wallet
+ *
+ * Delegated to backend for payment processing/idempotency.
+ */
+export async function addCredits(
+	config: MentoraAPIConfig,
+	amount: number,
+	currency: string = 'usd'
+): Promise<APIResult<AddCreditsResult>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const token = await currentUser.getIdToken();
+
+		const response = await fetch('/api/wallets', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({
+				action: 'add_credits',
+				amount,
+				currency
+			})
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: 'Failed to add credits' }));
+			throw new Error(error.message || `Failed to add credits: ${response.status}`);
 		}
 
 		return await response.json();

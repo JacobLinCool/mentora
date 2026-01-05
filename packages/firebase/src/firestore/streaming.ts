@@ -381,27 +381,7 @@ export type ServerStateChangeMessage = z.infer<
     typeof zServerStateChangeMessage
 >;
 
-/**
- * Conversation summary
- */
-export const zConversationSummary = z
-    .object({
-        totalTurns: z.number().int().describe("Total number of turns."),
-        duration: z.number().describe("Duration in milliseconds."),
-        stanceShift: z
-            .object({
-                initial: z.string().optional(),
-                final: z.string().optional(),
-            })
-            .optional()
-            .describe("How the student's stance changed."),
-        keyInsights: z
-            .array(z.string())
-            .optional()
-            .describe("Key insights from the conversation."),
-    })
-    .describe("Summary of a completed conversation.");
-export type ConversationSummary = z.infer<typeof zConversationSummary>;
+import { zConversationSummary } from "./api-dtos";
 
 /**
  * Server message for conversation ended

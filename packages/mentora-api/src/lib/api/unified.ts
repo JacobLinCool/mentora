@@ -44,7 +44,14 @@ import type {
 	Topic,
 	UserProfile,
 	Wallet,
-	ConversationSummary
+	ConversationSummary,
+	LLMResponse,
+	ConversationAnalysis,
+	TranscriptionResult,
+	SynthesizeResult,
+	JoinCourseResult,
+	AddCreditsResult,
+	CourseWalletResult
 } from 'mentora-firebase';
 
 import type { APIResult, QueryOptions } from './types.js';
@@ -59,7 +66,14 @@ export type {
 	Submission,
 	Topic,
 	UserProfile,
-	Wallet
+	Wallet,
+	LLMResponse,
+	ConversationAnalysis,
+	TranscriptionResult,
+	SynthesizeResult,
+	JoinCourseResult,
+	AddCreditsResult,
+	CourseWalletResult
 } from 'mentora-firebase';
 
 /**
@@ -86,23 +100,6 @@ export interface SubscriptionHandlers<T> {
 }
 
 /**
- * LLM response structure
- */
-export interface LLMResponse {
-	turnId: string;
-	text: string;
-	analysis?: {
-		stance?: string;
-		quality?: number;
-		suggestions?: string[];
-	};
-	tokenUsage?: {
-		input: number;
-		output: number;
-	};
-}
-
-/**
  * Streaming event handlers
  */
 export interface StreamingHandlers {
@@ -113,32 +110,8 @@ export interface StreamingHandlers {
 }
 
 /**
- * Conversation analysis result
- */
-export interface ConversationAnalysis {
-	overallScore: number;
-	stanceProgression: Array<{ turnId: string; stance: string }>;
-	qualityMetrics: {
-		argumentClarity: number;
-		evidenceUsage: number;
-		criticalThinking: number;
-		responseToCounterpoints: number;
-	};
-	suggestions: string[];
-	summary: string;
-}
-
-/**
- * Transcription result
- */
-export interface TranscriptionResult {
-	text: string;
-	confidence: number;
-	duration: number;
-}
-
-/**
  * Unified API - Direct Access Methods
+
  *
  * All direct access methods operate via Firestore SDK.
  * Security is enforced by Firestore Security Rules.
@@ -319,16 +292,7 @@ export interface DelegatedAccessAPI {
 		 * - Check enrollment limits
 		 * - Handle password-protected courses
 		 */
-		joinByCode(
-			code: string,
-			password?: string
-		): Promise<
-			APIResult<{
-				courseId: string;
-				joined: boolean;
-				alreadyMember?: boolean;
-			}>
-		>;
+		joinByCode(code: string, password?: string): Promise<APIResult<JoinCourseResult>>;
 	};
 
 	// Conversation management requiring validation

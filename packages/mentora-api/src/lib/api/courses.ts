@@ -17,7 +17,12 @@ import {
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
-import { Courses, type CourseDoc, type CourseMembership } from 'mentora-firebase';
+import {
+	Courses,
+	type CourseDoc,
+	type CourseMembership,
+	type JoinCourseResult
+} from 'mentora-firebase';
 import {
 	failure,
 	tryCatch,
@@ -446,9 +451,7 @@ export async function removeMember(
 export async function joinByCode(
 	config: MentoraAPIConfig,
 	code: string
-): Promise<
-	APIResult<{ courseId: string; joined: boolean; alreadyMember?: boolean; rejoined?: boolean }>
-> {
+): Promise<APIResult<JoinCourseResult>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');

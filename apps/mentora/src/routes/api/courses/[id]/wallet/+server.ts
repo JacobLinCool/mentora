@@ -9,6 +9,7 @@ import { json, error as svelteError } from "@sveltejs/kit";
 import {
     Courses,
     Wallets,
+    type CourseWalletResult,
     type LedgerEntry,
     type Wallet,
 } from "mentora-firebase";
@@ -102,12 +103,14 @@ export const GET: RequestHandler = async (event) => {
         return sum + Math.abs((data?.amountCredits as number) || 0);
     }, 0);
 
-    return json({
+    const result: CourseWalletResult = {
         wallet,
         ledger: includeLedger ? ledger : undefined,
         stats: {
             totalCharges,
             transactionCount: usageSnapshot.size,
         },
-    });
+    };
+
+    return json(result);
 };
