@@ -165,3 +165,55 @@ export async function deleteAssignment(
 		await deleteDoc(docRef);
 	});
 }
+
+/**
+ * Preview result
+ */
+export interface PreviewResult {
+	response: string;
+	strategy: string;
+	estimatedTokens: number;
+	estimatedCost: number;
+	inputTokens: number;
+	outputTokens: number;
+}
+
+/**
+ * Preview assignment AI response (delegated to backend)
+ *
+ * This endpoint tests the LLM response without creating a real conversation.
+ * Useful for instructors to preview how the AI will respond to student input.
+ */
+export async function previewAssignment(
+	config: MentoraAPIConfig,
+	assignmentId: string,
+	testMessage: string
+): Promise<APIResult<PreviewResult>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const token = await currentUser.getIdToken();
+
+		const response = await fetch(
+			`${config.backendBaseUrl}/api/assignments/${assignmentId}/preview`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({ testMessage })
+			}
+		);
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: 'Preview failed' }));
+			throw new Error(error.message || `Preview failed: ${response.status}`);
+		}
+
+		return await response.json();
+	});
+}

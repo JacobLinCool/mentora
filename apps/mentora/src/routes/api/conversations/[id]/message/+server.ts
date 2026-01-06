@@ -1,7 +1,7 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import type { LLMResponse } from "mentora-api";
+
 import { Conversations } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
@@ -45,19 +45,9 @@ export const POST: RequestHandler = async (event) => {
     const inputTokens = Math.floor(text.length / 4);
     const outputTokens = Math.floor(responseText.length / 4);
 
-    const response: LLMResponse = {
-        turnId: `turn_${Date.now()}_ai`,
-        text: responseText,
-        analysis: {
-            stance: "neutral",
-            quality: 0.7,
-            suggestions: ["Consider more specific examples"],
-        },
-        tokenUsage: {
-            input: inputTokens,
-            output: outputTokens,
-        },
-    };
+    // TODO: Write response to Firestore 'turns' subcollection
+    // const turnDoc = firestore.collection(...).doc();
+    // await turnDoc.set({ ... });
 
-    return json(response);
+    return json({ success: true });
 };

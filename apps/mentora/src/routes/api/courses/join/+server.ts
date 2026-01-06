@@ -6,7 +6,7 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import type { JoinCourseResult } from "mentora-api";
+
 import { Courses, type CourseMembership } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
@@ -58,7 +58,7 @@ export const POST: RequestHandler = async (event) => {
         if (existingMembership.exists) {
             const membershipData = existingMembership.data();
             if (membershipData?.status === "active") {
-                const result: JoinCourseResult = {
+                const result = {
                     courseId,
                     joined: false,
                     alreadyMember: true,
@@ -73,10 +73,10 @@ export const POST: RequestHandler = async (event) => {
                     joinedAt: Date.now(),
                 });
 
-            const result: JoinCourseResult = {
+            const result = {
                 courseId,
                 joined: true,
-                rejoined: true,
+                alreadyMember: false,
             };
             return json(result);
         }
@@ -94,7 +94,7 @@ export const POST: RequestHandler = async (event) => {
             .doc(Courses.roster.docPath(courseId, user.uid))
             .set(membership);
 
-        const result: JoinCourseResult = { courseId, joined: true };
+        const result = { courseId, joined: true };
         return json(result);
     } catch (err) {
         console.error("Error joining course:", err);

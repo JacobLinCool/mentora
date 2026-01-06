@@ -11,11 +11,7 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import {
-    Wallets,
-    type AddCreditsResult,
-    type LedgerEntry,
-} from "mentora-firebase";
+import { Wallets, type LedgerEntry } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -83,7 +79,7 @@ export const POST: RequestHandler = async (event) => {
                 ...entryData,
             });
 
-            const result: AddCreditsResult = {
+            const result = {
                 message: "Credit already applied (idempotent)",
                 entry,
                 newBalance: currentBalance,
@@ -131,7 +127,7 @@ export const POST: RequestHandler = async (event) => {
         .doc(Wallets.entries.docPath(walletId, entryId))
         .set(validatedEntry);
 
-    const result: AddCreditsResult = {
+    const result = {
         message: "Credits added successfully",
         entry: validatedEntry,
         newBalance,

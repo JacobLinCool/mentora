@@ -3,8 +3,19 @@
  *
  * Delegated to backend for API key security.
  */
+
 import { tryCatch, type APIResult, type MentoraAPIConfig } from './types.js';
-import type { TranscriptionResult, SynthesizeResult } from 'mentora-firebase';
+
+export interface TranscriptionResult {
+	text: string;
+	confidence: number;
+	duration?: number;
+}
+
+export interface SynthesizeResult {
+	audioContent: string;
+	contentType: string;
+}
 
 /**
  * Transcribe audio (Speech-to-Text)

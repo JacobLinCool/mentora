@@ -15,16 +15,7 @@ import type {
 	UserProfile,
 	Wallet
 } from 'mentora-firebase';
-import type {
-	JoinCourseResult,
-	CourseWalletResult,
-	AddCreditsResult,
-	TranscriptionResult,
-	SynthesizeResult,
-	LLMResponse,
-	ConversationAnalysis,
-	ConversationSummary
-} from './dtos.js';
+
 import * as AssignmentsModule from './assignments.js';
 import { submitMessage, analyzeConversation, generateSummary } from './access/delegated.js';
 import * as CoursesModule from './courses.js';
@@ -164,7 +155,7 @@ export class MentoraClient {
 			role?: 'instructor' | 'student' | 'ta' | 'auditor'
 		): Promise<APIResult<string>> =>
 			this.authReadyThen(() => CoursesModule.inviteMember(this._config, courseId, email, role)),
-		joinByCode: (code: string): Promise<APIResult<JoinCourseResult>> =>
+		joinByCode: (code: string): Promise<APIResult<CoursesModule.JoinCourseResult>> =>
 			this.authReadyThen(() => CoursesModule.joinByCode(this._config, code)),
 		listPublic: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
 			CoursesModule.listPublicCourses(this._config, options),
@@ -190,8 +181,13 @@ export class MentoraClient {
 		getWallet: (
 			courseId: string,
 			options?: { includeLedger?: boolean; ledgerLimit?: number }
-		): Promise<APIResult<CourseWalletResult>> =>
-			this.authReadyThen(() => WalletsModule.getCourseWallet(this._config, courseId, options))
+		): Promise<APIResult<WalletsModule.CourseWalletResult>> =>
+			this.authReadyThen(() => WalletsModule.getCourseWallet(this._config, courseId, options)),
+		getWalletStats: (
+			courseId: string,
+			options?: { includeLedger?: boolean; ledgerLimit?: number }
+		): Promise<APIResult<CoursesModule.CourseWalletStatsResult>> =>
+			this.authReadyThen(() => CoursesModule.getCourseWalletStats(this._config, courseId, options))
 	};
 
 	// ============ Topics ============
@@ -237,7 +233,14 @@ export class MentoraClient {
 				AssignmentsModule.updateAssignment(this._config, assignmentId, updates)
 			),
 		delete: (assignmentId: string): Promise<APIResult<void>> =>
-			this.authReadyThen(() => AssignmentsModule.deleteAssignment(this._config, assignmentId))
+			this.authReadyThen(() => AssignmentsModule.deleteAssignment(this._config, assignmentId)),
+		preview: (
+			assignmentId: string,
+			testMessage: string
+		): Promise<APIResult<AssignmentsModule.PreviewResult>> =>
+			this.authReadyThen(() =>
+				AssignmentsModule.previewAssignment(this._config, assignmentId, testMessage)
+			)
 	};
 
 	// ============ Submissions ============
@@ -295,22 +298,6 @@ export class MentoraClient {
 
 	// ============ Statistics ============
 	statistics = {
-		getForAssignment: (
-			assignmentId: string
-		): Promise<APIResult<StatisticsModule.AssignmentStatistics>> =>
-			this.authReadyThen(() =>
-				StatisticsModule.getAssignmentStatistics(this._config, assignmentId)
-			),
-		getForCourse: (courseId: string): Promise<APIResult<StatisticsModule.CourseStatistics>> =>
-			this.authReadyThen(() => StatisticsModule.getCourseStatistics(this._config, courseId)),
-		getStudentProgress: (
-			courseId: string
-		): Promise<APIResult<StatisticsModule.StudentProgress[]>> =>
-			this.authReadyThen(() => StatisticsModule.getCourseStudentProgress(this._config, courseId)),
-		exportAssignment: (assignmentId: string): Promise<APIResult<Blob>> =>
-			this.authReadyThen(() =>
-				StatisticsModule.exportAssignmentStatistics(this._config, assignmentId)
-			),
 		getConversationAnalytics: (
 			conversationId: string
 		): Promise<
@@ -346,15 +333,21 @@ export class MentoraClient {
 			this.authReadyThen(() => WalletsModule.getMyWallet(this._config)),
 		listEntries: (walletId: string, options?: QueryOptions): Promise<APIResult<LedgerEntry[]>> =>
 			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options)),
-		addCredits: (amount: number, currency: string = 'usd'): Promise<APIResult<AddCreditsResult>> =>
+		addCredits: (
+			amount: number,
+			currency?: string
+		): Promise<APIResult<WalletsModule.AddCreditsResult>> =>
 			this.authReadyThen(() => WalletsModule.addCredits(this._config, amount, currency))
 	};
 
 	// ============ Voice ============
 	voice = {
-		transcribe: (audioBlob: Blob): Promise<APIResult<TranscriptionResult>> =>
+		transcribe: (audioBlob: Blob): Promise<APIResult<VoiceModule.TranscriptionResult>> =>
 			this.authReadyThen(() => VoiceModule.transcribeAudio(this._config, audioBlob)),
-		synthesize: (text: string, voiceId?: string): Promise<APIResult<SynthesizeResult>> =>
+		synthesize: (
+			text: string,
+			voiceId?: string
+		): Promise<APIResult<VoiceModule.SynthesizeResult>> =>
 			this.authReadyThen(() => VoiceModule.synthesizeSpeech(this._config, text, voiceId))
 	};
 
@@ -374,7 +367,7 @@ export class MentoraClient {
 		/**
 		 * Submit a message and get AI response (non-streaming)
 		 */
-		submitMessage: (conversationId: string, text: string): Promise<APIResult<LLMResponse>> =>
+		submitMessage: (conversationId: string, text: string) =>
 			this.authReadyThen(() =>
 				submitMessage(
 					{
@@ -389,7 +382,7 @@ export class MentoraClient {
 		/**
 		 * Analyze a conversation
 		 */
-		analyzeConversation: (conversationId: string): Promise<APIResult<ConversationAnalysis>> =>
+		analyzeConversation: (conversationId: string) =>
 			this.authReadyThen(() =>
 				analyzeConversation(
 					{
@@ -403,7 +396,7 @@ export class MentoraClient {
 		/**
 		 * Generate conversation summary
 		 */
-		generateSummary: (conversationId: string): Promise<APIResult<ConversationSummary>> =>
+		generateSummary: (conversationId: string) =>
 			this.authReadyThen(() =>
 				generateSummary(
 					{

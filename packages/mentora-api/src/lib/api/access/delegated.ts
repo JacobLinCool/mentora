@@ -19,13 +19,7 @@
  */
 
 import type { User } from 'firebase/auth';
-import type {
-	Conversation,
-	ConversationSummary,
-	LLMResponse,
-	ConversationAnalysis,
-	TranscriptionResult
-} from 'mentora-firebase';
+import type { Conversation } from 'mentora-firebase';
 import { success, failure, type APIResult } from '../types.js';
 
 /**
@@ -63,6 +57,10 @@ async function fetchBackend<T>(
 		if (!response.ok) {
 			const errorText = await response.text();
 			return failure(errorText || `HTTP ${response.status}`);
+		}
+
+		if (response.status === 204) {
+			return success(undefined as T);
 		}
 
 		const data = await response.json();
@@ -133,22 +131,20 @@ export async function endConversation(
 // ============ LLM Operations ============
 
 /**
- * Submit a message and get AI response (delegated to backend)
+ * Submit a message and trigger AI processing (delegated to backend)
  *
- * This operation requires backend processing:
- * - LLM API integration
- * - Response analysis
- * - Token usage tracking
- * - Moderation checks
+ * This operation triggers the backend to:
+ * - Process the message
+ * - Generate AI response
+ * - Write both user and AI turns to Firestore
  *
- * NOTE: The backend returns the generated response data.
- * The client is responsible for storing the turn in Firestore.
+ * The client should listen to the Firestore 'turns' collection for updates.
  */
 export async function submitMessage(
 	ctx: DelegatedAccessContext,
 	conversationId: string,
 	text: string
-): Promise<APIResult<LLMResponse>> {
+): Promise<APIResult<void>> {
 	return fetchBackend(ctx, `/api/conversations/${conversationId}/message`, {
 		method: 'POST',
 		body: JSON.stringify({ text })
@@ -158,120 +154,32 @@ export async function submitMessage(
 // ============ Analysis Operations ============
 
 /**
- * Analyze a conversation (delegated to backend)
+ * Trigger conversation analysis (delegated to backend)
  *
- * This operation requires backend LLM processing:
- * - Evaluate conversation quality
- * - Track stance changes
- * - Generate feedback
- *
- * TODO: Integrate with LLM service
+ * The backend will perform analysis and update the conversation document directly.
  */
 export async function analyzeConversation(
 	ctx: DelegatedAccessContext,
 	conversationId: string
-): Promise<APIResult<ConversationAnalysis>> {
-	// TODO: Integrate with LLM service for real analysis
-	// Currently returns mock data
+): Promise<APIResult<void>> {
 	return fetchBackend(ctx, `/api/conversations/${conversationId}/analyze`, {
 		method: 'POST'
 	});
 }
 
 /**
- * Generate conversation summary (delegated to backend)
+ * Trigger summary generation (delegated to backend)
  *
- * TODO: Integrate with LLM service
+ * The backend will generate a summary and update the conversation document directly.
  */
 export async function generateSummary(
 	ctx: DelegatedAccessContext,
 	conversationId: string
-): Promise<APIResult<ConversationSummary>> {
-	// TODO: Integrate with LLM service
+): Promise<APIResult<void>> {
 	return fetchBackend(ctx, `/api/conversations/${conversationId}/summary`, {
 		method: 'POST'
 	});
 }
 
-// ============ Voice Operations ============
-
-/**
- * Transcribe audio (delegated to backend)
- *
- * This operation requires backend processing:
- * - Audio processing
- * - Speech-to-text API integration
- *
- * TODO: Integrate with speech-to-text service
- */
-export async function transcribeAudio(
-	ctx: DelegatedAccessContext,
-	audioBlob: Blob
-): Promise<APIResult<TranscriptionResult>> {
-	const user = ctx.getCurrentUser();
-	if (!user) {
-		return failure('Not authenticated');
-	}
-
-	try {
-		const token = await user.getIdToken();
-		const formData = new FormData();
-		formData.append('audio', audioBlob);
-
-		const response = await fetch(`${ctx.backendBaseUrl}/api/voice/transcribe`, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${token}`
-			},
-			body: formData
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			return failure(errorText || `HTTP ${response.status}`);
-		}
-
-		const data = await response.json();
-		return success(data);
-	} catch (error) {
-		return failure(error instanceof Error ? error.message : 'Transcription error');
-	}
-}
-
-/**
- * Synthesize speech from text (delegated to backend)
- *
- * TODO: Integrate with text-to-speech service
- */
-export async function synthesizeSpeech(
-	ctx: DelegatedAccessContext,
-	text: string,
-	voice?: string
-): Promise<APIResult<Blob>> {
-	const user = ctx.getCurrentUser();
-	if (!user) {
-		return failure('Not authenticated');
-	}
-
-	try {
-		const token = await user.getIdToken();
-		const response = await fetch(`${ctx.backendBaseUrl}/api/voice/synthesize`, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ text, voice })
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			return failure(errorText || `HTTP ${response.status}`);
-		}
-
-		const blob = await response.blob();
-		return success(blob);
-	} catch (error) {
-		return failure(error instanceof Error ? error.message : 'Synthesis error');
-	}
-}
+// Note: Voice operations (transcribe/synthesize) are handled in voice.ts
+// which correctly uses the unified /api/voice endpoint.

@@ -12,13 +12,7 @@ import {
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
-import {
-	Wallets,
-	type LedgerEntry,
-	type Wallet,
-	type CourseWalletResult,
-	type AddCreditsResult
-} from 'mentora-firebase';
+import { Wallets, type LedgerEntry, type Wallet } from 'mentora-firebase';
 import {
 	failure,
 	tryCatch,
@@ -26,6 +20,21 @@ import {
 	type MentoraAPIConfig,
 	type QueryOptions
 } from './types.js';
+
+export interface CourseWalletResult {
+	wallet: Wallet;
+	ledger?: LedgerEntry[];
+	stats: {
+		totalCharges: number;
+		transactionCount: number;
+	};
+}
+
+export interface AddCreditsResult {
+	entry: LedgerEntry;
+	newBalance: number;
+	message?: string;
+}
 
 /**
  * Get a wallet by ID (must be owner)

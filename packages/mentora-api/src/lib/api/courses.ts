@@ -16,12 +16,7 @@ import {
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
-import {
-	Courses,
-	type CourseDoc,
-	type CourseMembership,
-	type JoinCourseResult
-} from 'mentora-firebase';
+import { Courses, type CourseDoc, type CourseMembership } from 'mentora-firebase';
 import {
 	failure,
 	tryCatch,
@@ -29,6 +24,13 @@ import {
 	type MentoraAPIConfig,
 	type QueryOptions
 } from './types.js';
+
+export interface JoinCourseResult {
+	courseId: string;
+	joined: boolean;
+	alreadyMember?: boolean;
+	rejoined?: boolean;
+}
 
 /**
  * Get a course by ID
@@ -439,6 +441,61 @@ export async function removeMember(
 		await updateDoc(memberRef, {
 			status: 'removed'
 		});
+	});
+}
+
+/**
+ * Course wallet stats result
+ */
+export interface CourseWalletStatsResult {
+	wallet: import('mentora-firebase').Wallet;
+	ledger?: import('mentora-firebase').LedgerEntry[];
+	stats: {
+		totalCharges: number;
+		transactionCount: number;
+	};
+}
+
+/**
+ * Get course wallet and statistics (delegated to backend)
+ *
+ * Only course owner can access this endpoint.
+ * The backend creates a wallet if it doesn't exist.
+ */
+export async function getCourseWalletStats(
+	config: MentoraAPIConfig,
+	courseId: string,
+	options?: { includeLedger?: boolean; ledgerLimit?: number }
+): Promise<APIResult<CourseWalletStatsResult>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const token = await currentUser.getIdToken();
+
+		const params = new URLSearchParams();
+		if (options?.includeLedger) params.append('includeLedger', 'true');
+		if (options?.ledgerLimit) params.append('ledgerLimit', options.ledgerLimit.toString());
+
+		const url = `${config.backendBaseUrl}/api/courses/${courseId}/wallet${
+			params.toString() ? `?${params.toString()}` : ''
+		}`;
+
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: 'Failed to fetch wallet' }));
+			throw new Error(error.message || `Failed to fetch wallet: ${response.status}`);
+		}
+
+		return await response.json();
 	});
 }
 

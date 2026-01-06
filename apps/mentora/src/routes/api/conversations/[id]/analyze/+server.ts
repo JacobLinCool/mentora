@@ -1,7 +1,7 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import type { ConversationAnalysis } from "mentora-api";
+
 import { Conversations, type Turn } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
@@ -41,21 +41,8 @@ export const POST: RequestHandler = async (event) => {
             stance: t.analysis?.stance || "neutral",
         }));
 
-    const response: ConversationAnalysis = {
-        overallScore: 0.65 + Math.random() * 0.25,
-        stanceProgression,
-        qualityMetrics: {
-            argumentClarity: 0.6 + Math.random() * 0.3,
-            evidenceUsage: 0.5 + Math.random() * 0.3,
-            criticalThinking: 0.6 + Math.random() * 0.3,
-            responseToCounterpoints: 0.55 + Math.random() * 0.3,
-        },
-        suggestions: [
-            "Consider providing more specific examples",
-            "Try to anticipate potential counterarguments",
-        ].slice(0, 2),
-        summary: `Analysis of ${conversation.turns.length}-turn conversation.`,
-    };
+    // TODO: Write analysis to conversation document
+    // await firestore.doc(...).update({ ... });
 
-    return json(response);
+    return json({ success: true });
 };

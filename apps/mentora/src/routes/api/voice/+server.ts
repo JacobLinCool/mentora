@@ -9,7 +9,7 @@
  */
 import { requireAuth } from "$lib/server/auth";
 import { json, error as svelteError } from "@sveltejs/kit";
-import type { SynthesizeResult, TranscriptionResult } from "mentora-firebase";
+
 import type { RequestHandler } from "./$types";
 
 // TODO: Integrate with speech services
@@ -80,7 +80,7 @@ async function handleTranscribe(event: Parameters<RequestHandler>[0]) {
             Math.floor(Math.random() * mockTranscriptions.length)
         ];
 
-    const response: TranscriptionResult = {
+    const response = {
         text: mockText,
         confidence: 0.85 + Math.random() * 0.1,
         duration: 3.5 + Math.random() * 2,
@@ -117,7 +117,7 @@ function handleSynthesize(body: { text?: string; voice?: string }) {
     // Convert to Base64
     const audioContent = Buffer.from(silentMp3).toString("base64");
 
-    const response: SynthesizeResult = {
+    const response = {
         audioContent,
         contentType: "audio/mpeg",
     };

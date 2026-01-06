@@ -1,7 +1,7 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import type { ConversationSummary } from "mentora-api";
+
 import { Conversations, type Turn } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
@@ -36,15 +36,8 @@ export const POST: RequestHandler = async (event) => {
         studentTurns[studentTurns.length - 1]?.analysis?.stance ||
         "undetermined";
 
-    const summary: ConversationSummary = {
-        text: `Student engaged in ${studentTurns.length} turns of dialogue.`,
-        initialStance,
-        finalStance,
-        stanceChanged: initialStance !== finalStance,
-        totalTurns: conversation.turns.length,
-        studentTurns: studentTurns.length,
-        duration: conversation.updatedAt - conversation.createdAt,
-    };
+    // TODO: Write summary to conversation document
+    // await firestore.doc(...).update({ ... });
 
-    return json({ summary });
+    return json({ success: true });
 };
