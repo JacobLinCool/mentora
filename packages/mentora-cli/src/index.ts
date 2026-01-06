@@ -9,7 +9,6 @@ import {
     createAssignmentsCommand,
     createConversationsCommand,
     createCoursesCommand,
-    createStreamingCommand,
     createSubmissionsCommand,
     createTopicsCommand,
     createUsersCommand,
@@ -78,7 +77,6 @@ program.addCommand(createTopicsCommand(getAuthenticatedClient));
 program.addCommand(createAssignmentsCommand(getAuthenticatedClient));
 program.addCommand(createSubmissionsCommand(getAuthenticatedClient));
 program.addCommand(createConversationsCommand(getAuthenticatedClient));
-program.addCommand(createStreamingCommand(getAuthenticatedClient));
 program.addCommand(createWalletsCommand(getAuthenticatedClient));
 
 // Error handling
