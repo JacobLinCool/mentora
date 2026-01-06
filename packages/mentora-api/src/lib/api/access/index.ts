@@ -30,7 +30,6 @@
  * The client SDK only has access to documents the user is authorized to access.
  */
 
-export * from './direct.js';
 export * from './delegated.js';
 export * from './subscriptions.js';
 export type { AccessMode, HybridAccessConfig } from './types.js';

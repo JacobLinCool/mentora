@@ -118,7 +118,7 @@ export async function createConversation(
 export async function endConversation(
 	ctx: DelegatedAccessContext,
 	conversationId: string
-): Promise<APIResult<{ state: string; summary?: ConversationSummary }>> {
+): Promise<APIResult<{ state: string; conversation: Conversation; alreadyClosed?: boolean }>> {
 	return fetchBackend(ctx, `/api/conversations/${conversationId}/end`, {
 		method: 'POST'
 	});

@@ -432,6 +432,39 @@ describe("Course Roster Security Rules", () => {
             );
         });
 
+        it("should deny student from adding themselves to roster directly (bypass backend)", async () => {
+            const courseId = "course123";
+            const studentId = "student_self_join";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                await fs.collection("courses").doc(courseId).set({
+                    id: courseId,
+                    title: "Test Course",
+                    code: "ABC123",
+                    ownerId: "owner789",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+            });
+
+            await assertFails(
+                db
+                    .collection("courses")
+                    .doc(courseId)
+                    .collection("roster")
+                    .doc(studentId)
+                    .set({
+                        userId: studentId,
+                        email: "student@example.com",
+                        role: "student",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    }),
+            );
+        });
+
         it("should deny non-members from adding roster entries", async () => {
             const courseId = "course123";
             const nonMemberId = "nonmember999";

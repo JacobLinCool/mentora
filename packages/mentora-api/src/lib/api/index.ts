@@ -22,22 +22,7 @@
 export * from './client.js';
 export * from './types.js';
 
-// Unified API types (the main interface)
-export type {
-	UnifiedAPI,
-	UnifiedAPIConfig,
-	DirectAccessAPI,
-	DelegatedAccessAPI,
-	AccessLayer,
-	SubscriptionHandlers,
-	LLMResponse,
-	StreamingHandlers,
-	ConversationAnalysis,
-	TranscriptionResult
-} from './unified.js';
-
 // Access layer architecture
 export * from './access/index.js';
-export type { DirectAccessContext } from './access/direct.js';
 export type { DelegatedAccessContext, StreamingEvents } from './access/delegated.js';
 export type { SubscriptionContext, TypedSubscriptionOptions } from './access/subscriptions.js';

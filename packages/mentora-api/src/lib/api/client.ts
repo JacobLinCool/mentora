@@ -25,7 +25,7 @@ import type {
 	ConversationSummary
 } from 'mentora-firebase';
 import * as AssignmentsModule from './assignments.js';
-import * as BackendModule from './backend.js';
+import { submitMessage, analyzeConversation, generateSummary } from './access/delegated.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
 import * as StatisticsModule from './statistics.js';
@@ -385,16 +385,25 @@ export class MentoraClient {
 	 *
 	 * Note: The backend processes the LLM call and returns results.
 	 */
+	// ============ LLM Operations (Delegated to Backend) ============
+	/**
+	 * LLM-related operations that require backend processing.
+	 * These are delegated to the backend which handles LLM API calls.
+	 */
 	llm = {
 		/**
 		 * Submit a message and get AI response (non-streaming)
 		 */
 		submitMessage: (conversationId: string, text: string): Promise<APIResult<LLMResponse>> =>
 			this.authReadyThen(() =>
-				BackendModule.callBackend(this._config, '/api/llm', {
-					method: 'POST',
-					body: JSON.stringify({ action: 'message', conversationId, text })
-				})
+				submitMessage(
+					{
+						backendBaseUrl: this._config.backendBaseUrl,
+						getCurrentUser: this._config.getCurrentUser
+					},
+					conversationId,
+					text
+				)
 			),
 
 		/**
@@ -402,29 +411,61 @@ export class MentoraClient {
 		 */
 		analyzeConversation: (conversationId: string): Promise<APIResult<ConversationAnalysis>> =>
 			this.authReadyThen(() =>
-				BackendModule.callBackend(this._config, '/api/llm', {
-					method: 'POST',
-					body: JSON.stringify({ action: 'analyze', conversationId })
-				})
+				analyzeConversation(
+					{
+						backendBaseUrl: this._config.backendBaseUrl,
+						getCurrentUser: this._config.getCurrentUser
+					},
+					conversationId
+				)
 			),
 
 		/**
 		 * Generate conversation summary
 		 */
-		generateSummary: (
-			conversationId: string
-		): Promise<APIResult<{ summary: ConversationSummary | null; message?: string }>> =>
+		generateSummary: (conversationId: string): Promise<APIResult<ConversationSummary>> =>
 			this.authReadyThen(() =>
-				BackendModule.callBackend(this._config, '/api/llm', {
-					method: 'POST',
-					body: JSON.stringify({ action: 'summary', conversationId })
-				})
+				generateSummary(
+					{
+						backendBaseUrl: this._config.backendBaseUrl,
+						getCurrentUser: this._config.getCurrentUser
+					},
+					conversationId
+				)
 			)
 	};
 
 	// ============ Backend ============
 	backend = {
-		call: <T>(endpoint: string, options?: RequestInit): Promise<APIResult<T>> =>
-			this.authReadyThen(() => BackendModule.callBackend<T>(this._config, endpoint, options))
+		call: <T>(endpoint: string, options: RequestInit = {}): Promise<APIResult<T>> =>
+			this.authReadyThen(async () => {
+				const currentUser = this._config.getCurrentUser();
+				if (!currentUser) return { success: false, error: 'Not authenticated' };
+
+				try {
+					const token = await currentUser.getIdToken();
+					const response = await fetch(`${this._config.backendBaseUrl}${endpoint}`, {
+						...options,
+						headers: {
+							...options.headers,
+							Authorization: `Bearer ${token}`,
+							'Content-Type': 'application/json'
+						}
+					});
+
+					if (!response.ok) {
+						const error = await response.text();
+						return { success: false, error: error || `HTTP ${response.status}` };
+					}
+
+					const data = await response.json();
+					return { success: true, data };
+				} catch (error) {
+					return {
+						success: false,
+						error: error instanceof Error ? error.message : 'Network error'
+					};
+				}
+			})
 	};
 }

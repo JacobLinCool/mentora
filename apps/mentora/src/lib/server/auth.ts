@@ -17,9 +17,29 @@ export interface FirebaseUser {
     name?: string;
 }
 
+import { env } from "$env/dynamic/private";
+import { decodeJwt } from "jose";
+
 export async function verifyFirebaseIdToken(
     idToken: string,
 ): Promise<FirebaseUser> {
+    // Try to get emulator host from various sources
+    let emulatorHost: string | undefined = env.FIREBASE_AUTH_EMULATOR_HOST;
+    if (!emulatorHost && typeof process !== "undefined" && process.env) {
+        emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    }
+
+    if (emulatorHost) {
+        // In emulator environment, we skip signature verification
+        const payload = decodeJwt(idToken);
+        return {
+            uid: String(payload.user_id || payload.sub),
+            email: payload.email as string,
+            emailVerified: payload.email_verified as boolean,
+            name: payload.name as string | undefined,
+        };
+    }
+
     const { payload } = await jwtVerify(idToken, jwks, { issuer, audience });
     return {
         uid: String(payload.user_id || payload.sub),

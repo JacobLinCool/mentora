@@ -29,9 +29,12 @@ export const POST: RequestHandler = async (event) => {
     }
 
     // Generate unique course code if not provided
+    const sanitizedTitle = title.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const prefix =
+        sanitizedTitle.length >= 3 ? sanitizedTitle.substring(0, 3) : "CRS";
     const courseCode =
         code?.toUpperCase() ||
-        `${title.substring(0, 3).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
+        `${prefix}${Date.now().toString(36).toUpperCase()}`;
 
     // Validate course code format
     if (!/^[A-Z0-9]{6,64}$/.test(courseCode.replace(/[-_]/g, ""))) {

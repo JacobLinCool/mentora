@@ -151,7 +151,7 @@ export async function createCourse(
 	return tryCatch(async () => {
 		const token = await currentUser.getIdToken();
 
-		const response = await fetch('/api/courses', {
+		const response = await fetch(`${config.backendBaseUrl}/api/courses`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -460,7 +460,7 @@ export async function joinByCode(
 	return tryCatch(async () => {
 		const token = await currentUser.getIdToken();
 
-		const response = await fetch('/api/courses/join', {
+		const response = await fetch(`${config.backendBaseUrl}/api/courses/join`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

@@ -1,9 +1,7 @@
 /**
  * LLM Streaming API - SSE endpoint for streaming AI responses
  *
- * POST /api/llm/stream
- *
- * Request body: { conversationId: string, text: string }
+ * Request body: { text: string }
  * Response: SSE stream with AI response chunks
  */
 import { requireAuth } from "$lib/server/auth";
@@ -28,9 +26,9 @@ const DEFAULT_AI_CONFIG: AssignmentAIConfig = {
 
 export const POST: RequestHandler = async (event) => {
     const user = await requireAuth(event);
-
+    const { id: conversationId } = event.params;
     const body = await event.request.json();
-    const { conversationId, text } = body;
+    const { text } = body;
 
     if (!conversationId) {
         throw svelteError(400, "conversationId is required");

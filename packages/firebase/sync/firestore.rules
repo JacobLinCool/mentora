@@ -41,9 +41,10 @@ service cloud.firestore {
     }
 
     function isOwnerOfCourse(courseId) {
-      // get() returns null if doc doesn't exist, so exists() check is redundant
-      let course = courseDoc(courseId);
-      return isSignedIn() && course.data != null && course.data.ownerId == request.auth.uid;
+      // Check if course exists first, then check ownership
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/courses/$(courseId)) &&
+        get(/databases/$(database)/documents/courses/$(courseId)).data.ownerId == request.auth.uid;
     }
 
     function courseDoc(courseId) {
@@ -51,13 +52,14 @@ service cloud.firestore {
     }
 
     function isPublicCourse(courseId) {
-      let course = courseDoc(courseId);
-      return course.data != null && course.data.visibility == "public";
+      return exists(/databases/$(database)/documents/courses/$(courseId)) &&
+        get(/databases/$(database)/documents/courses/$(courseId)).data.visibility == "public";
     }
 
     function canEditCourseResource(courseId) {
+      // Check owner first (simplest check), then fall back to role-based checks
       return isSignedIn() && (
-        isInstructorOfCourse(courseId) || isTA(courseId) || isOwnerOfCourse(courseId)
+        isOwnerOfCourse(courseId) || isInstructorOfCourse(courseId) || isTA(courseId)
       );
     }
 
@@ -67,7 +69,7 @@ service cloud.firestore {
     }
 
     function isPublicCourseResource() {
-      return (resource == null || resource.data == null) ? false : (resource.data.visibility == "public");
+      return resource != null && resource.data != null && 'visibility' in resource.data && resource.data.visibility == "public";
     }
 
     function isValidUserProfile(data) {
@@ -178,15 +180,15 @@ service cloud.firestore {
 
     /* ---------- Courses ---------- */
     match /courses/{courseId} {
-      // Public courses are readable without auth; private/unlisted require membership/ownership.
+      // Public courses are readable by anyone; private/unlisted require membership or ownership
       allow get: if targetNotExists() ||
-        (resource.data == null ? false : (resource.data.visibility == "public")) ||
-        (isSignedIn() && (resource.data == null ? false : (isCourseMember(courseId) || (resource.data.ownerId == request.auth.uid))));
+        (resource.data != null && 'visibility' in resource.data && resource.data.visibility == "public") ||
+        (isSignedIn() && resource.data != null && (isCourseMember(courseId) || ('ownerId' in resource.data && resource.data.ownerId == request.auth.uid)));
 
-      // Note: for queries, client must filter visibility == "public" to avoid permission-denied.
+      // List: same rules as get
       allow list: if targetNotExists() ||
-        (resource.data == null ? false : (resource.data.visibility == "public")) ||
-        (isSignedIn() && (resource.data == null ? false : (isCourseMember(courseId) || (resource.data.ownerId == request.auth.uid))));
+        (resource.data != null && 'visibility' in resource.data && resource.data.visibility == "public") ||
+        (isSignedIn() && resource.data != null && (isCourseMember(courseId) || ('ownerId' in resource.data && resource.data.ownerId == request.auth.uid)));
 
       allow create: if isSignedIn() && isValidCourseDoc(request.resource.data);
       allow update: if isSignedIn() && (
@@ -200,12 +202,12 @@ service cloud.firestore {
     /* ---------- Topics ---------- */
     match /topics/{topicId} {
       allow get: if targetNotExists() ||
-        ((resource == null || resource.data == null) ? false : (resource.data.courseId is string && isPublicCourse(resource.data.courseId))) ||
-        (isSignedIn() && ((resource == null || resource.data == null) ? false : (isCourseMember(resource.data.courseId) || canEditCourseResource(resource.data.courseId))));
+        (resource != null && resource.data != null && resource.data.courseId is string && isPublicCourse(resource.data.courseId)) ||
+        (isSignedIn() && resource != null && resource.data != null && (isCourseMember(resource.data.courseId) || canEditCourseResource(resource.data.courseId)));
 
       allow list: if targetNotExists() ||
-        ((resource == null || resource.data == null) ? false : (resource.data.courseId is string && isPublicCourse(resource.data.courseId))) ||
-        (isSignedIn() && ((resource == null || resource.data == null) ? false : (isCourseMember(resource.data.courseId) || canEditCourseResource(resource.data.courseId))));
+        (resource != null && resource.data != null && resource.data.courseId is string && isPublicCourse(resource.data.courseId)) ||
+        (isSignedIn() && resource != null && resource.data != null && (isCourseMember(resource.data.courseId) || canEditCourseResource(resource.data.courseId)));
 
       allow create: if isSignedIn() &&
         canEditCourseResource(request.resource.data.courseId) &&

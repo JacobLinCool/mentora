@@ -132,12 +132,15 @@ export async function getCourseWallet(
 		if (options?.includeLedger) params.append('includeLedger', 'true');
 		if (options?.ledgerLimit) params.append('ledgerLimit', options.ledgerLimit.toString());
 
-		const response = await fetch(`/api/courses/${courseId}/wallet?${params.toString()}`, {
-			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${token}`
+		const response = await fetch(
+			`${config.backendBaseUrl}/api/courses/${courseId}/wallet?${params.toString()}`,
+			{
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
 			}
-		});
+		);
 
 		if (!response.ok) {
 			const error = await response.json().catch(() => ({ message: 'Failed to get wallet' }));
@@ -166,7 +169,7 @@ export async function addCredits(
 	return tryCatch(async () => {
 		const token = await currentUser.getIdToken();
 
-		const response = await fetch('/api/wallets', {
+		const response = await fetch(`${config.backendBaseUrl}/api/wallets`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

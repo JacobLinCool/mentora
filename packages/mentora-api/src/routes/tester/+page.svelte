@@ -8,7 +8,6 @@
 		type APIParameter
 	} from '$lib/explorer/api-spec';
 	import { subscribeToAuth, type AuthState } from '$lib/explorer/firebase';
-	import { sampleCourses, sampleTopics, sampleAssignments } from '$lib/explorer/test-fixtures';
 	import { getTranslation, type Language } from '$lib/i18n/tester';
 	import { onMount, onDestroy } from 'svelte';
 
@@ -27,6 +26,12 @@
 	});
 	let unsubscribe: (() => void) | null = null;
 
+	// Dynamic preset data (fetched from API)
+	let courses = $state<{ id: string; name: string }[]>([]);
+	let topics = $state<{ id: string; name: string }[]>([]);
+	let assignments = $state<{ id: string; name: string }[]>([]);
+	let presetsLoading = $state(false);
+
 	onMount(() => {
 		// Load saved language preference
 		const saved = localStorage.getItem('tester-language');
@@ -36,12 +41,63 @@
 
 		unsubscribe = subscribeToAuth((state) => {
 			authState = state;
+			// Fetch presets when user logs in
+			if (state.token && !presetsLoading && courses.length === 0) {
+				fetchPresets(state.token);
+			}
 		});
 	});
 
 	onDestroy(() => {
 		unsubscribe?.();
 	});
+
+	async function fetchPresets(token: string) {
+		presetsLoading = true;
+		try {
+			// Fetch courses
+			const coursesRes = await fetch(`${baseUrl}/api/courses`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			if (coursesRes.ok) {
+				const data = await coursesRes.json();
+				courses = (data.data || data || []).map((c: any) => ({
+					id: c.id,
+					name: c.title || c.name || c.id
+				}));
+			}
+
+			// Fetch assignments (if we have courses, use first one)
+			if (courses.length > 0) {
+				const assignmentsRes = await fetch(`${baseUrl}/api/courses/${courses[0].id}/assignments`, {
+					headers: { Authorization: `Bearer ${token}` }
+				});
+				if (assignmentsRes.ok) {
+					const data = await assignmentsRes.json();
+					assignments = (data.data || data || []).map((a: any) => ({
+						id: a.id,
+						name: a.title || a.name || a.id
+					}));
+				}
+
+				// Fetch topics
+				const topicsRes = await fetch(`${baseUrl}/api/courses/${courses[0].id}/topics`, {
+					headers: { Authorization: `Bearer ${token}` }
+				});
+				if (topicsRes.ok) {
+					const data = await topicsRes.json();
+					topics = (data.data || data || []).map((t: any) => ({
+						id: t.id,
+						name: t.title || t.name || t.id
+					}));
+				}
+			}
+		} catch (err) {
+			console.error('Failed to fetch presets:', err);
+		} finally {
+			presetsLoading = false;
+		}
+	}
 
 	function setLanguage(lang: Language) {
 		language = lang;
@@ -64,17 +120,17 @@
 	);
 	let error = $state<string | null>(null);
 
-	// Preset ID mappings for quick fill
-	const presetIds: Record<string, { value: string; label: string }[]> = {
-		courseId: sampleCourses.map((c) => ({ value: c.id, label: c.name })),
-		topicId: sampleTopics.map((t) => ({ value: t.id, label: t.name })),
-		assignmentId: sampleAssignments.map((a) => ({ value: a.id, label: a.name })),
+	// Dynamic preset ID mappings
+	const presetIds = $derived<Record<string, { value: string; label: string }[]>>({
+		courseId: courses.map((c) => ({ value: c.id, label: c.name })),
+		topicId: topics.map((t) => ({ value: t.id, label: t.name })),
+		assignmentId: assignments.map((a) => ({ value: a.id, label: a.name })),
 		id: [
-			...sampleCourses.map((c) => ({ value: c.id, label: `Course: ${c.name}` })),
-			...sampleTopics.map((t) => ({ value: t.id, label: `Topic: ${t.name}` })),
-			...sampleAssignments.map((a) => ({ value: a.id, label: `Assignment: ${a.name}` }))
+			...courses.map((c) => ({ value: c.id, label: `Course: ${c.name}` })),
+			...topics.map((t) => ({ value: t.id, label: `Topic: ${t.name}` })),
+			...assignments.map((a) => ({ value: a.id, label: `Assignment: ${a.name}` }))
 		]
-	};
+	});
 
 	function selectEndpoint(endpoint: APIEndpoint) {
 		selectedEndpoint = endpoint;
@@ -310,7 +366,7 @@
 											placeholder={param.description}
 											class="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 										/>
-										{#if presetIds[param.name]}
+										{#if presetIds[param.name] && presetIds[param.name].length > 0}
 											<select
 												onchange={(e) => {
 													const target = e.target as HTMLSelectElement;
@@ -318,7 +374,9 @@
 												}}
 												class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-slate-200 text-xs cursor-pointer hover:bg-slate-600 min-w-[100px]"
 											>
-												<option value="">📋 {t.presets}</option>
+												<option value=""
+													>{presetsLoading ? '⏳ Loading...' : `📋 ${t.presets}`}</option
+												>
 												{#each presetIds[param.name] as preset}
 													<option value={preset.value}>{preset.label}</option>
 												{/each}

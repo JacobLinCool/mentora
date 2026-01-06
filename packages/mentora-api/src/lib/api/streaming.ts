@@ -63,18 +63,20 @@ export class StreamingClient {
 		try {
 			const token = await currentUser.getIdToken();
 
-			const response = await fetch(`${this.config.backendBaseUrl}/api/llm/stream`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify({
-					conversationId: this.conversationId,
-					text
-				}),
-				signal: this.abortController.signal
-			});
+			const response = await fetch(
+				`${this.config.backendBaseUrl}/api/conversations/${this.conversationId}/stream`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`
+					},
+					body: JSON.stringify({
+						text
+					}),
+					signal: this.abortController.signal
+				}
+			);
 
 			if (!response.ok) {
 				const error = await response.text();
