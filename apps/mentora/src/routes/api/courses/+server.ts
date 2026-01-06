@@ -1,6 +1,3 @@
-/**
- * Courses API - Create course only
- */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";

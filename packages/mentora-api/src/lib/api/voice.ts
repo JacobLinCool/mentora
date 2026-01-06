@@ -35,9 +35,8 @@ export async function transcribeAudio(
 
 		const formData = new FormData();
 		formData.append('audio', audioBlob);
-		formData.append('action', 'transcribe');
 
-		const response = await fetch(`${config.backendBaseUrl}/api/voice`, {
+		const response = await fetch(`${config.backendBaseUrl}/api/voice/transcribe`, {
 			method: 'POST',
 			headers: {
 				Authorization: token ? `Bearer ${token}` : ''
@@ -68,14 +67,13 @@ export async function synthesizeSpeech(
 	return tryCatch(async () => {
 		const token = currentUser ? await currentUser.getIdToken() : '';
 
-		const response = await fetch(`${config.backendBaseUrl}/api/voice`, {
+		const response = await fetch(`${config.backendBaseUrl}/api/voice/synthesize`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				Authorization: token ? `Bearer ${token}` : ''
 			},
 			body: JSON.stringify({
-				action: 'synthesize',
 				text,
 				voiceId
 			})

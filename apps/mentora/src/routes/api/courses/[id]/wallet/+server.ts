@@ -1,8 +1,4 @@
-/**
- * Course Wallet API - Get/Create wallet for a course
- *
- * Handled on backend to securely manage wallet creation and stats calculation.
- */
+// MOCK API
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";

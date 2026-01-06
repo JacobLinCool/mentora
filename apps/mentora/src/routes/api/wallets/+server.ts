@@ -1,13 +1,4 @@
-/**
- * Wallets API - Add credits to user's wallet
- *
- * POST /api/wallets
- *
- * This is the only wallet endpoint that requires backend processing
- * due to idempotency checks and balance updates.
- *
- * All other wallet operations are handled via direct Firestore access.
- */
+// MOCK API
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
