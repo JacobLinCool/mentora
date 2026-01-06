@@ -6,7 +6,6 @@ import {
 	doc,
 	getDoc,
 	getDocs,
-	setDoc,
 	limit,
 	orderBy,
 	query,
@@ -14,7 +13,6 @@ import {
 	type QueryConstraint
 } from 'firebase/firestore';
 import {
-	Courses,
 	Wallets,
 	type LedgerEntry,
 	type Wallet,

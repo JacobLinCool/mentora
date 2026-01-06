@@ -22,7 +22,7 @@ import {
 	type Turn
 } from 'mentora-firebase';
 import type { ReactiveState } from './state.svelte';
-import { failure, success, tryCatch, type APIResult, type MentoraAPIConfig } from './types.js';
+import { failure, tryCatch, type APIResult, type MentoraAPIConfig } from './types.js';
 
 /**
  * Get a conversation by ID

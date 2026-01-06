@@ -39,7 +39,7 @@ import {
 	type Wallet,
 	type Submission
 } from 'mentora-firebase';
-import type { Unsubscribe, SubscriptionOptions } from './types.js';
+import type { Unsubscribe } from './types.js';
 
 /**
  * Subscription context

@@ -19,7 +19,13 @@
  */
 
 import type { User } from 'firebase/auth';
-import type { Conversation, ConversationSummary, Turn } from 'mentora-firebase';
+import type {
+	Conversation,
+	ConversationSummary,
+	LLMResponse,
+	ConversationAnalysis,
+	TranscriptionResult
+} from 'mentora-firebase';
 import { success, failure, type APIResult } from '../types.js';
 
 /**
@@ -127,23 +133,6 @@ export async function endConversation(
 // ============ LLM Operations ============
 
 /**
- * LLM response result
- */
-export interface LLMResponse {
-	text: string;
-	turnId: string;
-	analysis?: {
-		stance?: string;
-		quality?: number;
-		suggestions?: string[];
-	};
-	tokenUsage?: {
-		input: number;
-		output: number;
-	};
-}
-
-/**
  * Submit a message and get AI response (delegated to backend)
  *
  * This operation requires backend processing:
@@ -166,149 +155,7 @@ export async function submitMessage(
 	});
 }
 
-/**
- * Submit a message and receive streaming response
- *
- * Returns an EventSource URL for SSE streaming.
- * The client handles the stream and stores the final turn.
- */
-export function createStreamingSession(
-	ctx: DelegatedAccessContext,
-	conversationId: string
-): { url: string; getToken: () => Promise<string> } | null {
-	const user = ctx.getCurrentUser();
-	if (!user) return null;
-
-	return {
-		url: `${ctx.backendBaseUrl}/api/conversations/${conversationId}/stream`,
-		getToken: () => user.getIdToken()
-	};
-}
-
-/**
- * Streaming event types
- */
-export interface StreamingEvents {
-	onStart?: (data: { turnId: string }) => void;
-	onChunk?: (data: { text: string }) => void;
-	onComplete?: (data: LLMResponse) => void;
-	onError?: (error: { code: string; message: string }) => void;
-}
-
-/**
- * Submit message with SSE streaming response
- *
- * This function handles the full streaming flow:
- * 1. POST the message
- * 2. Receive SSE events for real-time updates
- * 3. Return the final response
- *
- * NOTE: Backend processes LLM call but client stores the result.
- */
-export async function submitMessageWithStreaming(
-	ctx: DelegatedAccessContext,
-	conversationId: string,
-	text: string,
-	events?: StreamingEvents
-): Promise<APIResult<LLMResponse>> {
-	const user = ctx.getCurrentUser();
-	if (!user) {
-		return failure('Not authenticated');
-	}
-
-	try {
-		const token = await user.getIdToken();
-		const response = await fetch(
-			`${ctx.backendBaseUrl}/api/conversations/${conversationId}/stream`,
-			{
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ text })
-			}
-		);
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			return failure(errorText || `HTTP ${response.status}`);
-		}
-
-		// Read SSE stream
-		const reader = response.body?.getReader();
-		if (!reader) {
-			return failure('No response body');
-		}
-
-		const decoder = new TextDecoder();
-		let buffer = '';
-		let finalResponse: LLMResponse | null = null;
-
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split('\n');
-			buffer = lines.pop() || '';
-
-			for (const line of lines) {
-				if (line.startsWith('event:')) {
-					const eventType = line.substring(6).trim();
-					continue;
-				}
-
-				if (line.startsWith('data:')) {
-					const dataStr = line.substring(5).trim();
-					try {
-						const data = JSON.parse(dataStr);
-
-						// Handle different event types based on data structure
-						if (data.turnId && !data.text) {
-							events?.onStart?.(data);
-						} else if (data.text && !data.tokenUsage) {
-							events?.onChunk?.(data);
-						} else if (data.tokenUsage) {
-							finalResponse = data;
-							events?.onComplete?.(data);
-						} else if (data.code || data.message) {
-							events?.onError?.(data);
-						}
-					} catch {
-						// Ignore parse errors
-					}
-				}
-			}
-		}
-
-		if (finalResponse) {
-			return success(finalResponse);
-		}
-
-		return failure('Stream ended without completion');
-	} catch (error) {
-		return failure(error instanceof Error ? error.message : 'Streaming error');
-	}
-}
-
 // ============ Analysis Operations ============
-
-/**
- * Conversation analysis result
- */
-export interface ConversationAnalysis {
-	overallScore: number;
-	stanceProgression: Array<{ turnId: string; stance: string }>;
-	qualityMetrics: {
-		argumentClarity: number;
-		evidenceUsage: number;
-		criticalThinking: number;
-		responseToCounterpoints: number;
-	};
-	suggestions: string[];
-	summary: string;
-}
 
 /**
  * Analyze a conversation (delegated to backend)
@@ -347,15 +194,6 @@ export async function generateSummary(
 }
 
 // ============ Voice Operations ============
-
-/**
- * Transcription result
- */
-export interface TranscriptionResult {
-	text: string;
-	confidence: number;
-	duration: number;
-}
 
 /**
  * Transcribe audio (delegated to backend)

@@ -29,7 +29,7 @@ import { submitMessage, analyzeConversation, generateSummary } from './access/de
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
 import * as StatisticsModule from './statistics.js';
-import * as StreamingModule from './streaming.js';
+
 import * as SubmissionsModule from './submissions.js';
 import * as TopicsModule from './topics.js';
 import type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
@@ -298,19 +298,6 @@ export class MentoraClient {
 			this.authReadyThen(() =>
 				ConversationsModule.addTurn(this._config, conversationId, text, type)
 			)
-	};
-
-	// ============ Streaming ============
-	streaming = {
-		createClient: (
-			conversationId: string,
-			handlers?: StreamingModule.StreamingEventHandlers
-		): StreamingModule.StreamingClient =>
-			StreamingModule.createStreamingClient(this._config, conversationId, handlers),
-		getSession: (
-			sessionId: string
-		): Promise<APIResult<import('mentora-firebase').StreamingSession>> =>
-			this.authReadyThen(() => StreamingModule.getStreamingSession(this._config, sessionId))
 	};
 
 	// ============ Statistics ============

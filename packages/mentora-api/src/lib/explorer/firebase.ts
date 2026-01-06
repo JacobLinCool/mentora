@@ -95,7 +95,7 @@ function initializeAuthListener() {
 				try {
 					const token = await user.getIdToken();
 					authState = { user, token, loading: false, error: null };
-				} catch (err) {
+				} catch {
 					authState = {
 						user,
 						token: null,

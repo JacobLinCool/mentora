@@ -24,5 +24,5 @@ export * from './types.js';
 
 // Access layer architecture
 export * from './access/index.js';
-export type { DelegatedAccessContext, StreamingEvents } from './access/delegated.js';
+export type { DelegatedAccessContext } from './access/delegated.js';
 export type { SubscriptionContext, TypedSubscriptionOptions } from './access/subscriptions.js';
