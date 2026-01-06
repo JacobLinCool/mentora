@@ -2,7 +2,8 @@
  * Submissions commands
  */
 import { Command } from "commander";
-import type { MentoraCLIClient } from "../client.js";
+import type { WhereFilterOp } from "firebase/firestore";
+import type { MentoraCLIClient, QueryOptions } from "../client.js";
 import {
     error,
     formatTimestamp,
@@ -33,21 +34,18 @@ export function createSubmissionsCommand(
                 options: { status?: string; limit?: number },
             ) => {
                 const client = await getClient();
-                const queryOptions: {
-                    limit?: number;
-                    where?: Array<{
-                        field: string;
-                        op: string;
-                        value: unknown;
-                    }>;
-                } = {};
+                const queryOptions: QueryOptions = {};
 
                 if (options.limit) {
                     queryOptions.limit = options.limit;
                 }
                 if (options.status) {
                     queryOptions.where = [
-                        { field: "state", op: "==", value: options.status },
+                        {
+                            field: "state",
+                            op: "==" as WhereFilterOp,
+                            value: options.status,
+                        },
                     ];
                 }
 

@@ -218,7 +218,7 @@ export function createAssignmentsCommand(
         .action(async (assignmentId: string) => {
             const client = await getClient();
             const result =
-                await client.statistics.getForAssignment(assignmentId);
+                await client.statistics.getCompletionStatus(assignmentId);
             if (result.success) {
                 outputData(result.data);
             } else {

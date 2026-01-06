@@ -23,6 +23,7 @@ export type {
     CourseDoc,
     CourseMembership,
     LedgerEntry,
+    QueryOptions,
     Submission,
     Topic,
     UserProfile,
