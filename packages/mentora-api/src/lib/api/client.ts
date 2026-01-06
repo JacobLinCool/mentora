@@ -17,7 +17,7 @@ import type {
 } from 'mentora-firebase';
 
 import * as AssignmentsModule from './assignments.js';
-import { submitMessage, analyzeConversation, generateSummary } from './access/delegated.js';
+import { submitMessage } from './access/delegated.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
 import * as StatisticsModule from './statistics.js';
@@ -355,13 +355,6 @@ export class MentoraClient {
 	/**
 	 * LLM-related operations that require backend processing.
 	 * These are delegated to the backend which handles LLM API calls.
-	 *
-	 * Note: The backend processes the LLM call and returns results.
-	 */
-	// ============ LLM Operations (Delegated to Backend) ============
-	/**
-	 * LLM-related operations that require backend processing.
-	 * These are delegated to the backend which handles LLM API calls.
 	 */
 	llm = {
 		/**
@@ -376,34 +369,6 @@ export class MentoraClient {
 					},
 					conversationId,
 					text
-				)
-			),
-
-		/**
-		 * Analyze a conversation
-		 */
-		analyzeConversation: (conversationId: string) =>
-			this.authReadyThen(() =>
-				analyzeConversation(
-					{
-						backendBaseUrl: this._config.backendBaseUrl,
-						getCurrentUser: this._config.getCurrentUser
-					},
-					conversationId
-				)
-			),
-
-		/**
-		 * Generate conversation summary
-		 */
-		generateSummary: (conversationId: string) =>
-			this.authReadyThen(() =>
-				generateSummary(
-					{
-						backendBaseUrl: this._config.backendBaseUrl,
-						getCurrentUser: this._config.getCurrentUser
-					},
-					conversationId
 				)
 			)
 	};

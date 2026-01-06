@@ -151,35 +151,5 @@ export async function submitMessage(
 	});
 }
 
-// ============ Analysis Operations ============
-
-/**
- * Trigger conversation analysis (delegated to backend)
- *
- * The backend will perform analysis and update the conversation document directly.
- */
-export async function analyzeConversation(
-	ctx: DelegatedAccessContext,
-	conversationId: string
-): Promise<APIResult<void>> {
-	return fetchBackend(ctx, `/api/conversations/${conversationId}/analyze`, {
-		method: 'POST'
-	});
-}
-
-/**
- * Trigger summary generation (delegated to backend)
- *
- * The backend will generate a summary and update the conversation document directly.
- */
-export async function generateSummary(
-	ctx: DelegatedAccessContext,
-	conversationId: string
-): Promise<APIResult<void>> {
-	return fetchBackend(ctx, `/api/conversations/${conversationId}/summary`, {
-		method: 'POST'
-	});
-}
-
 // Note: Voice operations (transcribe/synthesize) are handled in voice.ts
 // which correctly uses the unified /api/voice endpoint.

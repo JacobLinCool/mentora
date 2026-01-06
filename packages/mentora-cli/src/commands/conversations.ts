@@ -121,23 +121,5 @@ export function createConversationsCommand(
             }
         });
 
-    conversations
-        .command("summary")
-        .description("Get AI-generated summary of a conversation")
-        .argument("<conversationId>", "Conversation ID")
-        .action(async (conversationId: string) => {
-            const client = await getClient();
-            // TODO: Mock endpoint - will be replaced with real AI implementation
-            const result = await client.backend.call<{ summary: unknown }>(
-                `/api/conversations/${conversationId}/summary`,
-            );
-            if (result.success) {
-                outputData(result.data.summary);
-            } else {
-                error(result.error);
-                process.exit(1);
-            }
-        });
-
     return conversations;
 }
