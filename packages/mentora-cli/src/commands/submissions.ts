@@ -2,8 +2,11 @@
  * Submissions commands
  */
 import { Command } from "commander";
-import type { WhereFilterOp } from "firebase/firestore";
-import type { MentoraCLIClient, QueryOptions } from "../client.js";
+import type {
+    MentoraCLIClient,
+    QueryOptions,
+    WhereFilterOp,
+} from "../client.js";
 import {
     error,
     formatTimestamp,

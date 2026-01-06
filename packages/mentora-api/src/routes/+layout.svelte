@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { resolve } from '$app/paths';
 	import AuthBar from '$lib/components/AuthBar.svelte';
 
 	interface Props {
@@ -9,10 +10,10 @@
 	let { children }: Props = $props();
 
 	const navItems = [
-		{ href: '/', label: 'Home', icon: '🏠' },
-		{ href: '/docs', label: 'API Docs', icon: '📖' },
-		{ href: '/tester', label: 'API Tester', icon: '🧪' }
-	] as const;
+		{ href: '/' as const, label: 'Home', icon: '🏠' },
+		{ href: '/docs' as const, label: 'API Docs', icon: '📖' },
+		{ href: '/tester' as const, label: 'API Tester', icon: '🧪' }
+	];
 </script>
 
 <div class="app">
@@ -25,7 +26,7 @@
 		<ul class="nav-list">
 			{#each navItems as item (item.href)}
 				<li>
-					<a href={item.href} class="nav-item">
+					<a href={resolve(item.href)} class="nav-item">
 						<span class="nav-icon">{item.icon}</span>
 						<span class="nav-label">{item.label}</span>
 					</a>

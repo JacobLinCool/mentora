@@ -13,6 +13,7 @@
 export { MentoraClient, type MentoraClientConfig } from './api/client.js';
 export type { APIResult, MentoraAPIConfig, QueryOptions } from './api/types.js';
 export { success, failure, tryCatch } from './api/types.js';
+export type { WhereFilterOp } from 'firebase/firestore';
 export type {
 	Assignment,
 	CourseDoc,

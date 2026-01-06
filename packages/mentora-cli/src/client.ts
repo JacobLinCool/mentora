@@ -28,6 +28,7 @@ export type {
     Topic,
     UserProfile,
     Wallet,
+    WhereFilterOp,
 } from "mentora-api";
 
 /**

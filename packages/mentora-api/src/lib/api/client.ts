@@ -42,6 +42,7 @@ export type {
 	Wallet
 } from 'mentora-firebase';
 export type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
+export type { WhereFilterOp } from 'firebase/firestore';
 
 /**
  * Configuration options for MentoraClient
