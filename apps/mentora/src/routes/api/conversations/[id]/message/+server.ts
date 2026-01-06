@@ -1,7 +1,8 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json, error as svelteError } from "@sveltejs/kit";
-import { Conversations, type LLMResponse } from "mentora-firebase";
+import type { LLMResponse } from "mentora-api";
+import { Conversations } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async (event) => {

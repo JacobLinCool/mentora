@@ -13,8 +13,9 @@ import type {
 	Submission,
 	Topic,
 	UserProfile,
-	Wallet,
-	// API DTOs
+	Wallet
+} from 'mentora-firebase';
+import type {
 	JoinCourseResult,
 	CourseWalletResult,
 	AddCreditsResult,
@@ -23,7 +24,7 @@ import type {
 	LLMResponse,
 	ConversationAnalysis,
 	ConversationSummary
-} from 'mentora-firebase';
+} from './dtos.js';
 import * as AssignmentsModule from './assignments.js';
 import { submitMessage, analyzeConversation, generateSummary } from './access/delegated.js';
 import * as CoursesModule from './courses.js';
@@ -47,15 +48,7 @@ export type {
 	Topic,
 	Turn,
 	UserProfile,
-	Wallet,
-	JoinCourseResult,
-	CourseWalletResult,
-	AddCreditsResult,
-	TranscriptionResult,
-	SynthesizeResult,
-	LLMResponse,
-	ConversationAnalysis,
-	ConversationSummary
+	Wallet
 } from 'mentora-firebase';
 export type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
 

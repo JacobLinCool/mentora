@@ -21,6 +21,7 @@
 // Core client and types
 export * from './client.js';
 export * from './types.js';
+export * from './dtos.js';
 
 // Access layer architecture
 export * from './access/index.js';
