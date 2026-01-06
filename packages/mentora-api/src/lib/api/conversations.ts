@@ -75,10 +75,7 @@ export async function getAssignmentConversation(
 	});
 }
 
-import {
-	createConversation as createConversationBackend,
-	endConversation as endConversationBackend
-} from './access/delegated.js';
+import * as BackendModule from './backend.js';
 
 // ... (previous code)
 
@@ -91,13 +88,9 @@ export async function createConversation(
 	config: MentoraAPIConfig,
 	assignmentId: string
 ): Promise<APIResult<{ id: string; state: ConversationState; isExisting: boolean }>> {
-	return createConversationBackend(
-		{
-			backendBaseUrl: config.backendBaseUrl,
-			getCurrentUser: config.getCurrentUser
-		},
-		assignmentId
-	) as Promise<APIResult<{ id: string; state: ConversationState; isExisting: boolean }>>;
+	return BackendModule.createConversation(config, assignmentId) as Promise<
+		APIResult<{ id: string; state: ConversationState; isExisting: boolean }>
+	>;
 }
 
 /**
@@ -109,13 +102,9 @@ export async function endConversation(
 	config: MentoraAPIConfig,
 	conversationId: string
 ): Promise<APIResult<{ state: ConversationState; conversation: Conversation }>> {
-	return endConversationBackend(
-		{
-			backendBaseUrl: config.backendBaseUrl,
-			getCurrentUser: config.getCurrentUser
-		},
-		conversationId
-	) as Promise<APIResult<{ state: ConversationState; conversation: Conversation }>>;
+	return BackendModule.endConversation(config, conversationId) as Promise<
+		APIResult<{ state: ConversationState; conversation: Conversation }>
+	>;
 }
 
 /**

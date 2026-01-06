@@ -1,35 +1,17 @@
 /**
- * Hybrid Access Layer Architecture
+ * Real-time Subscriptions Layer
  *
- * This module provides a unified interface for data access, abstracting the underlying
- * data source from the consumer. It implements a hybrid architecture:
+ * Provides real-time data synchronization using Firestore onSnapshot.
+ * Use these methods when you need automatic updates when data changes.
  *
- * ## Direct Access (Firestore SDK)
- * Simple CRUD operations are executed directly via Firestore SDK for:
- * - Better performance (no server roundtrip)
- * - Real-time subscriptions via onSnapshot
- * - Reduced backend load
+ * Benefits:
+ * - Automatic UI updates when data changes
+ * - Offline support with local cache
+ * - Reduced polling overhead
  *
- * Used for:
- * - User profiles (read, update)
- * - Courses (CRUD, roster)
- * - Topics (CRUD)
- * - Assignments (CRUD)
- * - Submissions (read, basic updates)
- * - Conversations (read)
- * - Wallets (read-only)
- *
- * ## Delegated Access (Backend API)
- * Complex operations that require server-side processing:
- * - LLM interactions (streaming, analysis)
- * - Complex business logic (join course with validation)
- * - Operations requiring elevated permissions
- * - Third-party integrations
- *
- * Security: All direct Firestore operations are protected by Firestore Security Rules.
- * The client SDK only has access to documents the user is authorized to access.
+ * Note: Subscriptions are now implemented directly in each module
+ * (users.ts, conversations.ts, etc.) for better encapsulation.
  */
 
-export * from './delegated.js';
 export * from './subscriptions.js';
-export type { AccessMode, HybridAccessConfig } from './types.js';
+export type { Unsubscribe } from './types.js';

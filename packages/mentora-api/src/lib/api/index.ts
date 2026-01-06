@@ -12,17 +12,15 @@
  * - LLM interactions, Voice processing, Complex business logic
  *
  * ## Real-time Subscriptions
- * Firestore onSnapshot for automatic UI updates
+ * Firestore onSnapshot for automatic UI updates (implemented in individual modules)
  *
- * @see unified.ts for type definitions
- * @see access/ for implementation details
+ * @see backend.ts for delegated access implementation
+ * @see users.ts, conversations.ts for subscription examples
  */
 
 // Core client and types
 export * from './client.js';
 export * from './types.js';
 
-// Access layer architecture
-export * from './access/index.js';
-export type { DelegatedAccessContext } from './access/delegated.js';
-export type { SubscriptionContext, TypedSubscriptionOptions } from './access/subscriptions.js';
+// Backend API access
+export * from './backend.js';

@@ -17,7 +17,7 @@ import type {
 } from 'mentora-firebase';
 
 import * as AssignmentsModule from './assignments.js';
-import { submitMessage } from './access/delegated.js';
+import * as BackendModule from './backend.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
 import * as StatisticsModule from './statistics.js';
@@ -361,16 +361,7 @@ export class MentoraClient {
 		 * Submit a message and get AI response (non-streaming)
 		 */
 		submitMessage: (conversationId: string, text: string) =>
-			this.authReadyThen(() =>
-				submitMessage(
-					{
-						backendBaseUrl: this._config.backendBaseUrl,
-						getCurrentUser: this._config.getCurrentUser
-					},
-					conversationId,
-					text
-				)
-			)
+			this.authReadyThen(() => BackendModule.submitMessage(this._config, conversationId, text))
 	};
 
 	// ============ Backend ============

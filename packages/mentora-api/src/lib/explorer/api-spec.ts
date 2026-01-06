@@ -40,6 +40,8 @@ export interface APITag {
  */
 export const apiTags: APITag[] = [
 	{ name: 'Courses', description: 'Course management endpoints', color: '#3b82f6' },
+	{ name: 'Conversations', description: 'Conversation lifecycle management', color: '#8b5cf6' },
+	{ name: 'Assignments', description: 'Assignment operations', color: '#10b981' },
 	{ name: 'Wallets', description: 'Wallet and credit management', color: '#06b6d4' },
 	{ name: 'LLM', description: 'LLM and AI operations', color: '#f59e0b' },
 	{ name: 'Voice', description: 'Voice synthesis and transcription', color: '#ec4899' }
@@ -53,53 +55,108 @@ export const apiEndpoints: APIEndpoint[] = [
 	// ============ Courses ============
 	{
 		method: 'POST',
-		path: '/api/courses',
-		summary: 'Create a new course',
-		description: 'Creates a new course with server-side code uniqueness check',
+		path: '/api/courses/join',
+		summary: 'Join course by code',
+		description: 'Join a course using its unique code with optional password',
 		tags: ['Courses'],
 		requiresAuth: true,
 		bodyParams: [
-			{ name: 'title', type: 'string', required: true, description: 'Course title' },
+			{ name: 'code', type: 'string', required: true, description: 'Course code to join' },
 			{
-				name: 'code',
+				name: 'password',
 				type: 'string',
 				required: false,
-				description: 'Unique course code (auto-generated if not provided)'
-			},
-			{
-				name: 'visibility',
-				type: 'string',
-				required: false,
-				description: 'Course visibility',
-				enum: ['public', 'unlisted', 'private'],
-				default: 'private'
-			},
-			{ name: 'theme', type: 'string', required: false, description: 'Course theme/category' },
-			{ name: 'description', type: 'string', required: false, description: 'Course description' }
+				description: 'Course password if required'
+			}
 		],
 		bodyExample: {
-			title: 'Critical Thinking 101',
 			code: 'CT101-2026',
-			visibility: 'public',
-			description: 'Learn Socratic dialogue techniques'
+			password: 'optional-password'
+		},
+		responseExample: {
+			courseId: 'course_123',
+			joined: true,
+			alreadyMember: false
+		}
+	},
+
+	// ============ Conversations ============
+	{
+		method: 'POST',
+		path: '/api/conversations',
+		summary: 'Create conversation',
+		description: 'Create a new conversation for an assignment (or return existing)',
+		tags: ['Conversations'],
+		requiresAuth: true,
+		bodyParams: [
+			{ name: 'assignmentId', type: 'string', required: true, description: 'Assignment ID' }
+		],
+		bodyExample: {
+			assignmentId: 'assignment_123'
+		},
+		responseExample: {
+			id: 'conv_456',
+			state: 'awaiting_idea',
+			isExisting: false
 		}
 	},
 	{
 		method: 'POST',
-		path: '/api/courses/join',
-		summary: 'Join course by code',
-		description: 'Join a course using its unique code',
-		tags: ['Courses'],
+		path: '/api/conversations/:id/end',
+		summary: 'End conversation',
+		description: 'End a conversation and finalize submission',
+		tags: ['Conversations'],
 		requiresAuth: true,
+		pathParams: [{ name: 'id', type: 'string', required: true, description: 'Conversation ID' }],
+		responseExample: {
+			state: 'closed',
+			conversation: {},
+			alreadyClosed: false
+		}
+	},
+	{
+		method: 'POST',
+		path: '/api/conversations/:id/message',
+		summary: 'Submit message',
+		description: 'Submit a user message and trigger AI response',
+		tags: ['Conversations', 'LLM'],
+		requiresAuth: true,
+		pathParams: [{ name: 'id', type: 'string', required: true, description: 'Conversation ID' }],
 		bodyParams: [
-			{ name: 'code', type: 'string', required: true, description: 'Course code to join' }
+			{ name: 'text', type: 'string', required: true, description: 'User message text' }
 		],
 		bodyExample: {
-			code: 'BIO101'
+			text: 'I believe critical thinking is essential for democracy.'
+		}
+	},
+
+	// ============ Assignments ============
+	{
+		method: 'POST',
+		path: '/api/assignments/:id/preview',
+		summary: 'Preview assignment AI',
+		description: 'Test LLM response for an assignment (instructors only)',
+		tags: ['Assignments', 'LLM'],
+		requiresAuth: true,
+		pathParams: [{ name: 'id', type: 'string', required: true, description: 'Assignment ID' }],
+		bodyParams: [
+			{
+				name: 'testMessage',
+				type: 'string',
+				required: true,
+				description: 'Test message to send to AI'
+			}
+		],
+		bodyExample: {
+			testMessage: 'Social media is harmful to society.'
 		},
 		responseExample: {
-			courseId: 'course_123',
-			joined: true
+			response: 'Interesting point. What evidence supports this view?',
+			strategy: 'clarify',
+			estimatedTokens: 150,
+			estimatedCost: 0.0023,
+			inputTokens: 50,
+			outputTokens: 100
 		}
 	},
 
@@ -107,8 +164,8 @@ export const apiEndpoints: APIEndpoint[] = [
 	{
 		method: 'GET',
 		path: '/api/courses/:id/wallet',
-		summary: 'Get course wallet',
-		description: 'Get the host wallet for a course (course owner only)',
+		summary: 'Get course wallet stats',
+		description: 'Get the host wallet statistics for a course (course owner only)',
 		tags: ['Wallets'],
 		requiresAuth: true,
 		pathParams: [{ name: 'id', type: 'string', required: true, description: 'Course ID' }],
@@ -119,8 +176,27 @@ export const apiEndpoints: APIEndpoint[] = [
 				required: false,
 				description: 'Include ledger entries'
 			},
-			{ name: 'ledgerLimit', type: 'number', required: false, description: 'Max ledger entries' }
-		]
+			{
+				name: 'ledgerLimit',
+				type: 'number',
+				required: false,
+				description: 'Max ledger entries',
+				default: 20
+			}
+		],
+		responseExample: {
+			wallet: {
+				id: 'wallet_host_course_123',
+				ownerType: 'host',
+				ownerId: 'course_123',
+				balanceCredits: 500
+			},
+			ledger: [],
+			stats: {
+				totalCharges: 1250,
+				transactionCount: 42
+			}
+		}
 	},
 	{
 		method: 'POST',
@@ -149,98 +225,35 @@ export const apiEndpoints: APIEndpoint[] = [
 		}
 	},
 
-	// ============ LLM ============
-	{
-		method: 'POST',
-		path: '/api/llm',
-		summary: 'LLM Message',
-		description: 'Send message to LLM and get response (Action: message)',
-		tags: ['LLM'],
-		requiresAuth: true,
-		bodyParams: [
-			{
-				name: 'action',
-				type: 'string',
-				required: true,
-				description: "Must be 'message'",
-				enum: ['message']
-			},
-			{ name: 'conversationId', type: 'string', required: true, description: 'Conversation ID' },
-			{ name: 'text', type: 'string', required: true, description: 'User message text' }
-		],
-		bodyExample: {
-			action: 'message',
-			conversationId: 'conv_123',
-			text: 'Hello, I have an idea.'
-		}
-	},
-	{
-		method: 'POST',
-		path: '/api/llm',
-		summary: 'LLM Analyze',
-		description: 'Analyze conversation (Action: analyze)',
-		tags: ['LLM'],
-		requiresAuth: true,
-		bodyParams: [
-			{
-				name: 'action',
-				type: 'string',
-				required: true,
-				description: "Must be 'analyze'",
-				enum: ['analyze']
-			},
-			{ name: 'conversationId', type: 'string', required: true, description: 'Conversation ID' }
-		],
-		bodyExample: {
-			action: 'analyze',
-			conversationId: 'conv_123'
-		}
-	},
-	{
-		method: 'POST',
-		path: '/api/llm',
-		summary: 'LLM Summary',
-		description: 'Generate conversation summary (Action: summary)',
-		tags: ['LLM'],
-		requiresAuth: true,
-		bodyParams: [
-			{
-				name: 'action',
-				type: 'string',
-				required: true,
-				description: "Must be 'summary'",
-				enum: ['summary']
-			},
-			{ name: 'conversationId', type: 'string', required: true, description: 'Conversation ID' }
-		],
-		bodyExample: {
-			action: 'summary',
-			conversationId: 'conv_123'
-		}
-	},
-	{
-		method: 'POST',
-		path: '/api/llm/stream',
-		summary: 'LLM Stream (SSE)',
-		description: 'Streaming response via SSE',
-		tags: ['LLM'],
-		requiresAuth: true,
-		bodyParams: [
-			{ name: 'conversationId', type: 'string', required: true, description: 'Conversation ID' },
-			{ name: 'text', type: 'string', required: true, description: 'User message text' }
-		],
-		bodyExample: {
-			conversationId: 'conv_123',
-			text: 'Stream this response'
-		}
-	},
-
 	// ============ Voice ============
 	{
 		method: 'POST',
 		path: '/api/voice',
-		summary: 'Synthesize Speech',
-		description: 'Convert text to speech (Action: synthesize)',
+		summary: 'Transcribe audio',
+		description: 'Convert audio to text (multipart/form-data)',
+		tags: ['Voice'],
+		requiresAuth: true,
+		bodyParams: [
+			{ name: 'audio', type: 'object', required: true, description: 'Audio file (File/Blob)' },
+			{
+				name: 'action',
+				type: 'string',
+				required: true,
+				description: 'Must be "transcribe"',
+				enum: ['transcribe']
+			}
+		],
+		responseExample: {
+			text: 'I believe the main argument here is...',
+			confidence: 0.92,
+			duration: 4.2
+		}
+	},
+	{
+		method: 'POST',
+		path: '/api/voice',
+		summary: 'Synthesize speech',
+		description: 'Convert text to speech (JSON)',
 		tags: ['Voice'],
 		requiresAuth: true,
 		bodyParams: [
@@ -248,7 +261,7 @@ export const apiEndpoints: APIEndpoint[] = [
 				name: 'action',
 				type: 'string',
 				required: true,
-				description: "Must be 'synthesize'",
+				description: 'Must be "synthesize"',
 				enum: ['synthesize']
 			},
 			{ name: 'text', type: 'string', required: true, description: 'Text to speak' },
@@ -256,7 +269,12 @@ export const apiEndpoints: APIEndpoint[] = [
 		],
 		bodyExample: {
 			action: 'synthesize',
-			text: 'Hello, welcome to Mentora.'
+			text: 'Hello, welcome to Mentora.',
+			voiceId: 'en-US-Neural2-A'
+		},
+		responseExample: {
+			audioContent: 'base64-encoded-audio-data',
+			contentType: 'audio/mp3'
 		}
 	}
 ];
