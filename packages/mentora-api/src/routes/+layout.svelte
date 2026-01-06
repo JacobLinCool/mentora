@@ -9,11 +9,10 @@
 
 	let { children }: Props = $props();
 
-	const navItems = [
+	const navItems: Array<{ href: '/' | '/docs' | '/tester'; label: string; icon: string }> = [
 		{ href: '/', label: 'Home', icon: '🏠' },
 		{ href: '/docs', label: 'API Docs', icon: '📖' },
-		{ href: '/tester', label: 'API Tester', icon: '🧪' },
-		{ href: '/voice', label: 'Voice Chat', icon: '🎙️' }
+		{ href: '/tester', label: 'API Tester', icon: '🧪' }
 	];
 </script>
 

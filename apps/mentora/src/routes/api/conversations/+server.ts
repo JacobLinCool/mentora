@@ -55,7 +55,7 @@ export const POST: RequestHandler = async (event) => {
 
     if (!existingQuery.empty) {
         const existingConv = existingQuery.docs[0];
-        const data = existingConv.data();
+        const data = existingConv.data()!;
         if (data.state !== "closed" || assignment.allowResubmit) {
             return json({
                 id: existingConv.id,

@@ -20,91 +20,96 @@ export const POST: RequestHandler = async (event) => {
     if (!conversationId) throw svelteError(400, "Conversation ID required");
 
     try {
-        const result = await firestore.runTransaction(async (t) => {
-            const conversationRef = firestore.doc(
-                Conversations.docPath(conversationId),
-            );
-            const conversationDoc = await t.get(conversationRef);
-
-            if (!conversationDoc.exists) {
-                throw new Error("Conversation not found");
-            }
-
-            const conversation = Conversations.schema.parse(
-                conversationDoc.data(),
-            );
-
-            // Check ownership
-            if (conversation.userId !== user.uid) {
-                throw new Error("Not authorized");
-            }
-
-            // Check if already closed
-            if (conversation.state === "closed") {
-                return { state: "closed", conversation, alreadyClosed: true };
-            }
-
-            const now = Date.now();
-
-            // Update conversation
-            t.update(conversationRef, {
-                state: "closed",
-                lastActionAt: now,
-                updatedAt: now,
-            });
-
-            // Create/Update Submission
-            const submissionRef = firestore.doc(
-                AssignmentSubmissions.docPath(
-                    conversation.assignmentId,
-                    conversation.userId,
-                ),
-            );
-            const submissionDoc = await t.get(submissionRef);
-
-            if (submissionDoc.exists) {
-                t.update(submissionRef, {
-                    state: "submitted",
-                    submittedAt: now,
-                });
-            } else {
-                const assignmentDoc = await t.get(
-                    firestore.doc(
-                        Assignments.docPath(conversation.assignmentId),
-                    ),
+        const db = firestore as FirebaseFirestore.Firestore;
+        const result = await db.runTransaction(
+            async (t: FirebaseFirestore.Transaction) => {
+                const conversationRef = db.doc(
+                    Conversations.docPath(conversationId),
                 );
-                const assignment = assignmentDoc.exists
-                    ? assignmentDoc.data()
-                    : null;
-                const isLate = assignment?.dueAt
-                    ? now > assignment.dueAt
-                    : false;
+                const conversationDoc = await t.get(conversationRef);
 
-                const submission: Submission = {
-                    userId: conversation.userId,
-                    state: "submitted",
-                    startedAt: conversation.createdAt,
-                    submittedAt: now,
-                    late: isLate,
-                    scoreCompletion: null,
-                    notes: null,
-                };
-                // Validate schema
-                AssignmentSubmissions.schema.parse(submission);
-                t.set(submissionRef, submission);
-            }
+                if (!conversationDoc.exists) {
+                    throw new Error("Conversation not found");
+                }
 
-            return {
-                state: "closed",
-                conversation: {
-                    ...conversation,
+                const conversation = Conversations.schema.parse(
+                    conversationDoc.data(),
+                );
+
+                // Check ownership
+                if (conversation.userId !== user.uid) {
+                    throw new Error("Not authorized");
+                }
+
+                // Check if already closed
+                if (conversation.state === "closed") {
+                    return {
+                        state: "closed",
+                        conversation,
+                        alreadyClosed: true,
+                    };
+                }
+
+                const now = Date.now();
+
+                // Update conversation
+                t.update(conversationRef, {
                     state: "closed",
                     lastActionAt: now,
                     updatedAt: now,
-                },
-                alreadyClosed: false,
-            };
-        });
+                });
+
+                // Create/Update Submission
+                const submissionRef = db.doc(
+                    AssignmentSubmissions.docPath(
+                        conversation.assignmentId,
+                        conversation.userId,
+                    ),
+                );
+                const submissionDoc = await t.get(submissionRef);
+
+                if (submissionDoc.exists) {
+                    t.update(submissionRef, {
+                        state: "submitted",
+                        submittedAt: now,
+                    });
+                } else {
+                    const assignmentDoc = await t.get(
+                        db.doc(Assignments.docPath(conversation.assignmentId)),
+                    );
+                    const assignment = assignmentDoc.exists
+                        ? assignmentDoc.data()
+                        : null;
+                    const isLate = assignment?.dueAt
+                        ? now > assignment.dueAt
+                        : false;
+
+                    const submission: Submission = {
+                        userId: conversation.userId,
+                        state: "submitted",
+                        startedAt: conversation.createdAt,
+                        submittedAt: now,
+                        late: isLate,
+                        scoreCompletion: null,
+                        notes: null,
+                    };
+                    // Validate schema
+                    AssignmentSubmissions.schema.parse(submission);
+                    t.set(submissionRef, submission);
+                }
+
+                return {
+                    state: "closed",
+                    conversation: {
+                        ...conversation,
+                        state: "closed",
+                        lastActionAt: now,
+                        updatedAt: now,
+                    },
+                    alreadyClosed: false,
+                };
+            },
+        );
 
         return json(result);
     } catch (e: unknown) {
