@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { resolve } from '$app/paths';
 	import AuthBar from '$lib/components/AuthBar.svelte';
 
 	interface Props {
@@ -24,9 +25,9 @@
 		</div>
 
 		<ul class="nav-list">
-			{#each navItems as item}
+			{#each navItems as item (item.href)}
 				<li>
-					<a href={item.href} class="nav-item">
+					<a href={resolve(item.href)} class="nav-item">
 						<span class="nav-icon">{item.icon}</span>
 						<span class="nav-label">{item.label}</span>
 					</a>

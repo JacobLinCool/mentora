@@ -107,10 +107,12 @@ export const POST: RequestHandler = async (event) => {
         });
 
         return json(result);
-    } catch (e: any) {
-        if (e.message === "Conversation not found")
-            throw svelteError(404, e.message);
-        if (e.message === "Not authorized") throw svelteError(403, e.message);
+    } catch (e: unknown) {
+        const error = e as Error;
+        if (error.message === "Conversation not found")
+            throw svelteError(404, error.message);
+        if (error.message === "Not authorized")
+            throw svelteError(403, error.message);
 
         console.error("End Conversation Error:", e);
         throw svelteError(500, "Failed to end conversation");

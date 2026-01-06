@@ -1,11 +1,9 @@
 <script lang="ts">
 	import {
-		apiEndpoints,
 		apiTags,
 		getEndpointsByTag,
 		getMethodColor,
-		type APIEndpoint,
-		type APIParameter
+		type APIEndpoint
 	} from '$lib/explorer/api-spec';
 
 	const endpointsByTag = getEndpointsByTag();
@@ -22,12 +20,7 @@
 	}
 
 	function formatPath(path: string): string {
-		return path.replace(/:(\w+)/g, '<span class="path-param">:$1</span>');
-	}
-
-	function renderParams(params: APIParameter[] | undefined): string {
-		if (!params || params.length === 0) return '';
-		return params.map((p) => `${p.name}${p.required ? '*' : ''}: ${p.type}`).join(', ');
+		return path;
 	}
 
 	$effect(() => {
@@ -48,7 +41,7 @@
 		<aside class="tags-sidebar">
 			<h3>Categories</h3>
 			<ul class="tag-list">
-				{#each apiTags as tag}
+				{#each apiTags as tag (tag.name)}
 					{@const endpoints = endpointsByTag.get(tag.name) || []}
 					<li>
 						<button
@@ -66,7 +59,7 @@
 		</aside>
 
 		<main class="endpoints-content">
-			{#each apiTags as tag}
+			{#each apiTags as tag (tag.name)}
 				{@const endpoints = endpointsByTag.get(tag.name) || []}
 				{#if selectedTag === tag.name}
 					<section class="tag-section">
@@ -76,7 +69,7 @@
 						</div>
 
 						<div class="endpoints-list">
-							{#each endpoints as endpoint}
+							{#each endpoints as endpoint (getEndpointId(endpoint))}
 								{@const id = getEndpointId(endpoint)}
 								{@const isExpanded = expandedEndpoint === id}
 								<article class="endpoint-card">
@@ -87,7 +80,7 @@
 										>
 											{endpoint.method}
 										</span>
-										<code class="endpoint-path">{@html formatPath(endpoint.path)}</code>
+										<code class="endpoint-path">{formatPath(endpoint.path)}</code>
 										<span class="endpoint-summary">{endpoint.summary}</span>
 										<span class="expand-icon">{isExpanded ? '▼' : '▶'}</span>
 									</button>
@@ -111,7 +104,7 @@
 															</tr>
 														</thead>
 														<tbody>
-															{#each endpoint.pathParams as param}
+															{#each endpoint.pathParams as param (param.name)}
 																<tr>
 																	<td><code>{param.name}</code></td>
 																	<td>{param.type}</td>
@@ -138,7 +131,7 @@
 															</tr>
 														</thead>
 														<tbody>
-															{#each endpoint.queryParams as param}
+															{#each endpoint.queryParams as param (param.name)}
 																<tr>
 																	<td><code>{param.name}</code></td>
 																	<td>
@@ -174,7 +167,7 @@
 															</tr>
 														</thead>
 														<tbody>
-															{#each endpoint.bodyParams as param}
+															{#each endpoint.bodyParams as param (param.name)}
 																<tr>
 																	<td><code>{param.name}</code></td>
 																	<td>

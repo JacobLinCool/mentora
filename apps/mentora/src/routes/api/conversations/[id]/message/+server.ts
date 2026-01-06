@@ -33,17 +33,17 @@ export const POST: RequestHandler = async (event) => {
     }
 
     // TODO: Integrate with LLM service
-    const mockResponses = [
-        "That's an interesting perspective. What evidence supports this view?",
-        "I see your point, but have you considered the counterargument?",
-        "Let me push back a bit: how would you respond to critics who say...",
-        "Good observation. What assumptions underlie your statement?",
-    ];
+    // const mockResponses = [
+    //     "That's an interesting perspective. What evidence supports this view?",
+    //     "I see your point, but have you considered the counterargument?",
+    //     "Let me push back a bit: how would you respond to critics who say...",
+    //     "Good observation. What assumptions underlie your statement?",
+    // ];
 
-    const responseText =
-        mockResponses[Math.floor(Math.random() * mockResponses.length)];
-    const inputTokens = Math.floor(text.length / 4);
-    const outputTokens = Math.floor(responseText.length / 4);
+    // const responseText =
+    //     mockResponses[Math.floor(Math.random() * mockResponses.length)];
+    // const inputTokens = Math.floor(text.length / 4);
+    // const outputTokens = Math.floor(responseText.length / 4);
 
     // TODO: Write response to Firestore 'turns' subcollection
     // const turnDoc = firestore.collection(...).doc();

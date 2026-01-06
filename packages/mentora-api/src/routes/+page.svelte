@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { apiEndpoints, apiTags, getEndpointsByTag } from '$lib/explorer/api-spec';
 
 	const endpointsByTag = getEndpointsByTag();
@@ -35,13 +36,13 @@
 	<section class="features">
 		<h2>Available Tools</h2>
 		<div class="features-grid">
-			<a href="/docs" class="feature-card">
+			<a href={resolve('/docs')} class="feature-card">
 				<div class="feature-icon">📖</div>
 				<h3>API Documentation</h3>
 				<p>Auto-generated Swagger-like documentation with request/response examples</p>
 			</a>
 
-			<a href="/tester" class="feature-card">
+			<a href={resolve('/tester')} class="feature-card">
 				<div class="feature-icon">🧪</div>
 				<h3>API Tester</h3>
 				<p>Interactive API testing with live requests, authentication, and response inspection</p>
@@ -52,7 +53,7 @@
 	<section class="overview">
 		<h2>API Overview</h2>
 		<div class="tags-grid">
-			{#each apiTags as tag}
+			{#each apiTags as tag (tag.name)}
 				{@const endpoints = endpointsByTag.get(tag.name) || []}
 				<div class="tag-card" style="border-left-color: {tag.color}">
 					<h3>{tag.name}</h3>

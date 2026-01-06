@@ -1,6 +1,5 @@
 <script lang="ts">
 	import {
-		apiEndpoints,
 		apiTags,
 		getEndpointsByTag,
 		getMethodColor,
@@ -61,10 +60,12 @@
 			});
 			if (coursesRes.ok) {
 				const data = await coursesRes.json();
-				courses = (data.data || data || []).map((c: any) => ({
-					id: c.id,
-					name: c.title || c.name || c.id
-				}));
+				courses = (data.data || data || []).map(
+					(c: { id: string; title?: string; name?: string }) => ({
+						id: c.id,
+						name: c.title || c.name || c.id
+					})
+				);
 			}
 
 			// Fetch assignments (if we have courses, use first one)
@@ -74,10 +75,12 @@
 				});
 				if (assignmentsRes.ok) {
 					const data = await assignmentsRes.json();
-					assignments = (data.data || data || []).map((a: any) => ({
-						id: a.id,
-						name: a.title || a.name || a.id
-					}));
+					assignments = (data.data || data || []).map(
+						(a: { id: string; title?: string; name?: string }) => ({
+							id: a.id,
+							name: a.title || a.name || a.id
+						})
+					);
 				}
 
 				// Fetch topics
@@ -86,10 +89,12 @@
 				});
 				if (topicsRes.ok) {
 					const data = await topicsRes.json();
-					topics = (data.data || data || []).map((t: any) => ({
-						id: t.id,
-						name: t.title || t.name || t.id
-					}));
+					topics = (data.data || data || []).map(
+						(t: { id: string; title?: string; name?: string }) => ({
+							id: t.id,
+							name: t.title || t.name || t.id
+						})
+					);
 				}
 			}
 		} catch (err) {
@@ -164,7 +169,7 @@
 		});
 
 		// Build query string
-		const queryEntries = Object.entries(queryParams).filter(([_, v]) => v !== '');
+		const queryEntries = Object.entries(queryParams).filter(([, v]) => v !== '');
 		const queryString =
 			queryEntries.length > 0
 				? '?' + queryEntries.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')
@@ -292,14 +297,14 @@
 
 	<div class="flex gap-6">
 		<aside class="w-72 flex-shrink-0 max-h-[calc(100vh-320px)] overflow-y-auto">
-			{#each apiTags as tag}
+			{#each apiTags as tag (tag.name)}
 				{@const endpoints = endpointsByTag.get(tag.name) || []}
 				<div class="mb-6">
 					<h3 class="text-xs uppercase tracking-wider mb-2" style="color: {tag.color}">
 						{tag.name}
 					</h3>
 					<ul class="space-y-0.5">
-						{#each endpoints as endpoint}
+						{#each endpoints as endpoint (`${endpoint.method}:${endpoint.path}`)}
 							<li>
 								<button
 									onclick={() => selectEndpoint(endpoint)}
@@ -352,7 +357,7 @@
 					{#if selectedEndpoint.pathParams && selectedEndpoint.pathParams.length > 0}
 						<div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
 							<h3 class="text-sm font-medium text-slate-50 mb-4">{t.pathParams}</h3>
-							{#each selectedEndpoint.pathParams as param}
+							{#each selectedEndpoint.pathParams as param (param.name)}
 								<div class="flex flex-col gap-1 mb-3">
 									<label for="path-{param.name}" class="text-xs text-slate-400">
 										{param.name}
@@ -377,7 +382,7 @@
 												<option value=""
 													>{presetsLoading ? '⏳ Loading...' : `📋 ${t.presets}`}</option
 												>
-												{#each presetIds[param.name] as preset}
+												{#each presetIds[param.name] as preset (preset.value)}
 													<option value={preset.value}>{preset.label}</option>
 												{/each}
 											</select>
@@ -391,7 +396,7 @@
 					{#if selectedEndpoint.queryParams && selectedEndpoint.queryParams.length > 0}
 						<div class="bg-slate-800 border border-slate-700 rounded-lg p-4">
 							<h3 class="text-sm font-medium text-slate-50 mb-4">{t.queryParams}</h3>
-							{#each selectedEndpoint.queryParams as param}
+							{#each selectedEndpoint.queryParams as param (param.name)}
 								<div class="flex flex-col gap-1 mb-3">
 									<label for="query-{param.name}" class="text-xs text-slate-400">
 										{param.name}
@@ -404,7 +409,7 @@
 											class="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 										>
 											<option value="">-- Select --</option>
-											{#each param.enum as opt}
+											{#each param.enum as opt (opt)}
 												<option value={opt}>{opt}</option>
 											{/each}
 										</select>
