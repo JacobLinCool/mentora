@@ -176,7 +176,7 @@ export async function addCredits(
 				Authorization: `Bearer ${token}`
 			},
 			body: JSON.stringify({
-				action: 'add_credits',
+				action: 'addCredits',
 				amount,
 				currency
 			})

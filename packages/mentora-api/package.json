@@ -10,10 +10,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint .",
-		"test:runner": "vitest run",
-		"test": "vitest run tests",
-		"test:watch": "vitest tests"
+		"lint": "prettier --check . && eslint ."
 	},
 	"files": [
 		"dist",
