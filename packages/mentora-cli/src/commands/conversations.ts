@@ -61,15 +61,7 @@ export function createConversationsCommand(
         .argument("<assignmentId>", "Assignment ID")
         .action(async (assignmentId: string) => {
             const client = await getClient();
-            // TODO: Backend-only endpoint - consider adding to API client
-            const result = await client.backend.call<{
-                id: string;
-                state: string;
-                isExisting: boolean;
-            }>("/api/conversations", {
-                method: "POST",
-                body: JSON.stringify({ assignmentId }),
-            });
+            const result = await client.conversations.create(assignmentId);
             if (result.success) {
                 if (result.data.isExisting) {
                     info(`Existing conversation found: ${result.data.id}`);
@@ -108,13 +100,10 @@ export function createConversationsCommand(
         .argument("<conversationId>", "Conversation ID")
         .action(async (conversationId: string) => {
             const client = await getClient();
-            // TODO: Backend-only endpoint - consider adding to API client
-            const result = await client.backend.call(
-                `/api/conversations/${conversationId}/end`,
-                { method: "POST" },
-            );
+            const result = await client.conversations.end(conversationId);
             if (result.success) {
                 success("Conversation ended successfully.");
+                console.log(`Final state: ${result.data.state}`);
             } else {
                 error(result.error);
                 process.exit(1);

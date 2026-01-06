@@ -217,22 +217,19 @@ export function createStreamingCommand(
         .action(async (assignmentId: string) => {
             const client = await getClient();
 
-            // Create new conversation via backend
-            // TODO: Backend-only endpoint - consider adding to API client
-            const result = await client.backend.call<{
-                id: string;
-                state: string;
-            }>("/api/conversations", {
-                method: "POST",
-                body: JSON.stringify({ assignmentId }),
-            });
+            // Create new conversation via API
+            const result = await client.conversations.create(assignmentId);
 
             if (!result.success) {
                 error(`Failed to create conversation: ${result.error}`);
                 process.exit(1);
             }
 
-            success(`Created conversation: ${result.data.id}`);
+            if (result.data.isExisting) {
+                info(`Resuming existing conversation: ${result.data.id}`);
+            } else {
+                success(`Created conversation: ${result.data.id}`);
+            }
 
             const session = new CLIStreamingSession(client, result.data.id);
             await session.start();
