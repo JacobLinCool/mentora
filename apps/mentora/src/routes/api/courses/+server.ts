@@ -66,6 +66,7 @@ export const POST: RequestHandler = async (event) => {
         demoPolicy: demoPolicy || null,
         createdAt: now,
         updatedAt: now,
+        announcements: [],
     };
 
     // Validate and save
