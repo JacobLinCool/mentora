@@ -211,21 +211,5 @@ export function createAssignmentsCommand(
             }
         });
 
-    assignments
-        .command("statistics")
-        .description("Get assignment statistics")
-        .argument("<assignmentId>", "Assignment ID")
-        .action(async (assignmentId: string) => {
-            const client = await getClient();
-            const result =
-                await client.statistics.getCompletionStatus(assignmentId);
-            if (result.success) {
-                outputData(result.data);
-            } else {
-                error(result.error);
-                process.exit(1);
-            }
-        });
-
     return assignments;
 }

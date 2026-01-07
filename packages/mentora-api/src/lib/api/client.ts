@@ -17,10 +17,8 @@ import type {
 } from 'mentora-firebase';
 
 import * as AssignmentsModule from './assignments.js';
-import * as BackendModule from './backend.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
-import * as StatisticsModule from './statistics.js';
 
 import * as SubmissionsModule from './submissions.js';
 import * as TopicsModule from './topics.js';
@@ -291,38 +289,9 @@ export class MentoraClient {
 			conversationId: string,
 			text: string,
 			type: 'idea' | 'followup'
-		): Promise<APIResult<{ turnId: string; conversation: Conversation }>> =>
+		): Promise<APIResult<void>> =>
 			this.authReadyThen(() =>
 				ConversationsModule.addTurn(this._config, conversationId, text, type)
-			)
-	};
-
-	// ============ Statistics ============
-	statistics = {
-		getConversationAnalytics: (
-			conversationId: string
-		): Promise<
-			APIResult<{
-				conversation: Conversation;
-				analytics: {
-					totalTurns: number;
-					userTurns: number;
-					aiTurns: number;
-					averageResponseLength: number;
-					stanceProgression: Array<{ turnId: string; stance: string | null }>;
-					strategiesUsed: string[];
-					duration: number;
-				};
-			}>
-		> =>
-			this.authReadyThen(() =>
-				StatisticsModule.getConversationAnalytics(this._config, conversationId)
-			),
-		getCompletionStatus: (
-			assignmentId: string
-		): Promise<APIResult<StatisticsModule.CompletionStatus>> =>
-			this.authReadyThen(() =>
-				StatisticsModule.getAssignmentCompletionStatus(this._config, assignmentId)
 			)
 	};
 
@@ -350,19 +319,6 @@ export class MentoraClient {
 			voiceId?: string
 		): Promise<APIResult<VoiceModule.SynthesizeResult>> =>
 			this.authReadyThen(() => VoiceModule.synthesizeSpeech(this._config, text, voiceId))
-	};
-
-	// ============ LLM Operations (Delegated to Backend) ============
-	/**
-	 * LLM-related operations that require backend processing.
-	 * These are delegated to the backend which handles LLM API calls.
-	 */
-	llm = {
-		/**
-		 * Submit a message and get AI response (non-streaming)
-		 */
-		submitMessage: (conversationId: string, text: string) =>
-			this.authReadyThen(() => BackendModule.submitMessage(this._config, conversationId, text))
 	};
 
 	// ============ Backend ============

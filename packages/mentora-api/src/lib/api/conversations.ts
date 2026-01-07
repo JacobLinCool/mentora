@@ -1,8 +1,9 @@
 /**
  * Conversation operations
  *
- * All operations are performed directly via Firestore SDK.
- * Security is enforced by Firestore Security Rules.
+ * Mixed access pattern:
+ * - Read operations: Direct via Firestore SDK
+ * - Write operations: Delegated to backend for LLM processing
  */
 import {
 	collection,
@@ -11,16 +12,11 @@ import {
 	getDocs,
 	onSnapshot,
 	query,
-	updateDoc,
 	where,
 	limit
 } from 'firebase/firestore';
-import {
-	Conversations,
-	type Conversation,
-	type ConversationState,
-	type Turn
-} from 'mentora-firebase';
+import { Conversations, type Conversation, type ConversationState } from 'mentora-firebase';
+import * as BackendModule from './backend.js';
 import type { ReactiveState } from './state.svelte';
 import { failure, tryCatch, type APIResult, type MentoraAPIConfig } from './types.js';
 
@@ -75,10 +71,6 @@ export async function getAssignmentConversation(
 	});
 }
 
-import * as BackendModule from './backend.js';
-
-// ... (previous code)
-
 /**
  * Create a conversation for an assignment
  *
@@ -108,74 +100,20 @@ export async function endConversation(
 }
 
 /**
- * Add a turn to a conversation
+ * Add a turn to a conversation and trigger AI response
  *
- * Adds a user turn (idea or followup) to the conversation.
+ * Sends the user message to the backend which:
+ * 1. Adds the user turn to the conversation
+ * 2. Processes the message with LLM
+ * 3. Adds the AI response turn
  */
 export async function addTurn(
 	config: MentoraAPIConfig,
 	conversationId: string,
 	text: string,
 	type: 'idea' | 'followup'
-): Promise<APIResult<{ turnId: string; conversation: Conversation }>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
-	return tryCatch(async () => {
-		const conversationRef = doc(config.db, Conversations.docPath(conversationId));
-		const conversationDoc = await getDoc(conversationRef);
-
-		if (!conversationDoc.exists()) {
-			throw new Error('Conversation not found');
-		}
-
-		const conversation = Conversations.schema.parse(conversationDoc.data());
-
-		// Check ownership
-		if (conversation.userId !== currentUser.uid) {
-			throw new Error('Not authorized');
-		}
-
-		// Check conversation state
-		if (conversation.state === 'closed') {
-			throw new Error('Conversation is already closed');
-		}
-
-		const now = Date.now();
-		const turnId = `turn_${now}_user`;
-
-		const newTurn: Turn = {
-			id: turnId,
-			type,
-			text: text.trim(),
-			analysis: null,
-			pendingStartAt: null,
-			createdAt: now
-		};
-
-		// Determine new state based on current state
-		let newState: ConversationState = conversation.state;
-		if (type === 'idea' && conversation.state === 'awaiting_idea') {
-			newState = 'adding_counterpoint';
-		} else if (type === 'followup' && conversation.state === 'awaiting_followup') {
-			newState = 'adding_counterpoint';
-		}
-
-		await updateDoc(conversationRef, {
-			turns: [...conversation.turns, newTurn],
-			state: newState,
-			lastActionAt: now,
-			updatedAt: now
-		});
-
-		// Fetch updated conversation
-		const updatedDoc = await getDoc(conversationRef);
-		const updatedConversation = Conversations.schema.parse(updatedDoc.data());
-
-		return { turnId, conversation: updatedConversation };
-	});
+): Promise<APIResult<void>> {
+	return BackendModule.addTurn(config, conversationId, text, type);
 }
 
 /**

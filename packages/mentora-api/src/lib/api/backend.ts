@@ -91,18 +91,19 @@ export async function endConversation(
 	});
 }
 
-// ============ LLM Operations ============
+// ============ Message Operations ============
 
 /**
- * Submit a message and trigger AI processing
+ * Add a turn to conversation and trigger AI response
  */
-export async function submitMessage(
+export async function addTurn(
 	config: MentoraAPIConfig,
 	conversationId: string,
-	text: string
+	text: string,
+	type: 'idea' | 'followup'
 ): Promise<APIResult<void>> {
-	return callBackend(config, `/api/conversations/${conversationId}/message`, {
+	return callBackend(config, `/api/conversations/${conversationId}/turns`, {
 		method: 'POST',
-		body: JSON.stringify({ text })
+		body: JSON.stringify({ text, type })
 	});
 }

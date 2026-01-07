@@ -685,9 +685,10 @@ export const apiModules: APIModule[] = [
 			{
 				name: 'addTurn',
 				signature: 'conversations.addTurn(conversationId, text, type)',
-				summary: 'Add turn to conversation',
-				description: 'Add a user message turn to the conversation',
-				accessType: 'direct',
+				summary: 'Send message to AI',
+				description:
+					'Add a user message turn and trigger AI response processing. Subscribe to conversation changes to get updates.',
+				accessType: 'delegated',
 				requiresAuth: true,
 				params: [
 					{
@@ -696,57 +697,14 @@ export const apiModules: APIModule[] = [
 						required: true,
 						description: 'Conversation ID'
 					},
-					{ name: 'text', type: 'string', required: true, description: 'Message text' },
+					{ name: 'text', type: 'string', required: true, description: 'User message text' },
 					{ name: 'type', type: "'idea' | 'followup'", required: true, description: 'Turn type' }
 				],
-				returns: 'Promise<APIResult<{ turnId, conversation }>>'
-			}
-		]
-	},
-
-	// ============ Statistics ============
-	{
-		name: 'statistics',
-		description: 'Analytics and completion tracking',
-		color: '#ef4444',
-		icon: '📊',
-		methods: [
-			{
-				name: 'getConversationAnalytics',
-				signature: 'statistics.getConversationAnalytics(conversationId)',
-				summary: 'Get conversation analytics',
-				description: 'Get detailed analytics for a conversation',
-				accessType: 'direct',
-				requiresAuth: true,
-				params: [
-					{ name: 'conversationId', type: 'string', required: true, description: 'Conversation ID' }
-				],
-				returns: 'Promise<APIResult<{ conversation, analytics }>>',
+				returns: 'Promise<APIResult<void>>',
 				example: {
-					call: 'await client.statistics.getConversationAnalytics("conv_123")',
-					response: {
-						conversation: { '...': '...' },
-						analytics: {
-							totalTurns: 8,
-							userTurns: 4,
-							aiTurns: 4,
-							averageResponseLength: 150,
-							duration: 1200000
-						}
-					}
+					call: 'await client.conversations.addTurn("conv_123", "I believe...", "idea")',
+					response: { success: true }
 				}
-			},
-			{
-				name: 'getCompletionStatus',
-				signature: 'statistics.getCompletionStatus(assignmentId)',
-				summary: 'Get assignment completion status',
-				description: 'Get completion statistics for all students in an assignment',
-				accessType: 'direct',
-				requiresAuth: true,
-				params: [
-					{ name: 'assignmentId', type: 'string', required: true, description: 'Assignment ID' }
-				],
-				returns: 'Promise<APIResult<CompletionStatus>>'
 			}
 		]
 	},
@@ -863,34 +821,6 @@ export const apiModules: APIModule[] = [
 					call: 'await client.voice.synthesize("Hello, welcome to Mentora.")',
 					response: { audioContent: 'base64-encoded-audio', contentType: 'audio/mpeg' }
 				}
-			}
-		]
-	},
-
-	// ============ LLM ============
-	{
-		name: 'llm',
-		description: 'AI/LLM operations',
-		color: '#f59e0b',
-		icon: '🤖',
-		methods: [
-			{
-				name: 'submitMessage',
-				signature: 'llm.submitMessage(conversationId, text)',
-				summary: 'Submit message to AI',
-				description: 'Submit a user message and trigger AI response processing',
-				accessType: 'delegated',
-				requiresAuth: true,
-				params: [
-					{
-						name: 'conversationId',
-						type: 'string',
-						required: true,
-						description: 'Conversation ID'
-					},
-					{ name: 'text', type: 'string', required: true, description: 'User message text' }
-				],
-				returns: 'Promise<APIResult<void>>'
 			}
 		]
 	}

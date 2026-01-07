@@ -26,6 +26,3 @@ export type {
 	UserProfile,
 	Wallet
 } from 'mentora-firebase';
-
-// Access layer exports
-export * from './api/access/index.js';
