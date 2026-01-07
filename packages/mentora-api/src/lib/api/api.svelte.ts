@@ -3,27 +3,27 @@
  * Extends base MentoraClient with $state reactivity and subscriptions
  */
 import type { User } from 'firebase/auth';
-import type { Conversation, UserProfile } from 'mentora-firebase';
+import type { UserProfile } from 'mentora-firebase';
 import { MentoraClient, type MentoraClientConfig } from './client.js';
 import * as ConversationsModule from './conversations.js';
 import { ProfileWatcher } from './profile.svelte.js';
 import type { ReactiveState } from './state.svelte.js';
 import { createState } from './state.svelte.js';
 import * as UsersModule from './users.js';
+import type { Conversation } from './conversations.js';
 
 // Re-export types from base client
 export type {
 	Assignment,
 	CourseDoc,
 	CourseMembership,
-	Conversation,
 	LedgerEntry,
 	Submission,
 	Topic,
 	Turn,
-	UserProfile,
-	Wallet
+	UserProfile
 } from 'mentora-firebase';
+export type { Course, Conversation, Wallet } from './client.js';
 export { createState, type ReactiveState } from './state.svelte.js';
 export type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
 export { MentoraClient, type MentoraClientConfig } from './client.js';

@@ -1,5 +1,5 @@
 import { requireAuth } from "$lib/server/auth";
-import { firestore, WriteResult } from "$lib/server/firestore";
+import { firestore } from "$lib/server/firestore";
 import { error, json } from "@sveltejs/kit";
 import {
     Courses,
@@ -87,11 +87,11 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         if (!rosterQuery.empty) {
-            const promises: Promise<WriteResult>[] = [];
+            const promises: Promise<unknown>[] = [];
 
-            rosterQuery.docs.forEach((doc) => {
+            for (const doc of rosterQuery.docs) {
                 const member = doc.data() as CourseMembership;
-                if (member.userId === user.uid) return; // Already added
+                if (member.userId === user.uid) continue; // Already added
 
                 const newMemberRef = firestore.doc(
                     Courses.roster.docPath(newCourseId, doc.id),
@@ -103,9 +103,9 @@ export const POST: RequestHandler = async (event) => {
                 };
 
                 promises.push(newMemberRef.set(newMember));
-            });
+            }
 
-            if (promises.length > 0) await Promise.all(promises);
+            await Promise.all(promises);
         }
     }
 

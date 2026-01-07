@@ -4,7 +4,7 @@
     import { resolve } from "$app/paths";
     import { m } from "$lib/paraglide/messages";
     import { api } from "$lib";
-    import type { CourseDoc } from "$lib/api";
+    import type { Course } from "$lib/api";
     import {
         Button,
         Card,
@@ -18,8 +18,8 @@
 
     import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
 
-    let ownedCourses = $state<CourseDoc[]>([]);
-    let enrolledCourses = $state<CourseDoc[]>([]);
+    let ownedCourses = $state<Course[]>([]);
+    let enrolledCourses = $state<Course[]>([]);
     let loading = $state(true);
     let error = $state<string | null>(null);
     let joinCode = $state("");

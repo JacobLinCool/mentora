@@ -19,11 +19,10 @@ export type {
 	CourseAnnouncement,
 	CourseDoc,
 	CourseMembership,
-	Conversation,
 	LedgerEntry,
 	Submission,
 	Topic,
 	Turn,
-	UserProfile,
-	Wallet
+	UserProfile
 } from 'mentora-firebase';
+export type { Course, Conversation, Wallet } from './api/client.js';
