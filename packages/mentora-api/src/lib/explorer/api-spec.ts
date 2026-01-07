@@ -228,20 +228,13 @@ export const apiEndpoints: APIEndpoint[] = [
 	// ============ Voice ============
 	{
 		method: 'POST',
-		path: '/api/voice',
+		path: '/api/voice/transcribe',
 		summary: 'Transcribe audio',
 		description: 'Convert audio to text (multipart/form-data)',
 		tags: ['Voice'],
 		requiresAuth: true,
 		bodyParams: [
-			{ name: 'audio', type: 'object', required: true, description: 'Audio file (File/Blob)' },
-			{
-				name: 'action',
-				type: 'string',
-				required: true,
-				description: 'Must be "transcribe"',
-				enum: ['transcribe']
-			}
+			{ name: 'audio', type: 'object', required: true, description: 'Audio file (File/Blob)' }
 		],
 		responseExample: {
 			text: 'I believe the main argument here is...',
@@ -251,24 +244,16 @@ export const apiEndpoints: APIEndpoint[] = [
 	},
 	{
 		method: 'POST',
-		path: '/api/voice',
+		path: '/api/voice/synthesize',
 		summary: 'Synthesize speech',
 		description: 'Convert text to speech (JSON)',
 		tags: ['Voice'],
 		requiresAuth: true,
 		bodyParams: [
-			{
-				name: 'action',
-				type: 'string',
-				required: true,
-				description: 'Must be "synthesize"',
-				enum: ['synthesize']
-			},
 			{ name: 'text', type: 'string', required: true, description: 'Text to speak' },
 			{ name: 'voiceId', type: 'string', required: false, description: 'Voice ID' }
 		],
 		bodyExample: {
-			action: 'synthesize',
 			text: 'Hello, welcome to Mentora.',
 			voiceId: 'en-US-Neural2-A'
 		},

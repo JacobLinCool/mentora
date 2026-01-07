@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '../app.css';
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
 	import AuthBar from '$lib/components/AuthBar.svelte';
