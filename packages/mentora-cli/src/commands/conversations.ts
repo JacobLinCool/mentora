@@ -63,12 +63,7 @@ export function createConversationsCommand(
             const client = await getClient();
             const result = await client.conversations.create(assignmentId);
             if (result.success) {
-                if (result.data.isExisting) {
-                    info(`Existing conversation found: ${result.data.id}`);
-                } else {
-                    success(`Conversation created: ${result.data.id}`);
-                }
-                console.log(`State: ${result.data.state}`);
+                success(`Conversation ID: ${result.data.id}`);
             } else {
                 error(result.error);
                 process.exit(1);
@@ -103,7 +98,6 @@ export function createConversationsCommand(
             const result = await client.conversations.end(conversationId);
             if (result.success) {
                 success("Conversation ended successfully.");
-                console.log(`Final state: ${result.data.state}`);
             } else {
                 error(result.error);
                 process.exit(1);

@@ -205,11 +205,10 @@ export function createCoursesCommand(
         .option("--ledger", "Include ledger entries")
         .action(async (courseId: string, options: { ledger?: boolean }) => {
             const client = await getClient();
-            const params = options.ledger ? "?includeLedger=true" : "";
-            // TODO: Backend-only endpoint - consider adding to API client
-            const result = await client.backend.call(
-                `/api/courses/${courseId}/wallet${params}`,
-            );
+            const result = await client.courses.getWallet(courseId, {
+                includeLedger: options.ledger,
+            });
+
             if (result.success) {
                 outputData(result.data);
             } else {

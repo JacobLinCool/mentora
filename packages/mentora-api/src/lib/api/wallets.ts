@@ -21,6 +21,8 @@ import {
 	type QueryOptions
 } from './types.js';
 
+import { callBackend } from './backend.js';
+
 export interface CourseWalletResult {
 	wallet: Wallet;
 	ledger?: LedgerEntry[];
@@ -28,12 +30,6 @@ export interface CourseWalletResult {
 		totalCharges: number;
 		transactionCount: number;
 	};
-}
-
-export interface AddCreditsResult {
-	entry: LedgerEntry;
-	newBalance: number;
-	message?: string;
 }
 
 /**
@@ -118,9 +114,9 @@ export async function listWalletEntries(
 }
 
 /**
- * Get course wallet (host wallet) with optional ledger and stats
+ * Get course wallet (host wallet) with optional ledger
  *
- * Delegated to backend to handle secure creation and stats.
+ * Now uses direct Firestore query. Stats are not available.
  */
 export async function getCourseWallet(
 	config: MentoraAPIConfig,
@@ -133,28 +129,43 @@ export async function getCourseWallet(
 	}
 
 	return tryCatch(async () => {
-		const token = await currentUser.getIdToken();
-
-		const params = new URLSearchParams();
-		if (options?.includeLedger) params.append('includeLedger', 'true');
-		if (options?.ledgerLimit) params.append('ledgerLimit', options.ledgerLimit.toString());
-
-		const response = await fetch(
-			`${config.backendBaseUrl}/api/courses/${courseId}/wallet?${params.toString()}`,
-			{
-				method: 'GET',
-				headers: {
-					Authorization: `Bearer ${token}`
-				}
-			}
+		const q = query(
+			collection(config.db, Wallets.collectionPath()),
+			where('ownerId', '==', courseId),
+			where('ownerType', '==', 'host'),
+			limit(1)
 		);
+		const snapshot = await getDocs(q);
 
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: 'Failed to get wallet' }));
-			throw new Error(error.message || `Failed to get wallet: ${response.status}`);
+		if (snapshot.empty) {
+			// If wallet doesn't exist, we can't create it from client securely (usually).
+			// Return a placeholder or error. For now, throw.
+			throw new Error('Wallet not found');
 		}
 
-		return await response.json();
+		const wallet = Wallets.schema.parse(snapshot.docs[0].data());
+
+		let ledger: LedgerEntry[] = [];
+		if (options?.includeLedger) {
+			const constraints: QueryConstraint[] = [orderBy('createdAt', 'desc')];
+			constraints.push(limit(options.ledgerLimit || 20));
+
+			const qLedger = query(
+				collection(config.db, Wallets.entries.collectionPath(wallet.id)),
+				...constraints
+			);
+			const snapLedger = await getDocs(qLedger);
+			ledger = snapLedger.docs.map((d) => Wallets.entries.schema.parse(d.data()));
+		}
+
+		return {
+			wallet,
+			ledger: options?.includeLedger ? ledger : undefined,
+			stats: {
+				totalCharges: 0, // Not available on client efficiently
+				transactionCount: 0
+			}
+		};
 	});
 }
 
@@ -167,33 +178,13 @@ export async function addCredits(
 	config: MentoraAPIConfig,
 	amount: number,
 	currency: string = 'usd'
-): Promise<APIResult<AddCreditsResult>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
-	return tryCatch(async () => {
-		const token = await currentUser.getIdToken();
-
-		const response = await fetch(`${config.backendBaseUrl}/api/wallets`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				action: 'addCredits',
-				amount,
-				currency
-			})
-		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: 'Failed to add credits' }));
-			throw new Error(error.message || `Failed to add credits: ${response.status}`);
-		}
-
-		return await response.json();
+): Promise<APIResult<{ id: string }>> {
+	return callBackend<{ id: string }>(config, '/api/wallets', {
+		method: 'POST',
+		body: JSON.stringify({
+			action: 'addCredits',
+			amount,
+			currency
+		})
 	});
 }

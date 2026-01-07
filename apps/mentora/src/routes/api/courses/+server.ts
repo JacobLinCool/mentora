@@ -1,6 +1,6 @@
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import { json, error as svelteError } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 import {
     Courses,
     type CourseDoc,
@@ -22,7 +22,7 @@ export const POST: RequestHandler = async (event) => {
         body;
 
     if (!title || typeof title !== "string" || title.length < 1) {
-        throw svelteError(400, "Title is required");
+        throw error(400, "Title is required");
     }
 
     // Generate unique course code if not provided
@@ -35,7 +35,7 @@ export const POST: RequestHandler = async (event) => {
 
     // Validate course code format
     if (!/^[A-Z0-9]{6,64}$/.test(courseCode.replace(/[-_]/g, ""))) {
-        throw svelteError(400, "Invalid course code format");
+        throw error(400, "Invalid course code format");
     }
 
     // Check if code already exists (This is the critical server-side check)
@@ -46,14 +46,14 @@ export const POST: RequestHandler = async (event) => {
         .get();
 
     if (!existingCourse.empty) {
-        throw svelteError(409, "Course code already exists");
+        throw error(409, "Course code already exists");
     }
 
-    const courseId = `course_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const courseRef = firestore.collection(Courses.collectionPath()).doc();
+    const courseId = courseRef.id;
     const now = Date.now();
 
     const course: CourseDoc = {
-        id: courseId,
         title,
         code: courseCode,
         ownerId: user.uid,
@@ -71,7 +71,7 @@ export const POST: RequestHandler = async (event) => {
 
     // Validate and save
     const validated = Courses.schema.parse(course);
-    await firestore.doc(Courses.docPath(courseId)).set(validated);
+    await courseRef.set(validated);
 
     // Add owner as first member with 'instructor' role
     const membership: CourseMembership = {
@@ -86,5 +86,5 @@ export const POST: RequestHandler = async (event) => {
         .doc(Courses.roster.docPath(courseId, user.uid))
         .set(membership);
 
-    return json(validated, { status: 201 });
+    return json({ id: courseId });
 };

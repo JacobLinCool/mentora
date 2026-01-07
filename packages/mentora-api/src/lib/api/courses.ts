@@ -22,8 +22,10 @@ import {
 	tryCatch,
 	type APIResult,
 	type MentoraAPIConfig,
-	type QueryOptions
+	type QueryOptions,
+	success
 } from './types.js';
+import { callBackend } from './backend.js';
 
 export interface JoinCourseResult {
 	courseId: string;
@@ -144,35 +146,20 @@ export async function createCourse(
 	code?: string,
 	options?: CreateCourseOptions
 ): Promise<APIResult<string>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
-	return tryCatch(async () => {
-		const token = await currentUser.getIdToken();
-
-		const response = await fetch(`${config.backendBaseUrl}/api/courses`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				title,
-				code,
-				...options
-			})
-		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: 'Failed to create course' }));
-			throw new Error(error.message || `Failed to create course: ${response.status}`);
-		}
-
-		const data = await response.json();
-		return data.id;
+	// Use callBackend for consistent error handling and auth
+	const result = await callBackend<{ id: string }>(config, '/api/courses', {
+		method: 'POST',
+		body: JSON.stringify({
+			title,
+			code,
+			...options
+		})
 	});
+
+	if (result.success) {
+		return success(result.data.id);
+	}
+	return result;
 }
 
 /**
@@ -459,31 +446,16 @@ export async function copyCourse(
 		isDemo?: boolean;
 	}
 ): Promise<APIResult<string>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
-	return tryCatch(async () => {
-		const token = await currentUser.getIdToken();
-
-		const response = await fetch(`${config.backendBaseUrl}/api/courses/${courseId}/copy`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify(options)
-		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: 'Failed to copy course' }));
-			throw new Error(error.message || `Failed to copy course: ${response.status}`);
-		}
-
-		const data = await response.json();
-		return data.id;
+	// Use callBackend
+	const result = await callBackend<{ id: string }>(config, `/api/courses/${courseId}/copy`, {
+		method: 'POST',
+		body: JSON.stringify(options)
 	});
+
+	if (result.success) {
+		return success(result.data.id);
+	}
+	return result;
 }
 
 /**
@@ -523,61 +495,6 @@ export async function createAnnouncement(
 }
 
 /**
- * Course wallet stats result
- */
-export interface CourseWalletStatsResult {
-	wallet: import('mentora-firebase').Wallet;
-	ledger?: import('mentora-firebase').LedgerEntry[];
-	stats: {
-		totalCharges: number;
-		transactionCount: number;
-	};
-}
-
-/**
- * Get course wallet and statistics (delegated to backend)
- *
- * Only course owner can access this endpoint.
- * The backend creates a wallet if it doesn't exist.
- */
-export async function getCourseWalletStats(
-	config: MentoraAPIConfig,
-	courseId: string,
-	options?: { includeLedger?: boolean; ledgerLimit?: number }
-): Promise<APIResult<CourseWalletStatsResult>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
-	return tryCatch(async () => {
-		const token = await currentUser.getIdToken();
-
-		const params = new URLSearchParams();
-		if (options?.includeLedger) params.append('includeLedger', 'true');
-		if (options?.ledgerLimit) params.append('ledgerLimit', options.ledgerLimit.toString());
-
-		const url = `${config.backendBaseUrl}/api/courses/${courseId}/wallet${
-			params.toString() ? `?${params.toString()}` : ''
-		}`;
-
-		const response = await fetch(url, {
-			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${token}`
-			}
-		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: 'Failed to fetch wallet' }));
-			throw new Error(error.message || `Failed to fetch wallet: ${response.status}`);
-		}
-
-		return await response.json();
-	});
-}
-
-/**
  * Join a course by code
  *
  * Delegated to backend to handle code lookup securely without exposing generic query permissions.
@@ -586,28 +503,8 @@ export async function joinByCode(
 	config: MentoraAPIConfig,
 	code: string
 ): Promise<APIResult<JoinCourseResult>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
-	return tryCatch(async () => {
-		const token = await currentUser.getIdToken();
-
-		const response = await fetch(`${config.backendBaseUrl}/api/courses/join`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({ code })
-		});
-
-		if (!response.ok) {
-			const error = await response.json().catch(() => ({ message: 'Failed to join course' }));
-			throw new Error(error.message || `Failed to join course: ${response.status}`);
-		}
-
-		return await response.json();
+	return callBackend<JoinCourseResult>(config, '/api/courses/join', {
+		method: 'POST',
+		body: JSON.stringify({ code })
 	});
 }

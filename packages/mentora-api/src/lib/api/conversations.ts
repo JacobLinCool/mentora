@@ -16,7 +16,7 @@ import {
 	limit
 } from 'firebase/firestore';
 import { Conversations, type Conversation, type ConversationState } from 'mentora-firebase';
-import * as BackendModule from './backend.js';
+import { callBackend } from './backend.js';
 import type { ReactiveState } from './state.svelte';
 import { failure, tryCatch, type APIResult, type MentoraAPIConfig } from './types.js';
 
@@ -79,10 +79,11 @@ export async function getAssignmentConversation(
 export async function createConversation(
 	config: MentoraAPIConfig,
 	assignmentId: string
-): Promise<APIResult<{ id: string; state: ConversationState; isExisting: boolean }>> {
-	return BackendModule.createConversation(config, assignmentId) as Promise<
-		APIResult<{ id: string; state: ConversationState; isExisting: boolean }>
-	>;
+): Promise<APIResult<{ id: string }>> {
+	return callBackend(config, '/api/conversations', {
+		method: 'POST',
+		body: JSON.stringify({ assignmentId })
+	});
 }
 
 /**
@@ -93,10 +94,10 @@ export async function createConversation(
 export async function endConversation(
 	config: MentoraAPIConfig,
 	conversationId: string
-): Promise<APIResult<{ state: ConversationState; conversation: Conversation }>> {
-	return BackendModule.endConversation(config, conversationId) as Promise<
-		APIResult<{ state: ConversationState; conversation: Conversation }>
-	>;
+): Promise<APIResult<void>> {
+	return callBackend(config, `/api/conversations/${conversationId}/end`, {
+		method: 'POST'
+	});
 }
 
 /**
@@ -113,7 +114,10 @@ export async function addTurn(
 	text: string,
 	type: 'idea' | 'followup'
 ): Promise<APIResult<void>> {
-	return BackendModule.addTurn(config, conversationId, text, type);
+	return callBackend(config, `/api/conversations/${conversationId}/turns`, {
+		method: 'POST',
+		body: JSON.stringify({ text, type })
+	});
 }
 
 /**

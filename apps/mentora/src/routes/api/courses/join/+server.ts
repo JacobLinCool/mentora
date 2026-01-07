@@ -5,7 +5,7 @@
  */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import { json, error as svelteError } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 
 import { Courses, type CourseMembership } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
@@ -19,13 +19,13 @@ export const POST: RequestHandler = async (event) => {
     const { code } = body;
 
     if (!code || typeof code !== "string") {
-        throw svelteError(400, "Invalid or missing join code");
+        throw error(400, "Invalid or missing join code");
     }
 
     // Normalize and validate join code
     const normalizedCode = code.trim().toUpperCase();
     if (!/^[A-Z0-9]{6,64}$/.test(normalizedCode.replace(/[-_]/g, ""))) {
-        throw svelteError(400, "Join code format is invalid");
+        throw error(400, "Join code format is invalid");
     }
 
     try {
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         if (coursesSnapshot.empty) {
-            throw svelteError(404, "Course not found with this code");
+            throw error(404, "Course not found with this code");
         }
 
         const courseDoc = coursesSnapshot.docs[0];
@@ -101,6 +101,6 @@ export const POST: RequestHandler = async (event) => {
         if (err && typeof err === "object" && "status" in err) {
             throw err;
         }
-        throw svelteError(500, "Failed to join course");
+        throw error(500, "Failed to join course");
     }
 };

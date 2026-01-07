@@ -1,7 +1,7 @@
 // MOCK API
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import { json, error as svelteError } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 import { Wallets, type LedgerEntry } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
@@ -16,11 +16,11 @@ export const POST: RequestHandler = async (event) => {
 
     // Validate action
     if (action && action !== "addCredits") {
-        throw svelteError(400, `Unknown action: ${action}`);
+        throw error(400, `Unknown action: ${action}`);
     }
 
     if (typeof amount !== "number" || amount <= 0) {
-        throw svelteError(400, "Amount must be a positive number");
+        throw error(400, "Amount must be a positive number");
     }
 
     // Find user's wallet
@@ -80,11 +80,13 @@ export const POST: RequestHandler = async (event) => {
     }
 
     const now = Date.now();
-    const entryId = `entry_${now}_${Math.random().toString(36).substring(2, 8)}`;
+    const entryRef = firestore
+        .collection(Wallets.entries.collectionPath(walletId))
+        .doc();
+    const entryId = entryRef.id;
 
     // Create ledger entry
     const entry: LedgerEntry = {
-        id: entryId,
         type: "topup",
         amountCredits: amount,
         idempotencyKey: idempotencyKey || null,
@@ -114,15 +116,7 @@ export const POST: RequestHandler = async (event) => {
     });
 
     // Save ledger entry
-    await firestore
-        .doc(Wallets.entries.docPath(walletId, entryId))
-        .set(validatedEntry);
+    await entryRef.set(validatedEntry);
 
-    const result = {
-        message: "Credits added successfully",
-        entry: validatedEntry,
-        newBalance,
-    };
-
-    return json(result, { status: 201 });
+    return json({ id: entryId });
 };

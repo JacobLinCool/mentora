@@ -59,11 +59,6 @@ export type CourseAnnouncement = z.infer<typeof zCourseAnnouncement>;
 
 export const zCourseDoc = z
     .object({
-        id: z
-            .string()
-            .min(6)
-            .max(128)
-            .describe("Unique identifier for the course."),
         title: z
             .string()
             .min(1)

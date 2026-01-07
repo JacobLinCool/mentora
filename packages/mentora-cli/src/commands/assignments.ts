@@ -178,38 +178,5 @@ export function createAssignmentsCommand(
             }
         });
 
-    assignments
-        .command("preview")
-        .description("Preview AI response for an assignment")
-        .argument("<assignmentId>", "Assignment ID")
-        .argument("<message>", "Test message to send")
-        .action(async (assignmentId: string, message: string) => {
-            const client = await getClient();
-            // TODO: Mock endpoint - will be replaced with real AI implementation
-            const result = await client.backend.call<{
-                response: string;
-                strategy: string;
-                estimatedTokens: number;
-                estimatedCost: number;
-            }>(`/api/assignments/${assignmentId}/preview`, {
-                method: "POST",
-                body: JSON.stringify({ testMessage: message }),
-            });
-            if (result.success) {
-                console.log("\n🤖 AI Response:\n");
-                console.log(result.data.response);
-                console.log(`\n📊 Strategy: ${result.data.strategy}`);
-                console.log(
-                    `📈 Estimated tokens: ${result.data.estimatedTokens}`,
-                );
-                console.log(
-                    `💰 Estimated cost: $${result.data.estimatedCost.toFixed(4)}`,
-                );
-            } else {
-                error(result.error);
-                process.exit(1);
-            }
-        });
-
     return assignments;
 }
