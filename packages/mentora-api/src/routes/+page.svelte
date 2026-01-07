@@ -1,35 +1,37 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { apiEndpoints, apiTags, getEndpointsByTag } from '$lib/explorer/api-spec';
+	import { apiModules } from '$lib/explorer/api-spec';
 
-	const endpointsByTag = getEndpointsByTag();
-	const totalEndpoints = apiEndpoints.length;
+	const totalMethods = apiModules.reduce((acc, m) => acc + m.methods.length, 0);
+	const directMethods = apiModules.reduce(
+		(acc, m) => acc + m.methods.filter((method) => method.accessType === 'direct').length,
+		0
+	);
+	const delegatedMethods = totalMethods - directMethods;
 </script>
 
 <div class="home">
 	<header class="hero">
 		<h1>🎓 Mentora API Explorer</h1>
-		<p class="subtitle">
-			Interactive documentation and testing tools for the Mentora Socratic Dialogue API
-		</p>
+		<p class="subtitle">Interactive documentation and testing tools for the Mentora SDK</p>
 	</header>
 
 	<div class="stats-grid">
 		<div class="stat-card">
-			<div class="stat-value">{totalEndpoints}</div>
-			<div class="stat-label">API Endpoints</div>
+			<div class="stat-value">{apiModules.length}</div>
+			<div class="stat-label">Modules</div>
 		</div>
 		<div class="stat-card">
-			<div class="stat-value">{apiTags.length}</div>
-			<div class="stat-label">Categories</div>
+			<div class="stat-value">{totalMethods}</div>
+			<div class="stat-label">Methods</div>
 		</div>
 		<div class="stat-card">
-			<div class="stat-value">REST</div>
-			<div class="stat-label">API Style</div>
+			<div class="stat-value" style="color: #22c55e">{directMethods}</div>
+			<div class="stat-label">🔥 Direct Access</div>
 		</div>
 		<div class="stat-card">
-			<div class="stat-value">SSE</div>
-			<div class="stat-label">Streaming</div>
+			<div class="stat-value" style="color: #3b82f6">{delegatedMethods}</div>
+			<div class="stat-label">🌐 Delegated</div>
 		</div>
 	</div>
 
@@ -38,27 +40,26 @@
 		<div class="features-grid">
 			<a href={resolve('/docs')} class="feature-card">
 				<div class="feature-icon">📖</div>
-				<h3>API Documentation</h3>
-				<p>Auto-generated Swagger-like documentation with request/response examples</p>
+				<h3>SDK Documentation</h3>
+				<p>Complete reference for all MentoraClient methods with signatures and examples</p>
 			</a>
 
 			<a href={resolve('/tester')} class="feature-card">
 				<div class="feature-icon">🧪</div>
-				<h3>API Tester</h3>
-				<p>Interactive API testing with live requests, authentication, and response inspection</p>
+				<h3>API Reference</h3>
+				<p>Interactive SDK method browser with parameters, return types, and code examples</p>
 			</a>
 		</div>
 	</section>
 
 	<section class="overview">
-		<h2>API Overview</h2>
+		<h2>SDK Modules</h2>
 		<div class="tags-grid">
-			{#each apiTags as tag (tag.name)}
-				{@const endpoints = endpointsByTag.get(tag.name) || []}
-				<div class="tag-card" style="border-left-color: {tag.color}">
-					<h3>{tag.name}</h3>
-					<p>{tag.description}</p>
-					<div class="tag-count">{endpoints.length} endpoints</div>
+			{#each apiModules as module (module.name)}
+				<div class="tag-card" style="border-left-color: {module.color}">
+					<h3><span class="module-icon">{module.icon}</span> {module.name}</h3>
+					<p>{module.description}</p>
+					<div class="tag-count">{module.methods.length} methods</div>
 				</div>
 			{/each}
 		</div>
@@ -181,6 +182,13 @@
 		font-size: 1.125rem;
 		color: #f8fafc;
 		margin: 0 0 0.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.module-icon {
+		font-size: 1.25rem;
 	}
 
 	.tag-card p {

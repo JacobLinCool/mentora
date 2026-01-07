@@ -1,57 +1,50 @@
 <script lang="ts">
 	import {
-		apiTags,
-		getEndpointsByTag,
-		getMethodColor,
-		type APIEndpoint
+		apiModules,
+		getAccessTypeColor,
+		type APIMethod,
+		type APIModule
 	} from '$lib/explorer/api-spec';
 
-	const endpointsByTag = getEndpointsByTag();
+	let expandedMethod = $state<string | null>(null);
+	let selectedModule = $state<string | null>(null);
 
-	let expandedEndpoint = $state<string | null>(null);
-	let selectedTag = $state<string | null>(null);
-
-	function toggleEndpoint(id: string) {
-		expandedEndpoint = expandedEndpoint === id ? null : id;
+	function toggleMethod(id: string) {
+		expandedMethod = expandedMethod === id ? null : id;
 	}
 
-	function getEndpointId(endpoint: APIEndpoint): string {
-		return `${endpoint.method}-${endpoint.path}`;
-	}
-
-	function formatPath(path: string): string {
-		return path;
+	function getMethodId(module: APIModule, method: APIMethod): string {
+		return `${module.name}.${method.name}`;
 	}
 
 	$effect(() => {
-		// Default to first tag
-		if (!selectedTag && apiTags.length > 0) {
-			selectedTag = apiTags[0].name;
+		// Default to first module
+		if (!selectedModule && apiModules.length > 0) {
+			selectedModule = apiModules[0].name;
 		}
 	});
 </script>
 
 <div class="docs-page">
 	<header class="page-header">
-		<h1>📖 API Documentation</h1>
-		<p>Complete reference for all Mentora API endpoints</p>
+		<h1>📖 SDK Documentation</h1>
+		<p>Complete reference for all MentoraClient methods</p>
 	</header>
 
 	<div class="docs-layout">
 		<aside class="tags-sidebar">
-			<h3>Categories</h3>
+			<h3>Modules</h3>
 			<ul class="tag-list">
-				{#each apiTags as tag (tag.name)}
-					{@const endpoints = endpointsByTag.get(tag.name) || []}
+				{#each apiModules as module (module.name)}
 					<li>
 						<button
 							class="tag-button"
-							class:active={selectedTag === tag.name}
-							onclick={() => (selectedTag = tag.name)}
-							style="--tag-color: {tag.color}"
+							class:active={selectedModule === module.name}
+							onclick={() => (selectedModule = module.name)}
+							style="--tag-color: {module.color}"
 						>
-							<span class="tag-name">{tag.name}</span>
-							<span class="tag-count">{endpoints.length}</span>
+							<span class="tag-name">{module.icon} {module.name}</span>
+							<span class="tag-count">{module.methods.length}</span>
 						</button>
 					</li>
 				{/each}
@@ -59,41 +52,46 @@
 		</aside>
 
 		<main class="endpoints-content">
-			{#each apiTags as tag (tag.name)}
-				{@const endpoints = endpointsByTag.get(tag.name) || []}
-				{#if selectedTag === tag.name}
+			{#each apiModules as module (module.name)}
+				{#if selectedModule === module.name}
 					<section class="tag-section">
-						<div class="tag-header" style="border-color: {tag.color}">
-							<h2>{tag.name}</h2>
-							<p>{tag.description}</p>
+						<div class="tag-header" style="border-color: {module.color}">
+							<h2>{module.icon} {module.name}</h2>
+							<p>{module.description}</p>
 						</div>
 
 						<div class="endpoints-list">
-							{#each endpoints as endpoint (getEndpointId(endpoint))}
-								{@const id = getEndpointId(endpoint)}
-								{@const isExpanded = expandedEndpoint === id}
+							{#each module.methods as method (method.name)}
+								{@const id = getMethodId(module, method)}
+								{@const isExpanded = expandedMethod === id}
 								<article class="endpoint-card">
-									<button class="endpoint-header" onclick={() => toggleEndpoint(id)}>
+									<button class="endpoint-header" onclick={() => toggleMethod(id)}>
 										<span
 											class="method-badge"
-											style="background: {getMethodColor(endpoint.method)}"
+											style="background: {getAccessTypeColor(method.accessType)}"
 										>
-											{endpoint.method}
+											{method.accessType === 'direct' ? '🔥' : '🌐'}
 										</span>
-										<code class="endpoint-path">{formatPath(endpoint.path)}</code>
-										<span class="endpoint-summary">{endpoint.summary}</span>
+										<code class="endpoint-path">{method.name}</code>
+										<span class="endpoint-summary">{method.summary}</span>
 										<span class="expand-icon">{isExpanded ? '▼' : '▶'}</span>
 									</button>
 
 									{#if isExpanded}
 										<div class="endpoint-details">
-											{#if endpoint.description}
-												<p class="endpoint-description">{endpoint.description}</p>
+											<!-- Signature -->
+											<div class="signature-section">
+												<h4>Signature</h4>
+												<pre class="code-block signature-code">client.{method.signature}</pre>
+											</div>
+
+											{#if method.description}
+												<p class="endpoint-description">{method.description}</p>
 											{/if}
 
-											{#if endpoint.pathParams && endpoint.pathParams.length > 0}
+											{#if method.params.length > 0}
 												<div class="params-section">
-													<h4>Path Parameters</h4>
+													<h4>Parameters</h4>
 													<table class="params-table">
 														<thead>
 															<tr>
@@ -104,49 +102,19 @@
 															</tr>
 														</thead>
 														<tbody>
-															{#each endpoint.pathParams as param (param.name)}
+															{#each method.params as param (param.name)}
 																<tr>
 																	<td><code>{param.name}</code></td>
-																	<td>{param.type}</td>
+																	<td><code class="type-code">{param.type}</code></td>
 																	<td>{param.required ? '✓' : ''}</td>
-																	<td>{param.description}</td>
-																</tr>
-															{/each}
-														</tbody>
-													</table>
-												</div>
-											{/if}
-
-											{#if endpoint.queryParams && endpoint.queryParams.length > 0}
-												<div class="params-section">
-													<h4>Query Parameters</h4>
-													<table class="params-table">
-														<thead>
-															<tr>
-																<th>Name</th>
-																<th>Type</th>
-																<th>Required</th>
-																<th>Description</th>
-																<th>Default</th>
-															</tr>
-														</thead>
-														<tbody>
-															{#each endpoint.queryParams as param (param.name)}
-																<tr>
-																	<td><code>{param.name}</code></td>
 																	<td>
-																		{param.type}
-																		{#if param.enum}
-																			<br /><small>enum: {param.enum.join(' | ')}</small>
+																		{param.description}
+																		{#if param.default !== undefined}
+																			<span class="default-value"
+																				>(default: {JSON.stringify(param.default)})</span
+																			>
 																		{/if}
 																	</td>
-																	<td>{param.required ? '✓' : ''}</td>
-																	<td>{param.description}</td>
-																	<td
-																		>{param.default !== undefined
-																			? JSON.stringify(param.default)
-																			: '-'}</td
-																	>
 																</tr>
 															{/each}
 														</tbody>
@@ -154,65 +122,44 @@
 												</div>
 											{/if}
 
-											{#if endpoint.bodyParams && endpoint.bodyParams.length > 0}
-												<div class="params-section">
-													<h4>Request Body</h4>
-													<table class="params-table">
-														<thead>
-															<tr>
-																<th>Name</th>
-																<th>Type</th>
-																<th>Required</th>
-																<th>Description</th>
-															</tr>
-														</thead>
-														<tbody>
-															{#each endpoint.bodyParams as param (param.name)}
-																<tr>
-																	<td><code>{param.name}</code></td>
-																	<td>
-																		{param.type}
-																		{#if param.enum}
-																			<br /><small>enum: {param.enum.join(' | ')}</small>
-																		{/if}
-																	</td>
-																	<td>{param.required ? '✓' : ''}</td>
-																	<td>{param.description}</td>
-																</tr>
-															{/each}
-														</tbody>
-													</table>
-												</div>
-											{/if}
+											<!-- Returns -->
+											<div class="returns-section">
+												<h4>Returns</h4>
+												<code class="return-type">{method.returns}</code>
+											</div>
 
-											{#if endpoint.bodyExample}
+											{#if method.example}
 												<div class="example-section">
-													<h4>Request Example</h4>
-													<pre class="code-block">{JSON.stringify(
-															endpoint.bodyExample,
-															null,
-															2
-														)}</pre>
-												</div>
-											{/if}
-
-											{#if endpoint.responseExample}
-												<div class="example-section">
-													<h4>Response Example</h4>
-													<pre class="code-block">{JSON.stringify(
-															endpoint.responseExample,
-															null,
-															2
-														)}</pre>
+													<h4>Example</h4>
+													<div class="example-call">
+														<span class="example-label">Call:</span>
+														<pre class="code-block">{method.example.call}</pre>
+													</div>
+													<div class="example-response">
+														<span class="example-label">Response:</span>
+														<pre class="code-block">{JSON.stringify(
+																method.example.response,
+																null,
+																2
+															)}</pre>
+													</div>
 												</div>
 											{/if}
 
 											<div class="auth-badge">
-												{#if endpoint.requiresAuth}
+												{#if method.requiresAuth}
 													<span class="auth-required">🔒 Authentication Required</span>
 												{:else}
 													<span class="auth-public">🌐 Public</span>
 												{/if}
+												<span
+													class="access-type-badge"
+													style="background: {getAccessTypeColor(
+														method.accessType
+													)}20; color: {getAccessTypeColor(method.accessType)}"
+												>
+													{method.accessType === 'direct' ? '🔥 Direct Access' : '🌐 Delegated'}
+												</span>
 											</div>
 										</div>
 									{/if}
@@ -354,21 +301,15 @@
 	.method-badge {
 		padding: 0.25rem 0.5rem;
 		border-radius: 4px;
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: white;
-		min-width: 60px;
+		font-size: 0.875rem;
+		min-width: 32px;
 		text-align: center;
 	}
 
 	.endpoint-path {
 		font-family: 'SF Mono', Monaco, monospace;
 		font-size: 0.875rem;
-		color: #f8fafc;
-	}
-
-	:global(.path-param) {
-		color: #f59e0b;
+		color: #22d3ee;
 	}
 
 	.endpoint-summary {
@@ -388,16 +329,33 @@
 		background: #0f172a;
 	}
 
+	.signature-section {
+		margin-bottom: 1rem;
+	}
+
+	.signature-section h4 {
+		font-size: 0.75rem;
+		color: #64748b;
+		text-transform: uppercase;
+		margin: 0 0 0.5rem;
+	}
+
+	.signature-code {
+		color: #22d3ee;
+	}
+
 	.endpoint-description {
 		color: #94a3b8;
 		margin: 0 0 1.5rem;
 	}
 
-	.params-section {
+	.params-section,
+	.returns-section {
 		margin-bottom: 1.5rem;
 	}
 
-	.params-section h4 {
+	.params-section h4,
+	.returns-section h4 {
 		font-size: 0.875rem;
 		color: #f8fafc;
 		margin: 0 0 0.75rem;
@@ -427,8 +385,20 @@
 		color: #22d3ee;
 	}
 
-	.params-table small {
+	.type-code {
+		color: #f59e0b !important;
+		font-size: 0.75rem;
+	}
+
+	.default-value {
 		color: #64748b;
+		font-size: 0.75rem;
+	}
+
+	.return-type {
+		color: #22c55e;
+		font-family: 'SF Mono', Monaco, monospace;
+		font-size: 0.875rem;
 	}
 
 	.example-section {
@@ -438,14 +408,26 @@
 	.example-section h4 {
 		font-size: 0.875rem;
 		color: #f8fafc;
-		margin: 0 0 0.5rem;
+		margin: 0 0 0.75rem;
+	}
+
+	.example-label {
+		display: block;
+		font-size: 0.75rem;
+		color: #64748b;
+		margin-bottom: 0.25rem;
+	}
+
+	.example-call,
+	.example-response {
+		margin-bottom: 0.75rem;
 	}
 
 	.code-block {
 		background: #1e293b;
 		border: 1px solid #334155;
 		border-radius: 6px;
-		padding: 1rem;
+		padding: 0.75rem 1rem;
 		overflow-x: auto;
 		font-family: 'SF Mono', Monaco, monospace;
 		font-size: 0.8rem;
@@ -457,6 +439,9 @@
 		margin-top: 1rem;
 		padding-top: 1rem;
 		border-top: 1px solid #334155;
+		display: flex;
+		gap: 1rem;
+		align-items: center;
 	}
 
 	.auth-required {
@@ -467,5 +452,11 @@
 	.auth-public {
 		color: #22c55e;
 		font-size: 0.875rem;
+	}
+
+	.access-type-badge {
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
 	}
 </style>
