@@ -8,6 +8,7 @@
 	import { subscribeToAuth, type AuthState } from '$lib/explorer/firebase';
 	import { getTranslation, type Language } from '$lib/i18n/tester';
 	import { onMount, onDestroy } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	// Language state
 	let language = $state<Language>('en');
@@ -46,26 +47,18 @@
 	// State
 	let selectedModule = $state<APIModule | null>(null);
 	let selectedMethod = $state<APIMethod | null>(null);
-	let expandedModules = $state<Set<string>>(new Set());
+	let expandedModules = new SvelteSet<string>();
 
 	function toggleModule(moduleName: string) {
-		const newSet = new Set(expandedModules);
-		if (newSet.has(moduleName)) {
-			newSet.delete(moduleName);
+		if (expandedModules.has(moduleName)) {
+			expandedModules.delete(moduleName);
 		} else {
-			newSet.add(moduleName);
+			expandedModules.add(moduleName);
 		}
-		expandedModules = newSet;
 	}
-
 	function selectMethod(module: APIModule, method: APIMethod) {
 		selectedModule = module;
 		selectedMethod = method;
-	}
-
-	function formatParams(params: APIMethod['params']): string {
-		if (params.length === 0) return '';
-		return params.map((p) => `${p.name}${p.required ? '' : '?'}: ${p.type}`).join(', ');
 	}
 </script>
 
