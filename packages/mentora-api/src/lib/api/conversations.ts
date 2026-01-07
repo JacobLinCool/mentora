@@ -15,11 +15,7 @@ import {
 	where,
 	limit
 } from 'firebase/firestore';
-import {
-	Conversations,
-	type Conversation as ConversationDoc,
-	type ConversationState
-} from 'mentora-firebase';
+import { Conversations, type Conversation as ConversationDoc } from 'mentora-firebase';
 
 export type Conversation = ConversationDoc & { id: string };
 
