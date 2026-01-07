@@ -1,5 +1,5 @@
 import { requireAuth } from "$lib/server/auth";
-import { firestore } from "$lib/server/firestore";
+import { firestore, WriteResult } from "$lib/server/firestore";
 import { error, json } from "@sveltejs/kit";
 import {
     Courses,
@@ -87,7 +87,7 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         if (!rosterQuery.empty) {
-            const promises: Promise<any>[] = [];
+            const promises: Promise<WriteResult>[] = [];
 
             rosterQuery.docs.forEach((doc) => {
                 const member = doc.data() as CourseMembership;
