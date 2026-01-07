@@ -8,12 +8,9 @@ import type {
 	Assignment,
 	CourseDoc,
 	CourseMembership,
-	Conversation,
-	LedgerEntry,
 	Submission,
 	Topic,
-	UserProfile,
-	Wallet
+	UserProfile
 } from 'mentora-firebase';
 
 import * as AssignmentsModule from './assignments.js';
@@ -30,14 +27,16 @@ export type {
 	Assignment,
 	CourseDoc,
 	CourseMembership,
-	Conversation,
-	LedgerEntry,
 	Submission,
 	Topic,
 	Turn,
-	UserProfile,
-	Wallet
+	UserProfile
 } from 'mentora-firebase';
+
+export type Course = CoursesModule.Course;
+export type Conversation = ConversationsModule.Conversation;
+export type Wallet = WalletsModule.Wallet;
+export type LedgerEntry = WalletsModule.LedgerEntry;
 export type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
 export type { WhereFilterOp } from 'firebase/firestore';
 
@@ -133,11 +132,11 @@ export class MentoraClient {
 
 	// ============ Courses ============
 	courses = {
-		get: (courseId: string): Promise<APIResult<CourseDoc>> =>
+		get: (courseId: string): Promise<APIResult<CoursesModule.Course>> =>
 			this.authReadyThen(() => CoursesModule.getCourse(this._config, courseId)),
-		listMine: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
+		listMine: (options?: QueryOptions): Promise<APIResult<CoursesModule.Course[]>> =>
 			this.authReadyThen(() => CoursesModule.listMyCourses(this._config, options)),
-		listEnrolled: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
+		listEnrolled: (options?: QueryOptions): Promise<APIResult<CoursesModule.Course[]>> =>
 			this.authReadyThen(() => CoursesModule.listMyEnrolledCourses(this._config, options)),
 		create: (
 			title: string,
@@ -155,14 +154,14 @@ export class MentoraClient {
 			this.authReadyThen(() => CoursesModule.inviteMember(this._config, courseId, email, role)),
 		joinByCode: (code: string): Promise<APIResult<CoursesModule.JoinCourseResult>> =>
 			this.authReadyThen(() => CoursesModule.joinByCode(this._config, code)),
-		listPublic: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
+		listPublic: (options?: QueryOptions): Promise<APIResult<CoursesModule.Course[]>> =>
 			CoursesModule.listPublicCourses(this._config, options),
-		listAllEnrolled: (options?: QueryOptions): Promise<APIResult<CourseDoc[]>> =>
+		listAllEnrolled: (options?: QueryOptions): Promise<APIResult<CoursesModule.Course[]>> =>
 			this.authReadyThen(() => CoursesModule.listAllEnrolledCourses(this._config, options)),
 		update: (
 			courseId: string,
 			updates: Partial<Omit<CourseDoc, 'id' | 'ownerId' | 'createdAt'>>
-		): Promise<APIResult<CourseDoc>> =>
+		): Promise<APIResult<CoursesModule.Course>> =>
 			this.authReadyThen(() => CoursesModule.updateCourse(this._config, courseId, updates)),
 		delete: (courseId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => CoursesModule.deleteCourse(this._config, courseId)),
@@ -274,9 +273,12 @@ export class MentoraClient {
 
 	// ============ Conversations ============
 	conversations = {
-		get: (conversationId: string): Promise<APIResult<Conversation>> =>
+		get: (conversationId: string): Promise<APIResult<ConversationsModule.Conversation>> =>
 			this.authReadyThen(() => ConversationsModule.getConversation(this._config, conversationId)),
-		getForAssignment: (assignmentId: string, userId?: string): Promise<APIResult<Conversation>> =>
+		getForAssignment: (
+			assignmentId: string,
+			userId?: string
+		): Promise<APIResult<ConversationsModule.Conversation>> =>
 			this.authReadyThen(() =>
 				ConversationsModule.getAssignmentConversation(this._config, assignmentId, userId)
 			),
@@ -296,11 +298,14 @@ export class MentoraClient {
 
 	// ============ Wallets ============
 	wallets = {
-		get: (walletId: string): Promise<APIResult<Wallet>> =>
+		get: (walletId: string): Promise<APIResult<WalletsModule.Wallet>> =>
 			this.authReadyThen(() => WalletsModule.getWallet(this._config, walletId)),
-		getMine: (): Promise<APIResult<Wallet | null>> =>
+		getMine: (): Promise<APIResult<WalletsModule.Wallet | null>> =>
 			this.authReadyThen(() => WalletsModule.getMyWallet(this._config)),
-		listEntries: (walletId: string, options?: QueryOptions): Promise<APIResult<LedgerEntry[]>> =>
+		listEntries: (
+			walletId: string,
+			options?: QueryOptions
+		): Promise<APIResult<WalletsModule.LedgerEntry[]>> =>
 			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options)),
 		addCredits: (amount: number, currency?: string): Promise<APIResult<{ id: string }>> =>
 			this.authReadyThen(() => WalletsModule.addCredits(this._config, amount, currency))

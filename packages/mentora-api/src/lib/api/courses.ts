@@ -17,6 +17,9 @@ import {
 	type QueryConstraint
 } from 'firebase/firestore';
 import { Courses, type CourseDoc, type CourseMembership } from 'mentora-firebase';
+
+export type Course = CourseDoc & { id: string };
+
 import {
 	failure,
 	tryCatch,
@@ -40,7 +43,7 @@ export interface JoinCourseResult {
 export async function getCourse(
 	config: MentoraAPIConfig,
 	courseId: string
-): Promise<APIResult<CourseDoc>> {
+): Promise<APIResult<Course>> {
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Courses.docPath(courseId));
 		const snapshot = await getDoc(docRef);
@@ -49,7 +52,10 @@ export async function getCourse(
 			throw new Error('Course not found');
 		}
 
-		return Courses.schema.parse(snapshot.data());
+		return {
+			id: snapshot.id,
+			...Courses.schema.parse(snapshot.data())
+		};
 	});
 }
 
@@ -59,7 +65,7 @@ export async function getCourse(
 export async function listMyCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');
@@ -78,7 +84,10 @@ export async function listMyCourses(
 		const q = query(collection(config.db, Courses.collectionPath()), ...constraints);
 		const snapshot = await getDocs(q);
 
-		return snapshot.docs.map((doc) => Courses.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Courses.schema.parse(doc.data())
+		}));
 	});
 }
 
@@ -88,7 +97,7 @@ export async function listMyCourses(
 export async function listMyEnrolledCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');
@@ -112,7 +121,7 @@ export async function listMyEnrolledCourses(
 		});
 
 		// Fetch each course document
-		const courses: CourseDoc[] = [];
+		const courses: Course[] = [];
 		for (const courseId of courseIds) {
 			const result = await getCourse(config, courseId);
 			if (result.success) {
@@ -256,7 +265,7 @@ export async function getCourseRoster(
 export async function listPublicCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	return tryCatch(async () => {
 		const constraints: QueryConstraint[] = [
 			where('visibility', '==', 'public'),
@@ -270,7 +279,10 @@ export async function listPublicCourses(
 		const q = query(collection(config.db, Courses.collectionPath()), ...constraints);
 		const snapshot = await getDocs(q);
 
-		return snapshot.docs.map((doc) => Courses.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Courses.schema.parse(doc.data())
+		}));
 	});
 }
 
@@ -280,7 +292,7 @@ export async function listPublicCourses(
 export async function listAllEnrolledCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');
@@ -308,7 +320,7 @@ export async function listAllEnrolledCourses(
 			});
 
 		// Fetch each course document
-		const courses: CourseDoc[] = [];
+		const courses: Course[] = [];
 		for (const courseId of courseIds) {
 			const result = await getCourse(config, courseId);
 			if (result.success) {
@@ -326,8 +338,8 @@ export async function listAllEnrolledCourses(
 export async function updateCourse(
 	config: MentoraAPIConfig,
 	courseId: string,
-	updates: Partial<Omit<CourseDoc, 'id' | 'ownerId' | 'createdAt'>>
-): Promise<APIResult<CourseDoc>> {
+	updates: Partial<Omit<CourseDoc, 'ownerId' | 'createdAt'>>
+): Promise<APIResult<Course>> {
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Courses.docPath(courseId));
 		await updateDoc(docRef, {
@@ -341,7 +353,10 @@ export async function updateCourse(
 			throw new Error('Course not found');
 		}
 
-		return Courses.schema.parse(snapshot.data());
+		return {
+			id: snapshot.id,
+			...Courses.schema.parse(snapshot.data())
+		};
 	});
 }
 

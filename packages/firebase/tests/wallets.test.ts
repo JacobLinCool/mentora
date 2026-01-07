@@ -29,7 +29,6 @@ describe("Wallets/Ledger Security Rules", () => {
 
         await assertFails(
             db.collection("wallets").doc("wallet123").set({
-                id: "wallet123",
                 ownerType: "user",
                 ownerId: userId,
                 balanceCredits: 10,
@@ -51,7 +50,6 @@ describe("Wallets/Ledger Security Rules", () => {
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const fs = context.firestore();
             await fs.collection("wallets").doc(walletId).set({
-                id: walletId,
                 ownerType: "user",
                 ownerId: userId,
                 balanceCredits: 10,
@@ -64,7 +62,6 @@ describe("Wallets/Ledger Security Rules", () => {
                 .collection("entries")
                 .doc(entryId)
                 .set({
-                    id: entryId,
                     type: "grant",
                     amountCredits: 10,
                     idempotencyKey: null,
@@ -107,7 +104,6 @@ describe("Wallets/Ledger Security Rules", () => {
 
         await testEnv.withSecurityRulesDisabled(async (context) => {
             await context.firestore().collection("wallets").doc(walletId).set({
-                id: walletId,
                 ownerType: "user",
                 ownerId: userId,
                 balanceCredits: 0,
@@ -123,7 +119,6 @@ describe("Wallets/Ledger Security Rules", () => {
                 .collection("entries")
                 .doc("entry123")
                 .set({
-                    id: "entry123",
                     type: "charge",
                     amountCredits: -1,
                     idempotencyKey: "k1",

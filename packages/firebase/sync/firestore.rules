@@ -81,8 +81,7 @@ service cloud.firestore {
     }
 
     function isValidCourseDoc(data) {
-      return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
-             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
              data.code is string && data.code.size() >= 6 && data.code.size() <= 64 &&
              data.ownerId is string && data.ownerId.size() <= 128 &&
              (!('visibility' in data) || data.visibility in ["public", "unlisted", "private"]) &&
@@ -140,8 +139,7 @@ service cloud.firestore {
     }
 
     function isValidWallet(data) {
-      return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
-             data.ownerType in ["user", "host"] &&
+      return data.ownerType in ["user", "host"] &&
              data.ownerId is string && data.ownerId.size() <= 128 &&
              data.balanceCredits is number && data.balanceCredits >= 0 &&
              data.createdAt is number && data.updatedAt is number;
@@ -158,8 +156,7 @@ service cloud.firestore {
     }
 
     function isValidConversation(data) {
-      return data.id is string && data.id.size() <= 128 &&
-             data.assignmentId is string && data.assignmentId.size() <= 128 &&
+      return data.assignmentId is string && data.assignmentId.size() <= 128 &&
              data.userId is string && data.userId.size() <= 128 &&
              data.state in ["awaiting_idea", "adding_counterpoint", "awaiting_followup", "adding_final_summary", "closed"] &&
              data.lastActionAt is number &&

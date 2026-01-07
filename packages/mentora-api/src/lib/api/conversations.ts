@@ -15,7 +15,14 @@ import {
 	where,
 	limit
 } from 'firebase/firestore';
-import { Conversations, type Conversation, type ConversationState } from 'mentora-firebase';
+import {
+	Conversations,
+	type Conversation as ConversationDoc,
+	type ConversationState
+} from 'mentora-firebase';
+
+export type Conversation = ConversationDoc & { id: string };
+
 import { callBackend } from './backend.js';
 import type { ReactiveState } from './state.svelte';
 import { failure, tryCatch, type APIResult, type MentoraAPIConfig } from './types.js';
@@ -35,7 +42,10 @@ export async function getConversation(
 			throw new Error('Conversation not found');
 		}
 
-		return Conversations.schema.parse(snapshot.data());
+		return {
+			id: snapshot.id,
+			...Conversations.schema.parse(snapshot.data())
+		};
 	});
 }
 
@@ -67,7 +77,10 @@ export async function getAssignmentConversation(
 			throw new Error('Conversation not found');
 		}
 
-		return Conversations.schema.parse(snapshot.docs[0].data());
+		return {
+			id: snapshot.docs[0].id,
+			...Conversations.schema.parse(snapshot.docs[0].data())
+		};
 	});
 }
 
@@ -137,7 +150,10 @@ export function subscribeToConversation(
 			if (snapshot.exists()) {
 				try {
 					const data = Conversations.schema.parse(snapshot.data());
-					state.set(data);
+					state.set({
+						id: snapshot.id,
+						...data
+					});
 					state.setError(null);
 				} catch (error) {
 					state.setError(error instanceof Error ? error.message : 'Parse error');

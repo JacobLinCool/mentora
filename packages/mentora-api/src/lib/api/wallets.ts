@@ -12,7 +12,15 @@ import {
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
-import { Wallets, type LedgerEntry, type Wallet } from 'mentora-firebase';
+import {
+	Wallets,
+	type LedgerEntry as LedgerEntryDoc,
+	type Wallet as WalletDoc
+} from 'mentora-firebase';
+
+export type Wallet = WalletDoc & { id: string };
+export type LedgerEntry = LedgerEntryDoc & { id: string };
+
 import {
 	failure,
 	tryCatch,
@@ -52,7 +60,10 @@ export async function getWallet(
 			throw new Error('Wallet not found');
 		}
 
-		return Wallets.schema.parse(snapshot.data());
+		return {
+			id: snapshot.id,
+			...Wallets.schema.parse(snapshot.data())
+		};
 	});
 }
 
@@ -79,7 +90,10 @@ export async function getMyWallet(config: MentoraAPIConfig): Promise<APIResult<W
 			return null;
 		}
 
-		return Wallets.schema.parse(snapshot.docs[0].data());
+		return {
+			id: snapshot.docs[0].id,
+			...Wallets.schema.parse(snapshot.docs[0].data())
+		};
 	});
 }
 
@@ -109,7 +123,10 @@ export async function listWalletEntries(
 		);
 		const snapshot = await getDocs(q);
 
-		return snapshot.docs.map((doc) => Wallets.entries.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Wallets.entries.schema.parse(doc.data())
+		}));
 	});
 }
 
@@ -143,7 +160,11 @@ export async function getCourseWallet(
 			throw new Error('Wallet not found');
 		}
 
-		const wallet = Wallets.schema.parse(snapshot.docs[0].data());
+		const doc = snapshot.docs[0];
+		const wallet: Wallet = {
+			id: doc.id,
+			...Wallets.schema.parse(doc.data())
+		};
 
 		let ledger: LedgerEntry[] = [];
 		if (options?.includeLedger) {
@@ -155,7 +176,10 @@ export async function getCourseWallet(
 				...constraints
 			);
 			const snapLedger = await getDocs(qLedger);
-			ledger = snapLedger.docs.map((d) => Wallets.entries.schema.parse(d.data()));
+			ledger = snapLedger.docs.map((d) => ({
+				id: d.id,
+				...Wallets.entries.schema.parse(d.data())
+			}));
 		}
 
 		return {
