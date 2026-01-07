@@ -186,7 +186,22 @@ export class MentoraClient {
 			courseId: string,
 			options?: { includeLedger?: boolean; ledgerLimit?: number }
 		): Promise<APIResult<CoursesModule.CourseWalletStatsResult>> =>
-			this.authReadyThen(() => CoursesModule.getCourseWalletStats(this._config, courseId, options))
+			this.authReadyThen(() => CoursesModule.getCourseWalletStats(this._config, courseId, options)),
+		copy: (
+			courseId: string,
+			options: {
+				title?: string;
+				includeContent?: boolean;
+				includeRoster?: boolean;
+				isDemo?: boolean;
+			}
+		): Promise<APIResult<string>> =>
+			this.authReadyThen(() => CoursesModule.copyCourse(this._config, courseId, options)),
+		createAnnouncement: (
+			courseId: string,
+			content: string
+		): Promise<APIResult<import('mentora-firebase').CourseAnnouncement>> =>
+			this.authReadyThen(() => CoursesModule.createAnnouncement(this._config, courseId, content))
 	};
 
 	// ============ Topics ============

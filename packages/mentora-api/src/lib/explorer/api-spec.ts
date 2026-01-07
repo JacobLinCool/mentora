@@ -199,6 +199,40 @@ export const apiModules: APIModule[] = [
 				}
 			},
 			{
+				name: 'copy',
+				signature: 'courses.copy(courseId, options)',
+				summary: 'Copy a course',
+				description: 'Creates a deep copy of the course including topics and assignments',
+				accessType: 'delegated',
+				requiresAuth: true,
+				params: [
+					{ name: 'courseId', type: 'string', required: true, description: 'Source Course ID' },
+					{
+						name: 'options',
+						type: '{ title?, includeContent?, includeRoster?, isDemo? }',
+						required: true,
+						description: 'Copy options'
+					}
+				],
+				returns: 'Promise<APIResult<string>>',
+				example: {
+					call: 'await client.courses.copy("src_123", { title: "Copy of ...", includeContent: true })',
+					response: 'new_course_456'
+				}
+			},
+			{
+				name: 'createAnnouncement',
+				signature: 'courses.createAnnouncement(courseId, content)',
+				summary: 'Post an announcement',
+				accessType: 'direct',
+				requiresAuth: true,
+				params: [
+					{ name: 'courseId', type: 'string', required: true, description: 'Course ID' },
+					{ name: 'content', type: 'string', required: true, description: 'Announcement content' }
+				],
+				returns: 'Promise<APIResult<CourseAnnouncement>>'
+			},
+			{
 				name: 'update',
 				signature: 'courses.update(courseId, updates)',
 				summary: 'Update course details',

@@ -16,6 +16,7 @@ export { success, failure, tryCatch } from './api/types.js';
 export type { WhereFilterOp } from 'firebase/firestore';
 export type {
 	Assignment,
+	CourseAnnouncement,
 	CourseDoc,
 	CourseMembership,
 	Conversation,

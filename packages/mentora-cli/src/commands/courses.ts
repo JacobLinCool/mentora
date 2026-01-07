@@ -218,5 +218,56 @@ export function createCoursesCommand(
             }
         });
 
+    courses
+        .command("copy")
+        .description("Copy a course")
+        .argument("<courseId>", "Source Course ID")
+        .option("--title <title>", "New course title")
+        .option("--no-content", "Skip copying content (topics, assignments)")
+        .option("--roster", "Include roster (instructors/TAs)")
+        .action(
+            async (
+                courseId: string,
+                options: {
+                    title?: string;
+                    content: boolean;
+                    roster?: boolean;
+                },
+            ) => {
+                const client = await getClient();
+                const result = await client.courses.copy(courseId, {
+                    title: options.title,
+                    includeContent: options.content,
+                    includeRoster: options.roster,
+                });
+                if (result.success) {
+                    success(`Course copied. New ID: ${result.data}`);
+                } else {
+                    error(result.error);
+                    process.exit(1);
+                }
+            },
+        );
+
+    courses
+        .command("announce")
+        .description("Post an announcement")
+        .argument("<courseId>", "Course ID")
+        .argument("<content>", "Announcement content")
+        .action(async (courseId: string, content: string) => {
+            const client = await getClient();
+            const result = await client.courses.createAnnouncement(
+                courseId,
+                content,
+            );
+            if (result.success) {
+                success("Announcement posted.");
+                outputData(result.data);
+            } else {
+                error(result.error);
+                process.exit(1);
+            }
+        });
+
     return courses;
 }

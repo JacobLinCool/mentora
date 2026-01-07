@@ -639,5 +639,32 @@ describe("Courses Security Rules", () => {
                     }),
             );
         });
+
+        it("should allow creating course with announcements", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("courses")
+                    .doc("courseWithAnnouncements")
+                    .set({
+                        id: "courseWithAnnouncements",
+                        title: "Course with News",
+                        code: "NEWS123",
+                        ownerId: ownerId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        announcements: [
+                            {
+                                id: "ann1",
+                                content: "Welcome to the course!",
+                                createdAt: Date.now(),
+                                updatedAt: Date.now(),
+                            },
+                        ],
+                    }),
+            );
+        });
     });
 });

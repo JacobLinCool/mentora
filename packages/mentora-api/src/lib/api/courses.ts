@@ -445,6 +445,84 @@ export async function removeMember(
 }
 
 /**
+ * Copy a course
+ *
+ * Delegated to backend to handle deep copying of all resources.
+ */
+export async function copyCourse(
+	config: MentoraAPIConfig,
+	courseId: string,
+	options: {
+		title?: string;
+		includeContent?: boolean; // topics, assignments
+		includeRoster?: boolean; // instructors, TAs (not students)
+		isDemo?: boolean;
+	}
+): Promise<APIResult<string>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const token = await currentUser.getIdToken();
+
+		const response = await fetch(`${config.backendBaseUrl}/api/courses/${courseId}/copy`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(options)
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({ message: 'Failed to copy course' }));
+			throw new Error(error.message || `Failed to copy course: ${response.status}`);
+		}
+
+		const data = await response.json();
+		return data.id;
+	});
+}
+
+/**
+ * Create an announcement
+ *
+ * Appends to the announcements array in the course document.
+ */
+export async function createAnnouncement(
+	config: MentoraAPIConfig,
+	courseId: string,
+	content: string
+): Promise<APIResult<import('mentora-firebase').CourseAnnouncement>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Courses.docPath(courseId));
+		const { arrayUnion, Timestamp } = await import('firebase/firestore');
+
+		const now = Timestamp.now();
+		const announcement = {
+			id: crypto.randomUUID(),
+			content,
+			createdAt: now.toMillis(),
+			updatedAt: now.toMillis()
+		};
+
+		await updateDoc(docRef, {
+			announcements: arrayUnion(announcement),
+			updatedAt: now.toMillis()
+		});
+
+		return announcement;
+	});
+}
+
+/**
  * Course wallet stats result
  */
 export interface CourseWalletStatsResult {
