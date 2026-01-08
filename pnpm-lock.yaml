@@ -107,9 +107,6 @@ importers:
       firebase:
         specifier: ^12.7.0
         version: 12.7.0
-      firebase-admin:
-        specifier: ^13.6.0
-        version: 13.6.0(encoding@0.1.13)
       firebase-rest-firestore:
         specifier: ^1.5.0
         version: 1.5.0
