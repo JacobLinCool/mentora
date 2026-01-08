@@ -17,34 +17,37 @@
 	];
 </script>
 
-<div class="app">
-	<nav class="sidebar">
-		<div class="logo">
-			<span class="logo-icon">🎓</span>
-			<span class="logo-text">Mentora API</span>
+<div class="flex min-h-screen">
+	<nav class="w-60 bg-slate-800 border-r border-slate-700 flex flex-col fixed h-screen">
+		<div class="p-6 flex items-center gap-3 border-b border-slate-700">
+			<span class="text-2xl">🎓</span>
+			<span class="text-xl font-semibold text-slate-50">Mentora API</span>
 		</div>
 
-		<ul class="nav-list">
+		<ul class="list-none py-4 m-0 flex-1">
 			{#each navItems as item (item.href)}
 				<li>
-					<a href={resolve(item.href)} class="nav-item">
-						<span class="nav-icon">{item.icon}</span>
-						<span class="nav-label">{item.label}</span>
+					<a
+						href={resolve(item.href)}
+						class="flex items-center gap-3 px-6 py-3 text-slate-400 no-underline transition-all duration-150 hover:bg-slate-700 hover:text-slate-50"
+					>
+						<span class="text-xl">{item.icon}</span>
+						<span class="text-[0.95rem]">{item.label}</span>
 					</a>
 				</li>
 			{/each}
 		</ul>
 
-		<div class="nav-footer">
-			<div class="version">v0.0.1</div>
+		<div class="px-6 py-4 border-t border-slate-700">
+			<div class="text-xs text-slate-500">v0.0.1</div>
 		</div>
 	</nav>
 
-	<div class="main-area">
-		<header class="top-bar">
+	<div class="flex-1 ml-60 flex flex-col">
+		<header class="px-8 py-4 border-b border-slate-700 bg-slate-900 sticky top-0 z-10">
 			<AuthBar />
 		</header>
-		<main class="content">
+		<main class="flex-1 p-8 min-h-[calc(100vh-60px)]">
 			{@render children()}
 		</main>
 	</div>
@@ -52,109 +55,11 @@
 
 <style>
 	:global(body) {
-		margin: 0;
-		padding: 0;
+		@apply m-0 p-0 bg-slate-900 text-slate-200;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-		background: #0f172a;
-		color: #e2e8f0;
 	}
 
 	:global(*) {
 		box-sizing: border-box;
-	}
-
-	.app {
-		display: flex;
-		min-height: 100vh;
-	}
-
-	.sidebar {
-		width: 240px;
-		background: #1e293b;
-		border-right: 1px solid #334155;
-		display: flex;
-		flex-direction: column;
-		position: fixed;
-		height: 100vh;
-	}
-
-	.logo {
-		padding: 1.5rem;
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		border-bottom: 1px solid #334155;
-	}
-
-	.logo-icon {
-		font-size: 1.5rem;
-	}
-
-	.logo-text {
-		font-size: 1.25rem;
-		font-weight: 600;
-		color: #f8fafc;
-	}
-
-	.nav-list {
-		list-style: none;
-		padding: 1rem 0;
-		margin: 0;
-		flex: 1;
-	}
-
-	.nav-item {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1.5rem;
-		color: #94a3b8;
-		text-decoration: none;
-		transition: all 0.15s ease;
-	}
-
-	.nav-item:hover {
-		background: #334155;
-		color: #f8fafc;
-	}
-
-	.nav-icon {
-		font-size: 1.25rem;
-	}
-
-	.nav-label {
-		font-size: 0.95rem;
-	}
-
-	.nav-footer {
-		padding: 1rem 1.5rem;
-		border-top: 1px solid #334155;
-	}
-
-	.version {
-		font-size: 0.75rem;
-		color: #64748b;
-	}
-
-	.content {
-		flex: 1;
-		padding: 2rem;
-		min-height: calc(100vh - 60px);
-	}
-
-	.main-area {
-		flex: 1;
-		margin-left: 240px;
-		display: flex;
-		flex-direction: column;
-	}
-
-	.top-bar {
-		padding: 1rem 2rem;
-		border-bottom: 1px solid #334155;
-		background: #0f172a;
-		position: sticky;
-		top: 0;
-		z-index: 10;
 	}
 </style>
