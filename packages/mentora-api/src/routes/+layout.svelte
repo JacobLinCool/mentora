@@ -52,14 +52,3 @@
 		</main>
 	</div>
 </div>
-
-<style>
-	:global(body) {
-		@apply m-0 p-0 bg-slate-900 text-slate-200;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-	}
-
-	:global(*) {
-		box-sizing: border-box;
-	}
-</style>
