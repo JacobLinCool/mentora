@@ -7,6 +7,11 @@ import type { RequestHandler } from "./$types";
 
 /**
  * Add credits to current user's wallet
+ *
+ * Uses a Firestore transaction to prevent race conditions:
+ * - Atomic wallet creation if not exists
+ * - Atomic balance update
+ * - Idempotency check within transaction
  */
 export const POST: RequestHandler = async (event) => {
     const user = await requireAuth(event);
@@ -23,96 +28,109 @@ export const POST: RequestHandler = async (event) => {
         throw error(400, "Amount must be a positive number");
     }
 
-    // Find user's wallet
-    const walletsSnapshot = await firestore
-        .collection(Wallets.collectionPath())
-        .where("ownerId", "==", user.uid)
-        .where("ownerType", "==", "user")
-        .limit(1)
-        .get();
+    // Use deterministic wallet ID based on user UID to prevent duplicate wallets
+    const walletId = `wallet_${user.uid}`;
+    const walletRef = firestore.doc(Wallets.docPath(walletId));
 
-    let walletId: string = "";
-    let currentBalance: number = 0;
-
-    if (walletsSnapshot.empty) {
-        // Create a new wallet
-        walletId = `wallet_${user.uid}`;
-        currentBalance = 0;
+    // Run transaction for atomic read-modify-write
+    const result = await firestore.runTransaction(async (transaction) => {
         const now = Date.now();
 
-        await firestore.doc(Wallets.docPath(walletId)).set({
-            ownerType: "user",
-            ownerId: user.uid,
-            balanceCredits: 0,
+        // 1. Get or create wallet atomically
+        const walletDoc = await transaction.get(walletRef);
+        let currentBalance = 0;
+
+        if (!walletDoc.exists) {
+            // Create wallet within transaction
+            transaction.set(walletRef, {
+                ownerType: "user",
+                ownerId: user.uid,
+                balanceCredits: 0,
+                createdAt: now,
+                updatedAt: now,
+            });
+            currentBalance = 0;
+        } else {
+            const walletData = Wallets.schema.parse(walletDoc.data());
+            currentBalance = walletData.balanceCredits;
+        }
+
+        // 2. Check idempotency within transaction
+        if (idempotencyKey) {
+            const entriesCollection = firestore.collection(
+                Wallets.entries.collectionPath(walletId),
+            );
+            const existingEntries = await entriesCollection
+                .where("idempotencyKey", "==", idempotencyKey)
+                .limit(1)
+                .get();
+
+            if (!existingEntries.empty) {
+                const entryData = existingEntries.docs[0].data();
+                const entry = Wallets.entries.schema.parse(entryData);
+                // Return early - idempotent request
+                return {
+                    isIdempotent: true,
+                    message: "Credit already applied (idempotent)",
+                    entry,
+                    newBalance: currentBalance,
+                };
+            }
+        }
+
+        // 3. Create ledger entry
+        const entryRef = firestore
+            .collection(Wallets.entries.collectionPath(walletId))
+            .doc();
+        const entryId = entryRef.id;
+
+        const entry: LedgerEntry = {
+            type: "topup",
+            amountCredits: amount,
+            idempotencyKey: idempotencyKey || null,
+            scope: {
+                courseId: null,
+                topicId: null,
+                assignmentId: null,
+                conversationId: null,
+            },
+            provider: {
+                name: paymentMethodId ? "stripe" : "manual",
+                ref: paymentMethodId || null,
+            },
+            metadata: null,
+            createdBy: user.uid,
             createdAt: now,
+        };
+
+        const validatedEntry = Wallets.entries.schema.parse(entry);
+
+        // 4. Update wallet balance atomically
+        const newBalance = currentBalance + amount;
+
+        transaction.update(walletRef, {
+            balanceCredits: newBalance,
             updatedAt: now,
         });
-    } else {
-        const walletDoc = walletsSnapshot.docs[0];
-        walletId = walletDoc?.id || `wallet_${user.uid}`;
-        const walletData = walletDoc?.data();
-        currentBalance = (walletData?.balanceCredits as number) || 0;
-    }
 
-    // Check idempotency
-    if (idempotencyKey) {
-        const existingEntry = await firestore
-            .collection(Wallets.entries.collectionPath(walletId))
-            .where("idempotencyKey", "==", idempotencyKey)
-            .limit(1)
-            .get();
+        // 5. Save ledger entry
+        transaction.set(entryRef, validatedEntry);
 
-        if (!existingEntry.empty) {
-            const entryData = existingEntry.docs[0].data();
-            const entry = Wallets.entries.schema.parse(entryData);
-
-            const result = {
-                message: "Credit already applied (idempotent)",
-                entry,
-                newBalance: currentBalance,
-            };
-            return json(result);
-        }
-    }
-
-    const now = Date.now();
-    const entryRef = firestore
-        .collection(Wallets.entries.collectionPath(walletId))
-        .doc();
-    const entryId = entryRef.id;
-
-    // Create ledger entry
-    const entry: LedgerEntry = {
-        type: "topup",
-        amountCredits: amount,
-        idempotencyKey: idempotencyKey || null,
-        scope: {
-            courseId: null,
-            topicId: null,
-            assignmentId: null,
-            conversationId: null,
-        },
-        provider: {
-            name: paymentMethodId ? "stripe" : "manual",
-            ref: paymentMethodId || null,
-        },
-        metadata: null,
-        createdBy: user.uid,
-        createdAt: now,
-    };
-
-    const validatedEntry = Wallets.entries.schema.parse(entry);
-
-    // Update wallet balance
-    const newBalance = currentBalance + amount;
-
-    await firestore.doc(Wallets.docPath(walletId)).update({
-        balanceCredits: newBalance,
-        updatedAt: now,
+        return {
+            isIdempotent: false,
+            id: entryId,
+            newBalance,
+        };
     });
 
-    // Save ledger entry
-    await entryRef.set(validatedEntry);
+    // Return appropriate response based on transaction result
+    if (result.isIdempotent) {
+        return json({
+            message: result.message,
+            entry: result.entry,
+            newBalance: result.newBalance,
+        });
+    }
 
-    return json({ id: entryId });
+    return json({ id: result.id });
 };

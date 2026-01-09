@@ -53,8 +53,10 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         if (existingMembership.exists) {
-            const membershipData = existingMembership.data();
-            if (membershipData?.status === "active") {
+            const membershipData = Courses.roster.schema.parse(
+                existingMembership.data(),
+            );
+            if (membershipData.status === "active") {
                 const result = {
                     courseId,
                     joined: false,

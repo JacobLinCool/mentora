@@ -28,7 +28,7 @@ export const POST: RequestHandler = async (event) => {
         throw error(404, "Source course not found");
     }
 
-    const sourceCourse = sourceDoc.data() as CourseDoc;
+    const sourceCourse = Courses.schema.parse(sourceDoc.data());
 
     // Permission Check (Must be owner or instructor)
     if (sourceCourse.ownerId !== user.uid) {
@@ -38,7 +38,9 @@ export const POST: RequestHandler = async (event) => {
             .get();
         if (
             !memberDoc.exists ||
-            !["instructor"].includes(memberDoc.data()?.role)
+            !["instructor"].includes(
+                Courses.roster.schema.parse(memberDoc.data()).role,
+            )
         ) {
             throw error(403, "Not authorized to copy this course");
         }
@@ -94,7 +96,7 @@ export const POST: RequestHandler = async (event) => {
             const promises: Promise<unknown>[] = [];
 
             for (const doc of rosterQuery.docs) {
-                const member = doc.data() as CourseMembership;
+                const member = Courses.roster.schema.parse(doc.data());
                 if (member.userId === user.uid) continue; // Already added
 
                 const newMemberRef = firestore.doc(
@@ -125,7 +127,7 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         for (const topicDoc of topicsSnapshot.docs) {
-            const oldTopic = topicDoc.data() as Topic;
+            const oldTopic = Topics.schema.parse(topicDoc.data());
             const newTopicRef = firestore
                 .collection(Topics.collectionPath())
                 .doc();
@@ -152,7 +154,9 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         for (const assignmentDoc of assignmentsSnapshot.docs) {
-            const oldAssignment = assignmentDoc.data() as Assignment;
+            const oldAssignment = Assignments.schema.parse(
+                assignmentDoc.data(),
+            );
             const newAssignmentRef = firestore
                 .collection(Assignments.collectionPath())
                 .doc();

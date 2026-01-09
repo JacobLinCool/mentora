@@ -11,6 +11,9 @@ import type { RequestHandler } from "./$types";
 
 /**
  * Create a new conversation (or return existing)
+ *
+ * Uses a deterministic document ID based on userId and assignmentId
+ * to prevent duplicate conversations from concurrent requests.
  */
 export const POST: RequestHandler = async (event) => {
     const user = await requireAuth(event);
@@ -37,28 +40,30 @@ export const POST: RequestHandler = async (event) => {
         const membershipDoc = await firestore
             .doc(Courses.roster.docPath(assignment.courseId, user.uid))
             .get();
-        if (
-            !membershipDoc.exists ||
-            membershipDoc.data()?.status !== "active"
-        ) {
+        if (!membershipDoc.exists) {
+            throw error(403, "Not enrolled in this course");
+        }
+        const membership = Courses.roster.schema.parse(membershipDoc.data());
+        if (membership.status !== "active") {
             throw error(403, "Not enrolled in this course");
         }
     }
 
-    // 4. Check existing
-    const existingQuery = await firestore
-        .collection(Conversations.collectionPath())
-        .where("assignmentId", "==", assignmentId)
-        .where("userId", "==", user.uid)
-        .limit(1)
-        .get();
+    // 4. Use deterministic document ID to prevent duplicates
+    // This ensures that concurrent requests will naturally deduplicate
+    const conversationId = `${user.uid}_${assignmentId}`;
+    const conversationRef = firestore.doc(
+        Conversations.docPath(conversationId),
+    );
 
-    if (!existingQuery.empty) {
-        const existingConv = existingQuery.docs[0];
-        const data = existingConv.data()!;
+    // 5. Check existing conversation
+    const existingDoc = await conversationRef.get();
+
+    if (existingDoc.exists) {
+        const data = Conversations.schema.parse(existingDoc.data());
         if (data.state !== "closed" || assignment.allowResubmit) {
             return json({
-                id: existingConv.id,
+                id: conversationId,
             });
         } else {
             throw error(
@@ -68,12 +73,9 @@ export const POST: RequestHandler = async (event) => {
         }
     }
 
-    // 5. Create new
+    // 6. Create new conversation with deterministic ID
+    // Using set() with the deterministic ID naturally handles race conditions
     const now = Date.now();
-    const conversationRef = firestore
-        .collection(Conversations.collectionPath())
-        .doc();
-    const conversationId = conversationRef.id;
 
     const conversation: Conversation = {
         assignmentId,
@@ -86,6 +88,9 @@ export const POST: RequestHandler = async (event) => {
     };
 
     const validated = Conversations.schema.parse(conversation);
+
+    // Use set() which will either create or overwrite
+    // In a race, both requests write the same data, so it's safe
     await conversationRef.set(validated);
 
     return json({
