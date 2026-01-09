@@ -8,9 +8,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(ownerId) {
-      return isSignedIn() && request.auth.uid == ownerId;
-    }
+
 
     // Membership checks (active users should have roster doc id == uid)
     function isCourseMember(courseId) {
@@ -31,9 +29,7 @@ service cloud.firestore {
       return hasRole(courseId, "ta");
     }
 
-    function isStudent(courseId) {
-      return hasRole(courseId, "student");
-    }
+
 
     function isInstructorOfCourse(courseId) {
       // hasRole already checks isCourseMember internally
@@ -47,9 +43,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/courses/$(courseId)).data.ownerId == request.auth.uid;
     }
 
-    function courseDoc(courseId) {
-      return get(/databases/$(database)/documents/courses/$(courseId));
-    }
+
 
     function isPublicCourse(courseId) {
       return exists(/databases/$(database)/documents/courses/$(courseId)) &&
@@ -68,9 +62,7 @@ service cloud.firestore {
       return resource == null || resource.data == null;
     }
 
-    function isPublicCourseResource() {
-      return resource != null && resource.data != null && 'visibility' in resource.data && resource.data.visibility == "public";
-    }
+
 
     function isValidUserProfile(data) {
       return data.uid is string && data.uid.size() <= 128 &&
@@ -138,12 +130,7 @@ service cloud.firestore {
              data.createdAt is number && data.updatedAt is number;
     }
 
-    function isValidWallet(data) {
-      return data.ownerType in ["user", "host"] &&
-             data.ownerId is string && data.ownerId.size() <= 128 &&
-             data.balanceCredits is number && data.balanceCredits >= 0 &&
-             data.createdAt is number && data.updatedAt is number;
-    }
+
 
     function isValidSubmission(data) {
       return data.userId is string && data.userId.size() <= 128 &&
