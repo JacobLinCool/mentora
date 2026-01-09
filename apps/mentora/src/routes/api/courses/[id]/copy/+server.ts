@@ -2,9 +2,13 @@ import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { error, json } from "@sveltejs/kit";
 import {
+    Assignments,
     Courses,
+    Topics,
+    type Assignment,
     type CourseDoc,
     type CourseMembership,
+    type Topic,
 } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
@@ -109,15 +113,91 @@ export const POST: RequestHandler = async (event) => {
         }
     }
 
-    // 6. Copy Content (Topics & Assignments) - MOCK / PLACEHOLDER
-    // Copying subcollections (topics) and separate collections (assignments) is complex
-    // and might time out in a single request if too large.
-    // For MVP, if includeContent is true, we might just log it or handle basic topics.
+    // Copy Content (Topics & Assignments)
     if (includeContent) {
-        // TODO: Implement deep copy of topics and assignments using batched writes or background trigger.
-        console.log(
-            `[COPY] Content copy requested for course ${sourceCourseId} to ${newCourseId}`,
-        );
+        const batch = firestore.batch();
+        let batchCount = 0;
+        const MAX_BATCH_SIZE = 500;
+
+        // Copy Topics
+        const topicsSnapshot = await firestore
+            .collection(Topics.collectionPath())
+            .where("courseId", "==", sourceCourseId)
+            .get();
+
+        const topicIdMap = new Map<string, string>(); // old ID -> new ID
+
+        for (const topicDoc of topicsSnapshot.docs) {
+            const oldTopic = topicDoc.data() as Topic;
+            const newTopicRef = firestore
+                .collection(Topics.collectionPath())
+                .doc();
+            const newTopicId = newTopicRef.id;
+
+            topicIdMap.set(oldTopic.id, newTopicId);
+
+            const newTopic: Topic = {
+                ...oldTopic,
+                id: newTopicId,
+                courseId: newCourseId,
+                createdBy: user.uid,
+                createdAt: now,
+                updatedAt: now,
+            };
+
+            batch.set(newTopicRef, Topics.schema.parse(newTopic));
+            batchCount++;
+
+            if (batchCount >= MAX_BATCH_SIZE) {
+                await batch.commit();
+                batchCount = 0;
+            }
+        }
+
+        // Copy Assignments
+        const assignmentsSnapshot = await firestore
+            .collection(Assignments.collectionPath())
+            .where("courseId", "==", sourceCourseId)
+            .get();
+
+        for (const assignmentDoc of assignmentsSnapshot.docs) {
+            const oldAssignment = assignmentDoc.data() as Assignment;
+            const newAssignmentRef = firestore
+                .collection(Assignments.collectionPath())
+                .doc();
+            const newAssignmentId = newAssignmentRef.id;
+
+            // Map old topic ID to new topic ID
+            const newTopicId = oldAssignment.topicId
+                ? topicIdMap.get(oldAssignment.topicId) || null
+                : null;
+
+            const newAssignment: Assignment = {
+                ...oldAssignment,
+                id: newAssignmentId,
+                courseId: newCourseId,
+                topicId: newTopicId,
+                createdBy: user.uid,
+                createdAt: now,
+                updatedAt: now,
+            };
+
+            batch.set(
+                newAssignmentRef,
+                Assignments.schema.parse(newAssignment),
+            );
+            batchCount++;
+
+            if (batchCount >= MAX_BATCH_SIZE) {
+                await batch.commit();
+                batchCount = 0;
+            }
+        }
+
+        // Commit remaining batch
+        if (batchCount > 0) {
+            await batch.commit();
+        }
     }
 
     return json({ id: newCourseId });

@@ -15,13 +15,19 @@ import {
 	type Auth,
 	type User
 } from 'firebase/auth';
+import {
+	PUBLIC_FIREBASE_API_KEY,
+	PUBLIC_FIREBASE_APP_ID,
+	PUBLIC_FIREBASE_AUTH_DOMAIN,
+	PUBLIC_FIREBASE_PROJECT_ID
+} from '$env/static/public';
 
-// Use Mentora's public Firebase config (these are not secrets)
+// Firebase config from environment variables
 const firebaseConfig = {
-	apiKey: 'AIzaSyCMXQsEdCKChh-D_tfxWz6RBXzlO8q04ew',
-	authDomain: 'mentora-apps.firebaseapp.com',
-	projectId: 'mentora-apps',
-	appId: '1:37581253555:web:bf735299c38e3e21b079c6'
+	apiKey: PUBLIC_FIREBASE_API_KEY,
+	authDomain: PUBLIC_FIREBASE_AUTH_DOMAIN,
+	projectId: PUBLIC_FIREBASE_PROJECT_ID,
+	appId: PUBLIC_FIREBASE_APP_ID
 };
 
 let app: FirebaseApp | null = null;
