@@ -13,7 +13,9 @@ import {
 	onSnapshot,
 	query,
 	where,
-	limit
+	limit,
+	QueryConstraint,
+	orderBy
 } from 'firebase/firestore';
 import { Conversations, type Conversation as ConversationDoc } from 'mentora-firebase';
 
@@ -21,7 +23,52 @@ export type Conversation = ConversationDoc & { id: string };
 
 import { callBackend } from './backend.js';
 import type { ReactiveState } from './state.svelte';
-import { failure, tryCatch, type APIResult, type MentoraAPIConfig } from './types.js';
+import {
+	failure,
+	tryCatch,
+	type APIResult,
+	type MentoraAPIConfig,
+	type QueryOptions
+} from './types.js';
+
+/**
+ * List my conversations
+ */
+export async function listMyConversations(
+	config: MentoraAPIConfig,
+	options?: QueryOptions
+): Promise<APIResult<Conversation[]>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const constraints: QueryConstraint[] = [
+			where('userId', '==', currentUser.uid),
+			orderBy('lastActionAt', 'desc')
+		];
+
+		if (options?.limit) {
+			constraints.push(limit(options.limit));
+		}
+
+		if (options?.where) {
+			// Allow filtering by assignmentId, etc.
+			for (const w of options.where) {
+				constraints.push(where(w.field, w.op, w.value));
+			}
+		}
+
+		const q = query(collection(config.db, Conversations.collectionPath()), ...constraints);
+		const snapshot = await getDocs(q);
+
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Conversations.schema.parse(doc.data())
+		}));
+	});
+}
 
 /**
  * Get a conversation by ID

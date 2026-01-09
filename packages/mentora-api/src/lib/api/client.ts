@@ -289,6 +289,8 @@ export class MentoraClient {
 			this.authReadyThen(() =>
 				ConversationsModule.getAssignmentConversation(this._config, assignmentId, userId)
 			),
+		listMine: (options?: QueryOptions): Promise<APIResult<ConversationsModule.Conversation[]>> =>
+			this.authReadyThen(() => ConversationsModule.listMyConversations(this._config, options)),
 		create: (assignmentId: string): Promise<APIResult<{ id: string }>> =>
 			this.authReadyThen(() => ConversationsModule.createConversation(this._config, assignmentId)),
 		end: (conversationId: string): Promise<APIResult<void>> =>
