@@ -41,7 +41,6 @@ export const POST: RequestHandler = async (event) => {
         const now = Date.now();
 
         await firestore.doc(Wallets.docPath(walletId)).set({
-            id: walletId,
             ownerType: "user",
             ownerId: user.uid,
             balanceCredits: 0,
