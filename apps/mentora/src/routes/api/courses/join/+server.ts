@@ -45,10 +45,7 @@ export const POST: RequestHandler = async (event) => {
         const courseData = courseDoc.data();
 
         // Validate course document
-        Courses.schema.parse({
-            id: courseId,
-            ...courseData,
-        });
+        Courses.schema.parse(courseData);
 
         // Check if user is already a member
         const existingMembership = await firestore
