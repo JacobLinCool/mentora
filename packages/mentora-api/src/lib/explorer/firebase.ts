@@ -15,20 +15,30 @@ import {
 	type Auth,
 	type User
 } from 'firebase/auth';
-import {
-	PUBLIC_FIREBASE_API_KEY,
-	PUBLIC_FIREBASE_APP_ID,
-	PUBLIC_FIREBASE_AUTH_DOMAIN,
-	PUBLIC_FIREBASE_PROJECT_ID
-} from '$env/static/public';
+import { browser } from '$app/environment';
 
-// Firebase config from environment variables
-const firebaseConfig = {
-	apiKey: PUBLIC_FIREBASE_API_KEY,
-	authDomain: PUBLIC_FIREBASE_AUTH_DOMAIN,
-	projectId: PUBLIC_FIREBASE_PROJECT_ID,
-	appId: PUBLIC_FIREBASE_APP_ID
-};
+/**
+ * Get Firebase config from environment variables (client-side only)
+ * These are public client-side keys (not secrets)
+ */
+function getFirebaseConfig() {
+	if (!browser) {
+		return {
+			apiKey: '',
+			authDomain: '',
+			projectId: '',
+			appId: ''
+		};
+	}
+
+	// Access env vars only on client side
+	return {
+		apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY || 'AIzaSyCMXQsEdCKChh-D_tfxWz6RBXzlO8q04ew',
+		authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN || 'mentora-apps.firebaseapp.com',
+		projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || 'mentora-apps',
+		appId: import.meta.env.PUBLIC_FIREBASE_APP_ID || '1:37581253555:web:bf735299c38e3e21b079c6'
+	};
+}
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
@@ -40,7 +50,7 @@ function initFirebase(): Auth {
 	if (auth) return auth;
 
 	const existingApps = getApps();
-	app = existingApps.length > 0 ? existingApps[0] : initializeApp(firebaseConfig);
+	app = existingApps.length > 0 ? existingApps[0] : initializeApp(getFirebaseConfig());
 	auth = getAuth(app);
 
 	return auth;
