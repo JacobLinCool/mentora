@@ -115,17 +115,14 @@ export const POST: RequestHandler = async (event) => {
 
     // Copy Content (Topics & Assignments)
     if (includeContent) {
-        const batch = firestore.batch();
-        let batchCount = 0;
-        const MAX_BATCH_SIZE = 500;
+        const topicIdMap = new Map<string, string>(); // old ID -> new ID
+        const writePromises: Promise<unknown>[] = [];
 
         // Copy Topics
         const topicsSnapshot = await firestore
             .collection(Topics.collectionPath())
             .where("courseId", "==", sourceCourseId)
             .get();
-
-        const topicIdMap = new Map<string, string>(); // old ID -> new ID
 
         for (const topicDoc of topicsSnapshot.docs) {
             const oldTopic = topicDoc.data() as Topic;
@@ -145,13 +142,7 @@ export const POST: RequestHandler = async (event) => {
                 updatedAt: now,
             };
 
-            batch.set(newTopicRef, Topics.schema.parse(newTopic));
-            batchCount++;
-
-            if (batchCount >= MAX_BATCH_SIZE) {
-                await batch.commit();
-                batchCount = 0;
-            }
+            writePromises.push(newTopicRef.set(Topics.schema.parse(newTopic)));
         }
 
         // Copy Assignments
@@ -182,22 +173,13 @@ export const POST: RequestHandler = async (event) => {
                 updatedAt: now,
             };
 
-            batch.set(
-                newAssignmentRef,
-                Assignments.schema.parse(newAssignment),
+            writePromises.push(
+                newAssignmentRef.set(Assignments.schema.parse(newAssignment)),
             );
-            batchCount++;
-
-            if (batchCount >= MAX_BATCH_SIZE) {
-                await batch.commit();
-                batchCount = 0;
-            }
         }
 
-        // Commit remaining batch
-        if (batchCount > 0) {
-            await batch.commit();
-        }
+        // Execute all writes in parallel
+        await Promise.all(writePromises);
     }
 
     return json({ id: newCourseId });
