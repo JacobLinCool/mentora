@@ -1,6 +1,10 @@
 /**
- * Backend API client
+ * Backend API Client
+ *
+ * Provides a clean interface for calling backend endpoints (Delegated Access).
+ * All operations that require server-side processing go through this module.
  */
+
 import { failure, success, type APIResult, type MentoraAPIConfig } from './types.js';
 
 /**
@@ -32,22 +36,13 @@ export async function callBackend<T>(
 			return failure(error || `HTTP ${response.status}`);
 		}
 
+		if (response.status === 204) {
+			return success(undefined as T);
+		}
+
 		const data = await response.json();
 		return success(data);
 	} catch (error) {
 		return failure(error instanceof Error ? error.message : 'Network error');
 	}
-}
-
-/**
- * Join course by code (backend endpoint)
- */
-export async function joinCourseByCode(
-	config: MentoraAPIConfig,
-	code: string
-): Promise<APIResult<string>> {
-	return callBackend<string>(config, '/courses/join', {
-		method: 'POST',
-		body: JSON.stringify({ code })
-	});
 }

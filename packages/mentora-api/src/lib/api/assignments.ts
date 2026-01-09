@@ -3,6 +3,7 @@
  */
 import {
 	collection,
+	deleteDoc,
 	doc,
 	getDoc,
 	getDocs,
@@ -10,6 +11,7 @@ import {
 	orderBy,
 	query,
 	setDoc,
+	updateDoc,
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
@@ -116,8 +118,50 @@ export async function createAssignment(
 			updatedAt: now
 		};
 
+		// Validate against schema before sending
+		Assignments.schema.parse(assignmentData);
+
 		await setDoc(docRef, assignmentData);
 
 		return docRef.id;
+	});
+}
+
+/**
+ * Update an assignment
+ */
+export async function updateAssignment(
+	config: MentoraAPIConfig,
+	assignmentId: string,
+	updates: Partial<Omit<Assignment, 'id' | 'createdBy' | 'createdAt'>>
+): Promise<APIResult<Assignment>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Assignments.docPath(assignmentId));
+
+		await updateDoc(docRef, {
+			...updates,
+			updatedAt: Date.now()
+		});
+
+		// Return updated assignment
+		const snapshot = await getDoc(docRef);
+		if (!snapshot.exists()) {
+			throw new Error('Assignment not found');
+		}
+
+		return Assignments.schema.parse(snapshot.data());
+	});
+}
+
+/**
+ * Delete an assignment
+ */
+export async function deleteAssignment(
+	config: MentoraAPIConfig,
+	assignmentId: string
+): Promise<APIResult<void>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Assignments.docPath(assignmentId));
+		await deleteDoc(docRef);
 	});
 }

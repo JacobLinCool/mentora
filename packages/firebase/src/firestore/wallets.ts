@@ -9,11 +9,6 @@ export type WalletOwnerType = z.infer<typeof zWalletOwnerType>;
 
 export const zWallet = z
     .object({
-        id: z
-            .string()
-            .min(6)
-            .max(128)
-            .describe("Unique identifier for the wallet."),
         ownerType: zWalletOwnerType.describe("The type of wallet owner."),
         ownerId: z
             .string()
@@ -45,11 +40,6 @@ export type LedgerEntryType = z.infer<typeof zLedgerEntryType>;
 
 export const zLedgerEntry = z
     .object({
-        id: z
-            .string()
-            .min(6)
-            .max(128)
-            .describe("Unique identifier for the ledger entry."),
         type: zLedgerEntryType.describe("Accounting event type."),
         amountCredits: z
             .number()

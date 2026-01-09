@@ -2,7 +2,11 @@
  * Submissions commands
  */
 import { Command } from "commander";
-import type { MentoraCLIClient } from "../client.js";
+import type {
+    MentoraCLIClient,
+    QueryOptions,
+    WhereFilterOp,
+} from "../client.js";
 import {
     error,
     formatTimestamp,
@@ -22,24 +26,48 @@ export function createSubmissionsCommand(
         .command("list")
         .description("List submissions for an assignment")
         .argument("<assignmentId>", "Assignment ID")
+        .option(
+            "--status <status>",
+            "Filter by status (in_progress/submitted/graded_complete)",
+        )
         .option("-l, --limit <n>", "Limit number of results", parseInt)
-        .action(async (assignmentId: string, options: { limit?: number }) => {
-            const client = await getClient();
-            const result = await client.submissions.listForAssignment(
-                assignmentId,
-                { limit: options.limit },
-            );
-            if (result.success) {
-                outputList(
-                    result.data,
-                    (submission) =>
-                        `${submission.userId} - ${submission.state} - Started: ${formatTimestamp(submission.startedAt)}`,
+        .action(
+            async (
+                assignmentId: string,
+                options: { status?: string; limit?: number },
+            ) => {
+                const client = await getClient();
+                const queryOptions: QueryOptions = {};
+
+                if (options.limit) {
+                    queryOptions.limit = options.limit;
+                }
+                if (options.status) {
+                    queryOptions.where = [
+                        {
+                            field: "state",
+                            op: "==" as WhereFilterOp,
+                            value: options.status,
+                        },
+                    ];
+                }
+
+                const result = await client.submissions.listForAssignment(
+                    assignmentId,
+                    queryOptions,
                 );
-            } else {
-                error(result.error);
-                process.exit(1);
-            }
-        });
+                if (result.success) {
+                    outputList(
+                        result.data,
+                        (submission) =>
+                            `${submission.userId} - ${submission.state} - Started: ${formatTimestamp(submission.startedAt)} [${submission.id}]`,
+                    );
+                } else {
+                    error(result.error, result.code);
+                    process.exit(1);
+                }
+            },
+        );
 
     submissions
         .command("get")
@@ -48,19 +76,60 @@ export function createSubmissionsCommand(
         .argument("[userId]", "User ID (defaults to your own submission)")
         .action(async (assignmentId: string, userId?: string) => {
             const client = await getClient();
-            let result;
-            if (userId) {
-                result = await client.submissions.get(assignmentId, userId);
-            } else {
-                result = await client.submissions.getMine(assignmentId);
-            }
+            const result = userId
+                ? await client.submissions.get(assignmentId, userId)
+                : await client.submissions.getMine(assignmentId);
+
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
+
+    submissions
+        .command("grade")
+        .description("Grade a submission (instructor only)")
+        .argument("<assignmentId>", "Assignment ID")
+        .argument("<userId>", "User ID of the submission")
+        .option("--score <score>", "Completion score (0-100)", parseFloat)
+        .option("--notes <notes>", "Feedback notes")
+        .option("--complete", "Mark as graded complete")
+        .action(
+            async (
+                assignmentId: string,
+                userId: string,
+                options: { score?: number; notes?: string; complete?: boolean },
+            ) => {
+                const client = await getClient();
+                const updates: Record<string, unknown> = {};
+                if (options.score !== undefined)
+                    updates.scoreCompletion = options.score;
+                if (options.notes) updates.notes = options.notes;
+                if (options.complete) updates.state = "graded_complete";
+
+                if (Object.keys(updates).length === 0) {
+                    error(
+                        "No updates provided. Use --score, --notes, or --complete",
+                    );
+                    process.exit(1);
+                }
+
+                const result = await client.submissions.grade(
+                    assignmentId,
+                    userId,
+                    updates,
+                );
+                if (result.success) {
+                    success("Submission graded successfully.");
+                    outputData(result.data);
+                } else {
+                    error(result.error, result.code);
+                    process.exit(1);
+                }
+            },
+        );
 
     submissions
         .command("start")
@@ -72,7 +141,7 @@ export function createSubmissionsCommand(
             if (result.success) {
                 success("Submission started.");
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -87,7 +156,7 @@ export function createSubmissionsCommand(
             if (result.success) {
                 success("Assignment submitted.");
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });

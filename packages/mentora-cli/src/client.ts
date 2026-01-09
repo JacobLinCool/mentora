@@ -17,16 +17,20 @@ import { restoreAuthFromStoredData } from "./utils/auth-restore.js";
 
 // Re-export types from mentora-api
 export type {
+    APIErrorCode,
     APIResult,
     Assignment,
     Conversation,
     CourseDoc,
     CourseMembership,
     LedgerEntry,
+    QueryOptions,
     Submission,
+    SubmissionWithId,
     Topic,
     UserProfile,
     Wallet,
+    WhereFilterOp,
 } from "mentora-api";
 
 /**

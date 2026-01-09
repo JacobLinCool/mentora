@@ -3,6 +3,7 @@
  */
 import {
 	collection,
+	deleteDoc,
 	doc,
 	getDoc,
 	getDocs,
@@ -69,10 +70,12 @@ export async function listCourseTopics(
 
 /**
  * Create a new topic
+ *
+ * Automatically calculates order if not provided.
  */
 export async function createTopic(
 	config: MentoraAPIConfig,
-	topic: Omit<Topic, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
+	topic: Omit<Topic, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'> & { order?: number | null }
 ): Promise<APIResult<string>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
@@ -81,14 +84,38 @@ export async function createTopic(
 
 	return tryCatch(async () => {
 		const now = Date.now();
+
+		// Calculate order if not provided
+		let topicOrder = topic.order;
+		if (topicOrder === undefined || topicOrder === null) {
+			const existingTopicsQuery = query(
+				collection(config.db, Topics.collectionPath()),
+				where('courseId', '==', topic.courseId),
+				orderBy('order', 'desc'),
+				limit(1)
+			);
+			const existingTopics = await getDocs(existingTopicsQuery);
+
+			if (existingTopics.empty) {
+				topicOrder = 1;
+			} else {
+				const lastTopic = existingTopics.docs[0].data();
+				topicOrder = ((lastTopic.order as number) || 0) + 1;
+			}
+		}
+
 		const docRef = doc(collection(config.db, Topics.collectionPath()));
 		const topicData: Topic = {
 			...topic,
+			order: topicOrder,
 			id: docRef.id,
 			createdBy: currentUser.uid,
 			createdAt: now,
 			updatedAt: now
 		};
+
+		// Validate schema
+		Topics.schema.parse(topicData);
 
 		await setDoc(docRef, topicData);
 
@@ -131,7 +158,6 @@ export async function deleteTopic(
 	}
 
 	return tryCatch(async () => {
-		const { deleteDoc } = await import('firebase/firestore');
 		const docRef = doc(config.db, Topics.docPath(topicId));
 		await deleteDoc(docRef);
 	});

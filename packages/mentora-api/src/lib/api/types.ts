@@ -5,9 +5,24 @@ import type { Auth, User } from 'firebase/auth';
 import type { Firestore, WhereFilterOp } from 'firebase/firestore';
 
 /**
+ * Standard error codes for API operations
+ */
+export enum APIErrorCode {
+	NOT_AUTHENTICATED = 'NOT_AUTHENTICATED',
+	NOT_FOUND = 'NOT_FOUND',
+	PERMISSION_DENIED = 'PERMISSION_DENIED',
+	ALREADY_EXISTS = 'ALREADY_EXISTS',
+	INVALID_INPUT = 'INVALID_INPUT',
+	NETWORK_ERROR = 'NETWORK_ERROR',
+	UNKNOWN = 'UNKNOWN'
+}
+
+/**
  * Result wrapper for API operations
  */
-export type APIResult<T> = { success: true; data: T } | { success: false; error: string };
+export type APIResult<T> =
+	| { success: true; data: T }
+	| { success: false; error: string; code?: APIErrorCode };
 
 /**
  * Query options for list operations
@@ -16,6 +31,10 @@ export interface QueryOptions {
 	limit?: number;
 	orderBy?: { field: string; direction?: 'asc' | 'desc' };
 	where?: Array<{ field: string; op: WhereFilterOp; value: unknown }>;
+	/** Cursor for pagination - document snapshot or field values to start after */
+	startAfter?: unknown;
+	/** Cursor for pagination - document snapshot or field values to end before */
+	endBefore?: unknown;
 }
 
 /**
@@ -41,10 +60,11 @@ export function success<T>(data: T): APIResult<T> {
 /**
  * Helper to create error result
  */
-export function failure<T>(error: string | Error): APIResult<T> {
+export function failure<T>(error: string | Error, code?: APIErrorCode): APIResult<T> {
 	return {
 		success: false,
-		error: error instanceof Error ? error.message : error
+		error: error instanceof Error ? error.message : error,
+		...(code && { code })
 	};
 }
 

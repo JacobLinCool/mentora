@@ -2,26 +2,42 @@
  * Course management operations
  */
 import {
+	arrayUnion,
 	collection,
 	collectionGroup,
 	doc,
 	getDoc,
 	getDocs,
+	setDoc,
+	updateDoc,
+	deleteDoc,
 	limit,
 	orderBy,
 	query,
-	runTransaction,
+	Timestamp,
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
 import { Courses, type CourseDoc, type CourseMembership } from 'mentora-firebase';
+
+export type Course = CourseDoc & { id: string };
+
 import {
 	failure,
 	tryCatch,
 	type APIResult,
 	type MentoraAPIConfig,
-	type QueryOptions
+	type QueryOptions,
+	success
 } from './types.js';
+import { callBackend } from './backend.js';
+
+export interface JoinCourseResult {
+	courseId: string;
+	joined: boolean;
+	alreadyMember?: boolean;
+	rejoined?: boolean;
+}
 
 /**
  * Get a course by ID
@@ -29,7 +45,7 @@ import {
 export async function getCourse(
 	config: MentoraAPIConfig,
 	courseId: string
-): Promise<APIResult<CourseDoc>> {
+): Promise<APIResult<Course>> {
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Courses.docPath(courseId));
 		const snapshot = await getDoc(docRef);
@@ -38,7 +54,10 @@ export async function getCourse(
 			throw new Error('Course not found');
 		}
 
-		return Courses.schema.parse(snapshot.data());
+		return {
+			id: snapshot.id,
+			...Courses.schema.parse(snapshot.data())
+		};
 	});
 }
 
@@ -48,7 +67,7 @@ export async function getCourse(
 export async function listMyCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');
@@ -67,7 +86,10 @@ export async function listMyCourses(
 		const q = query(collection(config.db, Courses.collectionPath()), ...constraints);
 		const snapshot = await getDocs(q);
 
-		return snapshot.docs.map((doc) => Courses.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Courses.schema.parse(doc.data())
+		}));
 	});
 }
 
@@ -77,7 +99,7 @@ export async function listMyCourses(
 export async function listMyEnrolledCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');
@@ -100,27 +122,64 @@ export async function listMyEnrolledCourses(
 			return parts[1]; // courses/{courseId}/roster/{memberId}
 		});
 
-		// Fetch each course document
-		const courses: CourseDoc[] = [];
-		for (const courseId of courseIds) {
-			const result = await getCourse(config, courseId);
-			if (result.success) {
-				courses.push(result.data);
-			}
-		}
+		// Fetch all courses in parallel
+		const results = await Promise.all(courseIds.map((courseId) => getCourse(config, courseId)));
 
-		return courses;
+		return results
+			.filter((result): result is { success: true; data: Course } => result.success)
+			.map((result) => result.data);
 	});
 }
 
 /**
+ * Course creation options
+ */
+export interface CreateCourseOptions {
+	visibility?: 'public' | 'unlisted' | 'private';
+	description?: string | null;
+	theme?: string | null;
+	isDemo?: boolean;
+	demoPolicy?: { maxFreeCreditsPerUser: number; maxTurnsPerConversation?: number | null } | null;
+}
+
+/**
  * Create a new course
- * Creates both the course document and the owner's roster entry atomically
+ *
+ * Delegated to backend to handle code uniqueness validation securely.
  */
 export async function createCourse(
 	config: MentoraAPIConfig,
 	title: string,
-	code: string
+	code?: string,
+	options?: CreateCourseOptions
+): Promise<APIResult<string>> {
+	// Use callBackend for consistent error handling and auth
+	const result = await callBackend<{ id: string }>(config, '/api/courses', {
+		method: 'POST',
+		body: JSON.stringify({
+			title,
+			code,
+			...options
+		})
+	});
+
+	if (result.success) {
+		return success(result.data.id);
+	}
+	return result;
+}
+
+/**
+ * Invite a member to a course
+ *
+ * Creates an invitation entry in the roster.
+ * Security Rules verify the user has instructor/owner permission.
+ */
+export async function inviteMember(
+	config: MentoraAPIConfig,
+	courseId: string,
+	email: string,
+	role: 'instructor' | 'student' | 'ta' | 'auditor' = 'student'
 ): Promise<APIResult<string>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
@@ -128,39 +187,41 @@ export async function createCourse(
 	}
 
 	return tryCatch(async () => {
-		const now = Date.now();
+		const normalizedEmail = email.toLowerCase().trim();
 
-		// Pre-generate document reference to get the ID
-		const courseRef = doc(collection(config.db, Courses.collectionPath()));
-		const courseId = courseRef.id;
-		const courseData = Courses.schema.parse({
-			id: courseId,
-			title,
-			code,
-			ownerId: currentUser.uid,
-			createdAt: now,
-			updatedAt: now
-		});
+		// Check if email already has membership
+		const existingMembersQuery = query(
+			collection(config.db, Courses.roster.collectionPath(courseId)),
+			where('email', '==', normalizedEmail),
+			limit(1)
+		);
+		const existingMembers = await getDocs(existingMembersQuery);
 
-		const rosterRef = doc(config.db, Courses.roster.docPath(courseId, currentUser.uid));
-		const rosterData = Courses.roster.schema.parse({
-			userId: currentUser.uid,
-			email: currentUser.email || '',
-			role: 'instructor',
-			status: 'active',
-			joinedAt: now
-		} satisfies CourseMembership);
+		if (!existingMembers.empty) {
+			const existing = existingMembers.docs[0].data();
+			if (existing?.status === 'active') {
+				throw new Error('User is already a member of this course');
+			}
+			if (existing?.status === 'invited') {
+				throw new Error('User has already been invited');
+			}
+		}
 
-		// Use transaction to ensure atomicity
-		await runTransaction(config.db, async (transaction) => {
-			// Create course document
-			transaction.set(courseRef, courseData);
+		// Create invitation
+		const memberId = `member_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+		const memberRef = doc(config.db, Courses.roster.docPath(courseId, memberId));
 
-			// Create owner's roster entry as instructor
-			transaction.set(rosterRef, rosterData);
-		});
+		const membership: CourseMembership = {
+			userId: null, // Will be set when user accepts invitation
+			email: normalizedEmail,
+			role,
+			status: 'invited',
+			joinedAt: null
+		};
 
-		return courseId;
+		await setDoc(memberRef, membership);
+
+		return memberId;
 	});
 }
 
@@ -202,7 +263,7 @@ export async function getCourseRoster(
 export async function listPublicCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	return tryCatch(async () => {
 		const constraints: QueryConstraint[] = [
 			where('visibility', '==', 'public'),
@@ -216,7 +277,10 @@ export async function listPublicCourses(
 		const q = query(collection(config.db, Courses.collectionPath()), ...constraints);
 		const snapshot = await getDocs(q);
 
-		return snapshot.docs.map((doc) => Courses.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Courses.schema.parse(doc.data())
+		}));
 	});
 }
 
@@ -226,7 +290,7 @@ export async function listPublicCourses(
 export async function listAllEnrolledCourses(
 	config: MentoraAPIConfig,
 	options?: QueryOptions
-): Promise<APIResult<CourseDoc[]>> {
+): Promise<APIResult<Course[]>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');
@@ -253,15 +317,202 @@ export async function listAllEnrolledCourses(
 				return parts[1]; // courses/{courseId}/roster/{memberId}
 			});
 
-		// Fetch each course document
-		const courses: CourseDoc[] = [];
-		for (const courseId of courseIds) {
-			const result = await getCourse(config, courseId);
-			if (result.success) {
-				courses.push(result.data);
-			}
+		// Fetch all courses in parallel
+		const results = await Promise.all(courseIds.map((courseId) => getCourse(config, courseId)));
+
+		return results
+			.filter((result): result is { success: true; data: Course } => result.success)
+			.map((result) => result.data);
+	});
+}
+
+/**
+ * Update a course
+ */
+export async function updateCourse(
+	config: MentoraAPIConfig,
+	courseId: string,
+	updates: Partial<Omit<CourseDoc, 'ownerId' | 'createdAt'>>
+): Promise<APIResult<Course>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Courses.docPath(courseId));
+		await updateDoc(docRef, {
+			...updates,
+			updatedAt: Date.now()
+		});
+
+		// Return updated course
+		const snapshot = await getDoc(docRef);
+		if (!snapshot.exists()) {
+			throw new Error('Course not found');
 		}
 
-		return courses;
+		return {
+			id: snapshot.id,
+			...Courses.schema.parse(snapshot.data())
+		};
+	});
+}
+
+/**
+ * Delete a course
+ */
+export async function deleteCourse(
+	config: MentoraAPIConfig,
+	courseId: string
+): Promise<APIResult<void>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Courses.docPath(courseId));
+		await deleteDoc(docRef);
+	});
+}
+
+/**
+ * Update a course member's role or status
+ *
+ * Security Rules verify the user is the course owner.
+ */
+export async function updateMember(
+	config: MentoraAPIConfig,
+	courseId: string,
+	memberId: string,
+	updates: { role?: 'instructor' | 'student' | 'ta' | 'auditor'; status?: 'active' | 'removed' }
+): Promise<APIResult<CourseMembership>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const memberRef = doc(config.db, Courses.roster.docPath(courseId, memberId));
+		const memberDoc = await getDoc(memberRef);
+
+		if (!memberDoc.exists()) {
+			throw new Error('Member not found');
+		}
+
+		// Check if trying to modify owner
+		const memberData = memberDoc.data();
+		if (memberData?.role === 'owner') {
+			throw new Error('Cannot modify course owner');
+		}
+
+		await updateDoc(memberRef, updates);
+
+		const updatedDoc = await getDoc(memberRef);
+		return Courses.roster.schema.parse(updatedDoc.data());
+	});
+}
+
+/**
+ * Remove a member from course (soft delete)
+ *
+ * Security Rules verify the user is owner/instructor or self-removal.
+ */
+export async function removeMember(
+	config: MentoraAPIConfig,
+	courseId: string,
+	memberId: string
+): Promise<APIResult<void>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const memberRef = doc(config.db, Courses.roster.docPath(courseId, memberId));
+		const memberDoc = await getDoc(memberRef);
+
+		if (!memberDoc.exists()) {
+			throw new Error('Member not found');
+		}
+
+		// Check if trying to remove owner
+		const memberData = memberDoc.data();
+		if (memberData?.role === 'owner') {
+			throw new Error('Cannot remove course owner');
+		}
+
+		// Soft delete by setting status to 'removed'
+		await updateDoc(memberRef, {
+			status: 'removed'
+		});
+	});
+}
+
+/**
+ * Copy a course
+ *
+ * Delegated to backend to handle deep copying of all resources.
+ */
+export async function copyCourse(
+	config: MentoraAPIConfig,
+	courseId: string,
+	options: {
+		title?: string;
+		includeContent?: boolean; // topics, assignments
+		includeRoster?: boolean; // instructors, TAs (not students)
+		isDemo?: boolean;
+	}
+): Promise<APIResult<string>> {
+	// Use callBackend
+	const result = await callBackend<{ id: string }>(config, `/api/courses/${courseId}/copy`, {
+		method: 'POST',
+		body: JSON.stringify(options)
+	});
+
+	if (result.success) {
+		return success(result.data.id);
+	}
+	return result;
+}
+
+/**
+ * Create an announcement
+ *
+ * Appends to the announcements array in the course document.
+ */
+export async function createAnnouncement(
+	config: MentoraAPIConfig,
+	courseId: string,
+	content: string
+): Promise<APIResult<import('mentora-firebase').CourseAnnouncement>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Courses.docPath(courseId));
+
+		const now = Timestamp.now();
+		const announcement = {
+			id: crypto.randomUUID(),
+			content,
+			createdAt: now.toMillis(),
+			updatedAt: now.toMillis()
+		};
+
+		await updateDoc(docRef, {
+			announcements: arrayUnion(announcement),
+			updatedAt: now.toMillis()
+		});
+
+		return announcement;
+	});
+}
+
+/**
+ * Join a course by code
+ *
+ * Delegated to backend to handle code lookup securely without exposing generic query permissions.
+ */
+export async function joinByCode(
+	config: MentoraAPIConfig,
+	code: string
+): Promise<APIResult<JoinCourseResult>> {
+	return callBackend<JoinCourseResult>(config, '/api/courses/join', {
+		method: 'POST',
+		body: JSON.stringify({ code })
 	});
 }

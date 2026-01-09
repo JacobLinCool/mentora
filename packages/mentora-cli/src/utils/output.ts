@@ -23,11 +23,12 @@ export function success(message: string): void {
     }
 }
 
-export function error(message: string): void {
+export function error(message: string, code?: string): void {
     if (!globalOptions.json) {
-        console.error(chalk.red("✗") + " " + message);
+        const codeSuffix = code ? ` ${chalk.dim(`[${code}]`)}` : "";
+        console.error(chalk.red("✗") + " " + message + codeSuffix);
     } else {
-        console.error(JSON.stringify({ error: message }));
+        console.error(JSON.stringify({ error: message, code }));
     }
 }
 

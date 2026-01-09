@@ -33,7 +33,6 @@ describe("Courses Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
                 await fs.collection("courses").doc(courseId).set({
-                    id: courseId,
                     title: "Test Course",
                     code: "ABC123",
                     ownerId: ownerId,
@@ -68,7 +67,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc(courseId)
                     .set({
-                        id: courseId,
                         title: "Test Course",
                         code: "ABC123",
                         ownerId: ownerId,
@@ -92,7 +90,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc(courseId)
                     .set({
-                        id: courseId,
                         title: "Test Course",
                         code: "ABC123",
                         ownerId: ownerId,
@@ -114,7 +111,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc(courseId)
                     .set({
-                        id: courseId,
                         title: "Test Course",
                         code: "ABC123",
                         ownerId: "owner456",
@@ -137,7 +133,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc(courseId)
                     .set({
-                        id: courseId,
                         title: "Public Course",
                         code: "PUB123",
                         ownerId: "owner456",
@@ -227,7 +222,6 @@ describe("Courses Security Rules", () => {
 
             await assertSucceeds(
                 db.collection("courses").doc(courseId).set({
-                    id: courseId,
                     title: "New Course",
                     code: "XYZ789",
                     ownerId: userId,
@@ -243,7 +237,6 @@ describe("Courses Security Rules", () => {
 
             await assertFails(
                 db.collection("courses").doc(courseId).set({
-                    id: courseId,
                     title: "New Course",
                     code: "XYZ789",
                     ownerId: "user123",
@@ -266,7 +259,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc(courseId)
                     .set({
-                        id: courseId,
                         title: "Test Course",
                         code: "ABC123",
                         ownerId: ownerId,
@@ -292,7 +284,6 @@ describe("Courses Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
                 await fs.collection("courses").doc(courseId).set({
-                    id: courseId,
                     title: "Test Course",
                     code: "ABC123",
                     ownerId: ownerId,
@@ -330,7 +321,6 @@ describe("Courses Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
                 await fs.collection("courses").doc(courseId).set({
-                    id: courseId,
                     title: "Test Course",
                     code: "ABC123",
                     ownerId: ownerId,
@@ -370,7 +360,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc(courseId)
                     .set({
-                        id: courseId,
                         title: "Test Course",
                         code: "ABC123",
                         ownerId: ownerId,
@@ -399,7 +388,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc(courseId)
                     .set({
-                        id: courseId,
                         title: "Test Course",
                         code: "ABC123",
                         ownerId: ownerId,
@@ -422,7 +410,6 @@ describe("Courses Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
                 await fs.collection("courses").doc(courseId).set({
-                    id: courseId,
                     title: "Test Course",
                     code: "ABC123",
                     ownerId: ownerId,
@@ -457,7 +444,6 @@ describe("Courses Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 const fs = context.firestore();
                 await fs.collection("courses").doc(courseId).set({
-                    id: courseId,
                     title: "Test Course",
                     code: "ABC123",
                     ownerId: ownerId,
@@ -483,62 +469,12 @@ describe("Courses Security Rules", () => {
     });
 
     describe("Data Shape Validation", () => {
-        it("should deny creating course with id shorter than 6 characters", async () => {
-            const ownerId = "owner123";
-            const db = testEnv.authenticatedContext(ownerId).firestore();
-
-            await assertFails(
-                db.collection("courses").doc("short").set({
-                    id: "short",
-                    title: "Test Course",
-                    code: "ABC123",
-                    ownerId: ownerId,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                }),
-            );
-        });
-
-        it("should allow creating course with id at 6 character minimum", async () => {
-            const ownerId = "owner123";
-            const db = testEnv.authenticatedContext(ownerId).firestore();
-
-            await assertSucceeds(
-                db.collection("courses").doc("course1").set({
-                    id: "course1",
-                    title: "Test Course",
-                    code: "ABC123",
-                    ownerId: ownerId,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                }),
-            );
-        });
-
-        it("should deny creating course with id exceeding 128 characters", async () => {
-            const ownerId = "owner123";
-            const db = testEnv.authenticatedContext(ownerId).firestore();
-            const longId = "a".repeat(129);
-
-            await assertFails(
-                db.collection("courses").doc(longId).set({
-                    id: longId,
-                    title: "Test Course",
-                    code: "ABC123",
-                    ownerId: ownerId,
-                    createdAt: Date.now(),
-                    updatedAt: Date.now(),
-                }),
-            );
-        });
-
         it("should deny creating course with empty title", async () => {
             const ownerId = "owner123";
             const db = testEnv.authenticatedContext(ownerId).firestore();
 
             await assertFails(
                 db.collection("courses").doc("course123").set({
-                    id: "course123",
                     title: "",
                     code: "ABC123",
                     ownerId: ownerId,
@@ -557,7 +493,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc("course123")
                     .set({
-                        id: "course123",
                         title: "a".repeat(201),
                         code: "ABC123",
                         ownerId: ownerId,
@@ -576,7 +511,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc("course123")
                     .set({
-                        id: "course123",
                         title: "a".repeat(200),
                         code: "ABC123",
                         ownerId: ownerId,
@@ -592,7 +526,6 @@ describe("Courses Security Rules", () => {
 
             await assertFails(
                 db.collection("courses").doc("course123").set({
-                    id: "course123",
                     title: "Test Course",
                     code: "",
                     ownerId: ownerId,
@@ -611,7 +544,6 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc("course123")
                     .set({
-                        id: "course123",
                         title: "Test Course",
                         code: "a".repeat(65),
                         ownerId: ownerId,
@@ -630,12 +562,37 @@ describe("Courses Security Rules", () => {
                     .collection("courses")
                     .doc("course123")
                     .set({
-                        id: "course123",
                         title: "Test Course",
                         code: "a".repeat(64),
                         ownerId: ownerId,
                         createdAt: Date.now(),
                         updatedAt: Date.now(),
+                    }),
+            );
+        });
+
+        it("should allow creating course with announcements", async () => {
+            const ownerId = "owner123";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+
+            await assertSucceeds(
+                db
+                    .collection("courses")
+                    .doc("courseWithAnnouncements")
+                    .set({
+                        title: "Course with News",
+                        code: "NEWS123",
+                        ownerId: ownerId,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        announcements: [
+                            {
+                                id: "ann1",
+                                content: "Welcome to the course!",
+                                createdAt: Date.now(),
+                                updatedAt: Date.now(),
+                            },
+                        ],
                     }),
             );
         });

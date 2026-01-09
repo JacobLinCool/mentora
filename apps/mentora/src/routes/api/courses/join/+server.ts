@@ -1,6 +1,12 @@
+/**
+ * Courses API - Join by code
+ *
+ * Handled on backend to prevent exposing course list query permissions to frontend.
+ */
 import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
-import { json, error as svelteError } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
+
 import { Courses, type CourseMembership } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
@@ -13,14 +19,13 @@ export const POST: RequestHandler = async (event) => {
     const { code } = body;
 
     if (!code || typeof code !== "string") {
-        throw svelteError(400, "Invalid or missing join code");
+        throw error(400, "Invalid or missing join code");
     }
 
     // Normalize and validate join code
     const normalizedCode = code.trim().toUpperCase();
-    // Example: 6-10 uppercase letters/digits, adjust regex as needed
-    if (!/^[A-Z0-9]{6,10}$/.test(normalizedCode)) {
-        throw svelteError(400, "Join code format is invalid");
+    if (!/^[A-Z0-9]{6,64}$/.test(normalizedCode.replace(/[-_]/g, ""))) {
+        throw error(400, "Join code format is invalid");
     }
 
     try {
@@ -31,8 +36,8 @@ export const POST: RequestHandler = async (event) => {
             .limit(1)
             .get();
 
-        if (coursesSnapshot.docs.length === 0) {
-            throw svelteError(404, "Course not found with this code");
+        if (coursesSnapshot.empty) {
+            throw error(404, "Course not found with this code");
         }
 
         const courseDoc = coursesSnapshot.docs[0];
@@ -40,15 +45,7 @@ export const POST: RequestHandler = async (event) => {
         const courseData = courseDoc.data();
 
         // Validate course document
-        const validationResult = Courses.schema.safeParse({
-            id: courseId,
-            ...courseData,
-        });
-
-        if (!validationResult.success) {
-            console.error("Invalid course document:", validationResult.error);
-            throw svelteError(500, "Invalid course data");
-        }
+        Courses.schema.parse(courseData);
 
         // Check if user is already a member
         const existingMembership = await firestore
@@ -56,9 +53,16 @@ export const POST: RequestHandler = async (event) => {
             .get();
 
         if (existingMembership.exists) {
-            const membershipData = existingMembership.data();
-            if (membershipData?.status === "active") {
-                return json({ courseId, alreadyMember: true });
+            const membershipData = Courses.roster.schema.parse(
+                existingMembership.data(),
+            );
+            if (membershipData.status === "active") {
+                const result = {
+                    courseId,
+                    joined: false,
+                    alreadyMember: true,
+                };
+                return json(result);
             }
             // If user was previously removed or invited, update their status
             await firestore
@@ -68,7 +72,12 @@ export const POST: RequestHandler = async (event) => {
                     joinedAt: Date.now(),
                 });
 
-            return json({ courseId, rejoined: true });
+            const result = {
+                courseId,
+                joined: true,
+                alreadyMember: false,
+            };
+            return json(result);
         }
 
         // Create new roster entry
@@ -84,15 +93,13 @@ export const POST: RequestHandler = async (event) => {
             .doc(Courses.roster.docPath(courseId, user.uid))
             .set(membership);
 
-        return json({ courseId, joined: true });
+        const result = { courseId, joined: true };
+        return json(result);
     } catch (err) {
         console.error("Error joining course:", err);
-
-        // Re-throw SvelteKit errors
         if (err && typeof err === "object" && "status" in err) {
             throw err;
         }
-
-        throw svelteError(500, "Failed to join course");
+        throw error(500, "Failed to join course");
     }
 };

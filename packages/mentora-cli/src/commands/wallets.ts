@@ -9,6 +9,7 @@ import {
     info,
     outputData,
     outputList,
+    success,
 } from "../utils/output.js";
 
 export function createWalletsCommand(
@@ -21,20 +22,63 @@ export function createWalletsCommand(
     wallets
         .command("me")
         .description("Get my wallet")
-        .action(async () => {
+        .option("--ledger", "Include ledger entries")
+        .option("-l, --limit <n>", "Limit ledger entries", parseInt, 20)
+        .action(async (options: { ledger?: boolean; limit?: number }) => {
             const client = await getClient();
+            // Fetch wallet first
             const result = await client.wallets.getMine();
             if (result.success) {
                 if (result.data) {
-                    outputData(result.data);
+                    const wallet = result.data;
+                    const output: Record<string, unknown> = { wallet };
+
+                    if (options.ledger) {
+                        const ledgerResult = await client.wallets.listEntries(
+                            wallet.id,
+                            { limit: options.limit },
+                        );
+                        if (ledgerResult.success) {
+                            output.ledger = ledgerResult.data;
+                        } else {
+                            error(
+                                `Failed to fetch ledger: ${ledgerResult.error}`,
+                                ledgerResult.code,
+                            );
+                        }
+                    }
+                    outputData(output);
                 } else {
                     info("No wallet found.");
                 }
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
+
+    wallets
+        .command("add-credits")
+        .description("Add credits to my wallet")
+        .argument("<amount>", "Amount of credits to add")
+        .option("--idempotency-key <key>", "Idempotency key for deduplication")
+        .action(
+            async (amount: string, options: { idempotencyKey?: string }) => {
+                const client = await getClient();
+                // TODO: Backend-only endpoint - consider adding to API client
+                const result = await client.wallets.addCredits(
+                    parseFloat(amount),
+                );
+                if (result.success) {
+                    success("Credits added successfully.");
+                    // The backend returns { id } for the transaction
+                    console.log(`Transaction ID: ${result.data.id}`);
+                } else {
+                    error(result.error, result.code);
+                    process.exit(1);
+                }
+            },
+        );
 
     wallets
         .command("get")
@@ -46,7 +90,7 @@ export function createWalletsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -68,7 +112,7 @@ export function createWalletsCommand(
                         `${entry.amountCredits > 0 ? "+" : ""}${entry.amountCredits} credits - ${entry.type} [${formatTimestamp(entry.createdAt)}]`,
                 );
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });

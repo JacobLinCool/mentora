@@ -68,10 +68,6 @@ export type Turn = z.infer<typeof zTurn>;
 
 export const zConversation = z
     .object({
-        id: z
-            .string()
-            .max(128)
-            .describe("Unique identifier for the conversation."),
         assignmentId: z
             .string()
             .max(128)

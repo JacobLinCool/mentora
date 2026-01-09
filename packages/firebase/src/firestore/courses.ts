@@ -44,13 +44,21 @@ export const zCourseDemoPolicy = z
     .describe("Optional demo policy for cost control.");
 export type CourseDemoPolicy = z.infer<typeof zCourseDemoPolicy>;
 
-export const zCourseDoc = z
+export const zCourseAnnouncement = z
     .object({
         id: z
             .string()
-            .min(6)
-            .max(128)
-            .describe("Unique identifier for the course."),
+            .min(1)
+            .describe("Unique identifier for the announcement."),
+        content: z.string().max(2000).describe("Announcement content."),
+        createdAt: zFirebaseTimestamp.describe("Creation timestamp."),
+        updatedAt: zFirebaseTimestamp.describe("Last update timestamp."),
+    })
+    .describe("Announcement posted within a course.");
+export type CourseAnnouncement = z.infer<typeof zCourseAnnouncement>;
+
+export const zCourseDoc = z
+    .object({
         title: z
             .string()
             .min(1)
@@ -111,6 +119,11 @@ export const zCourseDoc = z
         updatedAt: zFirebaseTimestamp.describe(
             "Timestamp of the latest course update.",
         ),
+        announcements: z
+            .array(zCourseAnnouncement)
+            .optional()
+            .default([])
+            .describe("List of announcements."),
     })
     .describe("Course document stored at courses/{courseId}.");
 export type CourseDoc = z.infer<typeof zCourseDoc>;
