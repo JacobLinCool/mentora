@@ -17,6 +17,7 @@ import { restoreAuthFromStoredData } from "./utils/auth-restore.js";
 
 // Re-export types from mentora-api
 export type {
+    APIErrorCode,
     APIResult,
     Assignment,
     Conversation,
@@ -25,6 +26,7 @@ export type {
     LedgerEntry,
     QueryOptions,
     Submission,
+    SubmissionWithId,
     Topic,
     UserProfile,
     Wallet,

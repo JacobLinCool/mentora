@@ -19,23 +19,27 @@ export function createConversationsCommand(
         .option("-l, --limit <n>", "Limit number of results", parseInt)
         .action(async (options: { assignment?: string; limit?: number }) => {
             const client = await getClient();
-            const params = new URLSearchParams();
-            if (options.assignment)
-                params.set("assignmentId", options.assignment);
-            if (options.limit) params.set("limit", options.limit.toString());
+            const result = await client.conversations.listMine({
+                limit: options.limit,
+                where: options.assignment
+                    ? [
+                          {
+                              field: "assignmentId",
+                              op: "==",
+                              value: options.assignment,
+                          },
+                      ]
+                    : undefined,
+            });
 
-            // TODO: Backend-only endpoint - consider adding to API client
-            const result = await client.backend.call<{
-                conversations: unknown[];
-            }>(`/api/conversations?${params.toString()}`);
             if (result.success) {
-                if (result.data.conversations.length === 0) {
+                if (result.data.length === 0) {
                     info("No conversations found.");
                 } else {
-                    outputData(result.data.conversations);
+                    outputData(result.data);
                 }
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -50,7 +54,7 @@ export function createConversationsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -65,7 +69,7 @@ export function createConversationsCommand(
             if (result.success) {
                 success(`Conversation ID: ${result.data.id}`);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -84,7 +88,7 @@ export function createConversationsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -99,7 +103,7 @@ export function createConversationsCommand(
             if (result.success) {
                 success("Conversation ended successfully.");
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });

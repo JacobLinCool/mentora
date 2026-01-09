@@ -26,23 +26,33 @@ export function createWalletsCommand(
         .option("-l, --limit <n>", "Limit ledger entries", parseInt, 20)
         .action(async (options: { ledger?: boolean; limit?: number }) => {
             const client = await getClient();
-            const params = new URLSearchParams();
-            if (options.ledger) {
-                params.set("includeLedger", "true");
-                params.set("ledgerLimit", (options.limit || 20).toString());
-            }
-            // TODO: Backend-only endpoint - consider adding to API client
-            const result = await client.backend.call(
-                `/api/wallets/me?${params.toString()}`,
-            );
+            // Fetch wallet first
+            const result = await client.wallets.getMine();
             if (result.success) {
                 if (result.data) {
-                    outputData(result.data);
+                    const wallet = result.data;
+                    const output: Record<string, unknown> = { wallet };
+
+                    if (options.ledger) {
+                        const ledgerResult = await client.wallets.listEntries(
+                            wallet.id,
+                            { limit: options.limit },
+                        );
+                        if (ledgerResult.success) {
+                            output.ledger = ledgerResult.data;
+                        } else {
+                            error(
+                                `Failed to fetch ledger: ${ledgerResult.error}`,
+                                ledgerResult.code,
+                            );
+                        }
+                    }
+                    outputData(output);
                 } else {
                     info("No wallet found.");
                 }
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -56,23 +66,15 @@ export function createWalletsCommand(
             async (amount: string, options: { idempotencyKey?: string }) => {
                 const client = await getClient();
                 // TODO: Backend-only endpoint - consider adding to API client
-                const result = await client.backend.call<{
-                    message: string;
-                    newBalance: number;
-                }>("/api/wallets/me/credits", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        amount: parseFloat(amount),
-                        idempotencyKey: options.idempotencyKey,
-                    }),
-                });
+                const result = await client.wallets.addCredits(
+                    parseFloat(amount),
+                );
                 if (result.success) {
-                    success(`${result.data.message}`);
-                    console.log(
-                        `New balance: ${result.data.newBalance} credits`,
-                    );
+                    success("Credits added successfully.");
+                    // The backend returns { id } for the transaction
+                    console.log(`Transaction ID: ${result.data.id}`);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -88,7 +90,7 @@ export function createWalletsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -110,7 +112,7 @@ export function createWalletsCommand(
                         `${entry.amountCredits > 0 ? "+" : ""}${entry.amountCredits} credits - ${entry.type} [${formatTimestamp(entry.createdAt)}]`,
                 );
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });

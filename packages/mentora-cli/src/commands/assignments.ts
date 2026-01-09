@@ -35,7 +35,7 @@ export function createAssignmentsCommand(
                         `${assignment.title} - Starts: ${formatTimestamp(assignment.startAt)} [${assignment.id}]`,
                 );
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -50,7 +50,7 @@ export function createAssignmentsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -106,7 +106,7 @@ export function createAssignmentsCommand(
                 if (result.success) {
                     success(`Assignment created with ID: ${result.data}`);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -157,7 +157,7 @@ export function createAssignmentsCommand(
                     success("Assignment updated successfully.");
                     outputData(result.data);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -173,7 +173,7 @@ export function createAssignmentsCommand(
             if (result.success) {
                 success("Assignment deleted successfully.");
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });

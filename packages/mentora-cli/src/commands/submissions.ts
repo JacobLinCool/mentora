@@ -60,10 +60,10 @@ export function createSubmissionsCommand(
                     outputList(
                         result.data,
                         (submission) =>
-                            `${submission.userId} - ${submission.state} - Started: ${formatTimestamp(submission.startedAt)}`,
+                            `${submission.userId} - ${submission.state} - Started: ${formatTimestamp(submission.startedAt)} [${submission.id}]`,
                     );
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -83,7 +83,7 @@ export function createSubmissionsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -125,7 +125,7 @@ export function createSubmissionsCommand(
                     success("Submission graded successfully.");
                     outputData(result.data);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -141,7 +141,7 @@ export function createSubmissionsCommand(
             if (result.success) {
                 success("Submission started.");
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -156,7 +156,7 @@ export function createSubmissionsCommand(
             if (result.success) {
                 success("Assignment submitted.");
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
