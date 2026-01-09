@@ -3,6 +3,7 @@
  */
 import {
 	collection,
+	deleteDoc,
 	doc,
 	getDoc,
 	getDocs,
@@ -10,6 +11,7 @@ import {
 	orderBy,
 	query,
 	setDoc,
+	updateDoc,
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
@@ -136,7 +138,6 @@ export async function updateAssignment(
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Assignments.docPath(assignmentId));
 
-		const { updateDoc } = await import('firebase/firestore');
 		await updateDoc(docRef, {
 			...updates,
 			updatedAt: Date.now()
@@ -161,7 +162,6 @@ export async function deleteAssignment(
 ): Promise<APIResult<void>> {
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Assignments.docPath(assignmentId));
-		const { deleteDoc } = await import('firebase/firestore');
 		await deleteDoc(docRef);
 	});
 }

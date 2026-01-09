@@ -3,6 +3,7 @@
  */
 import {
 	collection,
+	deleteDoc,
 	doc,
 	getDoc,
 	getDocs,
@@ -157,7 +158,6 @@ export async function deleteTopic(
 	}
 
 	return tryCatch(async () => {
-		const { deleteDoc } = await import('firebase/firestore');
 		const docRef = doc(config.db, Topics.docPath(topicId));
 		await deleteDoc(docRef);
 	});

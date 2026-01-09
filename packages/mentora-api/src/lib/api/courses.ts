@@ -2,6 +2,7 @@
  * Course management operations
  */
 import {
+	arrayUnion,
 	collection,
 	collectionGroup,
 	doc,
@@ -13,6 +14,7 @@ import {
 	limit,
 	orderBy,
 	query,
+	Timestamp,
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
@@ -120,16 +122,12 @@ export async function listMyEnrolledCourses(
 			return parts[1]; // courses/{courseId}/roster/{memberId}
 		});
 
-		// Fetch each course document
-		const courses: Course[] = [];
-		for (const courseId of courseIds) {
-			const result = await getCourse(config, courseId);
-			if (result.success) {
-				courses.push(result.data);
-			}
-		}
+		// Fetch all courses in parallel
+		const results = await Promise.all(courseIds.map((courseId) => getCourse(config, courseId)));
 
-		return courses;
+		return results
+			.filter((result): result is { success: true; data: Course } => result.success)
+			.map((result) => result.data);
 	});
 }
 
@@ -319,16 +317,12 @@ export async function listAllEnrolledCourses(
 				return parts[1]; // courses/{courseId}/roster/{memberId}
 			});
 
-		// Fetch each course document
-		const courses: Course[] = [];
-		for (const courseId of courseIds) {
-			const result = await getCourse(config, courseId);
-			if (result.success) {
-				courses.push(result.data);
-			}
-		}
+		// Fetch all courses in parallel
+		const results = await Promise.all(courseIds.map((courseId) => getCourse(config, courseId)));
 
-		return courses;
+		return results
+			.filter((result): result is { success: true; data: Course } => result.success)
+			.map((result) => result.data);
 	});
 }
 
@@ -490,7 +484,6 @@ export async function createAnnouncement(
 
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Courses.docPath(courseId));
-		const { arrayUnion, Timestamp } = await import('firebase/firestore');
 
 		const now = Timestamp.now();
 		const announcement = {

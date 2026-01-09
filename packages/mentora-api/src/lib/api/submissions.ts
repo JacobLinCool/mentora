@@ -23,6 +23,8 @@ import {
 	type QueryOptions
 } from './types.js';
 
+export type SubmissionWithId = Submission & { id: string };
+
 /**
  * Get a submission
  */
@@ -30,7 +32,7 @@ export async function getSubmission(
 	config: MentoraAPIConfig,
 	assignmentId: string,
 	userId: string
-): Promise<APIResult<Submission>> {
+): Promise<APIResult<SubmissionWithId>> {
 	return tryCatch(async () => {
 		const docRef = doc(config.db, AssignmentSubmissions.docPath(assignmentId, userId));
 		const snapshot = await getDoc(docRef);
@@ -39,7 +41,10 @@ export async function getSubmission(
 			throw new Error('Submission not found');
 		}
 
-		return AssignmentSubmissions.schema.parse(snapshot.data());
+		return {
+			id: snapshot.id,
+			...AssignmentSubmissions.schema.parse(snapshot.data())
+		};
 	});
 }
 
@@ -49,7 +54,7 @@ export async function getSubmission(
 export async function getMySubmission(
 	config: MentoraAPIConfig,
 	assignmentId: string
-): Promise<APIResult<Submission>> {
+): Promise<APIResult<SubmissionWithId>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
 		return failure('Not authenticated');
@@ -65,7 +70,7 @@ export async function listAssignmentSubmissions(
 	config: MentoraAPIConfig,
 	assignmentId: string,
 	options?: QueryOptions
-): Promise<APIResult<Submission[]>> {
+): Promise<APIResult<SubmissionWithId[]>> {
 	return tryCatch(async () => {
 		const constraints: QueryConstraint[] = [];
 
@@ -91,7 +96,10 @@ export async function listAssignmentSubmissions(
 		);
 		const snapshot = await getDocs(q);
 
-		return snapshot.docs.map((doc) => AssignmentSubmissions.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...AssignmentSubmissions.schema.parse(doc.data())
+		}));
 	});
 }
 
@@ -154,7 +162,7 @@ export async function gradeSubmission(
 	assignmentId: string,
 	userId: string,
 	updates: Partial<Pick<Submission, 'scoreCompletion' | 'notes' | 'state'>>
-): Promise<APIResult<Submission>> {
+): Promise<APIResult<SubmissionWithId>> {
 	return tryCatch(async () => {
 		const docRef = doc(config.db, AssignmentSubmissions.docPath(assignmentId, userId));
 
@@ -166,6 +174,9 @@ export async function gradeSubmission(
 			throw new Error('Submission not found');
 		}
 
-		return AssignmentSubmissions.schema.parse(snapshot.data());
+		return {
+			id: snapshot.id,
+			...AssignmentSubmissions.schema.parse(snapshot.data())
+		};
 	});
 }

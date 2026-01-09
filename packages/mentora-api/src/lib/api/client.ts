@@ -22,6 +22,7 @@ import * as TopicsModule from './topics.js';
 import type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
 import * as UsersModule from './users.js';
 import * as WalletsModule from './wallets.js';
+import { callBackend } from './backend.js';
 
 export type {
 	Assignment,
@@ -38,7 +39,10 @@ export type Conversation = ConversationsModule.Conversation;
 export type Wallet = WalletsModule.Wallet;
 export type LedgerEntry = WalletsModule.LedgerEntry;
 export type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
+export { APIErrorCode } from './types.js';
 export type { WhereFilterOp } from 'firebase/firestore';
+
+export type { SubmissionWithId } from './submissions.js';
 
 /**
  * Configuration options for MentoraClient
@@ -246,14 +250,17 @@ export class MentoraClient {
 
 	// ============ Submissions ============
 	submissions = {
-		get: (assignmentId: string, userId: string): Promise<APIResult<Submission>> =>
+		get: (
+			assignmentId: string,
+			userId: string
+		): Promise<APIResult<SubmissionsModule.SubmissionWithId>> =>
 			this.authReadyThen(() => SubmissionsModule.getSubmission(this._config, assignmentId, userId)),
-		getMine: (assignmentId: string): Promise<APIResult<Submission>> =>
+		getMine: (assignmentId: string): Promise<APIResult<SubmissionsModule.SubmissionWithId>> =>
 			this.authReadyThen(() => SubmissionsModule.getMySubmission(this._config, assignmentId)),
 		listForAssignment: (
 			assignmentId: string,
 			options?: QueryOptions
-		): Promise<APIResult<Submission[]>> =>
+		): Promise<APIResult<SubmissionsModule.SubmissionWithId[]>> =>
 			this.authReadyThen(() =>
 				SubmissionsModule.listAssignmentSubmissions(this._config, assignmentId, options)
 			),
@@ -265,7 +272,7 @@ export class MentoraClient {
 			assignmentId: string,
 			userId: string,
 			updates: Partial<Pick<Submission, 'scoreCompletion' | 'notes' | 'state'>>
-		): Promise<APIResult<Submission>> =>
+		): Promise<APIResult<SubmissionsModule.SubmissionWithId>> =>
 			this.authReadyThen(() =>
 				SubmissionsModule.gradeSubmission(this._config, assignmentId, userId, updates)
 			)
@@ -314,34 +321,6 @@ export class MentoraClient {
 	// ============ Backend ============
 	backend = {
 		call: <T>(endpoint: string, options: RequestInit = {}): Promise<APIResult<T>> =>
-			this.authReadyThen(async () => {
-				const currentUser = this._config.getCurrentUser();
-				if (!currentUser) return { success: false, error: 'Not authenticated' };
-
-				try {
-					const token = await currentUser.getIdToken();
-					const response = await fetch(`${this._config.backendBaseUrl}${endpoint}`, {
-						...options,
-						headers: {
-							...options.headers,
-							Authorization: `Bearer ${token}`,
-							'Content-Type': 'application/json'
-						}
-					});
-
-					if (!response.ok) {
-						const error = await response.text();
-						return { success: false, error: error || `HTTP ${response.status}` };
-					}
-
-					const data = await response.json();
-					return { success: true, data };
-				} catch (error) {
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : 'Network error'
-					};
-				}
-			})
+			this.authReadyThen(() => callBackend<T>(this._config, endpoint, options))
 	};
 }

@@ -34,7 +34,8 @@ import { callBackend } from './backend.js';
 export interface CourseWalletResult {
 	wallet: Wallet;
 	ledger?: LedgerEntry[];
-	stats: {
+	/** Stats are only available when fetched via backend API */
+	stats?: {
 		totalCharges: number;
 		transactionCount: number;
 	};
@@ -184,11 +185,7 @@ export async function getCourseWallet(
 
 		return {
 			wallet,
-			ledger: options?.includeLedger ? ledger : undefined,
-			stats: {
-				totalCharges: 0, // Not available on client efficiently
-				transactionCount: 0
-			}
+			ledger: options?.includeLedger ? ledger : undefined
 		};
 	});
 }
