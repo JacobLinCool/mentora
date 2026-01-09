@@ -64,10 +64,7 @@ export const POST: RequestHandler = async (event) => {
 
         if (!existingEntry.empty) {
             const entryData = existingEntry.docs[0].data();
-            const entry = Wallets.entries.schema.parse({
-                id: existingEntry.docs[0].id,
-                ...entryData,
-            });
+            const entry = Wallets.entries.schema.parse(entryData);
 
             const result = {
                 message: "Credit already applied (idempotent)",
