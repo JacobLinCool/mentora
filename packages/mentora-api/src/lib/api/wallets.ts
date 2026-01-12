@@ -23,7 +23,6 @@ export type LedgerEntry = LedgerEntryDoc & { id: string };
 
 import {
 	failure,
-	success,
 	tryCatch,
 	type APIResult,
 	type MentoraAPIConfig,
@@ -78,32 +77,25 @@ export async function getMyWallet(config: MentoraAPIConfig): Promise<APIResult<W
 		return failure('Not authenticated');
 	}
 
-	try {
-		const token = await currentUser.getIdToken();
-		const response = await fetch(`${config.backendBaseUrl}/api/wallets/me`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json'
-			}
-		});
+	return tryCatch(async () => {
+		const q = query(
+			collection(config.db, Wallets.collectionPath()),
+			where('ownerId', '==', currentUser.uid),
+			where('ownerType', '==', 'user'),
+			limit(1)
+		);
+		const snapshot = await getDocs(q);
 
-		if (!response.ok) {
-			const error = await response.text();
-			return failure(error || `HTTP ${response.status}`);
+		if (snapshot.empty) {
+			return null;
 		}
 
-		const data = await response.json();
-		if (data === null) {
-			return success(null);
-		}
-
-		return success({
-			id: data.id,
-			...Wallets.schema.parse(data)
-		});
-	} catch (error) {
-		return failure(error instanceof Error ? error.message : 'Network error');
-	}
+		const doc = snapshot.docs[0];
+		return {
+			id: doc.id,
+			...Wallets.schema.parse(doc.data())
+		};
+	});
 }
 
 /**

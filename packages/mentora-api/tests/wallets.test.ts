@@ -40,16 +40,14 @@ describe('Wallets Module (Integration)', () => {
 	describe('getMyWallet()', () => {
 		it('should get current user wallet or handle missing wallet', async () => {
 			const result = await client.wallets.getMine();
+			expect(result.success).toBe(true);
 
-			// Wallet might not exist for test user, which is okay
 			if (result.success) {
+				expect(result.data).toBeDefined();
 				if (result.data) {
 					expect(result.data.id).toBeDefined();
 					expect(result.data.balanceCredits).toBeDefined();
 				}
-			} else {
-				// Error is also valid - wallet might not exist
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -66,12 +64,10 @@ describe('Wallets Module (Integration)', () => {
 
 			// Now try to get it by ID
 			const result = await client.wallets.get(myWallet.data.id);
+			expect(result.success).toBe(true);
 
 			if (result.success) {
 				expect(result.data.id).toBe(myWallet.data.id);
-			} else {
-				// Permission error is valid
-				expect(result.error).toBeDefined();
 			}
 		});
 

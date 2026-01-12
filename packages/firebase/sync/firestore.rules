@@ -208,11 +208,10 @@ service cloud.firestore {
 
     /* ---------- Wallets / Ledger (read-only to clients) ---------- */
     match /wallets/{walletId} {
-      allow get: if isSignedIn() && (
+      allow get, list: if isSignedIn() && (
         (resource.data.ownerId == request.auth.uid) &&
         (resource.data.ownerType in ["user", "host"])
       );
-      allow list: if false;
 
       // Wallet creation/updates are server-side only.
       allow create, update, delete: if false;
