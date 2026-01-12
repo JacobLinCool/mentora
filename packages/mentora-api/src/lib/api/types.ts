@@ -76,7 +76,6 @@ export async function tryCatch<T>(fn: () => Promise<T>): Promise<APIResult<T>> {
 		const data = await fn();
 		return success(data);
 	} catch (error) {
-		console.error('API Error', error);
 		return failure(error instanceof Error ? error.message : 'Unknown error');
 	}
 }

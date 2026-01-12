@@ -3,9 +3,9 @@
  */
 import { collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Assignments, type Assignment } from 'mentora-firebase';
+import { callBackend } from './backend.js';
 import {
 	failure,
-	success,
 	tryCatch,
 	type APIResult,
 	type MentoraAPIConfig,
@@ -39,35 +39,20 @@ export async function listCourseAssignments(
 	courseId: string,
 	options?: QueryOptions
 ): Promise<APIResult<Assignment[]>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
+	const params = new URLSearchParams({ courseId });
+	if (options?.limit) {
+		params.set('limit', options.limit.toString());
 	}
 
-	try {
-		const token = await currentUser.getIdToken();
-		const params = new URLSearchParams({ courseId });
-		if (options?.limit) {
-			params.set('limit', options.limit.toString());
-		}
-
-		const response = await fetch(`${config.backendBaseUrl}/api/assignments?${params}`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json'
-			}
-		});
-
-		if (!response.ok) {
-			const error = await response.text();
-			return failure(error || `HTTP ${response.status}`);
-		}
-
-		const data = await response.json();
-		return success(data.map((a: unknown) => Assignments.schema.parse(a)));
-	} catch (error) {
-		return failure(error instanceof Error ? error.message : 'Network error');
+	const result = await callBackend<unknown[]>(config, `/api/assignments?${params}`);
+	if (!result.success) {
+		return result;
 	}
+
+	return {
+		success: true,
+		data: result.data.map((a: unknown) => Assignments.schema.parse(a))
+	};
 }
 
 /**
@@ -78,35 +63,20 @@ export async function listAvailableAssignments(
 	courseId: string,
 	options?: QueryOptions
 ): Promise<APIResult<Assignment[]>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
+	const params = new URLSearchParams({ courseId, available: 'true' });
+	if (options?.limit) {
+		params.set('limit', options.limit.toString());
 	}
 
-	try {
-		const token = await currentUser.getIdToken();
-		const params = new URLSearchParams({ courseId, available: 'true' });
-		if (options?.limit) {
-			params.set('limit', options.limit.toString());
-		}
-
-		const response = await fetch(`${config.backendBaseUrl}/api/assignments?${params}`, {
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json'
-			}
-		});
-
-		if (!response.ok) {
-			const error = await response.text();
-			return failure(error || `HTTP ${response.status}`);
-		}
-
-		const data = await response.json();
-		return success(data.map((a: unknown) => Assignments.schema.parse(a)));
-	} catch (error) {
-		return failure(error instanceof Error ? error.message : 'Network error');
+	const result = await callBackend<unknown[]>(config, `/api/assignments?${params}`);
+	if (!result.success) {
+		return result;
 	}
+
+	return {
+		success: true,
+		data: result.data.map((a: unknown) => Assignments.schema.parse(a))
+	};
 }
 
 /**
