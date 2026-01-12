@@ -192,5 +192,12 @@
     "privacy_section_5_title": "5. 您的權利",
     "privacy_section_5_content": "您有權存取、更正或刪除您的個人資訊。您也可以要求資料副本或撤回對某些處理活動的同意。",
     "privacy_section_6_title": "6. 聯絡我們",
-    "privacy_section_6_content": "如果您對本隱私權政策有任何疑問，請透過我們的平台與我們聯繫。"
+    "privacy_section_6_content": "如果您對本隱私權政策有任何疑問，請透過我們的平台與我們聯繫。",
+    "dashboard_greeting": "你好",
+    "dashboard_upcoming_deadline": "即將到期",
+    "dashboard_my_courses": "我的課程",
+    "dashboard_days": "天",
+    "dashboard_hours": "小時",
+    "dashboard_mins": "分鐘",
+    "dashboard_continue_conversation": "繼續討論電車難題"
 }

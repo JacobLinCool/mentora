@@ -144,3 +144,5 @@ apps/mentora/src/lib/paraglide/
 
 .DS_Store
 storybook-static/
+
+package-lock.json

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700&display=swap");
 
 @plugin "@tailwindcss/typography";
 @plugin "flowbite/plugin";
@@ -8,18 +9,20 @@
     /* --- 1. Typography: The Voice --- */
     /* Authority and Elegance */
     --font-serif: "Playfair Display", serif;
+    /* Chinese Traditional Serif */
+    --font-serif-tc: "Noto Serif TC", serif;
     /* Logic and Clarity */
     --font-sans: "Outfit", sans-serif;
 
-    /* --- 2. Color Palette: Cosmic Wisdom --- */
-    /* Deep Space Backgrounds */
-    --color-canvas-deep: #0f172a; /* Slate-900 */
-    --color-canvas-accent: #1e1b4b; /* Indigo-950 */
+    /* --- 2. Color Palette: Gray Theme --- */
+    /* Gray Backgrounds */
+    --color-canvas-deep: #636363; /* Medium Gray */
+    --color-canvas-accent: #5a5a5a; /* Darker Gray */
 
-    /* Glassmorphism System */
-    --color-glass-surface: rgba(255, 255, 255, 0.03);
-    --color-glass-border: rgba(255, 255, 255, 0.08);
-    --color-glass-highlight: rgba(255, 255, 255, 0.12);
+    /* Card System */
+    --color-glass-surface: rgba(74, 83, 96, 0.6);
+    --color-glass-border: rgba(255, 255, 255, 0.1);
+    --color-glass-highlight: rgba(255, 255, 255, 0.15);
 
     /* Brand Accents */
     --color-brand-gold: #fbbf24; /* Amber-400 */
@@ -30,8 +33,8 @@
     --color-status-error: #ef4444;
 
     /* Text Levels */
-    --color-text-primary: #f8fafc;
-    --color-text-secondary: #94a3b8;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #b8c1cc;
 
     /* --- 3. Animations: Organic Life --- */
     --animate-float: float 20s infinite ease-in-out;
@@ -111,7 +114,7 @@
 
 /* Optional: Custom Utility Class for Glass Card reuse */
 @utility card-glass {
-    @apply bg-glass-surface border-glass-border border shadow-2xl backdrop-blur-[20px];
+    @apply bg-glass-surface border-glass-border border shadow-lg backdrop-blur-[10px];
 }
 
 body {
