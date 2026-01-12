@@ -139,12 +139,9 @@ describe('Conversations Module (Integration)', () => {
 		it('should list current user conversations', async () => {
 			const result = await client.conversations.listMine({ limit: 10 });
 
-			// May require index or have permission issues
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
-			} else {
-				// Index or permission error is also valid
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -156,20 +153,20 @@ describe('Conversations Module (Integration)', () => {
 				return;
 			}
 
+			// This requires backend to be running - skip if not available
 			const result = await client.conversations.addTurn(
 				testConversationId,
 				'Test user message',
 				'idea'
 			);
 
-			// May fail if conversation is not in correct state or backend issues
-			if (result.success) {
-				// addTurn returns void on success
-				expect(result.success).toBe(true);
-			} else {
-				// Backend error is also valid
-				expect(result.error).toBeDefined();
+			// Backend may not be running in test environment
+			if (!result.success && result.error?.includes('fetch')) {
+				console.log('Skipping - backend not available');
+				return;
 			}
+
+			expect(result.success).toBe(true);
 		});
 	});
 
@@ -182,11 +179,15 @@ describe('Conversations Module (Integration)', () => {
 
 			const result = await client.conversations.end(testConversationId);
 
-			// May fail if already ended
+			// Backend may not be running in test environment
+			if (!result.success && result.error?.includes('fetch')) {
+				console.log('Skipping - backend not available');
+				return;
+			}
+
+			expect(result.success).toBe(true);
 			if (result.success) {
 				testConversationId = null;
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 	});

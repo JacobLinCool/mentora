@@ -74,13 +74,7 @@ describe('Submissions Module (Integration)', () => {
 
 			const result = await client.submissions.start(testAssignmentId);
 
-			// May fail if submission already exists or permission issues
-			if (result.success && result.data) {
-				expect((result.data as { state: string }).state).toBe('in_progress');
-			} else if (!result.success) {
-				// Error is valid - submission may already exist
-				expect(result.error).toBeDefined();
-			}
+			expect(result.success).toBe(true);
 		});
 	});
 
@@ -127,13 +121,7 @@ describe('Submissions Module (Integration)', () => {
 
 			const result = await client.submissions.submit(testAssignmentId);
 
-			// May fail if submission doesn't exist or already submitted
-			if (result.success) {
-				// submit returns void on success
-				expect(result.success).toBe(true);
-			} else {
-				expect(result.error).toBeDefined();
-			}
+			expect(result.success).toBe(true);
 		});
 	});
 
@@ -159,10 +147,9 @@ describe('Submissions Module (Integration)', () => {
 
 			const result = await client.submissions.get(testAssignmentId, userId);
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data).toBeDefined();
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 
@@ -206,11 +193,9 @@ describe('Submissions Module (Integration)', () => {
 				notes: 'Good work!'
 			});
 
-			// May fail if not authorized to grade
+			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data).toBeDefined();
-			} else {
-				expect(result.error).toBeDefined();
+				expect(result.data.scoreCompletion).toBe(85);
 			}
 		});
 	});

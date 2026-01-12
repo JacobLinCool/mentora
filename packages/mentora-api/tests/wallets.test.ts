@@ -92,27 +92,26 @@ describe('Wallets Module (Integration)', () => {
 
 			const result = await client.wallets.listEntries(walletResult.data.id, { limit: 10 });
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
-			} else {
-				// Permission error is valid
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
 
 	describe('addCredits()', () => {
 		it('should call backend to add credits', async () => {
-			// This will likely fail as it requires proper payment setup
-			// but it tests the code path
 			const result = await client.wallets.addCredits(100, 'usd');
 
-			// Will likely fail but code path is covered
+			// Backend may not be running in test environment
+			if (!result.success && result.error?.includes('fetch')) {
+				console.log('Skipping - backend not available');
+				return;
+			}
+
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.id).toBeDefined();
-			} else {
-				// Backend error is expected
-				expect(result.error).toBeDefined();
 			}
 		});
 	});

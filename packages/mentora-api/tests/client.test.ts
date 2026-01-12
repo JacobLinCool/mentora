@@ -109,26 +109,23 @@ describe('MentoraClient (Integration)', () => {
 
 	describe('method delegation', () => {
 		it('should call users.getMyProfile', async () => {
+			// First ensure the profile exists
+			await client.users.updateMyProfile({ displayName: 'Test Teacher' });
+
 			const result = await client.users.getMyProfile();
 
-			// Profile may or may not exist for test user
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.uid).toBe(getTeacherUser()?.uid);
-			} else {
-				// Error is also valid - profile might not exist
-				expect(result.error).toBeDefined();
 			}
 		});
 
 		it('should call courses.listMine', async () => {
 			const result = await client.courses.listMine({ limit: 5 });
 
-			// May have permission issues depending on Firestore rules
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
-			} else {
-				// Permission error is also valid
-				expect(result.error).toBeDefined();
 			}
 		});
 	});

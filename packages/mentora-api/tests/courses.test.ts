@@ -83,7 +83,7 @@ describe('Courses Module (Integration)', () => {
 		it('should list courses owned by current user', async () => {
 			const result = await client.courses.listMine();
 
-			// May have permission issues with collectionGroup queries
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
 				// Should include our test course if created
@@ -91,20 +91,15 @@ describe('Courses Module (Integration)', () => {
 					const found = result.data.some((c) => c.id === testCourseId);
 					expect(found).toBe(true);
 				}
-			} else {
-				// Permission error is valid
-				expect(result.error).toBeDefined();
 			}
 		});
 
 		it('should apply limit option', async () => {
 			const result = await client.courses.listMine({ limit: 1 });
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.length).toBeLessThanOrEqual(1);
-			} else {
-				// Permission error is valid
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -150,11 +145,9 @@ describe('Courses Module (Integration)', () => {
 		it('should list public courses', async () => {
 			const result = await client.courses.listPublic({ limit: 5 });
 
-			// May have permission issues
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -163,11 +156,9 @@ describe('Courses Module (Integration)', () => {
 		it('should list enrolled courses', async () => {
 			const result = await client.courses.listEnrolled({ limit: 10 });
 
-			// May have permission issues with collectionGroup
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -176,11 +167,9 @@ describe('Courses Module (Integration)', () => {
 		it('should list all enrolled courses', async () => {
 			const result = await client.courses.listAllEnrolled({ limit: 10 });
 
-			// May have permission issues with collectionGroup
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -195,11 +184,9 @@ describe('Courses Module (Integration)', () => {
 			const testEmail = `test-invite-${Date.now()}@example.com`;
 			const result = await client.courses.inviteMember(testCourseId, testEmail, 'student');
 
-			// May succeed or fail based on permissions
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data).toBeDefined();
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -229,11 +216,9 @@ describe('Courses Module (Integration)', () => {
 				role: 'ta'
 			});
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.role).toBe('ta');
-			} else {
-				// Permission error is valid
-				expect(result.error).toBeDefined();
 			}
 		});
 	});

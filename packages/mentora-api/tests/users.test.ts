@@ -21,16 +21,16 @@ describe('Users Module (Integration)', () => {
 
 	describe('getMyProfile()', () => {
 		it('should return current user profile when authenticated', async () => {
+			// First ensure the profile exists
+			await client.users.updateMyProfile({ displayName: 'Test Teacher' });
+
 			const result = await client.users.getMyProfile();
 
-			// Profile may or may not exist depending on test user state
+			expect(result.success).toBe(true);
 			if (result.success) {
 				const currentUser = getTeacherUser();
 				expect(result.data.uid).toBe(currentUser?.uid);
 				expect(result.data.email).toBeDefined();
-			} else {
-				// Profile not found is valid
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
@@ -45,12 +45,9 @@ describe('Users Module (Integration)', () => {
 
 			const result = await client.users.getProfile(currentUser.uid);
 
-			// Profile may or may not exist
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.uid).toBe(currentUser.uid);
-			} else {
-				// Permission error or not found is valid
-				expect(result.error).toBeDefined();
 			}
 		});
 

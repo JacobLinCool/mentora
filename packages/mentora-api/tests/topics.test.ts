@@ -61,13 +61,10 @@ describe('Topics Module (Integration)', () => {
 				order: null
 			});
 
-			// May fail due to permission or validation issues
+			expect(result.success).toBe(true);
 			if (result.success) {
 				testTopicId = result.data;
 				expect(testTopicId).toBeDefined();
-			} else {
-				// Error is valid - permission issue
-				expect(result.error).toBeDefined();
 			}
 		});
 	});

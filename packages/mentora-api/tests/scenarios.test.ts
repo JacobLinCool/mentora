@@ -197,13 +197,10 @@ describe('Multi-Account Scenarios', () => {
 				order: 1
 			});
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				testTopicId = result.data;
 				expect(testTopicId).toBeDefined();
-			} else {
-				// May fail due to index issues
-				console.log('Topic creation failed:', result.error);
-				expect(result.error).toBeDefined();
 			}
 		});
 
@@ -295,13 +292,7 @@ describe('Multi-Account Scenarios', () => {
 
 			const result = await student.submissions.start(testAssignmentId);
 
-			if (result.success) {
-				expect(result.success).toBe(true);
-			} else {
-				// May fail if already started
-				console.log('Start submission result:', result.error);
-				expect(result.error).toBeDefined();
-			}
+			expect(result.success).toBe(true);
 		});
 
 		it('Student: should get their submission', async () => {
@@ -328,12 +319,7 @@ describe('Multi-Account Scenarios', () => {
 
 			const result = await student.submissions.submit(testAssignmentId);
 
-			if (result.success) {
-				expect(result.success).toBe(true);
-			} else {
-				// May fail if already submitted
-				console.log('Submit result:', result.error);
-			}
+			expect(result.success).toBe(true);
 		});
 
 		it('Teacher: should see student submission', async () => {
@@ -493,13 +479,13 @@ describe('Multi-Account Scenarios', () => {
 				'idea'
 			);
 
-			// May fail if backend is not running or conversation state doesn't allow
-			if (result.success) {
-				expect(result.success).toBe(true);
-			} else {
-				console.log('Add turn result:', result.error);
-				expect(result.error).toBeDefined();
+			// Backend may not be running in test environment
+			if (!result.success && result.error?.includes('fetch')) {
+				console.log('Skipping - backend not available');
+				return;
 			}
+
+			expect(result.success).toBe(true);
 		});
 
 		it('Student: should end conversation', async () => {
@@ -510,11 +496,15 @@ describe('Multi-Account Scenarios', () => {
 
 			const result = await student.conversations.end(testConversationId);
 
+			// Backend may not be running in test environment
+			if (!result.success && result.error?.includes('fetch')) {
+				console.log('Skipping - backend not available');
+				return;
+			}
+
+			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.success).toBe(true);
 				testConversationId = null;
-			} else {
-				console.log('End conversation result:', result.error);
 			}
 		});
 	});
@@ -533,10 +523,9 @@ describe('Multi-Account Scenarios', () => {
 			const testEmail = `test-invite-${Date.now()}@example.com`;
 			const result = await teacher.courses.inviteMember(testCourseId, testEmail, 'auditor');
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data).toBeDefined();
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 
@@ -556,10 +545,9 @@ describe('Multi-Account Scenarios', () => {
 				role: 'ta'
 			});
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.role).toBe('ta');
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 
@@ -597,10 +585,9 @@ describe('Multi-Account Scenarios', () => {
 				role: 'student'
 			});
 
+			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.role).toBe('student');
-			} else {
-				expect(result.error).toBeDefined();
 			}
 		});
 	});
