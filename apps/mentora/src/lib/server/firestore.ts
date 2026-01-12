@@ -5,7 +5,9 @@ import {
 } from "$env/static/public";
 import { Firestore } from "fires2rest";
 
-export const firestore = PUBLIC_USE_FIREBASE_EMULATOR
+const useEmulator = PUBLIC_USE_FIREBASE_EMULATOR === "true";
+
+export const firestore = useEmulator
     ? Firestore.useEmulator()
     : Firestore.useServiceAccount(PUBLIC_FIREBASE_PROJECT_ID, {
           privateKey: env.FIREBASE_PRIVATE_KEY,
