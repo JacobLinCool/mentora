@@ -8,7 +8,7 @@
 @theme {
     /* --- 1. Typography: The Voice --- */
     /* Authority and Elegance */
-    --font-serif: "Playfair Display", serif;
+    --font-serif: "Playfair Display", "Noto Serif TC", serif;
     /* Chinese Traditional Serif */
     --font-serif-tc: "Noto Serif TC", serif;
     /* Logic and Clarity */

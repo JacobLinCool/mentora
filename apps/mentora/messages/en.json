@@ -198,5 +198,15 @@
     "dashboard_days": "Days",
     "dashboard_hours": "Hours",
     "dashboard_mins": "Mins",
-    "dashboard_continue_conversation": "Continue discussing trolley problem"
+    "dashboard_continue_conversation": "Continue discussing trolley problem",
+    "explore_title": "Explore",
+    "explore_search_placeholder": "search for wisdom...",
+    "explore_category_all": "All",
+    "explore_category_logic": "Logic",
+    "explore_category_psychology": "Psychology",
+    "explore_category_history": "History",
+    "explore_category_thinking": "Thinking",
+    "explore_course_details_title": "Course Details",
+    "explore_course_details_id": "Course ID",
+    "explore_go_back": "Go Back"
 }
