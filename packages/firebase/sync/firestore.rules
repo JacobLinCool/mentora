@@ -175,10 +175,10 @@ service cloud.firestore {
         (isSignedIn() && resource.data != null && (isCourseMember(courseId) || ('ownerId' in resource.data && resource.data.ownerId == request.auth.uid)));
 
       allow create: if isSignedIn() && isValidCourseDoc(request.resource.data);
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && resource.data != null && (
         resource.data.ownerId == request.auth.uid || isInstructorOfCourse(courseId)
       ) && isValidCourseDoc(request.resource.data);
-      allow delete: if isSignedIn() && (
+      allow delete: if isSignedIn() && resource.data != null && (
         resource.data.ownerId == request.auth.uid || isInstructorOfCourse(courseId)
       );
     }
@@ -400,6 +400,8 @@ service cloud.firestore {
       // This supports listMyEnrolledCourses API which queries: 
       // collectionGroup("roster").where("userId", "==", currentUser.uid).where("status", "==", "active")
       allow read: if isSignedIn() && 
+        resource.data != null &&
+        'userId' in resource.data &&
         resource.data.userId == request.auth.uid;
     }
 

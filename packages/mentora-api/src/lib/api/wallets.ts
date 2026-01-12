@@ -23,6 +23,7 @@ export type LedgerEntry = LedgerEntryDoc & { id: string };
 
 import {
 	failure,
+	success,
 	tryCatch,
 	type APIResult,
 	type MentoraAPIConfig,
@@ -69,7 +70,7 @@ export async function getWallet(
 }
 
 /**
- * Get current user's wallet
+ * Get current user's wallet (via backend)
  */
 export async function getMyWallet(config: MentoraAPIConfig): Promise<APIResult<Wallet | null>> {
 	const currentUser = config.getCurrentUser();
@@ -77,25 +78,32 @@ export async function getMyWallet(config: MentoraAPIConfig): Promise<APIResult<W
 		return failure('Not authenticated');
 	}
 
-	return tryCatch(async () => {
-		// Query for wallet where ownerId == current user and ownerType == "user"
-		const q = query(
-			collection(config.db, Wallets.collectionPath()),
-			where('ownerId', '==', currentUser.uid),
-			where('ownerType', '==', 'user'),
-			limit(1)
-		);
-		const snapshot = await getDocs(q);
+	try {
+		const token = await currentUser.getIdToken();
+		const response = await fetch(`${config.backendBaseUrl}/api/wallets/me`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json'
+			}
+		});
 
-		if (snapshot.empty) {
-			return null;
+		if (!response.ok) {
+			const error = await response.text();
+			return failure(error || `HTTP ${response.status}`);
 		}
 
-		return {
-			id: snapshot.docs[0].id,
-			...Wallets.schema.parse(snapshot.docs[0].data())
-		};
-	});
+		const data = await response.json();
+		if (data === null) {
+			return success(null);
+		}
+
+		return success({
+			id: data.id,
+			...Wallets.schema.parse(data)
+		});
+	} catch (error) {
+		return failure(error instanceof Error ? error.message : 'Network error');
+	}
 }
 
 /**

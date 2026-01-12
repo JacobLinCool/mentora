@@ -58,44 +58,6 @@
             "density": "SPARSE_ALL"
         },
         {
-            "collectionGroup": "courses",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "visibility",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "createdAt",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "topics",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "courseId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "order",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
             "collectionGroup": "assignments",
             "queryScope": "COLLECTION",
             "fields": [
@@ -110,6 +72,82 @@
                 {
                     "fieldPath": "__name__",
                     "order": "ASCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "conversations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "assignmentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "updatedAt",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "conversations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "assignmentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "userId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "ASCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "conversations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "userId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "lastActionAt",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "conversations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "userId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "updatedAt",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
                 }
             ],
             "density": "SPARSE_ALL"
@@ -134,53 +172,15 @@
             "density": "SPARSE_ALL"
         },
         {
-            "collectionGroup": "conversations",
+            "collectionGroup": "courses",
             "queryScope": "COLLECTION",
             "fields": [
                 {
-                    "fieldPath": "assignmentId",
+                    "fieldPath": "visibility",
                     "order": "ASCENDING"
                 },
                 {
-                    "fieldPath": "updatedAt",
-                    "order": "DESCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "DESCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "conversations",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "assignmentId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "userId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "__name__",
-                    "order": "ASCENDING"
-                }
-            ],
-            "density": "SPARSE_ALL"
-        },
-        {
-            "collectionGroup": "conversations",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "userId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "updatedAt",
+                    "fieldPath": "createdAt",
                     "order": "DESCENDING"
                 },
                 {
@@ -194,6 +194,10 @@
             "collectionGroup": "roster",
             "queryScope": "COLLECTION_GROUP",
             "fields": [
+                {
+                    "fieldPath": "role",
+                    "order": "ASCENDING"
+                },
                 {
                     "fieldPath": "status",
                     "order": "ASCENDING"
@@ -217,10 +221,6 @@
             "collectionGroup": "roster",
             "queryScope": "COLLECTION_GROUP",
             "fields": [
-                {
-                    "fieldPath": "role",
-                    "order": "ASCENDING"
-                },
                 {
                     "fieldPath": "status",
                     "order": "ASCENDING"
@@ -368,6 +368,44 @@
                 },
                 {
                     "fieldPath": "startedAt",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "DESCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "topics",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "courseId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "order",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "__name__",
+                    "order": "ASCENDING"
+                }
+            ],
+            "density": "SPARSE_ALL"
+        },
+        {
+            "collectionGroup": "topics",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "courseId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "order",
                     "order": "DESCENDING"
                 },
                 {

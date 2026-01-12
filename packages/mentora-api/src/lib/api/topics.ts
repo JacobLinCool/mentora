@@ -12,12 +12,12 @@ import {
 	query,
 	setDoc,
 	updateDoc,
-	where,
-	type QueryConstraint
+	where
 } from 'firebase/firestore';
 import { Topics, type Topic } from 'mentora-firebase';
 import {
 	failure,
+	success,
 	tryCatch,
 	type APIResult,
 	type MentoraAPIConfig,
@@ -44,28 +44,42 @@ export async function getTopic(
 }
 
 /**
- * List topics for a course
+ * List topics for a course (via backend)
  */
 export async function listCourseTopics(
 	config: MentoraAPIConfig,
 	courseId: string,
 	options?: QueryOptions
 ): Promise<APIResult<Topic[]>> {
-	return tryCatch(async () => {
-		const constraints: QueryConstraint[] = [
-			where('courseId', '==', courseId),
-			orderBy('order', 'asc')
-		];
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
 
+	try {
+		const token = await currentUser.getIdToken();
+		const params = new URLSearchParams({ courseId });
 		if (options?.limit) {
-			constraints.push(limit(options.limit));
+			params.set('limit', options.limit.toString());
 		}
 
-		const q = query(collection(config.db, Topics.collectionPath()), ...constraints);
-		const snapshot = await getDocs(q);
+		const response = await fetch(`${config.backendBaseUrl}/api/topics?${params}`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json'
+			}
+		});
 
-		return snapshot.docs.map((doc) => Topics.schema.parse(doc.data()));
-	});
+		if (!response.ok) {
+			const error = await response.text();
+			return failure(error || `HTTP ${response.status}`);
+		}
+
+		const data = await response.json();
+		return success(data.map((t: unknown) => Topics.schema.parse(t)));
+	} catch (error) {
+		return failure(error instanceof Error ? error.message : 'Network error');
+	}
 }
 
 /**
