@@ -13,13 +13,13 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v4
 
             - name: Setup Node.js
-              uses: actions/setup-node@v5
+              uses: actions/setup-node@v6
               with:
                   node-version: 24
                   cache: "pnpm"
@@ -42,19 +42,80 @@ jobs:
             - name: Type check All Packages
               run: pnpm -r check
 
+    test:
+        name: Tests
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  cache: "pnpm"
+
+            - name: Setup Java (for Firebase emulators)
+              uses: actions/setup-java@v5
+              with:
+                  distribution: "temurin"
+                  java-version: "21"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Copy .env file
+              run: cp packages/mentora-api/.env.example packages/mentora-api/.env
+
+            - name: Build Packages
+              run: pnpm --filter 'mentora-*' build
+
+            - name: Run Firebase package tests
+              run: pnpm --filter mentora-firebase test
+
+            - name: Start Firebase emulators
+              run: |
+                  cd packages/firebase
+                  pnpm --filter mentora-firebase dev &
+                  echo "Waiting for emulators to start..."
+                  sleep 5
+
+            - name: Start mentora-api dev server
+              run: |
+                  cd packages/mentora-api
+                  pnpm dev &
+                  echo "Waiting for dev server to start..."
+                  sleep 5
+
+            - name: Wait for services to be ready
+              run: |
+                  # Wait for Firestore emulator
+                  timeout 30 bash -c 'until curl -s http://127.0.0.1:8080 > /dev/null 2>&1; do sleep 1; done' || echo "Firestore emulator check completed"
+                  # Wait for Auth emulator
+                  timeout 30 bash -c 'until curl -s http://127.0.0.1:9099 > /dev/null 2>&1; do sleep 1; done' || echo "Auth emulator check completed"
+                  # Wait for dev server
+                  timeout 30 bash -c 'until curl -s http://localhost:5173 > /dev/null 2>&1; do sleep 1; done' || echo "Dev server check completed"
+
+            - name: Run mentora-api tests
+              run: pnpm --filter mentora-api test
+
     build:
         name: Build
         runs-on: ubuntu-latest
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v4
 
             - name: Setup Node.js
-              uses: actions/setup-node@v5
+              uses: actions/setup-node@v6
               with:
                   node-version: 24
                   cache: "pnpm"
