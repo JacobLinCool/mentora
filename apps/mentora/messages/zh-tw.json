@@ -209,5 +209,8 @@
     "explore_category_thinking": "思考",
     "explore_course_details_title": "課程詳情",
     "explore_course_details_id": "課程 ID",
-    "explore_go_back": "返回"
+    "explore_go_back": "返回",
+    "explore_join_course": "加入課程",
+    "explore_intro": "簡介",
+    "explore_topics": "主題"
 }

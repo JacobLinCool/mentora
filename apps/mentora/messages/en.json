@@ -208,5 +208,8 @@
     "explore_category_thinking": "Thinking",
     "explore_course_details_title": "Course Details",
     "explore_course_details_id": "Course ID",
-    "explore_go_back": "Go Back"
+    "explore_go_back": "Go Back",
+    "explore_join_course": "Join Course",
+    "explore_intro": "Intro",
+    "explore_topics": "Topics"
 }
