@@ -12,10 +12,10 @@ import {
 	query,
 	setDoc,
 	updateDoc,
-	where,
-	type QueryConstraint
+	where
 } from 'firebase/firestore';
 import { Topics, type Topic } from 'mentora-firebase';
+import { callBackend } from './backend.js';
 import {
 	failure,
 	tryCatch,
@@ -44,28 +44,27 @@ export async function getTopic(
 }
 
 /**
- * List topics for a course
+ * List topics for a course (via backend)
  */
 export async function listCourseTopics(
 	config: MentoraAPIConfig,
 	courseId: string,
 	options?: QueryOptions
 ): Promise<APIResult<Topic[]>> {
-	return tryCatch(async () => {
-		const constraints: QueryConstraint[] = [
-			where('courseId', '==', courseId),
-			orderBy('order', 'asc')
-		];
+	const params = new URLSearchParams({ courseId });
+	if (options?.limit) {
+		params.set('limit', options.limit.toString());
+	}
 
-		if (options?.limit) {
-			constraints.push(limit(options.limit));
-		}
+	const result = await callBackend<unknown[]>(config, `/api/topics?${params}`);
+	if (!result.success) {
+		return result;
+	}
 
-		const q = query(collection(config.db, Topics.collectionPath()), ...constraints);
-		const snapshot = await getDocs(q);
-
-		return snapshot.docs.map((doc) => Topics.schema.parse(doc.data()));
-	});
+	return {
+		success: true,
+		data: result.data.map((t: unknown) => Topics.schema.parse(t))
+	};
 }
 
 /**

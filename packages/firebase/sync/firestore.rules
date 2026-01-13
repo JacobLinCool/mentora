@@ -167,18 +167,21 @@ service cloud.firestore {
       // Public courses are readable by anyone; private/unlisted require membership or ownership
       allow get: if targetNotExists() ||
         (resource.data != null && 'visibility' in resource.data && resource.data.visibility == "public") ||
-        (isSignedIn() && resource.data != null && (isCourseMember(courseId) || ('ownerId' in resource.data && resource.data.ownerId == request.auth.uid)));
+        (isSignedIn() && resource.data != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
+        (isSignedIn() && resource.data != null && isCourseMember(courseId));
 
-      // List: same rules as get
+      // List: owner can list their courses, members can list courses they belong to, anyone can list public
+      // Important: owner check must be evaluated separately to avoid type errors with isCourseMember in list queries
       allow list: if targetNotExists() ||
         (resource.data != null && 'visibility' in resource.data && resource.data.visibility == "public") ||
-        (isSignedIn() && resource.data != null && (isCourseMember(courseId) || ('ownerId' in resource.data && resource.data.ownerId == request.auth.uid)));
+        (isSignedIn() && resource.data != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
+        (isSignedIn() && resource.data != null && isCourseMember(courseId));
 
       allow create: if isSignedIn() && isValidCourseDoc(request.resource.data);
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && resource.data != null && (
         resource.data.ownerId == request.auth.uid || isInstructorOfCourse(courseId)
       ) && isValidCourseDoc(request.resource.data);
-      allow delete: if isSignedIn() && (
+      allow delete: if isSignedIn() && resource.data != null && (
         resource.data.ownerId == request.auth.uid || isInstructorOfCourse(courseId)
       );
     }
@@ -208,11 +211,10 @@ service cloud.firestore {
 
     /* ---------- Wallets / Ledger (read-only to clients) ---------- */
     match /wallets/{walletId} {
-      allow get: if isSignedIn() && (
+      allow get, list: if isSignedIn() && (
         (resource.data.ownerId == request.auth.uid) &&
         (resource.data.ownerType in ["user", "host"])
       );
-      allow list: if false;
 
       // Wallet creation/updates are server-side only.
       allow create, update, delete: if false;
@@ -400,6 +402,8 @@ service cloud.firestore {
       // This supports listMyEnrolledCourses API which queries: 
       // collectionGroup("roster").where("userId", "==", currentUser.uid).where("status", "==", "active")
       allow read: if isSignedIn() && 
+        resource.data != null &&
+        'userId' in resource.data &&
         resource.data.userId == request.auth.uid;
     }
 

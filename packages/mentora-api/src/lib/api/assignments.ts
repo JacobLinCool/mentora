@@ -1,21 +1,9 @@
 /**
  * Assignment operations
  */
-import {
-	collection,
-	deleteDoc,
-	doc,
-	getDoc,
-	getDocs,
-	limit,
-	orderBy,
-	query,
-	setDoc,
-	updateDoc,
-	where,
-	type QueryConstraint
-} from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Assignments, type Assignment } from 'mentora-firebase';
+import { callBackend } from './backend.js';
 import {
 	failure,
 	tryCatch,
@@ -44,55 +32,51 @@ export async function getAssignment(
 }
 
 /**
- * List assignments for a course
+ * List assignments for a course (via backend)
  */
 export async function listCourseAssignments(
 	config: MentoraAPIConfig,
 	courseId: string,
 	options?: QueryOptions
 ): Promise<APIResult<Assignment[]>> {
-	return tryCatch(async () => {
-		const constraints: QueryConstraint[] = [
-			where('courseId', '==', courseId),
-			orderBy('startAt', 'desc')
-		];
+	const params = new URLSearchParams({ courseId });
+	if (options?.limit) {
+		params.set('limit', options.limit.toString());
+	}
 
-		if (options?.limit) {
-			constraints.push(limit(options.limit));
-		}
+	const result = await callBackend<unknown[]>(config, `/api/assignments?${params}`);
+	if (!result.success) {
+		return result;
+	}
 
-		const q = query(collection(config.db, Assignments.collectionPath()), ...constraints);
-		const snapshot = await getDocs(q);
-
-		return snapshot.docs.map((doc) => Assignments.schema.parse(doc.data()));
-	});
+	return {
+		success: true,
+		data: result.data.map((a: unknown) => Assignments.schema.parse(a))
+	};
 }
 
 /**
- * List available assignments for a course (already started)
+ * List available assignments for a course (via backend)
  */
 export async function listAvailableAssignments(
 	config: MentoraAPIConfig,
 	courseId: string,
 	options?: QueryOptions
 ): Promise<APIResult<Assignment[]>> {
-	return tryCatch(async () => {
-		const now = Date.now();
-		const constraints: QueryConstraint[] = [
-			where('courseId', '==', courseId),
-			where('startAt', '<=', now),
-			orderBy('startAt', 'desc')
-		];
+	const params = new URLSearchParams({ courseId, available: 'true' });
+	if (options?.limit) {
+		params.set('limit', options.limit.toString());
+	}
 
-		if (options?.limit) {
-			constraints.push(limit(options.limit));
-		}
+	const result = await callBackend<unknown[]>(config, `/api/assignments?${params}`);
+	if (!result.success) {
+		return result;
+	}
 
-		const q = query(collection(config.db, Assignments.collectionPath()), ...constraints);
-		const snapshot = await getDocs(q);
-
-		return snapshot.docs.map((doc) => Assignments.schema.parse(doc.data()));
-	});
+	return {
+		success: true,
+		data: result.data.map((a: unknown) => Assignments.schema.parse(a))
+	};
 }
 
 /**

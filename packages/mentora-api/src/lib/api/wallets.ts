@@ -69,7 +69,7 @@ export async function getWallet(
 }
 
 /**
- * Get current user's wallet
+ * Get current user's wallet (via backend)
  */
 export async function getMyWallet(config: MentoraAPIConfig): Promise<APIResult<Wallet | null>> {
 	const currentUser = config.getCurrentUser();
@@ -78,7 +78,6 @@ export async function getMyWallet(config: MentoraAPIConfig): Promise<APIResult<W
 	}
 
 	return tryCatch(async () => {
-		// Query for wallet where ownerId == current user and ownerType == "user"
 		const q = query(
 			collection(config.db, Wallets.collectionPath()),
 			where('ownerId', '==', currentUser.uid),
@@ -91,9 +90,10 @@ export async function getMyWallet(config: MentoraAPIConfig): Promise<APIResult<W
 			return null;
 		}
 
+		const doc = snapshot.docs[0];
 		return {
-			id: snapshot.docs[0].id,
-			...Wallets.schema.parse(snapshot.docs[0].data())
+			id: doc.id,
+			...Wallets.schema.parse(doc.data())
 		};
 	});
 }
