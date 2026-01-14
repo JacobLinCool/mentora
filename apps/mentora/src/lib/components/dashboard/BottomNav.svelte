@@ -13,6 +13,7 @@
             'explore'
                 ? 'text-white'
                 : 'text-text-secondary'}"
+            aria-label="Explore"
             onclick={() => (window.location.href = "/explore")}
         >
             <svg
@@ -37,6 +38,7 @@
             'home'
                 ? 'text-white'
                 : 'text-text-secondary'}"
+            aria-label="Home"
             onclick={() => (window.location.href = "/dashboard")}
         >
             <svg
@@ -59,6 +61,7 @@
             'profile'
                 ? 'text-white'
                 : 'text-text-secondary'}"
+            aria-label="Profile"
             onclick={() => (window.location.href = "/profile")}
         >
             <svg

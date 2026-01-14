@@ -7,7 +7,7 @@
     function calculateTimeRemaining() {
         const now = new Date();
         const target = new Date(targetDate);
-        const diff = target - now;
+        const diff = target.getTime() - now.getTime();
 
         if (diff > 0) {
             timeRemaining = {

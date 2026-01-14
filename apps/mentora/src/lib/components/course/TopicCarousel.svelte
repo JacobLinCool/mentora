@@ -24,6 +24,7 @@
 
     let { topics, currentIndex = 0, onTopicChange }: Props = $props();
 
+    // svelte-ignore state_referenced_locally
     let activeIndex = $state(currentIndex);
     let touchStartX = $state(0);
     let touchEndX = $state(0);

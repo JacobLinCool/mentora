@@ -27,9 +27,9 @@
         aria-label={showKeywords ? "Hide keywords" : "Show keywords"}
     >
         {#if showKeywords}
-            <FileX class="icon" />
+            <FileX />
         {:else}
-            <FileText class="icon" />
+            <FileText />
         {/if}
     </button>
 
@@ -40,7 +40,7 @@
         onclick={onToggleRecording}
         aria-label={isRecording ? "Stop recording" : "Start recording"}
     >
-        <Mic class="mic-icon" />
+        <Mic size={28} />
     </button>
 
     <!-- Text input toggle (right) -->
@@ -49,7 +49,7 @@
         onclick={onShowTextInput}
         aria-label="Show text input"
     >
-        <Keyboard class="icon" />
+        <Keyboard />
     </button>
 </div>
 
@@ -83,11 +83,6 @@
         color: white;
     }
 
-    .control-btn .icon {
-        width: 24px;
-        height: 24px;
-    }
-
     .mic-btn {
         display: flex;
         align-items: center;
@@ -113,10 +108,5 @@
         background: rgba(255, 255, 255, 0.9);
         color: #333;
         box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
-    }
-
-    .mic-icon {
-        width: 28px;
-        height: 28px;
     }
 </style>

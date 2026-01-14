@@ -116,7 +116,7 @@
         }
     }
 
-    const twoWeeksDates = getTwoWeeksDates(selectedDate);
+    let twoWeeksDates = $derived(getTwoWeeksDates(selectedDate));
 </script>
 
 <div class="space-y-4">
