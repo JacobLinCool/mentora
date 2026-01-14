@@ -90,21 +90,30 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-br from-[#404040] to-[#858585] pb-24">
-    <div class="mx-auto max-w-md px-6 pt-8">
+    <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
         <DashboardHeader userName="user01" />
 
-        <UpcomingDeadline
-            deadline={selectedDeadline}
-            {deadlineDates}
-            onDateSelect={handleDateSelect}
-        />
+        <!-- Responsive grid layout for iPad -->
+        <div class="md:grid md:grid-cols-2 md:gap-6">
+            <!-- Left column: Deadline -->
+            <div>
+                <UpcomingDeadline
+                    deadline={selectedDeadline}
+                    {deadlineDates}
+                    onDateSelect={handleDateSelect}
+                />
+            </div>
 
-        <ContinueConversation
-            conversationId={unfinishedConversation.id}
-            onclick={handleContinueConversation}
-        />
+            <!-- Right column: Continue + Courses -->
+            <div>
+                <ContinueConversation
+                    conversationId={unfinishedConversation.id}
+                    onclick={handleContinueConversation}
+                />
 
-        <MyCourses {courses} />
+                <MyCourses {courses} />
+            </div>
+        </div>
     </div>
 
     <BottomNav activeTab="home" />

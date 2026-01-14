@@ -231,6 +231,19 @@
         text-align: left;
     }
 
+    /* iPad responsive text container */
+    @media (min-width: 768px) {
+        .text-container {
+            max-width: 70%;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .text-container {
+            max-width: 60%;
+        }
+    }
+
     /* Static response text (when showing both) */
     .response-text {
         font-family: "Noto Serif TC", "Times New Roman", serif;
@@ -256,6 +269,23 @@
         animation: fadeIn 0.5s ease-out;
     }
 
+    /* iPad responsive ready phase */
+    @media (min-width: 768px) {
+        .ready-phase {
+            padding: 0 3rem;
+            max-width: 42rem;
+            margin: 0 auto;
+            width: 100%;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .ready-phase {
+            padding: 0 4rem;
+            max-width: 48rem;
+        }
+    }
+
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -277,6 +307,13 @@
         line-height: 1.5;
         color: white;
         margin: 0;
+    }
+
+    /* iPad responsive question text */
+    @media (min-width: 768px) {
+        .question-text {
+            font-size: 2rem;
+        }
     }
 
     .keywords-section {

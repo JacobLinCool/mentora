@@ -15,7 +15,7 @@
     <h2 class="text-text-primary font-serif-tc mb-6 text-2xl font-bold">
         {m.dashboard_my_courses()}
     </h2>
-    <div class="space-y-4">
+    <div class="grid gap-4 md:grid-cols-2">
         {#each courses as course}
             <CourseCard
                 courseId={course.id}

@@ -146,3 +146,4 @@ apps/mentora/src/lib/paraglide/
 storybook-static/
 
 package-lock.json
+.shared

@@ -5,7 +5,9 @@
 <nav
     class="bg-canvas-accent border-glass-border fixed right-0 bottom-0 left-0 border-t px-6 py-3"
 >
-    <div class="mx-auto flex max-w-md items-center justify-around">
+    <div
+        class="mx-auto flex max-w-md items-center justify-around md:max-w-2xl lg:max-w-4xl"
+    >
         <button
             class="flex flex-col items-center transition-colors {activeTab ===
             'explore'

@@ -1,427 +1,375 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { page } from "$app/state";
-    import { m } from "$lib/paraglide/messages";
+    import { goto } from "$app/navigation";
+    import { ArrowLeft } from "@lucide/svelte";
     import { api } from "$lib";
-    import type { CourseDoc, Assignment, CourseMembership } from "$lib/api";
-    import {
-        Button,
-        Card,
-        Alert,
-        Spinner,
-        Badge,
-        Table,
-        TableHead,
-        TableBody,
-        TableBodyCell,
-        TableBodyRow,
-        TableHeadCell,
-        Modal,
-        Label,
-        Input,
-        Textarea,
-    } from "flowbite-svelte";
-    import {
-        ArrowLeft,
-        Users,
-        ClipboardList,
-        Plus,
-        Copy,
-        Check,
-    } from "@lucide/svelte";
+    import { Spinner } from "flowbite-svelte";
+    import type { Topic, Assignment } from "$lib/api";
+    import TopicCarousel from "$lib/components/course/TopicCarousel.svelte";
+    import AssignmentTimeline from "$lib/components/course/AssignmentTimeline.svelte";
+    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
     import PageHead from "$lib/components/PageHead.svelte";
 
     const courseId = $derived(page.params.id);
 
-    let courseDoc = $state<CourseDoc | null>(null);
-    let assignments = $state<Assignment[]>([]);
-    let roster = $state<CourseMembership[]>([]);
+    // State
     let loading = $state(true);
-    let error = $state<string | null>(null);
+    let courseTitle = $state("");
+    let topics = $state<Topic[]>([]);
+    let allAssignments = $state<Assignment[]>([]);
+    let currentTopicIndex = $state(0);
 
-    // Assignment creation
-    let showCreateAssignment = $state(false);
-    let assignmentTitle = $state("");
-    let assignmentPrompt = $state("");
-    let assignmentStartAt = $state("");
-    let assignmentDueAt = $state("");
-    let assignmentMode = $state<"instant">("instant");
-    let creatingAssignment = $state(false);
-    let createAssignmentError = $state<string | null>(null);
+    // Mock data for demonstration
+    const mockTopics = [
+        {
+            id: "topic-1",
+            courseId: "course-01",
+            title: "電車難題",
+            description:
+                "你要撞誰？這是一個經典的道德困境問題。探討在不同情境下，我們如何做出道德決策，以及這些決策背後的倫理原則。",
+            order: 1,
+            createdBy: "system",
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        },
+        {
+            id: "topic-2",
+            courseId: "course-01",
+            title: "功利主義",
+            description:
+                "功利主義是一種倫理理論，認為行為的對錯取決於其結果對整體幸福的影響。我們將探討這一理論的核心概念與批評。",
+            order: 2,
+            createdBy: "system",
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        },
+        {
+            id: "topic-3",
+            courseId: "course-01",
+            title: "義務論",
+            description:
+                "康德的義務論認為道德行為應基於義務和規則，而非結果。我們將深入了解這一倫理框架及其在現代社會的應用。",
+            order: 3,
+            createdBy: "system",
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        },
+    ];
+    const mockAssignments: Record<
+        string,
+        Array<{
+            id: string;
+            title: string;
+            dueAt: number | null;
+            type: "quiz" | "conversation" | "essay";
+            completed: boolean;
+            locked: boolean;
+        }>
+    > = {
+        "topic-1": [
+            {
+                id: "assign-1-1",
+                title: "前測",
+                dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
+                type: "quiz",
+                completed: true,
+                locked: false,
+            },
+            {
+                id: "assign-1-2",
+                title: "對話",
+                dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
+                type: "conversation",
+                completed: true,
+                locked: false,
+            },
+            {
+                id: "assign-1-3",
+                title: "後測",
+                dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
+                type: "quiz",
+                completed: false,
+                locked: false,
+            },
+        ],
+        "topic-2": [
+            {
+                id: "assign-2-1",
+                title: "前測",
+                dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
+                type: "quiz",
+                completed: false,
+                locked: false,
+            },
+            {
+                id: "assign-2-2",
+                title: "對話",
+                dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
+                type: "conversation",
+                completed: false,
+                locked: true,
+            },
+            {
+                id: "assign-2-3",
+                title: "後測",
+                dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
+                type: "quiz",
+                completed: false,
+                locked: true,
+            },
+        ],
+        "topic-3": [
+            {
+                id: "assign-3-1",
+                title: "前測",
+                dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
+                type: "quiz",
+                completed: false,
+                locked: true,
+            },
+            {
+                id: "assign-3-2",
+                title: "對話",
+                dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
+                type: "conversation",
+                completed: false,
+                locked: true,
+            },
+            {
+                id: "assign-3-3",
+                title: "後測",
+                dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
+                type: "quiz",
+                completed: false,
+                locked: true,
+            },
+        ],
+    };
 
-    // Code copy state
-    let codeCopied = $state(false);
+    // Derived state
+    let currentTopic = $derived(topics[currentTopicIndex]);
+    let currentAssignments = $derived(
+        currentTopic ? (mockAssignments[currentTopic.id] ?? []) : [],
+    );
 
-    async function loadCourseDetails() {
-        if (!courseId) return;
-
+    async function loadCourseData() {
         loading = true;
-        error = null;
 
-        const [courseResult, assignmentsResult, rosterResult] =
-            await Promise.all([
-                api.courses.get(courseId),
-                api.assignments.listForCourse(courseId),
-                api.courses.getRoster(courseId),
-            ]);
+        // Try to load real data first
+        if (courseId) {
+            const courseResult = await api.courses.get(courseId);
+            if (courseResult.success) {
+                courseTitle = courseResult.data.title;
+            } else {
+                courseTitle = "COURSE01";
+            }
 
-        if (courseResult.success) {
-            courseDoc = courseResult.data;
+            // Load topics
+            const topicsResult = await api.topics.listForCourse(courseId);
+            if (topicsResult.success && topicsResult.data.length > 0) {
+                // Sanitize order to ensure it's a number
+                topics = topicsResult.data.map((t) => ({
+                    ...t,
+                    order: t.order ?? 0,
+                }));
+            } else {
+                // Use mock topics
+                topics = mockTopics;
+            }
+
+            // Load assignments
+            const assignmentsResult =
+                await api.assignments.listForCourse(courseId);
+            if (assignmentsResult.success) {
+                allAssignments = assignmentsResult.data;
+            } else {
+                // Fallback for demo if no real data
+                allAssignments = [];
+            }
         } else {
-            error = courseResult.error;
+            // No course ID, use mocks
+            courseTitle = "COURSE01";
+            topics = mockTopics;
+            allAssignments = [];
         }
 
-        if (assignmentsResult.success) {
-            assignments = assignmentsResult.data;
+        // Determine smart default topic
+        // Logic: Find first topic where there is at least one assignment that is
+        // NOT completed AND NOT expired (if due date exists)
+        // Since we are using mockAssignments dictionary for the structure in this demo:
+        let defaultIndex = 0;
+        const now = Date.now();
+
+        for (let i = 0; i < topics.length; i++) {
+            const topic = topics[i];
+            const topicAssignments = mockAssignments[topic.id] || [];
+
+            // Check if this topic has any "active" assignment
+            const hasActiveAssignment = topicAssignments.some((a) => {
+                // Not completed
+                if (a.completed) return false;
+                // Not expired (if due date is set)
+                // If dueAt is null, it never expires
+                if (a.dueAt && a.dueAt < now) return false;
+
+                return true;
+            });
+
+            if (hasActiveAssignment) {
+                defaultIndex = i;
+                break;
+            }
         }
 
-        if (rosterResult.success) {
-            roster = rosterResult.data;
-        }
+        currentTopicIndex = defaultIndex;
 
         loading = false;
     }
 
-    async function handleCreateAssignment() {
-        if (
-            !courseId ||
-            !assignmentTitle.trim() ||
-            !assignmentPrompt.trim() ||
-            !assignmentStartAt ||
-            !assignmentDueAt
-        )
-            return;
-
-        creatingAssignment = true;
-        createAssignmentError = null;
-
-        const result = await api.assignments.create({
-            courseId,
-            topicId: null,
-            orderInTopic: null,
-            title: assignmentTitle.trim(),
-            prompt: assignmentPrompt.trim(),
-            startAt: new Date(assignmentStartAt).getTime(),
-            dueAt: new Date(assignmentDueAt).getTime(),
-            mode: assignmentMode,
-            allowLate: false,
-            allowResubmit: false,
-        });
-
-        if (result.success) {
-            assignmentTitle = "";
-            assignmentPrompt = "";
-            assignmentStartAt = "";
-            assignmentDueAt = "";
-            assignmentMode = "instant";
-            showCreateAssignment = false;
-            await loadCourseDetails();
-        } else {
-            createAssignmentError = result.error;
-        }
-
-        creatingAssignment = false;
+    function handleTopicChange(index: number) {
+        currentTopicIndex = index;
     }
 
-    async function copyCourseCode() {
-        if (!courseDoc?.code) return;
-        await navigator.clipboard.writeText(courseDoc.code);
-        codeCopied = true;
-        setTimeout(() => (codeCopied = false), 2000);
+    function handleAssignmentClick(assignment: {
+        id: string;
+        locked: boolean;
+    }) {
+        if (!assignment.locked) {
+            goto(`/assignments/${assignment.id}`);
+        }
+    }
+
+    function goBack() {
+        goto("/dashboard");
     }
 
     onMount(() => {
-        loadCourseDetails();
+        loadCourseData();
     });
-
-    function formatDate(timestamp: number) {
-        return new Date(timestamp).toLocaleDateString();
-    }
 </script>
 
-<PageHead
-    title={courseDoc?.title ?? m.page_course_detail_title()}
-    description={m.page_course_detail_description()}
-/>
+<PageHead title={courseTitle || "Course"} description="Course details" />
 
-<div class="mx-auto max-w-6xl">
-    <Button href="/courses" color="light" class="mb-4">
-        <ArrowLeft class="me-2 h-4 w-4" />
-        {m.back()}
-    </Button>
+<div class="course-page">
+    <!-- Header -->
+    <header class="page-header">
+        <button class="back-button" onclick={goBack}>
+            <ArrowLeft class="back-icon" />
+        </button>
+        <h1 class="course-title">{courseTitle}</h1>
+    </header>
 
     {#if loading}
-        <div class="py-12 text-center">
-            <Spinner size="12" />
-            <p class="mt-4 text-gray-600">{m.course_detail_loading()}</p>
+        <div class="loading-container">
+            <Spinner size="12" color="gray" />
         </div>
-    {:else if error}
-        <Alert color="red">{m.course_detail_error()}: {error}</Alert>
-    {:else if courseDoc}
-        <!-- Course Header -->
-        <Card class="mb-6 p-4">
-            <h1 class="mb-2 text-3xl font-bold">{courseDoc.title}</h1>
-            <div class="flex gap-4 text-sm text-gray-600">
-                <div>
-                    <span class="font-semibold">{m.course_detail_code()}:</span>
-                    <Badge color="blue" class="ms-2">{courseDoc.code}</Badge>
-                </div>
-                <div>
-                    <Users class="me-1 inline h-4 w-4" />
-                    {m.course_detail_members({ count: roster.length })}
-                </div>
-            </div>
-        </Card>
+    {:else}
+        <!-- Topic Carousel -->
+        <TopicCarousel
+            {topics}
+            currentIndex={currentTopicIndex}
+            onTopicChange={handleTopicChange}
+        />
 
-        <!-- Invite Members Section -->
-        {#if api.currentUser && courseDoc.ownerId === api.currentUser.uid}
-            <Card class="mb-6 p-4">
-                <h2 class="mb-3 text-xl font-semibold">
-                    {m.course_detail_invite()}
-                </h2>
-                <p class="mb-2 text-sm text-gray-600">
-                    {m.course_detail_share_code()}
-                </p>
-                <div class="flex items-center gap-2">
-                    <code
-                        class="flex-1 rounded bg-gray-100 px-3 py-2 font-mono text-lg"
-                    >
-                        {courseDoc.code}
-                    </code>
-                    <Button onclick={copyCourseCode} color="light" size="sm">
-                        {#if codeCopied}
-                            <Check class="h-4 w-4" />
-                        {:else}
-                            <Copy class="h-4 w-4" />
-                        {/if}
-                    </Button>
-                </div>
-            </Card>
-        {/if}
-
-        <!-- Assignments Section -->
-        <Card class="mb-6 p-4">
-            <div class="mb-4 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <ClipboardList class="h-6 w-6 text-blue-600" />
-                    <h2 class="text-2xl font-semibold">
-                        {m.course_detail_assignments()}
-                    </h2>
-                </div>
-                {#if api.currentUser && courseDoc.ownerId === api.currentUser.uid}
-                    <Button
-                        onclick={() => (showCreateAssignment = true)}
-                        size="sm"
-                    >
-                        <Plus class="me-2 h-4 w-4" />
-                        {m.course_detail_create_assignment()}
-                    </Button>
-                {/if}
-            </div>
-            {#if assignments.length === 0}
-                <p class="py-4 text-center text-gray-600">
-                    {m.course_detail_no_assignments()}
-                </p>
-            {:else}
-                <div class="space-y-3">
-                    {#each assignments as assignment (assignment.id)}
-                        <Card
-                            class="p-4"
-                            href={`/assignments/${assignment.id}`}
-                        >
-                            <div class="flex items-start justify-between">
-                                <div>
-                                    <h3 class="text-lg font-semibold">
-                                        {assignment.title}
-                                    </h3>
-                                    <p class="mt-1 text-sm text-gray-600">
-                                        {m.assignments_due()}: {formatDate(
-                                            assignment.dueAt ?? 0,
-                                        )}
-                                    </p>
-                                </div>
-                                <Badge
-                                    color={assignment.startAt > Date.now()
-                                        ? "yellow"
-                                        : "green"}
-                                >
-                                    {assignment.mode}
-                                </Badge>
-                            </div>
-                        </Card>
-                    {/each}
-                </div>
-            {/if}
-        </Card>
-
-        <!-- Roster Section -->
-        <Card class="p-4">
-            <div class="mb-4 flex items-center gap-2">
-                <Users class="h-6 w-6 text-green-600" />
-                <h2 class="text-2xl font-semibold">
-                    {m.course_detail_roster()}
-                </h2>
-            </div>
-            {#if roster.length === 0}
-                <p class="py-4 text-center text-gray-600">
-                    {m.courses_empty()}
-                </p>
-            {:else}
-                <Table>
-                    <TableHead>
-                        <TableHeadCell>Email</TableHeadCell>
-                        <TableHeadCell>Role</TableHeadCell>
-                        <TableHeadCell>Status</TableHeadCell>
-                        <TableHeadCell>Joined</TableHeadCell>
-                    </TableHead>
-                    <TableBody>
-                        {#each roster as member (member.email)}
-                            <TableBodyRow>
-                                <TableBodyCell>{member.email}</TableBodyCell>
-                                <TableBodyCell>
-                                    <Badge
-                                        color={member.role === "instructor"
-                                            ? "purple"
-                                            : member.role === "ta"
-                                              ? "blue"
-                                              : "gray"}
-                                    >
-                                        {member.role}
-                                    </Badge>
-                                </TableBodyCell>
-                                <TableBodyCell>
-                                    <Badge
-                                        color={member.status === "active"
-                                            ? "green"
-                                            : "yellow"}
-                                    >
-                                        {member.status}
-                                    </Badge>
-                                </TableBodyCell>
-                                <TableBodyCell
-                                    >{formatDate(
-                                        member.joinedAt ?? 0,
-                                    )}</TableBodyCell
-                                >
-                            </TableBodyRow>
-                        {/each}
-                    </TableBody>
-                </Table>
-            {/if}
-        </Card>
+        <!-- Assignment Timeline -->
+        <section class="assignments-section">
+            <h3 class="section-title">作業進度</h3>
+            <AssignmentTimeline
+                assignments={currentAssignments}
+                onAssignmentClick={handleAssignmentClick}
+            />
+        </section>
     {/if}
+
+    <!-- Bottom Navigation -->
+    <BottomNav activeTab="home" />
 </div>
 
-<!-- Create Assignment Modal -->
-<Modal
-    bind:open={showCreateAssignment}
-    size="md"
-    dismissable={!creatingAssignment}
->
-    <h3 class="mb-4 text-xl font-semibold">
-        {m.course_detail_create_assignment()}
-    </h3>
+<style>
+    .course-page {
+        min-height: 100vh;
+        background: linear-gradient(
+            135deg,
+            #2d2d2d 0%,
+            #404040 50%,
+            #5a5a5a 100%
+        );
+        padding-bottom: 6rem;
+    }
 
-    <form
-        onsubmit={(e) => {
-            e.preventDefault();
-            handleCreateAssignment();
-        }}
-        class="space-y-4"
-    >
-        <div>
-            <Label for="assignment-title" class="mb-2"
-                >{m.assignment_create_title()}</Label
-            >
-            <Input
-                id="assignment-title"
-                bind:value={assignmentTitle}
-                placeholder={m.assignment_create_title()}
-                disabled={creatingAssignment}
-                required
-            />
-        </div>
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem 1.5rem 0.5rem;
+        max-width: 42rem;
+        margin: 0 auto;
+    }
 
-        <div>
-            <Label for="assignment-prompt" class="mb-2"
-                >{m.assignment_create_prompt()}</Label
-            >
-            <Textarea
-                id="assignment-prompt"
-                bind:value={assignmentPrompt}
-                placeholder={m.assignment_create_prompt()}
-                disabled={creatingAssignment}
-                rows={4}
-                required
-            />
-        </div>
+    @media (min-width: 1024px) {
+        .page-header {
+            max-width: 56rem;
+        }
+    }
 
-        <div>
-            <Label for="assignment-mode" class="mb-2"
-                >{m.assignment_create_mode()}</Label
-            >
-            <Input id="assignment-mode" value="instant" disabled readonly />
-            <p class="mt-1 text-sm text-gray-500">
-                Currently only instant mode is supported
-            </p>
-        </div>
+    .back-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
 
-        <div>
-            <Label for="assignment-start" class="mb-2"
-                >{m.assignment_create_start_at()}</Label
-            >
-            <Input
-                id="assignment-start"
-                type="datetime-local"
-                bind:value={assignmentStartAt}
-                disabled={creatingAssignment}
-                required
-            />
-        </div>
+    .back-button:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateX(-2px);
+    }
 
-        <div>
-            <Label for="assignment-due" class="mb-2"
-                >{m.assignment_create_due_at()}</Label
-            >
-            <Input
-                id="assignment-due"
-                type="datetime-local"
-                bind:value={assignmentDueAt}
-                disabled={creatingAssignment}
-                required
-            />
-        </div>
+    .back-button :global(.back-icon) {
+        width: 1.25rem;
+        height: 1.25rem;
+        color: #fff;
+    }
 
-        {#if createAssignmentError}
-            <Alert color="red">{createAssignmentError}</Alert>
-        {/if}
+    .course-title {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 300;
+        color: #fff;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
 
-        <div class="flex justify-end gap-2">
-            <Button
-                color="alternative"
-                onclick={() => {
-                    if (!creatingAssignment) {
-                        showCreateAssignment = false;
-                        createAssignmentError = null;
-                    }
-                }}
-                disabled={creatingAssignment}
-            >
-                {m.cancel()}
-            </Button>
-            <Button
-                type="submit"
-                disabled={creatingAssignment ||
-                    !assignmentTitle.trim() ||
-                    !assignmentPrompt.trim() ||
-                    !assignmentStartAt ||
-                    !assignmentDueAt}
-            >
-                {#if creatingAssignment}
-                    <Spinner size="4" class="me-2" />
-                {/if}
-                {m.create()}
-            </Button>
-        </div>
-    </form>
-</Modal>
+    .loading-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 50vh;
+    }
+
+    .assignments-section {
+        padding: 0 1.5rem;
+        max-width: 42rem;
+        margin: 0 auto;
+    }
+
+    @media (min-width: 1024px) {
+        .assignments-section {
+            max-width: 56rem;
+        }
+    }
+
+    .section-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.6);
+        margin: 0 0 1rem;
+        letter-spacing: 0.05em;
+    }
+</style>
