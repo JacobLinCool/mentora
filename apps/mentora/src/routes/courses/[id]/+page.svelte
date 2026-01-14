@@ -6,7 +6,7 @@
     import { ArrowLeft } from "@lucide/svelte";
     import { api } from "$lib";
     import { Spinner } from "flowbite-svelte";
-    import type { Topic, Assignment } from "$lib/api";
+    import type { Topic } from "$lib/api";
     import TopicCarousel from "$lib/components/course/TopicCarousel.svelte";
     import AssignmentTimeline from "$lib/components/course/AssignmentTimeline.svelte";
     import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
@@ -18,8 +18,9 @@
     let loading = $state(true);
     let courseTitle = $state("");
     let topics = $state<Topic[]>([]);
-    let _allAssignments = $state<Assignment[]>([]);
     let currentTopicIndex = $state(0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let _allAssignments = $state<any[]>([]);
 
     // Mock data for demonstration
     const mockTopics = [
@@ -287,7 +288,7 @@
                 topics = topicsResult.data.map((t) => ({
                     ...t,
                     order: t.order ?? 0,
-                }));
+                })) as Topic[];
             } else {
                 // Use mock topics
                 topics = mockTopics;

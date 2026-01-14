@@ -1,4 +1,5 @@
-<script>
+<script lang="ts">
+    import { SvelteDate } from "svelte/reactivity";
     import DashboardHeader from "$lib/components/dashboard/DashboardHeader.svelte";
     import UpcomingDeadline from "$lib/components/dashboard/UpcomingDeadline.svelte";
     import ContinueConversation from "$lib/components/dashboard/ContinueConversation.svelte";
@@ -40,7 +41,7 @@
     const deadlineDates = allDeadlines.map((d) => d.dueDate);
 
     // Handle date selection from calendar
-    function handleDateSelect(selectedDate) {
+    function handleDateSelect(selectedDate: SvelteDate) {
         // Find deadline for the selected date
         const deadline = allDeadlines.find((d) => {
             return (

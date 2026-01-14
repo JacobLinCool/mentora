@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { page } from "$app/state";
     import { m } from "$lib/paraglide/messages";
     import { Send } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
@@ -7,8 +6,6 @@
     import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
     import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
-
-    const _conversationId = $derived(page.params.id);
 
     // UI State
     type Phase = "responding" | "ready";

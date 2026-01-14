@@ -140,6 +140,8 @@
 
     function handleKeydown(event: KeyboardEvent) {
         if (event.key === "Enter") {
+            // Prevent submitting if event target is a button (prevents conflict)
+            if ((event.target as HTMLElement).tagName === "BUTTON") return;
             handlePasswordSubmit();
         } else if (event.key === "Escape") {
             handlePasswordCancel();
@@ -256,17 +258,18 @@
     <!-- Backdrop -->
     <div
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onclick={handlePasswordCancel}
+        onclick={(e) => {
+            if (e.target === e.currentTarget) handlePasswordCancel();
+        }}
         onkeydown={handleKeydown}
         role="dialog"
+        tabindex="-1"
         aria-modal="true"
         aria-labelledby="password-modal-title"
     >
         <!-- Modal Content -->
         <div
             class="mx-4 w-full max-w-sm rounded-2xl border border-white/20 bg-[#3a3a3a]/95 p-6 shadow-2xl backdrop-blur-xl"
-            onclick={(e) => e.stopPropagation()}
-            onkeydown={(e) => e.stopPropagation()}
             role="document"
         >
             <h3
@@ -285,7 +288,6 @@
                     class="w-full rounded-xl border bg-white/10 px-4 py-3 text-white placeholder-white/50 transition-all focus:ring-2 focus:outline-none {passwordError
                         ? 'border-red-500/50 focus:ring-red-500/50'
                         : 'border-white/20 focus:ring-white/30'}"
-                    onkeydown={handleKeydown}
                 />
                 {#if passwordError}
                     <p class="mt-2 text-sm text-red-400">

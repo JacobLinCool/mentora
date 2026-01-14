@@ -1,11 +1,20 @@
-<script>
+<script lang="ts">
     import { m } from "$lib/paraglide/messages";
     import CourseCard from "./CourseCard.svelte";
 
-    let { courses = [] } = $props();
-    // courses shape aligned with CourseDoc: [{ id, title, code, ownerId, visibility, thumbnail, ... }]
+    interface Course {
+        id: string;
+        title: string;
+        thumbnail?: { url: string | null } | null;
+    }
 
-    function handleCourseClick(courseId) {
+    interface Props {
+        courses?: Course[];
+    }
+
+    let { courses = [] }: Props = $props();
+
+    function handleCourseClick(courseId: string): void {
         // Navigate to course detail page
         window.location.href = `/courses/${courseId}`;
     }

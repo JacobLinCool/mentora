@@ -1,43 +1,58 @@
-<script>
+<script lang="ts">
+    import { SvelteDate } from "svelte/reactivity";
+
+    interface DateInfo {
+        date: number;
+        month: number;
+        year: number;
+        fullDate: SvelteDate;
+    }
+
+    interface Props {
+        selectedDate?: Date | SvelteDate;
+        deadlineDates?: (Date | SvelteDate)[];
+        onDateSelect?: (date: SvelteDate) => void;
+    }
+
     let {
-        selectedDate = new Date(),
+        selectedDate = new SvelteDate(),
         deadlineDates = [],
         onDateSelect,
-    } = $props();
+    }: Props = $props();
 
     const dayNames = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
     // Get today's date
-    const today = new Date();
+    const today = new SvelteDate();
     const todayDay = today.getDate();
     const todayMonth = today.getMonth();
     const todayYear = today.getFullYear();
 
     // Get two weeks of dates (14 days)
-    function getTwoWeeksDates(date) {
-        const current = new Date(date);
+    function getTwoWeeksDates(date: Date | SvelteDate): DateInfo[] {
+        const current = new SvelteDate(date);
         const day = current.getDay();
         const diff = current.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-        const monday = new Date(current.setDate(diff));
+        const monday = new SvelteDate(current.setDate(diff));
 
-        const allDates = [];
+        const allDates: DateInfo[] = [];
         for (let i = 0; i < 14; i++) {
-            const dateObj = new Date(monday);
+            const dateObj = new SvelteDate(monday);
             dateObj.setDate(monday.getDate() + i);
             allDates.push({
                 date: dateObj.getDate(),
                 month: dateObj.getMonth(),
                 year: dateObj.getFullYear(),
-                fullDate: new Date(dateObj),
+                fullDate: new SvelteDate(dateObj),
             });
         }
         return allDates;
     }
 
     // Check if a date has a deadline
-    function hasDeadline(dateInfo) {
+    function hasDeadline(dateInfo: DateInfo): boolean {
         return deadlineDates.some((d) => {
-            const deadlineDate = new Date(d);
+            const deadlineDate = new SvelteDate(d);
             return (
                 deadlineDate.getDate() === dateInfo.date &&
                 deadlineDate.getMonth() === dateInfo.month &&
@@ -47,7 +62,7 @@
     }
 
     // Check if a date is today
-    function isToday(dateInfo) {
+    function isToday(dateInfo: DateInfo): boolean {
         return (
             dateInfo.date === todayDay &&
             dateInfo.month === todayMonth &&
@@ -56,7 +71,7 @@
     }
 
     // Check if a date is selected
-    function isSelected(dateInfo) {
+    function isSelected(dateInfo: DateInfo): boolean {
         return (
             dateInfo.date === selectedDate.getDate() &&
             dateInfo.month === selectedDate.getMonth() &&
@@ -65,7 +80,7 @@
     }
 
     // Get button style classes
-    function getButtonClasses(dateInfo) {
+    function getButtonClasses(dateInfo: DateInfo): string {
         const isTodayDate = isToday(dateInfo);
         const isSelectedDate = isSelected(dateInfo);
         const hasDeadlineDate = hasDeadline(dateInfo);
@@ -95,7 +110,7 @@
     }
 
     // Handle date click
-    function handleDateClick(dateInfo) {
+    function handleDateClick(dateInfo: DateInfo): void {
         if (hasDeadline(dateInfo) && onDateSelect) {
             onDateSelect(dateInfo.fullDate);
         }

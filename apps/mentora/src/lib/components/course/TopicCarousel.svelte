@@ -13,7 +13,7 @@
         id: string;
         title: string;
         description: string | null;
-        order: number;
+        order: number | null;
     }
 
     interface Props {

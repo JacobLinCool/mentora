@@ -1,10 +1,24 @@
-<script>
+<script lang="ts">
     import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
     import ExploreCard from "$lib/components/explore/ExploreCard.svelte";
     import { m } from "$lib/paraglide/messages";
 
+    interface Course {
+        id: string;
+        title: string;
+        code: string;
+        ownerId: string;
+        visibility: string;
+        theme: string;
+        description: string | null;
+        thumbnail: { storagePath: string; url: string } | null;
+        createdAt: number;
+        updatedAt: number;
+        category: string;
+    }
+
     // Mock Data aligned with CourseDoc schema
-    const allCourses = [
+    const allCourses: Course[] = [
         {
             id: "course01",
             title: "course01",
@@ -19,7 +33,6 @@
             },
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            // UI-only field for filtering
             category: "Psychology",
         },
         {
@@ -60,7 +73,7 @@
     let selectedCategory = $state("All");
 
     // Mapping internal category keys to translation functions
-    const categoryMap = {
+    const categoryMap: Record<string, () => string> = {
         All: m.explore_category_all,
         Logic: m.explore_category_logic,
         Psychology: m.explore_category_psychology,
@@ -87,7 +100,7 @@
         }),
     );
 
-    function handleCourseClick(id) {
+    function handleCourseClick(id: string): void {
         window.location.href = `/explore/${id}`;
     }
 </script>
