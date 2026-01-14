@@ -1,5 +1,5 @@
 <script>
-    let { courseId, courseName, imageUrl, onclick } = $props();
+    let { courseName, imageUrl, onclick } = $props();
 </script>
 
 <button

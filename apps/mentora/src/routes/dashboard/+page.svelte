@@ -127,10 +127,7 @@
 
             <!-- Right column: Continue + Courses -->
             <div>
-                <ContinueConversation
-                    conversationId={unfinishedConversation.id}
-                    onclick={handleContinueConversation}
-                />
+                <ContinueConversation onclick={handleContinueConversation} />
 
                 <MyCourses {courses} />
             </div>

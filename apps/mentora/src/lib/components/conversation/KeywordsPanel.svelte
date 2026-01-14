@@ -18,7 +18,7 @@
 
 {#if visible}
     <div class="keywords-panel">
-        {#each keywords as keyword, i}
+        {#each keywords as keyword, i (keyword)}
             {@const pos = positions[i % positions.length]}
             <span
                 class="keyword {pos.size}"

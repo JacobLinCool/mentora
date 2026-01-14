@@ -131,7 +131,7 @@
 
         <!-- Category Pills -->
         <div class="no-scrollbar mb-8 flex space-x-3 overflow-x-auto pb-2">
-            {#each categories as category}
+            {#each categories as category (category)}
                 <button
                     class="rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors {selectedCategory ===
                     category
@@ -146,9 +146,8 @@
 
         <!-- Course List -->
         <div class="grid gap-6 md:grid-cols-2">
-            {#each filteredCourses as course}
+            {#each filteredCourses as course (course.id)}
                 <ExploreCard
-                    id={course.id}
                     title={course.title}
                     category={categoryMap[course.category]
                         ? categoryMap[course.category]()

@@ -107,7 +107,7 @@
 <div class="space-y-4">
     <!-- First Week -->
     <div class="grid grid-cols-7 gap-2 text-center text-xs md:gap-4">
-        {#each dayNames as dayName, index}
+        {#each dayNames as dayName, index (dayName)}
             <div>
                 <div class="text-text-secondary mb-2 uppercase">{dayName}</div>
                 <div class="relative">
@@ -130,7 +130,7 @@
 
     <!-- Second Week -->
     <div class="grid grid-cols-7 gap-2 text-center text-xs md:gap-4">
-        {#each dayNames as dayName, index}
+        {#each dayNames as _dayName, index (_dayName)}
             <div>
                 <div class="relative">
                     <button

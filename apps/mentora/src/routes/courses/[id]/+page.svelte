@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { ArrowLeft } from "@lucide/svelte";
     import { api } from "$lib";
     import { Spinner } from "flowbite-svelte";
@@ -17,7 +18,7 @@
     let loading = $state(true);
     let courseTitle = $state("");
     let topics = $state<Topic[]>([]);
-    let allAssignments = $state<Assignment[]>([]);
+    let _allAssignments = $state<Assignment[]>([]);
     let currentTopicIndex = $state(0);
 
     // Mock data for demonstration
@@ -296,16 +297,16 @@
             const assignmentsResult =
                 await api.assignments.listForCourse(courseId);
             if (assignmentsResult.success) {
-                allAssignments = assignmentsResult.data;
+                _allAssignments = assignmentsResult.data;
             } else {
                 // Fallback for demo if no real data
-                allAssignments = [];
+                _allAssignments = [];
             }
         } else {
             // No course ID, use mocks
             courseTitle = "COURSE01";
             topics = mockTopics;
-            allAssignments = [];
+            _allAssignments = [];
         }
 
         // Determine smart default topic
@@ -350,12 +351,12 @@
         locked: boolean;
     }) {
         if (!assignment.locked) {
-            goto(`/assignments/${assignment.id}`);
+            goto(resolve(`/assignments/${assignment.id}`));
         }
     }
 
     function goBack() {
-        goto("/dashboard");
+        goto(resolve("/dashboard"));
     }
 
     onMount(() => {

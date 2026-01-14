@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { m } from "$lib/paraglide/messages";
     import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
 
@@ -106,7 +107,7 @@
     function handleJoinClick() {
         if (isJoined) {
             // Navigate to course page
-            goto(`/courses/${course.id}`);
+            goto(resolve(`/courses/${course.id}`));
         } else if (course.visibility === "private" && course.passwordHash) {
             // Show password modal for private courses
             showPasswordModal = true;
@@ -232,7 +233,7 @@
                 {m.explore_topics()}
             </h3>
             <div class="space-y-3">
-                {#each course.topics as topic}
+                {#each course.topics as topic, index (index)}
                     <button
                         class="w-full cursor-pointer rounded-2xl bg-white/10 px-5 py-4 text-left backdrop-blur-sm transition-all hover:bg-white/20 active:scale-[0.98]"
                         onclick={() => {

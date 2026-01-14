@@ -11,7 +11,7 @@
 
 <div class="progress-container">
     <div class="progress-bar">
-        {#each stages as stage}
+        {#each stages as stage (stage)}
             <div
                 class="progress-segment"
                 class:completed={stage < currentIndex}

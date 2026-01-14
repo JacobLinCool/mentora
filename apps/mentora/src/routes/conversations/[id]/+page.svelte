@@ -8,7 +8,7 @@
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
     import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
 
-    const conversationId = $derived(page.params.id);
+    const _conversationId = $derived(page.params.id);
 
     // UI State
     type Phase = "responding" | "ready";

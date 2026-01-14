@@ -1,7 +1,7 @@
 <script>
     import { m } from "$lib/paraglide/messages";
 
-    let { conversationId, onclick } = $props();
+    let { onclick } = $props();
     const conversationTitle = m.dashboard_continue_conversation();
 </script>
 

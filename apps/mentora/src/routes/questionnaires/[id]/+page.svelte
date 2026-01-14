@@ -1,16 +1,13 @@
 <script lang="ts">
-    import { page } from "$app/state";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
-    import { m } from "$lib/paraglide/messages";
+
     import PageHead from "$lib/components/PageHead.svelte";
     import SingleChoiceQuestion from "$lib/components/questionnaire/SingleChoiceQuestion.svelte";
     import MultipleChoiceQuestion from "$lib/components/questionnaire/MultipleChoiceQuestion.svelte";
     import ShortAnswerQuestion from "$lib/components/questionnaire/ShortAnswerQuestion.svelte";
     import QuestionNavigator from "$lib/components/questionnaire/QuestionNavigator.svelte";
     import QuestionProgress from "$lib/components/questionnaire/QuestionProgress.svelte";
-
-    const questionnaireId = $derived(page.params.id);
 
     // Question type definitions
     type SingleChoice = {

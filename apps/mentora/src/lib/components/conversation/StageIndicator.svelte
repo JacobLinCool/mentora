@@ -11,7 +11,7 @@
 </script>
 
 <div class="stage-indicator">
-    {#each stages as stage}
+    {#each stages as stage (stage)}
         <div
             class="stage-segment"
             class:completed={stage < currentStage}

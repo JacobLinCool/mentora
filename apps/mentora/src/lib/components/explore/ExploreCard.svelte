@@ -1,5 +1,5 @@
 <script>
-    let { id, title, category, imageUrl, onclick } = $props();
+    let { title, category, imageUrl, onclick } = $props();
 </script>
 
 <button

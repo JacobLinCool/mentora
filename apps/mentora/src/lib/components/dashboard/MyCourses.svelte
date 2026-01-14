@@ -16,9 +16,8 @@
         {m.dashboard_my_courses()}
     </h2>
     <div class="grid gap-4 md:grid-cols-2">
-        {#each courses as course}
+        {#each courses as course (course.id)}
             <CourseCard
-                courseId={course.id}
                 courseName={course.title}
                 imageUrl={course.thumbnail?.url ?? "/course-placeholder.jpg"}
                 onclick={() => handleCourseClick(course.id)}

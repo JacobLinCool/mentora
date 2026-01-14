@@ -1,6 +1,6 @@
 <script>
     import { m } from "$lib/paraglide/messages";
-    import GlassCard from "$lib/components/ui/GlassCard.svelte";
+
     import WeekCalendar from "./WeekCalendar.svelte";
     import CountdownTimer from "./CountdownTimer.svelte";
 
