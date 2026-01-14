@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     let { activeTab = "home" } = $props();
 </script>
 
@@ -15,7 +16,7 @@
                 ? 'text-white'
                 : 'text-text-secondary'}"
             aria-label="Explore"
-            onclick={() => goto("/explore")}
+            onclick={() => goto(resolve("/explore"))}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -40,7 +41,7 @@
                 ? 'text-white'
                 : 'text-text-secondary'}"
             aria-label="Home"
-            onclick={() => goto("/dashboard")}
+            onclick={() => goto(resolve("/dashboard"))}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -63,7 +64,7 @@
                 ? 'text-white'
                 : 'text-text-secondary'}"
             aria-label="Profile"
-            onclick={() => goto("/profile")}
+            onclick={() => goto(resolve("/settings"))}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
