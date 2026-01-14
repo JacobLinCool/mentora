@@ -2,6 +2,8 @@
     import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
     import ExploreCard from "$lib/components/explore/ExploreCard.svelte";
     import { m } from "$lib/paraglide/messages";
+    import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
 
     interface Course {
         id: string;
@@ -101,7 +103,7 @@
     );
 
     function handleCourseClick(id: string): void {
-        window.location.href = `/explore/${id}`;
+        goto(resolve(`/explore/${id}`));
     }
 </script>
 

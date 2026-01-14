@@ -1,4 +1,5 @@
 <script>
+    import { goto } from "$app/navigation";
     let { activeTab = "home" } = $props();
 </script>
 
@@ -14,7 +15,7 @@
                 ? 'text-white'
                 : 'text-text-secondary'}"
             aria-label="Explore"
-            onclick={() => (window.location.href = "/explore")}
+            onclick={() => goto("/explore")}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -39,7 +40,7 @@
                 ? 'text-white'
                 : 'text-text-secondary'}"
             aria-label="Home"
-            onclick={() => (window.location.href = "/dashboard")}
+            onclick={() => goto("/dashboard")}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -62,7 +63,7 @@
                 ? 'text-white'
                 : 'text-text-secondary'}"
             aria-label="Profile"
-            onclick={() => (window.location.href = "/profile")}
+            onclick={() => goto("/profile")}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

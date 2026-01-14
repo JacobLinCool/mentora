@@ -5,6 +5,8 @@
     import ContinueConversation from "$lib/components/dashboard/ContinueConversation.svelte";
     import MyCourses from "$lib/components/dashboard/MyCourses.svelte";
     import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
+    import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
 
     // Mock deadline data with multiple deadlines
     const allDeadlines = [
@@ -103,7 +105,7 @@
     };
 
     function handleContinueConversation() {
-        window.location.href = `/conversations/${unfinishedConversation.id}`;
+        goto(resolve(`/conversations/${unfinishedConversation.id}`));
     }
 </script>
 

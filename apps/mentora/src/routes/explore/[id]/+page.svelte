@@ -159,7 +159,7 @@
         <button
             aria-label={m.explore_go_back()}
             class="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 backdrop-blur-md transition-all hover:bg-black/50 active:scale-95"
-            onclick={() => (window.location.href = "/explore")}
+            onclick={() => goto(resolve("/explore"))}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

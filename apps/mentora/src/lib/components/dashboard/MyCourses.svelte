@@ -1,5 +1,7 @@
 <script lang="ts">
     import { m } from "$lib/paraglide/messages";
+    import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import CourseCard from "./CourseCard.svelte";
 
     interface Course {
@@ -16,7 +18,7 @@
 
     function handleCourseClick(courseId: string): void {
         // Navigate to course detail page
-        window.location.href = `/courses/${courseId}`;
+        goto(resolve(`/courses/${courseId}`));
     }
 </script>
 
