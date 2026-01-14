@@ -19,8 +19,6 @@
     let courseTitle = $state("");
     let topics = $state<Topic[]>([]);
     let currentTopicIndex = $state(0);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let _allAssignments = $state<any[]>([]);
 
     // Mock data for demonstration
     const mockTopics = [
@@ -293,21 +291,10 @@
                 // Use mock topics
                 topics = mockTopics;
             }
-
-            // Load assignments
-            const assignmentsResult =
-                await api.assignments.listForCourse(courseId);
-            if (assignmentsResult.success) {
-                _allAssignments = assignmentsResult.data;
-            } else {
-                // Fallback for demo if no real data
-                _allAssignments = [];
-            }
         } else {
             // No course ID, use mocks
             courseTitle = "COURSE01";
             topics = mockTopics;
-            _allAssignments = [];
         }
 
         // Determine smart default topic
