@@ -56,12 +56,27 @@
             updatedAt: Date.now(),
         },
     ];
+    // Mock assignments aligned with Assignment schema from API
+    // Additional UI-only fields: type, completed, locked (not in API schema)
     const mockAssignments: Record<
         string,
         Array<{
+            // API Assignment fields
             id: string;
+            courseId: string | null;
+            topicId: string | null;
+            orderInTopic: number | null;
             title: string;
+            prompt: string;
+            mode: "instant";
+            startAt: number;
             dueAt: number | null;
+            allowLate: boolean;
+            allowResubmit: boolean;
+            createdBy: string;
+            createdAt: number;
+            updatedAt: number;
+            // UI-only fields (derived from submission data in production)
             type: "quiz" | "conversation" | "essay";
             completed: boolean;
             locked: boolean;
@@ -70,24 +85,57 @@
         "topic-1": [
             {
                 id: "assign-1-1",
+                courseId: "course-01",
+                topicId: "topic-1",
+                orderInTopic: 1,
                 title: "前測",
+                prompt: "完成這個測驗來評估您的先備知識。",
+                mode: "instant",
+                startAt: Date.now() - 86400000 * 7,
                 dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
+                allowLate: true,
+                allowResubmit: false,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 14,
+                updatedAt: Date.now() - 86400000 * 14,
                 type: "quiz",
                 completed: true,
                 locked: false,
             },
             {
                 id: "assign-1-2",
+                courseId: "course-01",
+                topicId: "topic-1",
+                orderInTopic: 2,
                 title: "對話",
+                prompt: "與 AI 進行對話討論。",
+                mode: "instant",
+                startAt: Date.now() - 86400000 * 7,
                 dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
+                allowLate: true,
+                allowResubmit: true,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 14,
+                updatedAt: Date.now() - 86400000 * 14,
                 type: "conversation",
                 completed: true,
                 locked: false,
             },
             {
                 id: "assign-1-3",
+                courseId: "course-01",
+                topicId: "topic-1",
+                orderInTopic: 3,
                 title: "後測",
+                prompt: "完成後測來評估您的學習成果。",
+                mode: "instant",
+                startAt: Date.now() - 86400000 * 7,
                 dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
+                allowLate: true,
+                allowResubmit: false,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 14,
+                updatedAt: Date.now() - 86400000 * 14,
                 type: "quiz",
                 completed: false,
                 locked: false,
@@ -96,24 +144,57 @@
         "topic-2": [
             {
                 id: "assign-2-1",
+                courseId: "course-01",
+                topicId: "topic-2",
+                orderInTopic: 1,
                 title: "前測",
+                prompt: "完成功利主義主題的先備知識測驗。",
+                mode: "instant",
+                startAt: Date.now() - 86400000 * 3,
                 dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
+                allowLate: true,
+                allowResubmit: false,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 10,
+                updatedAt: Date.now() - 86400000 * 10,
                 type: "quiz",
                 completed: false,
                 locked: false,
             },
             {
                 id: "assign-2-2",
+                courseId: "course-01",
+                topicId: "topic-2",
+                orderInTopic: 2,
                 title: "對話",
+                prompt: "探討功利主義的核心概念。",
+                mode: "instant",
+                startAt: Date.now() - 86400000 * 3,
                 dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
+                allowLate: true,
+                allowResubmit: true,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 10,
+                updatedAt: Date.now() - 86400000 * 10,
                 type: "conversation",
                 completed: false,
                 locked: true,
             },
             {
                 id: "assign-2-3",
+                courseId: "course-01",
+                topicId: "topic-2",
+                orderInTopic: 3,
                 title: "後測",
+                prompt: "評估功利主義的學習成果。",
+                mode: "instant",
+                startAt: Date.now() - 86400000 * 3,
                 dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
+                allowLate: true,
+                allowResubmit: false,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 10,
+                updatedAt: Date.now() - 86400000 * 10,
                 type: "quiz",
                 completed: false,
                 locked: true,
@@ -122,24 +203,57 @@
         "topic-3": [
             {
                 id: "assign-3-1",
+                courseId: "course-01",
+                topicId: "topic-3",
+                orderInTopic: 1,
                 title: "前測",
+                prompt: "義務論主題的先備知識測驗。",
+                mode: "instant",
+                startAt: new Date(2026, 0, 26).getTime(),
                 dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
+                allowLate: false,
+                allowResubmit: false,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 10,
+                updatedAt: Date.now() - 86400000 * 10,
                 type: "quiz",
                 completed: false,
                 locked: true,
             },
             {
                 id: "assign-3-2",
+                courseId: "course-01",
+                topicId: "topic-3",
+                orderInTopic: 2,
                 title: "對話",
+                prompt: "探討康德義務論的核心概念。",
+                mode: "instant",
+                startAt: new Date(2026, 0, 26).getTime(),
                 dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
+                allowLate: true,
+                allowResubmit: true,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 10,
+                updatedAt: Date.now() - 86400000 * 10,
                 type: "conversation",
                 completed: false,
                 locked: true,
             },
             {
                 id: "assign-3-3",
+                courseId: "course-01",
+                topicId: "topic-3",
+                orderInTopic: 3,
                 title: "後測",
+                prompt: "義務論學習成果評估。",
+                mode: "instant",
+                startAt: new Date(2026, 0, 26).getTime(),
                 dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
+                allowLate: false,
+                allowResubmit: false,
+                createdBy: "mock-instructor",
+                createdAt: Date.now() - 86400000 * 10,
+                updatedAt: Date.now() - 86400000 * 10,
                 type: "quiz",
                 completed: false,
                 locked: true,

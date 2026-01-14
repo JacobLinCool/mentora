@@ -211,6 +211,12 @@
     "explore_course_details_id": "課程 ID",
     "explore_go_back": "返回",
     "explore_join_course": "加入課程",
+    "explore_enter_course": "進入課程",
+    "explore_password_modal_title": "輸入課程密碼",
+    "explore_password_placeholder": "請輸入密碼...",
+    "explore_password_submit": "確認",
+    "explore_password_cancel": "取消",
+    "explore_password_error": "密碼錯誤",
     "explore_intro": "簡介",
     "explore_topics": "主題"
 }

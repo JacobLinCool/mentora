@@ -3,7 +3,7 @@
     import CourseCard from "./CourseCard.svelte";
 
     let { courses = [] } = $props();
-    // courses shape: [{ id, name, imageUrl }]
+    // courses shape aligned with CourseDoc: [{ id, title, code, ownerId, visibility, thumbnail, ... }]
 
     function handleCourseClick(courseId) {
         // Navigate to course detail page
@@ -19,8 +19,8 @@
         {#each courses as course}
             <CourseCard
                 courseId={course.id}
-                courseName={course.name}
-                imageUrl={course.imageUrl}
+                courseName={course.title}
+                imageUrl={course.thumbnail?.url ?? "/course-placeholder.jpg"}
                 onclick={() => handleCourseClick(course.id)}
             />
         {/each}

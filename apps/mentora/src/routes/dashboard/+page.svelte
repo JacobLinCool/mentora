@@ -55,22 +55,43 @@
         }
     }
 
-    // Mock course data
+    // Mock course data aligned with CourseDoc schema
     const courses = [
         {
             id: "course-1",
-            name: "course01",
-            imageUrl: "/course-placeholder.jpg",
+            title: "course01",
+            code: "COURSE01",
+            ownerId: "mock-owner-1",
+            visibility: "private",
+            theme: null,
+            description: null,
+            thumbnail: { storagePath: "", url: "/course-placeholder.jpg" },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         },
         {
             id: "course-2",
-            name: "course01",
-            imageUrl: "/course-placeholder.jpg",
+            title: "course02",
+            code: "COURSE02",
+            ownerId: "mock-owner-1",
+            visibility: "private",
+            theme: null,
+            description: null,
+            thumbnail: { storagePath: "", url: "/course-placeholder.jpg" },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         },
         {
             id: "course-3",
-            name: "course01",
-            imageUrl: "/course-placeholder.jpg",
+            title: "course03",
+            code: "COURSE03",
+            ownerId: "mock-owner-1",
+            visibility: "private",
+            theme: null,
+            description: null,
+            thumbnail: { storagePath: "", url: "/course-placeholder.jpg" },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         },
     ];
 

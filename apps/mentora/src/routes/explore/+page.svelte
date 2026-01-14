@@ -3,27 +3,56 @@
     import ExploreCard from "$lib/components/explore/ExploreCard.svelte";
     import { m } from "$lib/paraglide/messages";
 
-    // Mock Data
+    // Mock Data aligned with CourseDoc schema
     const allCourses = [
         {
             id: "course01",
             title: "course01",
+            code: "COURSE01",
+            ownerId: "mock-owner-1",
+            visibility: "public",
+            theme: "Psychology",
+            description: null,
+            thumbnail: {
+                storagePath: "",
+                url: "https://upload.wikimedia.org/wikipedia/en/6/66/Teletubbies_logo.png",
+            },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            // UI-only field for filtering
             category: "Psychology",
-            imageUrl:
-                "https://upload.wikimedia.org/wikipedia/en/6/66/Teletubbies_logo.png", // Using a placeholder that resembles the colorful image
         },
         {
             id: "course02",
             title: "course02",
+            code: "COURSE02",
+            ownerId: "mock-owner-1",
+            visibility: "public",
+            theme: "History",
+            description: null,
+            thumbnail: {
+                storagePath: "",
+                url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Stick_Figure.svg/1200px-Stick_Figure.svg.png",
+            },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
             category: "History",
-            imageUrl:
-                "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Stick_Figure.svg/1200px-Stick_Figure.svg.png", // Placeholder for the drawing
         },
         {
             id: "course03",
             title: "course03",
+            code: "COURSE03",
+            ownerId: "mock-owner-1",
+            visibility: "public",
+            theme: "Logic",
+            description: null,
+            thumbnail: {
+                storagePath: "",
+                url: "/course-placeholder.jpg",
+            },
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
             category: "Logic",
-            imageUrl: "/course-placeholder.jpg",
         },
     ];
 
@@ -124,7 +153,8 @@
                     category={categoryMap[course.category]
                         ? categoryMap[course.category]()
                         : course.category}
-                    imageUrl={course.imageUrl}
+                    imageUrl={course.thumbnail?.url ??
+                        "/course-placeholder.jpg"}
                     onclick={() => handleCourseClick(course.id)}
                 />
             {/each}

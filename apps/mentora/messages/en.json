@@ -210,6 +210,12 @@
     "explore_course_details_id": "Course ID",
     "explore_go_back": "Go Back",
     "explore_join_course": "Join Course",
+    "explore_enter_course": "Enter Course",
+    "explore_password_modal_title": "Enter Course Password",
+    "explore_password_placeholder": "Enter password...",
+    "explore_password_submit": "Submit",
+    "explore_password_cancel": "Cancel",
+    "explore_password_error": "Incorrect password",
     "explore_intro": "Intro",
     "explore_topics": "Topics"
 }
