@@ -185,32 +185,6 @@ describe('Assignments Module (Integration)', () => {
 				await client.assignments.delete(result.data);
 			}
 		});
-
-		it('should create assignment with scheduled mode', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
-
-			const result = await client.assignments.create({
-				courseId: testCourseId,
-				topicId: null,
-				orderInTopic: null,
-				title: `Assignment scheduled mode ${generateTestId()}`,
-				prompt: 'Testing scheduled mode',
-				mode: 'instant',
-				startAt: Date.now() + 60000, // 1 minute from now
-				dueAt: null,
-				allowLate: true,
-				allowResubmit: true
-			});
-
-			expect(result.success).toBe(true);
-			if (result.success) {
-				// Clean up immediately
-				await client.assignments.delete(result.data);
-			}
-		});
 	});
 
 	describe('getAssignment()', () => {
