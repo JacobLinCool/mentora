@@ -8,8 +8,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-
-
     // Membership checks (active users should have roster doc id == uid)
     function isCourseMember(courseId) {
       return isSignedIn() &&
@@ -29,8 +27,6 @@ service cloud.firestore {
       return hasRole(courseId, "ta");
     }
 
-
-
     function isInstructorOfCourse(courseId) {
       // hasRole already checks isCourseMember internally
       return hasRole(courseId, "instructor");
@@ -42,8 +38,6 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/courses/$(courseId)) &&
         get(/databases/$(database)/documents/courses/$(courseId)).data.ownerId == request.auth.uid;
     }
-
-
 
     function isPublicCourse(courseId) {
       return exists(/databases/$(database)/documents/courses/$(courseId)) &&
@@ -61,8 +55,6 @@ service cloud.firestore {
       // It's required for querying non-existent docs, e.g. an empty collection
       return resource == null || resource.data == null;
     }
-
-
 
     function isValidUserProfile(data) {
       return data.uid is string && data.uid.size() <= 128 &&
@@ -130,8 +122,6 @@ service cloud.firestore {
              data.createdAt is number && data.updatedAt is number;
     }
 
-
-
     function isValidSubmission(data) {
       return data.userId is string && data.userId.size() <= 128 &&
              data.state in ["in_progress", "submitted", "graded_complete"] &&
@@ -149,6 +139,10 @@ service cloud.firestore {
              data.lastActionAt is number &&
              data.createdAt is number && data.updatedAt is number &&
              data.turns is list && data.turns.size() <= 1000;
+    }
+
+    function assignmentDoc(assignmentId) {
+      return get(/databases/$(database)/documents/assignments/$(assignmentId));
     }
 
     /* ---------- Users ---------- */
@@ -257,7 +251,7 @@ service cloud.firestore {
       allow get: if isSignedIn() && (
         targetNotExists() || // allow reading non-existent docs
         // standalone: visible to creator (check createdBy first)
-        ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid && 
+        ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid &&
          (!('courseId' in resource.data) || resource.data.courseId == null)) ||
         // course-bound assignments: visible to course members
         ('courseId' in resource.data && resource.data.courseId != null && isCourseMember(resource.data.courseId))
@@ -322,11 +316,23 @@ service cloud.firestore {
           // Student can edit their own while in progress or submit
           (userId == request.auth.uid &&
            request.resource.data.userId == request.auth.uid &&
+           // Students cannot modify grading fields
+           request.resource.data.scoreCompletion == resource.data.scoreCompletion &&
+           request.resource.data.notes == resource.data.notes &&
            (
              (resource.data.state == "in_progress" && 
               request.resource.data.state in ["in_progress", "submitted"]) ||
              (resource.data.state == "submitted" && 
-              request.resource.data.state == "submitted")
+              (
+                // Allow resubmission only if assignment allows it
+                (request.resource.data.state == "in_progress" &&
+                 assignmentDoc(aid).data.allowResubmit == true) ||
+                // Otherwise only allow no-op state edits
+                (request.resource.data.state == "submitted")
+              )) ||
+             (resource.data.state == "graded_complete" &&
+              request.resource.data.state == "in_progress" &&
+              assignmentDoc(aid).data.allowResubmit == true)
            )) ||
 
           // Instructor/TA can grade (move to graded_complete, set notes/score)
