@@ -392,12 +392,6 @@
 <style>
     .course-page {
         min-height: 100vh;
-        background: linear-gradient(
-            135deg,
-            #2d2d2d 0%,
-            #404040 50%,
-            #5a5a5a 100%
-        );
         padding-bottom: 6rem;
     }
 
