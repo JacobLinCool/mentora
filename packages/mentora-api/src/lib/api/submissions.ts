@@ -14,7 +14,7 @@ import {
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
-import { AssignmentSubmissions, type Submission } from 'mentora-firebase';
+import { AssignmentSubmissions, Assignments, type Submission } from 'mentora-firebase';
 import {
 	failure,
 	tryCatch,
@@ -116,7 +116,24 @@ export async function startSubmission(
 	}
 
 	return tryCatch(async () => {
+		const assignmentRef = doc(config.db, Assignments.docPath(assignmentId));
+		const assignmentSnap = await getDoc(assignmentRef);
+		if (!assignmentSnap.exists()) {
+			throw new Error('Assignment not found');
+		}
+		const assignment = Assignments.schema.parse(assignmentSnap.data());
+
 		const docRef = doc(config.db, AssignmentSubmissions.docPath(assignmentId, currentUser.uid));
+		const existingSnap = await getDoc(docRef);
+		if (existingSnap.exists()) {
+			const existing = AssignmentSubmissions.schema.parse(existingSnap.data());
+			if (
+				(existing.state === 'submitted' || existing.state === 'graded_complete') &&
+				!assignment.allowResubmit
+			) {
+				throw new Error('Resubmission not allowed');
+			}
+		}
 
 		const submission: Submission = {
 			userId: currentUser.uid,
@@ -145,11 +162,24 @@ export async function submitAssignment(
 	}
 
 	return tryCatch(async () => {
+		const assignmentRef = doc(config.db, Assignments.docPath(assignmentId));
+		const assignmentSnap = await getDoc(assignmentRef);
+		if (!assignmentSnap.exists()) {
+			throw new Error('Assignment not found');
+		}
+		const assignment = Assignments.schema.parse(assignmentSnap.data());
+
 		const docRef = doc(config.db, AssignmentSubmissions.docPath(assignmentId, currentUser.uid));
+		const submittedAt = Date.now();
+		const isLate = assignment.dueAt != null && submittedAt > assignment.dueAt;
+		if (isLate && !assignment.allowLate) {
+			throw new Error('Late submissions are not allowed');
+		}
 
 		await updateDoc(docRef, {
 			state: 'submitted',
-			submittedAt: Date.now()
+			submittedAt,
+			late: isLate
 		});
 	});
 }
