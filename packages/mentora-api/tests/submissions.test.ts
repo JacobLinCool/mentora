@@ -285,7 +285,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 				expect(getResult.data.state).toBe('submitted');
 				expect(getResult.data.submittedAt).toBeDefined();
 				// late flag should be set based on dueAt comparison
-				expect(getResult.data.late).toBeDefined();
+				expect(getResult.data.late).toBe(true);
 			}
 		});
 	});
@@ -313,14 +313,10 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 				await delay(300);
 			}
 
-			const result = await teacherClient.submissions.grade(
-				assignmentAllowResubmit,
-				studentUid,
-				{
-					scoreCompletion: 95,
-					notes: 'Excellent work!'
-				}
-			);
+			const result = await teacherClient.submissions.grade(assignmentAllowResubmit, studentUid, {
+				scoreCompletion: 95,
+				notes: 'Excellent work!'
+			});
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -435,28 +431,21 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			await delay(300);
 
 			// Grade with score only
-			const result1 = await teacherClient.submissions.grade(
-				assignmentWithDueDate,
-				studentUid,
-				{
-					scoreCompletion: 90
-				}
-			);
+			const result1 = await teacherClient.submissions.grade(assignmentWithDueDate, studentUid, {
+				scoreCompletion: 90
+			});
 			expect(result1.success).toBe(true);
 
 			await delay(200);
 
 			// Update only notes
-			const result2 = await teacherClient.submissions.grade(
-				assignmentWithDueDate,
-				studentUid,
-				{
-					notes: 'Added notes later'
-				}
-			);
+			const result2 = await teacherClient.submissions.grade(assignmentWithDueDate, studentUid, {
+				notes: 'Added notes later'
+			});
 			expect(result2.success).toBe(true);
-			if (result2.success) {; // Preserved
+			if (result2.success) {
 				expect(result2.data.notes).toBe('Added notes later');
+				expect(result2.data.scoreCompletion).toBe(90);
 			}
 		});
 	});
@@ -483,10 +472,9 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 				return;
 			}
 
-			const result = await teacherClient.submissions.listForAssignment(
-				assignmentAllowResubmit,
-				{ limit: 5 }
-			);
+			const result = await teacherClient.submissions.listForAssignment(assignmentAllowResubmit, {
+				limit: 5
+			});
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -506,9 +494,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			if (result.success && result.data.length > 1) {
 				// Verify descending order
 				for (let i = 0; i < result.data.length - 1; i++) {
-					expect(result.data[i].startedAt).toBeGreaterThanOrEqual(
-						result.data[i + 1].startedAt
-					);
+					expect(result.data[i].startedAt).toBeGreaterThanOrEqual(result.data[i + 1].startedAt);
 				}
 			}
 		});

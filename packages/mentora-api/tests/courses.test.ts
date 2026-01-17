@@ -437,11 +437,7 @@ describe('Courses Module (Integration)', () => {
 			}
 
 			const testEmail = `auditor-invite-${Date.now()}@example.com`;
-			const result = await teacherClient.courses.inviteMember(
-				testCourseId,
-				testEmail,
-				'auditor'
-			);
+			const result = await teacherClient.courses.inviteMember(testCourseId, testEmail, 'auditor');
 
 			expect(result.success).toBe(true);
 		});
@@ -455,7 +451,7 @@ describe('Courses Module (Integration)', () => {
 			const testEmail = `duplicate-invite-${Date.now()}@example.com`;
 
 			// First invite
-			const result1 = await teacherClient.courses.inviteMember(testCourseId, testEmail);
+			const result1 = await teacherClient.courses.inviteMember(testCourseId, testEmail, 'student');
 			expect(result1.success).toBe(true);
 
 			// Second invite with same email
@@ -498,9 +494,7 @@ describe('Courses Module (Integration)', () => {
 			}
 
 			// Find a student member
-			const student = rosterResult.data.find(
-				(m) => m.role === 'student' && m.userId
-			);
+			const student = rosterResult.data.find((m) => m.role === 'student' && m.userId);
 			if (!student || !student.userId) {
 				console.log('Skipping - no student member');
 				return;
@@ -528,9 +522,7 @@ describe('Courses Module (Integration)', () => {
 				return;
 			}
 
-			const member = rosterResult.data.find(
-				(m) => m.userId && m.role !== 'instructor'
-			);
+			const member = rosterResult.data.find((m) => m.userId && m.role !== 'instructor');
 			if (!member || !member.userId) {
 				console.log('Skipping - no eligible member');
 				return;
@@ -742,7 +734,6 @@ describe('Courses Module (Integration)', () => {
 			if (!createResult.success) return;
 
 			const courseId = createResult.data;
-			const courseCode = `LC${Date.now().toString().slice(-6)}`;
 
 			// 2. Teacher updates course
 			const updateResult = await teacherClient.courses.update(courseId, {
