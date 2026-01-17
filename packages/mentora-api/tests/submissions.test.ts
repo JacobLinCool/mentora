@@ -198,7 +198,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			}
 
 			// First ensure clean state - check if already submitted
-			let existing = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const existing = await studentClient.submissions.getMine(assignmentAllowResubmit);
 			if (existing.success && existing.data?.state === 'submitted') {
 				// Start a new one for this test
 				await studentClient.submissions.start(assignmentAllowResubmit);
@@ -304,7 +304,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			}
 
 			// Ensure submission exists and is submitted
-			let submission = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const submission = await studentClient.submissions.getMine(assignmentAllowResubmit);
 			if (!submission.success || submission.data?.state !== 'submitted') {
 				// Create and submit
 				await studentClient.submissions.start(assignmentAllowResubmit);

@@ -9,8 +9,6 @@ import {
 	setupTeacherClient,
 	setupStudentClient,
 	teardownAllClients,
-	getTeacherUser,
-	getStudentUser,
 	generateTestId,
 	delay
 } from './emulator-setup.js';
