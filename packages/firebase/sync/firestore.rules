@@ -248,9 +248,14 @@ service cloud.firestore {
 
     /* ---------- Assignments (top-level) ---------- */
     match /assignments/{aid} {
-      // Allow direct reads by ID for any signed-in user (tests rely on this);
-      // listing is still restricted below to prevent enumeration.
-      allow get: if isSignedIn() && (targetNotExists() || resource.data != null);
+      allow get: if isSignedIn() && (
+        targetNotExists() || // allow reading non-existent docs
+        // standalone: visible to creator (check createdBy first)
+        ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid &&
+         (!('courseId' in resource.data) || resource.data.courseId == null)) ||
+        // course-bound assignments: visible to course members
+        ('courseId' in resource.data && resource.data.courseId != null && isCourseMember(resource.data.courseId))
+      );
 
       allow list: if isSignedIn() && (
         targetNotExists() || // allow listing empty collection

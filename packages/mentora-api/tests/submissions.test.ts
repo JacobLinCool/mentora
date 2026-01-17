@@ -9,10 +9,13 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { doc, setDoc } from 'firebase/firestore';
+import { Courses } from 'mentora-firebase';
 import {
 	setupTeacherClient,
 	setupStudentClient,
 	teardownAllClients,
+	initTeacherFirebase,
 	getStudentUser,
 	generateTestId,
 	delay
@@ -39,6 +42,19 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		);
 		if (courseResult.success) {
 			testCourseId = courseResult.data;
+
+			// Enroll the student into the course roster so they can read course-bound assignments.
+			const student = getStudentUser();
+			if (student?.uid && student.email) {
+				const { db } = initTeacherFirebase();
+				await setDoc(doc(db, Courses.roster.docPath(testCourseId, student.uid)), {
+					userId: student.uid,
+					email: student.email,
+					role: 'student',
+					status: 'active',
+					joinedAt: Date.now()
+				});
+			}
 
 			// Create assignment that allows resubmit
 			const result1 = await teacherClient.assignments.create({
