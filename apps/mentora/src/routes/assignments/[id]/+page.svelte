@@ -72,14 +72,27 @@
         const result = await api.submissions.start(assignmentId);
 
         if (result.success) {
+            // Create conversation to ensure it exists
+            const createConvResult =
+                await api.conversations.create(assignmentId);
+
             // Reload to get the submission
             await loadAssignmentDetails();
 
             // Try to get conversation and redirect
-            const conversationResult =
-                await api.conversations.getForAssignment(assignmentId);
-            if (conversationResult.success && conversationResult.data.id) {
-                goto(resolve(`/conversations/${conversationResult.data.id}`));
+            if (createConvResult.success && createConvResult.data.id) {
+                goto(resolve(`/conversations/${createConvResult.data.id}`));
+            } else {
+                const conversationResult =
+                    await api.conversations.getForAssignment(assignmentId);
+                if (conversationResult.success && conversationResult.data.id) {
+                    goto(
+                        resolve(`/conversations/${conversationResult.data.id}`),
+                    );
+                } else {
+                    actionError =
+                        "Unable to create conversation context. Please try again.";
+                }
             }
         } else {
             actionError = result.error;
@@ -105,9 +118,20 @@
         actionLoading = false;
     }
 
-    function handleContinue() {
+    async function handleContinue() {
         if (conversation?.id) {
             goto(resolve(`/conversations/${conversation.id}`));
+        } else if (submission) {
+            // Try to find or create conversation if submission exists but conversation context is missing
+            actionLoading = true;
+            const createConvResult =
+                await api.conversations.create(assignmentId);
+            if (createConvResult.success && createConvResult.data.id) {
+                goto(resolve(`/conversations/${createConvResult.data.id}`));
+            } else {
+                actionError = "Could not find conversation context.";
+            }
+            actionLoading = false;
         }
     }
 

@@ -1,49 +1,116 @@
-<script lang="ts">
+﻿<script lang="ts">
     import { m } from "$lib/paraglide/messages";
-    import { Send } from "@lucide/svelte";
+    import { Send, ArrowLeft } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import TypewriterText from "$lib/components/conversation/TypewriterText.svelte";
     import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
     import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
+    import { page } from "$app/state";
+    import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
+    import { api, type Conversation } from "$lib/api";
+
+    const conversationId = $derived(page.params.id);
+    const convState = api.createState<Conversation>();
+
+    let courseId = $state<string | null>(null);
+
+    $effect(() => {
+        if (conversationId && api.isAuthenticated) {
+            api.conversationsSubscribe.subscribe(conversationId, convState);
+        }
+    });
+
+    $effect(() => {
+        const conv = convState.value;
+        if (conv && conv.assignmentId && !courseId) {
+            api.assignments.get(conv.assignmentId).then((res) => {
+                if (res.success && res.data.courseId) {
+                    courseId = res.data.courseId;
+                }
+            });
+        }
+    });
+
+    let conversation = $derived(convState.value);
 
     // UI State
     type Phase = "responding" | "ready";
-    let phase: Phase = $state("responding");
-    let typingPhase: "response" | "question" = $state("response"); // Which part is being typed
+    // Initialize to ready so we don't show blank screen if logic fails
+    let phase: Phase = $state("ready");
+    let typingPhase: "response" | "question" = $state("response");
     let showKeywords = $state(false);
     let showTextInput = $state(false);
     let isRecording = $state(false);
-    let currentStage = $state(2); // Mock: current stage index (0-based)
-    let totalStages = $state(5); // Mock: total stages
 
-    // Mock data for demo - separate response and question
-    let currentResponse = $state(
-        "You seem to be liking your personal experience directly...",
-    );
-    let currentQuestion = $state(
-        "What leads you to believe this assumption is true?",
-    );
-    let keywords = $state([
-        "Bias",
-        "Intuition",
-        "Evidence",
-        "Personal Experience",
-        "Data",
-    ]);
+    // Data derived
+    let currentStage = $derived(2); // TODO: Derive from conversation metadata
+    let totalStages = $derived(5);
+
+    let currentResponse = $state("");
+    let currentQuestion = $state("");
+    let keywords = $state<string[]>([]);
 
     let messageInput = $state("");
     let sending = $state(false);
 
+    let lastProcessedTurnId = $state<string | null>(null);
+
+    function goBack() {
+        if (courseId) {
+            goto(resolve(`/courses/${courseId}`));
+        } else {
+            goto(resolve("/dashboard"));
+        }
+    }
+
+    $effect(() => {
+        const history = conversation?.history || [];
+        const lastTurn = history.at(-1);
+
+        if (lastTurn && lastTurn.id !== lastProcessedTurnId) {
+            if (lastTurn.role === "assistant") {
+                // New assistant message
+                const content = lastTurn.content;
+
+                currentResponse = "";
+                currentQuestion = content;
+
+                lastProcessedTurnId = lastTurn.id;
+
+                // Trigger UI flow
+                phase = "responding";
+                typingPhase = "question";
+            } else {
+                // User message
+                lastProcessedTurnId = lastTurn.id;
+                // Stay in ready or show thinking?
+                // For now, ensure we show the user's question if needed,
+                // but typically we just wait for the assistant stream.
+            }
+        } else if (history.length > 0 && lastProcessedTurnId === null) {
+            // First load initialization if we missed the change detection
+            // because lastProcessedTurnId started as null
+            const last = history.at(-1);
+            if (last) {
+                lastProcessedTurnId = last.id;
+                if (last.role === "assistant") {
+                    currentQuestion = last.content;
+                    // Don't re-type on load, just show
+                    phase = "ready";
+                }
+            }
+        }
+    });
+
     function handleResponseComplete() {
-        // After response finishes, start typing the question
         setTimeout(() => {
             typingPhase = "question";
         }, 300);
     }
 
     function handleQuestionComplete() {
-        // Transition to ready phase after question completes
         setTimeout(() => {
             phase = "ready";
         }, 500);
@@ -66,64 +133,72 @@
 
         sending = true;
 
-        // Mock sending - just simulate response
-        setTimeout(() => {
-            messageInput = "";
-            showTextInput = false;
-            // Reset to responding phase for next turn
-            phase = "responding";
-            typingPhase = "response";
-            sending = false;
-        }, 500);
+        await api.conversations.addTurn(conversationId, messageInput, "idea");
+
+        messageInput = "";
+        sending = false;
+        showTextInput = false;
     }
 </script>
 
-<PageHead
-    title={m.page_conversation_title()}
-    description={m.page_conversation_description()}
-/>
+<PageHead title="Conversation" />
 
 <div class="conversation-container">
-    <!-- Background gradient -->
     <div class="background"></div>
 
-    <!-- Main content -->
-    <div class="content">
-        <!-- Phase 1: LLM Responding with typing effect -->
-        {#if phase === "responding"}
+    <div class="content relative">
+        {#if courseId}
+            <div class="absolute top-6 left-6 z-50">
+                <button
+                    class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:translate-x-[-2px] hover:bg-white/15"
+                    onclick={goBack}
+                    aria-label="Back to course"
+                >
+                    <ArrowLeft class="h-5 w-5 text-white" />
+                </button>
+            </div>
+        {/if}
+
+        {#if conversation}
+            <!-- Only show indicator if not in ready phase because ready phase might hide it on mobile? No, always show but positioned -->
+        {/if}
+
+        {#if !conversation}
+            <div class="flex h-full items-center justify-center">
+                <div class="animate-pulse text-white/50">
+                    Loading conversation...
+                </div>
+            </div>
+        {:else if phase === "responding"}
             <div class="responding-phase">
                 <div class="text-container">
-                    {#if typingPhase === "response"}
-                        <!-- Show response first -->
-                        <TypewriterText
-                            text={currentResponse}
-                            speed={50}
-                            onComplete={handleResponseComplete}
-                        />
-                    {:else}
-                        <!-- Show both response (static) + question (typing) -->
-                        <p class="response-text">{currentResponse}</p>
+                    {#if typingPhase === "response" || typingPhase === "question"}
+                        <div class="response-text">
+                            <!-- TODO: Separate response/question parts logic -->
+                        </div>
+                    {/if}
+
+                    {#if typingPhase === "question"}
                         <div class="question-typing">
                             <TypewriterText
                                 text={currentQuestion}
-                                speed={50}
+                                speed={30}
                                 onComplete={handleQuestionComplete}
                             />
                         </div>
                     {/if}
                 </div>
             </div>
-        {/if}
-
-        <!-- Phase 2: Ready for user input (only show question) -->
-        {#if phase === "ready"}
+        {:else}
+            <!-- Ready Phase -->
             <div class="ready-phase">
-                <!-- Question at top (only the question, not response) -->
-                <div class="question-section">
-                    <h1 class="question-text">{currentQuestion}</h1>
+                <div class="top-spacer"></div>
+
+                <div class="question-display">
+                    <h2 class="question-text">{currentQuestion}</h2>
                 </div>
 
-                <!-- Keywords panel (middle) -->
+                <!-- Keywords Panel (when visible) -->
                 {#if showKeywords}
                     <div class="keywords-section">
                         <KeywordsPanel {keywords} visible={showKeywords} />
@@ -276,11 +351,110 @@
         }
     }
 
-    @media (min-width: 1024px) {
-        .ready-phase {
-            padding: 0 4rem;
-            max-width: 48rem;
+    .top-spacer {
+        flex: 1;
+        min-height: 2rem;
+    }
+
+    .question-display {
+        margin-bottom: 2rem;
+    }
+
+    .question-text {
+        font-family: "Noto Serif TC", "Times New Roman", serif;
+        font-size: 1.5rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: white;
+    }
+
+    @media (min-width: 768px) {
+        .question-text {
+            font-size: 1.75rem;
         }
+    }
+
+    .keywords-section {
+        margin-bottom: 1rem;
+    }
+
+    .spacer {
+        flex: 1;
+    }
+
+    .text-input-section {
+        margin-bottom: 1rem;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    .input-wrapper {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        border-radius: 1.5rem; /* Fully rounded */
+        padding: 0.5rem;
+        display: flex;
+        align-items: flex-end;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .input-wrapper textarea {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: white;
+        resize: none;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        outline: none;
+        max-height: 120px;
+    }
+
+    .input-wrapper textarea::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Custom scrollbar for textarea */
+    .input-wrapper textarea::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .input-wrapper textarea::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+    }
+
+    .send-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: #fff;
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0.25rem;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .send-btn:disabled {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.3);
+        cursor: not-allowed;
+    }
+
+    .send-btn:not(:disabled):hover {
+        transform: scale(1.05);
+        background: #f0f0f0;
+    }
+
+    .controls-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .stage-section {
+        margin-bottom: 2rem; /* Space from bottom */
     }
 
     @keyframes fadeIn {
@@ -292,103 +466,14 @@
         }
     }
 
-    .question-section {
-        padding-top: 3rem;
-        padding-bottom: 1rem;
-    }
-
-    .question-text {
-        font-family: "Noto Serif TC", serif;
-        font-size: 1.75rem;
-        font-weight: 400;
-        line-height: 1.5;
-        color: white;
-        margin: 0;
-    }
-
-    /* iPad responsive question text */
-    @media (min-width: 768px) {
-        .question-text {
-            font-size: 2rem;
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
         }
-    }
-
-    .keywords-section {
-        padding: 2rem 0;
-    }
-
-    .spacer {
-        flex: 1;
-    }
-
-    /* Text Input Section */
-    .text-input-section {
-        padding: 1rem 0;
-    }
-
-    .input-wrapper {
-        display: flex;
-        gap: 0.5rem;
-        align-items: flex-end;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 0.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .input-wrapper textarea {
-        flex: 1;
-        background: transparent;
-        border: none;
-        color: white;
-        font-size: 1rem;
-        padding: 0.75rem;
-        resize: none;
-        font-family: inherit;
-    }
-
-    .input-wrapper textarea::placeholder {
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    .input-wrapper textarea:focus {
-        outline: none;
-    }
-
-    .send-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border: none;
-        border-radius: 12px;
-        background: #d4a855;
-        color: white;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .send-btn:hover:not(:disabled) {
-        background: #e5b966;
-    }
-
-    .send-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .send-btn :global(.send-icon) {
-        width: 18px;
-        height: 18px;
-    }
-
-    .controls-section {
-        padding-bottom: 0.5rem;
-    }
-
-    .stage-section {
-        padding-bottom: env(safe-area-inset-bottom, 1rem);
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 </style>

@@ -1,6 +1,9 @@
-<script lang="ts">
+﻿<script lang="ts">
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+    import { page } from "$app/state";
+    import { api } from "$lib/api";
+    import { ArrowLeft } from "@lucide/svelte";
 
     import PageHead from "$lib/components/PageHead.svelte";
     import SingleChoiceQuestion from "$lib/components/questionnaire/SingleChoiceQuestion.svelte";
@@ -90,6 +93,28 @@
     let currentIndex = $state(0);
     let answers = $state<Record<string, string | string[]>>({});
 
+    // Navigation state
+    let courseId = $state<string | null>(null);
+    const assignmentId = $derived(page.params.id);
+
+    $effect(() => {
+        if (assignmentId) {
+            api.assignments.get(assignmentId).then((res) => {
+                if (res.success && res.data.courseId) {
+                    courseId = res.data.courseId;
+                }
+            });
+        }
+    });
+
+    function goBack() {
+        if (courseId) {
+            goto(resolve(`/courses/${courseId}`));
+        } else {
+            goto(resolve("/assignments"));
+        }
+    }
+
     // Derived
     let currentQuestion = $derived(mockQuestions[currentIndex]);
     let totalQuestions = $derived(mockQuestions.length);
@@ -138,7 +163,11 @@
         // TODO: Submit answers to API
         console.log("Submitting answers:", answers);
         // Navigate back to assignment or show completion
-        goto(resolve("/assignments"));
+        if (courseId) {
+            goto(resolve(`/courses/${courseId}`));
+        } else {
+            goto(resolve("/dashboard"));
+        }
     }
 
     function getCurrentAnswer<T>(questionId: string, defaultValue: T): T {
@@ -153,6 +182,18 @@
 <div class="questionnaire-container">
     <!-- Background -->
     <div class="background"></div>
+
+    {#if courseId}
+        <div class="absolute top-6 left-6 z-50">
+            <button
+                class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:translate-x-[-2px] hover:bg-white/15"
+                onclick={goBack}
+                aria-label="Back to course"
+            >
+                <ArrowLeft class="h-5 w-5 text-white" />
+            </button>
+        </div>
+    {/if}
 
     <!-- Content -->
     <div class="content">

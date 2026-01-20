@@ -16,17 +16,30 @@
         {m.dashboard_upcoming_deadline()}
     </h2>
 
-    <WeekCalendar selectedDate={deadline.date} {deadlineDates} {onDateSelect} />
+    {#if deadline}
+        <WeekCalendar
+            selectedDate={deadline.date}
+            {deadlineDates}
+            {onDateSelect}
+        />
 
-    <div class="mt-4 mb-4">
-        <p class="text-text-primary flex items-center">
-            <span class="text-xl font-bold">{deadline.course}</span>
-            <span class="text-text-secondary mx-2">···</span>
-            <span class="text-text-secondary text-sm"
-                >{deadline.assignment}</span
-            >
-        </p>
-    </div>
+        <div class="mt-4 mb-4">
+            <p class="text-text-primary flex items-center">
+                <span class="text-xl font-bold">{deadline.course}</span>
+                <span class="text-text-secondary mx-2">···</span>
+                <span class="text-text-secondary text-sm"
+                    >{deadline.assignment}</span
+                >
+            </p>
+        </div>
 
-    <CountdownTimer targetDate={deadline.dueDate} />
+        <CountdownTimer targetDate={deadline.dueDate} />
+    {:else}
+        <div
+            class="flex h-48 flex-col items-center justify-center text-center text-white/50"
+        >
+            <p class="mb-2 text-lg font-medium">No upcoming deadlines</p>
+            <p class="text-sm">You are all caught up!</p>
+        </div>
+    {/if}
 </div>
