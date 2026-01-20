@@ -200,7 +200,7 @@ export async function addCredits(
 	amount: number,
 	currency: string = 'usd'
 ): Promise<APIResult<{ id: string }>> {
-	return callBackend<{ id: string }>(config, '/api/wallets', {
+	return callBackend<{ id: string }>(config, '/wallets', {
 		method: 'POST',
 		body: JSON.stringify({
 			action: 'addCredits',

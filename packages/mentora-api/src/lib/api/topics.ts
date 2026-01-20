@@ -56,7 +56,7 @@ export async function listCourseTopics(
 		params.set('limit', options.limit.toString());
 	}
 
-	const result = await callBackend<unknown[]>(config, `/api/topics?${params}`);
+	const result = await callBackend<unknown[]>(config, `/topics?${params}`);
 	if (!result.success) {
 		return result;
 	}

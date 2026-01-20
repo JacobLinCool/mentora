@@ -136,7 +136,7 @@ export async function createConversation(
 	config: MentoraAPIConfig,
 	assignmentId: string
 ): Promise<APIResult<{ id: string }>> {
-	return callBackend(config, '/api/conversations', {
+	return callBackend(config, '/conversations', {
 		method: 'POST',
 		body: JSON.stringify({ assignmentId })
 	});
@@ -151,7 +151,7 @@ export async function endConversation(
 	config: MentoraAPIConfig,
 	conversationId: string
 ): Promise<APIResult<void>> {
-	return callBackend(config, `/api/conversations/${conversationId}/end`, {
+	return callBackend(config, `/conversations/${conversationId}/end`, {
 		method: 'POST'
 	});
 }
@@ -170,7 +170,7 @@ export async function addTurn(
 	text: string,
 	type: 'idea' | 'followup'
 ): Promise<APIResult<void>> {
-	return callBackend(config, `/api/conversations/${conversationId}/turns`, {
+	return callBackend(config, `/conversations/${conversationId}/turns`, {
 		method: 'POST',
 		body: JSON.stringify({ text, type })
 	});
