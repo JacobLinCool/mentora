@@ -48,9 +48,7 @@
     let currentStage = $derived(2); // TODO: Derive from conversation metadata
     let totalStages = $derived(5);
 
-    let currentResponse = $state("");
-    let currentQuestion = $state("");
-    let keywords = $state<string[]>([]);
+    // let currentResponse = $state("");
 
     let messageInput = $state("");
     let sending = $state(false);
@@ -104,11 +102,13 @@
         }
     });
 
+    /*
     function handleResponseComplete() {
         setTimeout(() => {
             typingPhase = "question";
         }, 300);
     }
+    */
 
     function handleQuestionComplete() {
         setTimeout(() => {

@@ -12,7 +12,7 @@
     let course = $state<Course | null>(null);
     let topics = $state<Topic[]>([]);
     let loading = $state(true);
-    let error = $state<string | null>(null);
+    // let error = $state<string | null>(null);
     let isEnrolled = $state(false);
     let joining = $state(false);
 
@@ -34,7 +34,7 @@
             if (courseRes.success) {
                 course = courseRes.data;
             } else {
-                error = courseRes.error;
+                console.error(courseRes.error);
             }
 
             if (topicsRes.success) {
@@ -45,7 +45,7 @@
                 isEnrolled = enrolledRes.data.some((c) => c.id === courseId);
             }
         } catch (e) {
-            error = "Failed to load course";
+            console.error(e);
         } finally {
             loading = false;
         }

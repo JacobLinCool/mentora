@@ -4,7 +4,12 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { ArrowLeft } from "@lucide/svelte";
-    import { api, type Topic, type Assignment } from "$lib/api";
+    import {
+        api,
+        type Topic,
+        type Assignment,
+        type Submission,
+    } from "$lib/api";
     import { Spinner } from "flowbite-svelte";
     import TopicCarousel from "$lib/components/course/TopicCarousel.svelte";
     import AssignmentTimeline from "$lib/components/course/AssignmentTimeline.svelte";
@@ -13,13 +18,19 @@
 
     const courseId = $derived(page.params.id);
 
+    type CourseAssignment = Assignment & {
+        type: string;
+        completed: boolean | undefined;
+        locked: boolean;
+    };
+
     // State
     let loading = $state(true);
     let courseTitle = $state("");
     let topics = $state<Topic[]>([]);
     let currentTopicIndex = $state(0);
     // Store assignments grouped by topicId
-    let groupedAssignments = $state<Record<string, any[]>>({});
+    let groupedAssignments = $state<Record<string, CourseAssignment[]>>({});
 
     onMount(async () => {
         if (courseId) {
@@ -49,10 +60,10 @@
 
             if (assignmentsRes.success) {
                 const assignments = assignmentsRes.data;
-                const groups: Record<string, any[]> = {};
+                const groups: Record<string, CourseAssignment[]> = {};
 
                 // Fetch status for all assignments (might be heavy but needed for 'completed')
-                const submissionsMap = new Map();
+                const submissionsMap = new Map<string, Submission>();
 
                 // Parallel fetch
                 await Promise.all(
