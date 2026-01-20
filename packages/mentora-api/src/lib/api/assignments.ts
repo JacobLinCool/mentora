@@ -44,7 +44,7 @@ export async function listCourseAssignments(
 		params.set('limit', options.limit.toString());
 	}
 
-	const result = await callBackend<unknown[]>(config, `/api/assignments?${params}`);
+	const result = await callBackend<unknown[]>(config, `/assignments?${params}`);
 	if (!result.success) {
 		return result;
 	}
@@ -68,7 +68,7 @@ export async function listAvailableAssignments(
 		params.set('limit', options.limit.toString());
 	}
 
-	const result = await callBackend<unknown[]>(config, `/api/assignments?${params}`);
+	const result = await callBackend<unknown[]>(config, `/assignments?${params}`);
 	if (!result.success) {
 		return result;
 	}

@@ -154,7 +154,7 @@ export async function createCourse(
 	options?: CreateCourseOptions
 ): Promise<APIResult<string>> {
 	// Use callBackend for consistent error handling and auth
-	const result = await callBackend<{ id: string }>(config, '/api/courses', {
+	const result = await callBackend<{ id: string }>(config, '/courses', {
 		method: 'POST',
 		body: JSON.stringify({
 			title,
@@ -456,7 +456,7 @@ export async function copyCourse(
 	}
 ): Promise<APIResult<string>> {
 	// Use callBackend
-	const result = await callBackend<{ id: string }>(config, `/api/courses/${courseId}/copy`, {
+	const result = await callBackend<{ id: string }>(config, `/courses/${courseId}/copy`, {
 		method: 'POST',
 		body: JSON.stringify(options)
 	});
@@ -511,7 +511,7 @@ export async function joinByCode(
 	config: MentoraAPIConfig,
 	code: string
 ): Promise<APIResult<JoinCourseResult>> {
-	return callBackend<JoinCourseResult>(config, '/api/courses/join', {
+	return callBackend<JoinCourseResult>(config, '/courses/join', {
 		method: 'POST',
 		body: JSON.stringify({ code })
 	});

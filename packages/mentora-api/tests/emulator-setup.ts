@@ -32,7 +32,7 @@ const firebaseConfig = {
 };
 
 // Backend URL (use dev server by default)
-export const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5173';
+export const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5173/api';
 
 // Firebase app instances for each role
 let teacherApp: FirebaseApp | null = null;

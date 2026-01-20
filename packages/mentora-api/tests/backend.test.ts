@@ -36,7 +36,7 @@ describe('Backend Module (Integration)', () => {
 
 	describe('callBackend()', () => {
 		it('should return success for health check', async () => {
-			const result = await callBackend<unknown>(config, '/api/health');
+			const result = await callBackend<unknown>(config, '/health');
 			expect(result.success).toBe(true);
 		});
 	});
