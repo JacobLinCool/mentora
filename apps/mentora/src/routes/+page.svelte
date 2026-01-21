@@ -13,10 +13,7 @@
         ShieldCheck,
         Zap,
         Github,
-        FileText,
         Globe,
-        Rocket,
-        Lock,
         ArrowDown,
     } from "@lucide/svelte";
 
@@ -291,7 +288,7 @@
                 <!-- Language Switcher -->
                 <div class="fixed top-6 right-6 z-50 flex items-center gap-3">
                     <a
-                        href="/auth"
+                        href={resolve("/auth")}
                         class="cta-float flex items-center justify-center gap-2 rounded-full border border-white/5 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-all duration-200 hover:bg-white/20"
                         class:cta-hidden={!showTopCta}
                     >
@@ -583,6 +580,7 @@
                                             >{m.landing_footer_methodology()}</a
                                         >
                                     </li>
+                                    <!-- eslint-disable svelte/no-navigation-without-resolve -->
                                     <li>
                                         <a
                                             href="/pricing"
@@ -597,6 +595,7 @@
                                             >{m.landing_footer_roadmap()}</a
                                         >
                                     </li>
+                                    <!-- eslint-enable svelte/no-navigation-without-resolve -->
                                 </ul>
                             </div>
 
