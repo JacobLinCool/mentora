@@ -1,8 +1,8 @@
 <script lang="ts">
     import { api } from "$lib";
     import { m } from "$lib/paraglide/messages";
-    import GlassCard from "$lib/components/ui/GlassCard.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
+    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
     import {
         User,
         Mail,
@@ -61,7 +61,9 @@
 
 {#if !user}
     <!-- Not logged in -->
-    <GlassCard className="animate-slide-up text-center">
+    <div
+        class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 text-center backdrop-blur-md"
+    >
         <div class="py-8">
             <User
                 class="text-text-secondary mx-auto mb-4 h-16 w-16 opacity-50"
@@ -77,34 +79,34 @@
                 <ArrowRight class="h-5 w-5" />
             </CosmicButton>
         </div>
-    </GlassCard>
+    </div>
 {:else}
-    <div class="space-y-8">
+    <div class="space-y-8 pb-24">
         <!-- Profile Section -->
-        <GlassCard className="animate-slide-up">
+        <div
+            class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md"
+            style="container-type: inline-size"
+        >
             <div class="mb-6 flex items-center justify-between">
                 <div>
-                    <h2 class="mb-1 font-serif text-xl text-white">
+                    <h2 class="mb-1 text-xl text-white">
                         {m.settings_profile()}
                     </h2>
-                    <p class="text-text-secondary text-sm font-light">
-                        {m.settings_account_info()}
-                    </p>
                 </div>
             </div>
 
-            <div class="flex items-start gap-6">
+            <div class="flex items-start gap-3">
                 <!-- Profile Photo -->
                 <div class="shrink-0">
                     {#if user.photoURL}
                         <img
                             src={user.photoURL}
                             alt="Profile"
-                            class="border-brand-gold/30 h-20 w-20 rounded-full border-2 object-cover"
+                            class="border-brand-gold/30 h-16 w-16 rounded-full border-2 object-cover"
                         />
                     {:else}
                         <div
-                            class="from-brand-gold to-brand-silver flex h-20 w-20 items-center justify-center rounded-full bg-linear-to-br font-serif text-2xl text-black"
+                            class="from-brand-gold to-brand-silver flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br font-serif text-2xl text-black"
                         >
                             {(user.displayName || user.email || "U")
                                 .charAt(0)
@@ -114,7 +116,7 @@
                 </div>
 
                 <!-- Profile Info -->
-                <div class="flex-1 space-y-4">
+                <div class="min-w-0 flex-1 space-y-4">
                     <div>
                         <div
                             class="text-text-secondary mb-1 text-xs font-medium tracking-wider uppercase"
@@ -122,8 +124,12 @@
                             {m.settings_display_name()}
                         </div>
                         <div class="flex items-center gap-2 text-white">
-                            <User class="text-text-secondary h-4 w-4" />
+                            <User
+                                class="text-text-secondary h-4 w-4 shrink-0"
+                            />
                             <span
+                                class="break-all"
+                                style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
                                 >{user.displayName ||
                                     profile?.displayName ||
                                     m.settings_not_set()}</span
@@ -138,8 +144,14 @@
                             {m.settings_email()}
                         </div>
                         <div class="flex items-center gap-2 text-white">
-                            <Mail class="text-text-secondary h-4 w-4" />
-                            <span>{user.email}</span>
+                            <Mail
+                                class="text-text-secondary h-4 w-4 shrink-0"
+                            />
+                            <span
+                                class="break-all"
+                                style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
+                                >{user.email}</span
+                            >
                         </div>
                     </div>
 
@@ -151,20 +163,27 @@
                                 {m.settings_member_since()}
                             </div>
                             <div class="flex items-center gap-2 text-white">
-                                <Calendar class="text-text-secondary h-4 w-4" />
-                                <span>{formatDate(profile.createdAt)}</span>
+                                <Calendar
+                                    class="text-text-secondary h-4 w-4 shrink-0"
+                                />
+                                <span
+                                    style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
+                                    >{formatDate(profile.createdAt)}</span
+                                >
                             </div>
                         </div>
                     {/if}
                 </div>
             </div>
-        </GlassCard>
+        </div>
 
         <!-- Credits Section -->
-        <GlassCard className="animate-slide-up [animation-delay:100ms]">
+        <div
+            class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md [animation-delay:100ms]"
+        >
             <div class="mb-6 flex items-center justify-between">
                 <div>
-                    <h2 class="mb-1 font-serif text-xl text-white">
+                    <h2 class="mb-1 text-xl text-white">
                         {m.settings_credits()}
                     </h2>
                     <p class="text-text-secondary text-sm font-light">
@@ -213,6 +232,7 @@
                     </p>
                 </div>
             {/if}
-        </GlassCard>
+        </div>
     </div>
+    <BottomNav activeTab="profile" />
 {/if}

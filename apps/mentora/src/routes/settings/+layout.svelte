@@ -1,23 +1,30 @@
 <script lang="ts">
-    import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
+    import { onMount } from "svelte";
     import { m } from "$lib/paraglide/messages";
 
     let { children } = $props();
+
+    // Force dark mode (mirroring BaseLayout behavior)
+    onMount(() => {
+        document.documentElement.classList.add("dark");
+    });
 </script>
 
-<BaseLayout>
-    <div class="container mx-auto max-w-4xl px-4 py-12">
-        <!-- Settings Header -->
-        <div class="mb-10">
-            <div
-                class="text-text-secondary mb-2 text-sm font-medium tracking-wide uppercase"
-            >
-                {m.settings_account()}
+<div
+    class="selection:bg-brand-gold min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-[#404040] to-[#858585] pb-24 font-sans text-white selection:text-white"
+>
+    <!-- Content -->
+    <main class="relative z-10 w-full">
+        <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
+            <!-- Settings Header -->
+            <div class="mb-8">
+                <h1 class="font-serif-tc text-3xl text-white md:text-4xl">
+                    {m.settings_title()}
+                </h1>
             </div>
-            <h1 class="font-serif text-4xl text-white">{m.settings_title()}</h1>
-        </div>
 
-        <!-- Content -->
-        {@render children?.()}
-    </div>
-</BaseLayout>
+            <!-- Content Slot -->
+            {@render children?.()}
+        </div>
+    </main>
+</div>
