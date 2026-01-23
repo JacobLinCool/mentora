@@ -1,4 +1,13 @@
 <script lang="ts">
+    export interface Props {
+        color1?: string;
+        color2?: string;
+        color3?: string;
+        color4?: string;
+        color5?: string;
+        animate?: boolean;
+    }
+
     let {
         color1 = "#a855f7", // Purple
         color2 = "#eab308", // Yellow/Gold
@@ -6,7 +15,7 @@
         color4 = "#e5e5e5", // White
         color5 = "#1f2937", // Dark
         animate = true, // New prop to control animation
-    } = $props();
+    }: Props = $props();
 </script>
 
 <div class="mesh-container" class:paused={!animate}>
