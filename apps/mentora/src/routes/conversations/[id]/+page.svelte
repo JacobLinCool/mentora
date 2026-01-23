@@ -6,6 +6,7 @@
     import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
     import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
+    import MeshGradient from "$lib/components/ui/MeshGradient.svelte";
 
     // UI State
     type Phase = "responding" | "ready";
@@ -84,8 +85,14 @@
 />
 
 <div class="conversation-container">
-    <!-- Background gradient -->
-    <div class="background"></div>
+    <!-- Mesh Gradient Background -->
+    <MeshGradient
+        color1="#000000"
+        color2="#ffffff"
+        color3="#4b5563"
+        color4="#d1d5db"
+        color5="#1f2937"
+    />
 
     <!-- Main content -->
     <div class="content">
@@ -179,32 +186,6 @@
         position: fixed;
         inset: 0;
         overflow: hidden;
-    }
-
-    .background {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            135deg,
-            #5a5a5a 0%,
-            #3a3a3a 50%,
-            #4a4a4a 100%
-        );
-        z-index: -1;
-    }
-
-    .background::before {
-        content: "";
-        position: absolute;
-        top: -20%;
-        left: -10%;
-        width: 60%;
-        height: 60%;
-        background: radial-gradient(
-            ellipse,
-            rgba(100, 100, 100, 0.4) 0%,
-            transparent 70%
-        );
     }
 
     .content {

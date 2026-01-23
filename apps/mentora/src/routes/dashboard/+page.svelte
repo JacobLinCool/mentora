@@ -113,7 +113,7 @@
     <title>Dashboard - Mentora</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-[#404040] to-[#858585] pb-24">
+<div class="min-h-screen pb-24">
     <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
         <DashboardHeader userName="user01" />
 
