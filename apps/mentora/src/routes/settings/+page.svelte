@@ -11,11 +11,28 @@
         CreditCard,
         ArrowRight,
         Loader2,
+        Pencil,
+        X,
     } from "@lucide/svelte";
+    import { tick } from "svelte";
     import { slide } from "svelte/transition";
 
     const user = $derived(api.currentUser);
     const profile = $derived(api.currentUserProfile);
+
+    const displayNameInitial = $derived(
+        (profile?.displayName ?? user?.displayName ?? "").trim(),
+    );
+    let displayNameDraft = $state("");
+    let displayNameDirty = $state(false);
+    let displayNameSaving = $state(false);
+    let displayNameError = $state<string | null>(null);
+    let displayNameEditing = $state(false);
+    let displayNameInput = $state<HTMLInputElement | null>(null);
+
+    const displayNameCanSave = $derived(
+        !displayNameSaving && displayNameDraft.trim().length > 0,
+    );
 
     // Wallet state
     let wallet = $state<{ balanceCredits: number } | null>(null);
@@ -28,6 +45,22 @@
         } else {
             wallet = null;
             walletLoading = false;
+        }
+    });
+
+    $effect(() => {
+        if (!displayNameDirty && !displayNameSaving && !displayNameEditing) {
+            displayNameDraft = displayNameInitial;
+            displayNameError = null;
+        }
+    });
+
+    $effect(() => {
+        if (displayNameEditing) {
+            tick().then(() => {
+                displayNameInput?.focus();
+                displayNameInput?.select();
+            });
         }
     });
 
@@ -56,6 +89,58 @@
             month: "long",
             day: "numeric",
         });
+    }
+
+    async function saveDisplayName() {
+        if (!displayNameCanSave) return;
+
+        // If no change, just exit edit mode
+        if (displayNameDraft.trim() === displayNameInitial) {
+            cancelDisplayNameEdit();
+            return;
+        }
+
+        displayNameSaving = true;
+        displayNameError = null;
+
+        const result = await api.users.updateMyProfile({
+            displayName: displayNameDraft.trim(),
+        });
+
+        if (!result.success) {
+            displayNameError = result.error;
+            displayNameSaving = false;
+            return;
+        }
+
+        displayNameEditing = false;
+        displayNameDirty = false;
+        displayNameSaving = false;
+    }
+
+    function startDisplayNameEdit() {
+        displayNameDraft = displayNameInitial;
+        displayNameDirty = false;
+        displayNameError = null;
+        displayNameEditing = true;
+    }
+
+    function cancelDisplayNameEdit() {
+        displayNameEditing = false;
+        displayNameDirty = false;
+        displayNameDraft = displayNameInitial;
+        displayNameError = null;
+    }
+
+    function handleDisplayNameKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            saveDisplayName();
+        }
+        if (event.key === "Escape") {
+            event.preventDefault();
+            cancelDisplayNameEdit();
+        }
     }
 </script>
 
@@ -117,24 +202,85 @@
 
                 <!-- Profile Info -->
                 <div class="min-w-0 flex-1 space-y-4">
-                    <div>
+                    <div class="space-y-2">
                         <div
-                            class="text-text-secondary mb-1 text-xs font-medium tracking-wider uppercase"
+                            class="text-text-secondary text-xs font-medium tracking-wider uppercase"
                         >
                             {m.settings_display_name()}
                         </div>
-                        <div class="flex items-center gap-2 text-white">
-                            <User
-                                class="text-text-secondary h-4 w-4 shrink-0"
-                            />
-                            <span
-                                class="break-all"
-                                style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
-                                >{user.displayName ||
-                                    profile?.displayName ||
-                                    m.settings_not_set()}</span
-                            >
-                        </div>
+                        {#if displayNameEditing}
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div
+                                    class="focus-within:border-brand-gold/60 flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-white"
+                                >
+                                    <User
+                                        class="text-text-secondary h-4 w-4 shrink-0"
+                                    />
+                                    <input
+                                        class="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
+                                        placeholder={m.settings_display_name()}
+                                        bind:value={displayNameDraft}
+                                        bind:this={displayNameInput}
+                                        oninput={() => {
+                                            displayNameDirty = true;
+                                            displayNameError = null;
+                                        }}
+                                        onkeydown={handleDisplayNameKeydown}
+                                    />
+                                </div>
+                                <CosmicButton
+                                    variant="primary"
+                                    onclick={saveDisplayName}
+                                    disabled={!displayNameCanSave}
+                                    className="px-5 py-3"
+                                >
+                                    {#if displayNameSaving}
+                                        <Loader2 class="h-4 w-4 animate-spin" />
+                                        <span>{m.save()}</span>
+                                    {:else}
+                                        <span>{m.save()}</span>
+                                    {/if}
+                                </CosmicButton>
+                                <CosmicButton
+                                    variant="secondary"
+                                    onclick={cancelDisplayNameEdit}
+                                    className="px-4 py-3"
+                                >
+                                    <X class="h-4 w-4" />
+                                    <span>{m.cancel()}</span>
+                                </CosmicButton>
+                            </div>
+                        {:else}
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="flex min-w-0 flex-1 items-center gap-2 text-white"
+                                >
+                                    <User
+                                        class="text-text-secondary h-4 w-4 shrink-0"
+                                    />
+                                    <span
+                                        class="truncate"
+                                        style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
+                                    >
+                                        {profile?.displayName ||
+                                            user.displayName ||
+                                            m.settings_not_set()}
+                                    </span>
+                                </div>
+                                <button
+                                    class="text-text-secondary flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 transition hover:border-white/30 hover:text-white"
+                                    onclick={startDisplayNameEdit}
+                                    aria-label="Edit display name"
+                                >
+                                    <Pencil class="h-3 w-3" />
+                                </button>
+                            </div>
+                        {/if}
+                        {#if displayNameError}
+                            <p class="text-status-error text-xs">
+                                {displayNameError}
+                            </p>
+                        {/if}
                     </div>
 
                     <div>
