@@ -448,11 +448,15 @@ service cloud.firestore {
       ) && isValidQuestionnaire(request.resource.data);
 
       // UPDATE: by course instructors/TAs or creator for standalone
-      allow update: if isSignedIn() && (
-        (resource.data.courseId != null &&
-           canEditCourseResource(resource.data.courseId)) ||
-        (resource.data.courseId == null && resource.data.createdBy == request.auth.uid)
-      ) && isValidQuestionnaire(request.resource.data);
+      allow update: if isSignedIn() &&
+        // Prevent privilege escalation by making ownership/binding immutable
+        request.resource.data.courseId == resource.data.courseId &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        (
+          (resource.data.courseId != null &&
+             canEditCourseResource(resource.data.courseId)) ||
+          (resource.data.courseId == null && resource.data.createdBy == request.auth.uid)
+        ) && isValidQuestionnaire(request.resource.data);
 
       // DELETE: by course instructors/TAs or creator for standalone
       allow delete: if isSignedIn() && (
