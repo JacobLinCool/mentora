@@ -51,6 +51,9 @@ export const zTopic = z
                 "Ordered list of content types corresponding to the IDs in contents.",
             ),
     })
+    .refine((data) => data.contents.length === data.contentTypes.length, {
+        message: "contents and contentTypes arrays must have the same length",
+    })
     .describe("Topic document stored at topics/{topicId}.");
 export type Topic = z.infer<typeof zTopic>;
 
