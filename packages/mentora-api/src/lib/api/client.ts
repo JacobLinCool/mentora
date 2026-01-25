@@ -8,6 +8,7 @@ import type {
 	Assignment,
 	CourseDoc,
 	CourseMembership,
+	Questionnaire,
 	Submission,
 	Topic,
 	UserProfile
@@ -16,7 +17,7 @@ import type {
 import * as AssignmentsModule from './assignments.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
-
+import * as QuestionnairesModule from './questionnaires.js';
 import * as SubmissionsModule from './submissions.js';
 import * as TopicsModule from './topics.js';
 import type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
@@ -28,6 +29,7 @@ export type {
 	Assignment,
 	CourseDoc,
 	CourseMembership,
+	Questionnaire,
 	Submission,
 	Topic,
 	Turn,
@@ -215,7 +217,7 @@ export class MentoraClient {
 		update: (
 			topicId: string,
 			updates: Partial<Omit<Topic, 'id' | 'courseId' | 'createdBy' | 'createdAt'>>
-		): Promise<APIResult<void>> =>
+		): Promise<APIResult<Topic>> =>
 			this.authReadyThen(() => TopicsModule.updateTopic(this._config, topicId, updates)),
 		delete: (topicId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => TopicsModule.deleteTopic(this._config, topicId))
@@ -246,6 +248,45 @@ export class MentoraClient {
 			),
 		delete: (assignmentId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => AssignmentsModule.deleteAssignment(this._config, assignmentId))
+	};
+
+	// ============ Questionnaires ============
+	questionnaires = {
+		get: (questionnaireId: string): Promise<APIResult<Questionnaire>> =>
+			this.authReadyThen(() =>
+				QuestionnairesModule.getQuestionnaire(this._config, questionnaireId)
+			),
+		listForCourse: (
+			courseId: string,
+			options?: QueryOptions
+		): Promise<APIResult<Questionnaire[]>> =>
+			this.authReadyThen(() =>
+				QuestionnairesModule.listCourseQuestionnaires(this._config, courseId, options)
+			),
+		listAvailable: (
+			courseId: string,
+			options?: QueryOptions
+		): Promise<APIResult<Questionnaire[]>> =>
+			this.authReadyThen(() =>
+				QuestionnairesModule.listAvailableQuestionnaires(this._config, courseId, options)
+			),
+		create: (
+			questionnaire: Omit<Questionnaire, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
+		): Promise<APIResult<string>> =>
+			this.authReadyThen(() =>
+				QuestionnairesModule.createQuestionnaire(this._config, questionnaire)
+			),
+		update: (
+			questionnaireId: string,
+			updates: Partial<Omit<Questionnaire, 'id' | 'createdBy' | 'createdAt'>>
+		): Promise<APIResult<Questionnaire>> =>
+			this.authReadyThen(() =>
+				QuestionnairesModule.updateQuestionnaire(this._config, questionnaireId, updates)
+			),
+		delete: (questionnaireId: string): Promise<APIResult<void>> =>
+			this.authReadyThen(() =>
+				QuestionnairesModule.deleteQuestionnaire(this._config, questionnaireId)
+			)
 	};
 
 	// ============ Submissions ============

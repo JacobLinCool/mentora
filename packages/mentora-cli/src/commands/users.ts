@@ -19,7 +19,7 @@ export function createUsersCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -34,7 +34,7 @@ export function createUsersCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -63,7 +63,7 @@ export function createUsersCommand(
                 if (result.success) {
                     success("Profile updated successfully.");
                 } else {
-                    error(result.error, result.code);
+                    error(result.error);
                     process.exit(1);
                 }
             },

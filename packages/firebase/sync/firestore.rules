@@ -141,6 +141,20 @@ service cloud.firestore {
              data.turns is list && data.turns.size() <= 1000;
     }
 
+    function isValidQuestionnaire(data) {
+      return data.id is string && data.id.size() >= 6 && data.id.size() <= 128 &&
+             (data.courseId == null || (data.courseId is string && data.courseId.size() <= 128)) &&
+             (!('topicId' in data) || data.topicId == null || (data.topicId is string && data.topicId.size() <= 128)) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+             data.questions is list && data.questions.size() >= 1 && data.questions.size() <= 100 &&
+             data.startAt is number &&
+             (data.dueAt == null || data.dueAt is number) &&
+             data.allowLate is bool &&
+             data.allowResubmit is bool &&
+             data.createdBy is string && data.createdBy.size() <= 128 &&
+             data.createdAt is number && data.updatedAt is number;
+    }
+
     function assignmentDoc(assignmentId) {
       return get(/databases/$(database)/documents/assignments/$(assignmentId));
     }
@@ -398,6 +412,54 @@ service cloud.firestore {
 
       // DELETE: typically disallow
       allow delete: if false;
+    }
+
+    /* ---------- Questionnaires (top-level) ---------- */
+    match /questionnaires/{qid} {
+      // GET:
+      // - Standalone questionnaires: visible to creator
+      // - Course-bound questionnaires: visible to course members
+      allow get: if isSignedIn() && (
+        targetNotExists() ||
+        // standalone: visible to creator
+        ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid &&
+         (!('courseId' in resource.data) || resource.data.courseId == null)) ||
+        // course-bound: visible to course members
+        ('courseId' in resource.data && resource.data.courseId != null && isCourseMember(resource.data.courseId))
+      );
+
+      // LIST:
+      // - Standalone questionnaires: visible to creator
+      // - Course-bound questionnaires: visible to course members
+      allow list: if isSignedIn() && (
+        targetNotExists() ||
+        // standalone: visible to creator
+        ('createdBy' in resource.data && resource.data.createdBy == request.auth.uid &&
+         (!('courseId' in resource.data) || resource.data.courseId == null)) ||
+        // course-bound: visible to course members
+        ('courseId' in resource.data && resource.data.courseId != null && isCourseMember(resource.data.courseId))
+      );
+
+      // CREATE: by course instructors/TAs or creator for standalone
+      allow create: if isSignedIn() && (
+        (request.resource.data.courseId != null &&
+           canEditCourseResource(request.resource.data.courseId)) ||
+        (request.resource.data.courseId == null && request.resource.data.createdBy == request.auth.uid)
+      ) && isValidQuestionnaire(request.resource.data);
+
+      // UPDATE: by course instructors/TAs or creator for standalone
+      allow update: if isSignedIn() && (
+        (resource.data.courseId != null &&
+           canEditCourseResource(resource.data.courseId)) ||
+        (resource.data.courseId == null && resource.data.createdBy == request.auth.uid)
+      ) && isValidQuestionnaire(request.resource.data);
+
+      // DELETE: by course instructors/TAs or creator for standalone
+      allow delete: if isSignedIn() && (
+        (resource.data.courseId != null &&
+           canEditCourseResource(resource.data.courseId)) ||
+        (resource.data.courseId == null && resource.data.createdBy == request.auth.uid)
+      );
     }
 
     /* ---------- Collection Group Rules ---------- */

@@ -27,13 +27,6 @@ export const zAssignment = z
             .describe(
                 "Topic ID if the assignment belongs to a topic, otherwise null.",
             ),
-        orderInTopic: z
-            .number()
-            .int()
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("Optional ordering value within the topic."),
         title: z
             .string()
             .min(1)
