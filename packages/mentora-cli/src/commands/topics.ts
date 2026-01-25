@@ -67,6 +67,8 @@ export function createTopicsCommand(
                     title: options.title,
                     description: options.description || "",
                     order: options.order,
+                    contents: [],
+                    contentTypes: [],
                 });
                 if (result.success) {
                     success(`Topic created with ID: ${result.data}`);
