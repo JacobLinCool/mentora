@@ -2,7 +2,7 @@
     import { api } from "$lib";
     import { m } from "$lib/paraglide/messages";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
-    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
+    import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import {
         User,
         Mail,
