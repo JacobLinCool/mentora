@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Plus } from "@lucide/svelte";
-    import MentorLayout from "$lib/components/dashboard/mentor/MentorLayout.svelte";
+    import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
 
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";

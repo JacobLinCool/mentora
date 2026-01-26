@@ -4,7 +4,7 @@
     import UpcomingDeadline from "$lib/components/dashboard/student/UpcomingDeadline.svelte";
     import ContinueConversation from "$lib/components/dashboard/student/ContinueConversation.svelte";
     import MyCourses from "$lib/components/dashboard/student/MyCourses.svelte";
-    import BottomNav from "$lib/components/dashboard/student/BottomNav.svelte";
+    import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
 
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";

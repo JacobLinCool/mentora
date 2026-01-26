@@ -9,7 +9,8 @@
     import type { Topic } from "$lib/api";
     import TopicCarousel from "$lib/components/course/TopicCarousel.svelte";
     import AssignmentTimeline from "$lib/components/course/AssignmentTimeline.svelte";
-    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
+    import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
+
     import PageHead from "$lib/components/PageHead.svelte";
 
     const courseId = $derived(page.params.id);

@@ -3,7 +3,7 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { m } from "$lib/paraglide/messages";
-    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
+    import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
 
     // Types aligned with CourseDoc schema
     type CourseVisibility = "public" | "unlisted" | "private";
