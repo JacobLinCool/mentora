@@ -1,10 +1,11 @@
 <script lang="ts">
     import { SvelteDate } from "svelte/reactivity";
-    import DashboardHeader from "$lib/components/dashboard/DashboardHeader.svelte";
-    import UpcomingDeadline from "$lib/components/dashboard/UpcomingDeadline.svelte";
-    import ContinueConversation from "$lib/components/dashboard/ContinueConversation.svelte";
-    import MyCourses from "$lib/components/dashboard/MyCourses.svelte";
-    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
+    import DashboardHeader from "$lib/components/dashboard/student/DashboardHeader.svelte";
+    import UpcomingDeadline from "$lib/components/dashboard/student/UpcomingDeadline.svelte";
+    import ContinueConversation from "$lib/components/dashboard/student/ContinueConversation.svelte";
+    import MyCourses from "$lib/components/dashboard/student/MyCourses.svelte";
+    import BottomNav from "$lib/components/dashboard/student/BottomNav.svelte";
+
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
 

@@ -1,9 +1,11 @@
 <script lang="ts">
-    import { Plus, Bell, Settings, CircleUser } from "@lucide/svelte";
+    import { Plus } from "@lucide/svelte";
+    import MentorLayout from "$lib/components/dashboard/mentor/MentorLayout.svelte";
+
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import CreateCourseModal from "$lib/components/course/CreateCourseModal.svelte";
-    import UsageChart from "$lib/components/dashboard/UsageChart.svelte";
+    import UsageChart from "$lib/components/dashboard/mentor/UsageChart.svelte";
 
     // Mock user name
     let userName = "Omuba";
@@ -69,23 +71,11 @@
     <title>Mentor Dashboard - Mentora</title>
 </svelte:head>
 
-<div class="min-h-screen bg-[#e5e5e5] text-black">
+<MentorLayout>
     <CreateCourseModal
         bind:open={isCreateModalOpen}
         onCreate={handleCreateCourse}
     />
-    <!-- Top Bar -->
-    <div
-        class="flex items-center justify-between bg-[#494949] px-8 py-4 text-white"
-    >
-        <h1 class="font-serif-tc text-xl font-bold tracking-wide">Mentora</h1>
-        <div class="flex items-center gap-4">
-            <button class="hover:text-gray-200"><Bell size={20} /></button>
-            <button class="hover:text-gray-200"><Settings size={20} /></button>
-            <button class="hover:text-gray-200"><CircleUser size={24} /></button
-            >
-        </div>
-    </div>
 
     <!-- Main Content -->
     <div class="mx-auto max-w-5xl px-8 pt-12 pb-24">
@@ -172,4 +162,4 @@
             </div>
         </div>
     </div>
-</div>
+</MentorLayout>
