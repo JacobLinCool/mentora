@@ -2,8 +2,8 @@
  * Conversation route handlers
  */
 
-import { Assignments, Conversations, Courses, type Conversation } from 'mentora-firebase';
-import { CreateConversationSchema } from '../schemas.js';
+import { Assignments, Conversations, Courses, type Conversation, type Turn } from 'mentora-firebase';
+import { CreateConversationSchema, AddTurnWithAudioSchema } from '../schemas.js';
 import {
 	errorResponse,
 	HttpStatus,
@@ -13,6 +13,7 @@ import {
 	type RouteDefinition
 } from '../types.js';
 import { parseBody, requireAuth, requireParam } from './utils.js';
+import { randomUUID } from 'crypto';
 
 /**
  * POST /api/conversations
@@ -153,12 +154,87 @@ async function endConversation(ctx: RouteContext): Promise<Response> {
 }
 
 /**
+ * Helper to parse multipart form data
+ * Returns { text?, audio? } depending on what was sent
+ */
+async function parseMultipartForm(request: Request): Promise<{ text?: string; audio?: Blob }> {
+	const contentType = request.headers.get('content-type') || '';
+
+	// Handle JSON (for text input)
+	if (contentType.includes('application/json')) {
+		try {
+			const body = await request.json();
+			return { text: body.text };
+		} catch {
+			throw errorResponse(
+				'Invalid JSON body',
+				HttpStatus.BAD_REQUEST,
+				ServerErrorCode.INVALID_INPUT
+			);
+		}
+	}
+
+	// Handle multipart form data (for audio + optional text)
+	if (contentType.includes('multipart/form-data')) {
+		try {
+			const formData = await request.formData();
+			const text = formData.get('text') as string | null;
+			const audio = formData.get('audio') as Blob | null;
+
+			if (!text && !audio) {
+				throw errorResponse(
+					'Either text or audio is required',
+					HttpStatus.BAD_REQUEST,
+					ServerErrorCode.INVALID_INPUT
+				);
+			}
+
+			return {
+				text: text || undefined,
+				audio: audio || undefined
+			};
+		} catch (error) {
+			if (error instanceof Response) throw error;
+			throw errorResponse(
+				'Failed to parse form data',
+				HttpStatus.BAD_REQUEST,
+				ServerErrorCode.INVALID_INPUT
+			);
+		}
+	}
+
+	throw errorResponse(
+		'Content-Type must be application/json or multipart/form-data',
+		HttpStatus.BAD_REQUEST,
+		ServerErrorCode.INVALID_INPUT
+	);
+}
+
+/**
  * POST /api/conversations/:id/turns
  * Add a turn to a conversation and trigger AI response
+ *
+ * PROTOTYPE: Accepts text or audio blob
+ * - If audio: stores blob for later transcription
+ * - If text: stores directly
+ * - Creates placeholder for AI response (pending state)
+ * - LLM processing will be integrated later
  */
-async function addTurn(ctx: RouteContext): Promise<Response> {
+async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
 	const conversationId = requireParam(ctx, 'id');
+
+	// Parse request body (text or audio)
+	const input = await parseMultipartForm(request);
+
+	// Validate input
+	if (!input.text && !input.audio) {
+		return errorResponse(
+			'Either text or audio is required',
+			HttpStatus.BAD_REQUEST,
+			ServerErrorCode.INVALID_INPUT
+		);
+	}
 
 	// Get conversation
 	const conversationRef = ctx.firestore.doc(Conversations.docPath(conversationId));
@@ -184,17 +260,70 @@ async function addTurn(ctx: RouteContext): Promise<Response> {
 		);
 	}
 
-	// TODO: Integrate with LLM service
-	// For now, just acknowledge the turn was received
-	// The actual LLM integration would add turns to Firestore
-
 	const now = Date.now();
+	const turnId = randomUUID();
+
+	// PROTOTYPE: Create user turn
+	// If audio was provided, use a placeholder text initially
+	// Actual transcription would happen in LLM service
+	const userTurnText = input.text || `[Audio message - ${input.audio?.type || 'audio/webm'}]`;
+
+	const userTurn: Turn = {
+		id: turnId,
+		type: 'idea', // Can be extended to accept from request
+		text: userTurnText,
+		analysis: null,
+		pendingStartAt: null,
+		createdAt: now
+	};
+
+	// PROTOTYPE: Create placeholder for AI response
+	// This will be updated by LLM service later
+	const aiTurnId = randomUUID();
+	const aiTurn: Turn = {
+		id: aiTurnId,
+		type: 'followup',
+		text: '[Waiting for AI response...]', // Placeholder
+		analysis: null,
+		pendingStartAt: now, // Mark as pending
+		createdAt: now
+	};
+
+	// Update conversation with both turns
+	const updatedTurns = [...conversation.turns, userTurn, aiTurn];
+
 	await conversationRef.update({
+		turns: updatedTurns,
 		lastActionAt: now,
-		updatedAt: now
+		updatedAt: now,
+		// Could update state based on conversation flow
+		// state: 'awaiting_response' // Example state transition
 	});
 
-	return jsonResponse({});
+	// TODO: If audio was provided, store blob reference for transcription service
+	// Example: Store metadata about audio file for async processing
+	if (input.audio) {
+		console.log(`[PROTOTYPE] Audio blob received: ${input.audio.type}, size: ${input.audio.size} bytes`);
+		// In production, you might:
+		// 1. Upload to Cloud Storage
+		// 2. Queue transcription job
+		// 3. Store reference in Firestore for tracking
+	}
+
+	// TODO: Trigger LLM service to:
+	// 1. Process user input (transcribe if audio)
+	// 2. Generate AI response
+	// 3. Update the aiTurn placeholder with actual response
+
+	return jsonResponse(
+		{
+			conversationId,
+			userTurnId: turnId,
+			aiTurnId: aiTurnId,
+			message: 'Turn added. AI is processing your message...'
+		},
+		HttpStatus.CREATED
+	);
 }
 
 /**
