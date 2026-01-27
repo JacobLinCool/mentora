@@ -33,6 +33,8 @@
             createdBy: "system",
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            contents: [],
+            contentTypes: [],
         },
         {
             id: "topic-2",
@@ -44,6 +46,8 @@
             createdBy: "system",
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            contents: [],
+            contentTypes: [],
         },
         {
             id: "topic-3",
@@ -55,6 +59,8 @@
             createdBy: "system",
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            contents: [],
+            contentTypes: [],
         },
     ];
     // Mock assignments aligned with Assignment schema from API
@@ -66,7 +72,6 @@
             id: string;
             courseId: string | null;
             topicId: string | null;
-            orderInTopic: number | null;
             title: string;
             prompt: string;
             mode: "instant";
@@ -88,7 +93,6 @@
                 id: "assign-1-1",
                 courseId: "course-01",
                 topicId: "topic-1",
-                orderInTopic: 1,
                 title: "前測",
                 prompt: "完成這個測驗來評估您的先備知識。",
                 mode: "instant",
@@ -107,7 +111,6 @@
                 id: "assign-1-2",
                 courseId: "course-01",
                 topicId: "topic-1",
-                orderInTopic: 2,
                 title: "對話",
                 prompt: "與 AI 進行對話討論。",
                 mode: "instant",
@@ -126,7 +129,6 @@
                 id: "assign-1-3",
                 courseId: "course-01",
                 topicId: "topic-1",
-                orderInTopic: 3,
                 title: "後測",
                 prompt: "完成後測來評估您的學習成果。",
                 mode: "instant",
@@ -147,7 +149,6 @@
                 id: "assign-2-1",
                 courseId: "course-01",
                 topicId: "topic-2",
-                orderInTopic: 1,
                 title: "前測",
                 prompt: "完成功利主義主題的先備知識測驗。",
                 mode: "instant",
@@ -166,7 +167,6 @@
                 id: "assign-2-2",
                 courseId: "course-01",
                 topicId: "topic-2",
-                orderInTopic: 2,
                 title: "對話",
                 prompt: "探討功利主義的核心概念。",
                 mode: "instant",
@@ -185,7 +185,6 @@
                 id: "assign-2-3",
                 courseId: "course-01",
                 topicId: "topic-2",
-                orderInTopic: 3,
                 title: "後測",
                 prompt: "評估功利主義的學習成果。",
                 mode: "instant",
@@ -206,7 +205,6 @@
                 id: "assign-3-1",
                 courseId: "course-01",
                 topicId: "topic-3",
-                orderInTopic: 1,
                 title: "前測",
                 prompt: "義務論主題的先備知識測驗。",
                 mode: "instant",
@@ -225,7 +223,6 @@
                 id: "assign-3-2",
                 courseId: "course-01",
                 topicId: "topic-3",
-                orderInTopic: 2,
                 title: "對話",
                 prompt: "探討康德義務論的核心概念。",
                 mode: "instant",
@@ -244,7 +241,6 @@
                 id: "assign-3-3",
                 courseId: "course-01",
                 topicId: "topic-3",
-                orderInTopic: 3,
                 title: "後測",
                 prompt: "義務論學習成果評估。",
                 mode: "instant",

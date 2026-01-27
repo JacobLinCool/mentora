@@ -56,7 +56,6 @@ erDiagram
     string id PK
     string courseId FK
     string topicId FK
-    number orderInTopic
     string title
     string prompt
     string mode
@@ -180,8 +179,8 @@ The indexes are defined in `sync/firestore.indexes.json`.
     - **Query**: `where("createdBy","==",uid).orderBy("createdAt","desc")`
     - **Index**: `(createdBy ASC, createdAt DESC)`
 4. List assignments by topic
-    - **Query**: `where("topicId", "==", topicId).orderBy("orderInTopic", "asc")`
-    - **Index**: `(topicId ASC, orderInTopic ASC)`
+    - **Query**: `where("topicId", "==", topicId)`
+    - **Index**: `(topicId ASC)`
 
 #### Topics
 
