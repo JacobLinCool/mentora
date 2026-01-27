@@ -1,5 +1,6 @@
 <script lang="ts">
-    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
+    import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
+
     import ExploreCard from "$lib/components/explore/ExploreCard.svelte";
     import { m } from "$lib/paraglide/messages";
     import { goto } from "$app/navigation";
