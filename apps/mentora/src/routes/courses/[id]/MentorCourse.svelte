@@ -57,7 +57,7 @@
     }
 </script>
 
-<MentorCourseLayout {activeTab} onTabChange={handleTabChange}>
+<MentorCourseLayout {activeTab} onTabChange={handleTabChange} {courseTitle}>
     {#if activeTab === "dashboard"}
         <CourseDashboard {courseTitle} {announcements} />
     {:else if activeTab === "topics"}

@@ -1,24 +1,20 @@
 <script lang="ts">
     import { Pencil, Trash2, Plus } from "@lucide/svelte";
+    import * as m from "$lib/paraglide/messages.js";
 
     let { courseTitle = "", announcements = [] } = $props();
 </script>
 
-<!-- Course Title -->
-<div class="mb-8">
-    <h2 class="font-serif-tc text-3xl font-bold text-black">
-        {courseTitle}
-    </h2>
-</div>
-
 <!-- Announcement Section -->
 <div class="mb-6 flex items-center justify-between">
-    <h3 class="text-xl font-normal text-black">Announcement</h3>
+    <h3 class="text-xl font-normal text-black">
+        {m.mentor_dashboard_announcement()}
+    </h3>
     <button
         class="flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
     >
         <Plus size={16} />
-        Create
+        {m.mentor_dashboard_create()}
     </button>
 </div>
 
@@ -29,8 +25,8 @@
     <div
         class="grid grid-cols-[3fr_2fr_1fr] border-b border-gray-200/50 p-6 font-medium text-gray-600"
     >
-        <div>Title</div>
-        <div>Created Date</div>
+        <div>{m.mentor_dashboard_table_title()}</div>
+        <div>{m.mentor_dashboard_table_created_date()}</div>
         <div class="text-right"></div>
     </div>
     <div class="flex flex-col divide-y divide-gray-200/50">
