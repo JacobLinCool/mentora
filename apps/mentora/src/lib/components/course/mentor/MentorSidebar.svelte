@@ -1,6 +1,4 @@
 <script lang="ts">
-    import type { ComponentType } from "svelte";
-
     let { activeTab = "dashboard", onTabChange, items = [] } = $props();
 
     function handleTabClick(tab: string) {

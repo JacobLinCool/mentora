@@ -2,7 +2,7 @@
     import { Pencil, Trash2, Plus } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
 
-    let { courseTitle = "", announcements = [] } = $props();
+    let { announcements = [] } = $props();
 </script>
 
 <!-- Announcement Section -->

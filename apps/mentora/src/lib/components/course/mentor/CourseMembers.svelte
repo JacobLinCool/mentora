@@ -2,7 +2,7 @@
     import { Users } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
 
-    let { courseTitle = "" } = $props();
+    let {} = $props();
 </script>
 
 <div class="flex flex-col items-center justify-center p-12 text-gray-500">

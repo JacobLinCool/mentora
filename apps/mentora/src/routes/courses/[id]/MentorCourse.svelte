@@ -59,12 +59,12 @@
 
 <MentorCourseLayout {activeTab} onTabChange={handleTabChange} {courseTitle}>
     {#if activeTab === "dashboard"}
-        <CourseDashboard {courseTitle} {announcements} />
+        <CourseDashboard {announcements} />
     {:else if activeTab === "topics"}
-        <CourseTopics {courseTitle} />
+        <CourseTopics />
     {:else if activeTab === "members"}
-        <CourseMembers {courseTitle} />
+        <CourseMembers />
     {:else if activeTab === "settings"}
-        <CourseSettings {courseTitle} />
+        <CourseSettings />
     {/if}
 </MentorCourseLayout>
