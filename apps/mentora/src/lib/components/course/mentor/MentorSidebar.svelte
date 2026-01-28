@@ -10,7 +10,7 @@
 
 <!-- Navigation Links -->
 <nav class="mt-2 flex flex-col gap-2">
-    {#each items as item}
+    {#each items as item (item.id)}
         <button
             onclick={() => handleTabClick(item.id)}
             class="flex cursor-pointer items-center gap-3 rounded-lg px-4 py-3 transition-colors {activeTab ===
