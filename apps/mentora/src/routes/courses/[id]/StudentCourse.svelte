@@ -33,6 +33,8 @@
             createdBy: "system",
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            contents: [],
+            contentTypes: [],
         },
         {
             id: "topic-2",
@@ -44,6 +46,8 @@
             createdBy: "system",
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            contents: [],
+            contentTypes: [],
         },
         {
             id: "topic-3",
@@ -55,6 +59,8 @@
             createdBy: "system",
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            contents: [],
+            contentTypes: [],
         },
     ];
     // Mock assignments aligned with Assignment schema from API
