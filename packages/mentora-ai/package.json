@@ -1,0 +1,31 @@
+{
+    "private": true,
+    "name": "mentora-ai",
+    "version": "0.0.0",
+    "type": "module",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "test": "vitest run",
+        "test:watch": "vitest --watch",
+        "test:ui": "vitest --ui",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "zod": "^4.3.4"
+    },
+    "devDependencies": {
+        "@google/genai": "^1.38.0",
+        "@types/node": "^24.10.4",
+        "dotenv": "^17.2.3",
+        "tsup": "^8.5.1",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3",
+        "vitest": "^3.2.4"
+    }
+}
