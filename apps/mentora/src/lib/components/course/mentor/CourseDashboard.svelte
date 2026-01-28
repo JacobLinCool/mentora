@@ -34,7 +34,7 @@
         <div class="text-right"></div>
     </div>
     <div class="flex flex-col divide-y divide-gray-200/50">
-        {#each announcements as item}
+        {#each announcements as item (item.id)}
             <div
                 class="grid grid-cols-[3fr_2fr_1fr] items-center p-6 transition-colors hover:bg-gray-50"
             >
