@@ -26,19 +26,26 @@ import { GoogleGenAI } from "@google/genai";
 import {
     GeminiPromptExecutor,
     MentoraOrchestrator,
-    DefaultStageHandlerRegistry,
 } from "mentora-ai";
 
 const genai = new GoogleGenAI({});
 const executor = new GeminiPromptExecutor(genai, "gemini-2.5-flash-lite");
-const registry = new DefaultStageHandlerRegistry();
-const orchestrator = new MentoraOrchestrator(executor, registry);
+const orchestrator = new MentoraOrchestrator(executor);
+
+// Initialize a session
+const session = await orchestrator.initializeSession();
 
 // Start a conversation
-const state = await orchestrator.start("白帽駭客是否需要黑帽駭客的存在？");
+const state = await orchestrator.startConversation(
+    session,
+    "白帽駭客是否需要黑帽駭客的存在？",
+);
 
 // Process student responses
-const newState = await orchestrator.step(state, "我認為需要，因為...");
+const newState = await orchestrator.processStudentInput(
+    session,
+    "我認為需要，因為...",
+);
 ```
 
 ## Development
