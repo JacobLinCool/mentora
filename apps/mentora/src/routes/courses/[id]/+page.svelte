@@ -4,12 +4,7 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { ArrowLeft } from "@lucide/svelte";
-    import {
-        api,
-        type Topic,
-        type Assignment,
-        type Submission,
-    } from "$lib/api";
+    import { api, type Topic, type Assignment } from "$lib/api";
     import { Spinner } from "flowbite-svelte";
     import TopicCarousel from "$lib/components/course/TopicCarousel.svelte";
     import AssignmentTimeline from "$lib/components/course/AssignmentTimeline.svelte";
@@ -18,11 +13,11 @@
 
     const courseId = $derived(page.params.id);
 
-    type CourseAssignment = Assignment & {
-        type: string;
-        completed: boolean | undefined;
+    interface CourseAssignment extends Assignment {
+        type: "quiz" | "conversation" | "essay";
+        completed?: boolean;
         locked: boolean;
-    };
+    }
 
     // State
     let loading = $state(true);
@@ -39,6 +34,7 @@
     });
 
     async function loadData() {
+        if (!courseId) return;
         loading = true;
         try {
             const [courseRes, topicsRes, assignmentsRes] = await Promise.all([
@@ -63,7 +59,7 @@
                 const groups: Record<string, CourseAssignment[]> = {};
 
                 // Fetch status for all assignments (might be heavy but needed for 'completed')
-                const submissionsMap = new Map<string, Submission>();
+                const submissionsMap = new Map();
 
                 // Parallel fetch
                 await Promise.all(
@@ -95,7 +91,7 @@
 
                     groups[tid].push({
                         ...a,
-                        type,
+                        type: type as "quiz" | "conversation" | "essay",
                         completed: isCompleted,
                         locked: a.startAt ? a.startAt > Date.now() : false,
                     });
@@ -246,6 +242,12 @@
 <style>
     .course-page {
         min-height: 100vh;
+        background: linear-gradient(
+            135deg,
+            #2d2d2d 0%,
+            #404040 50%,
+            #5a5a5a 100%
+        );
         padding-bottom: 6rem;
     }
 

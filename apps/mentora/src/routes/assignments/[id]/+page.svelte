@@ -123,6 +123,7 @@
             goto(resolve(`/conversations/${conversation.id}`));
         } else if (submission) {
             // Try to find or create conversation if submission exists but conversation context is missing
+            if (!assignmentId) return;
             actionLoading = true;
             const createConvResult =
                 await api.conversations.create(assignmentId);

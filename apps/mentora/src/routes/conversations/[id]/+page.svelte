@@ -6,7 +6,6 @@
     import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
     import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
-    import MeshGradient from "$lib/components/ui/MeshGradient.svelte";
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
@@ -49,7 +48,9 @@
     let currentStage = $derived(2); // TODO: Derive from conversation metadata
     let totalStages = $derived(5);
 
-    // let currentResponse = $state("");
+    let currentResponse = $state("");
+    let currentQuestion = $state("");
+    let keywords = $state<string[]>([]);
 
     let messageInput = $state("");
     let sending = $state(false);
@@ -65,8 +66,8 @@
     }
 
     $effect(() => {
-        const history = conversation?.history || [];
-        const lastTurn = history.at(-1);
+        const turns = conversation?.turns || [];
+        const lastTurn = turns.at(-1);
 
         if (lastTurn && lastTurn.id !== lastProcessedTurnId) {
             if (lastTurn.role === "assistant") {
@@ -88,10 +89,10 @@
                 // For now, ensure we show the user's question if needed,
                 // but typically we just wait for the assistant stream.
             }
-        } else if (history.length > 0 && lastProcessedTurnId === null) {
+        } else if (turns.length > 0 && lastProcessedTurnId === null) {
             // First load initialization if we missed the change detection
             // because lastProcessedTurnId started as null
-            const last = history.at(-1);
+            const last = turns.at(-1);
             if (last) {
                 lastProcessedTurnId = last.id;
                 if (last.role === "assistant") {
@@ -103,13 +104,11 @@
         }
     });
 
-    /*
     function handleResponseComplete() {
         setTimeout(() => {
             typingPhase = "question";
         }, 300);
     }
-    */
 
     function handleQuestionComplete() {
         setTimeout(() => {
@@ -121,8 +120,29 @@
         showKeywords = !showKeywords;
     }
 
-    function handleToggleRecording() {
-        isRecording = !isRecording;
+    async function handleRecordingComplete(blob: Blob) {
+        // Placeholder for audio processing
+        // In the future, this will:
+        // 1. Upload the blob to cloud storage
+        // 2. Call the transcription API (or send directly to LLM)
+        // 3. Add the user's turn with audioId
+
+        console.log("Audio recorded:", blob.size, "bytes");
+
+        // Simulate sending state for UI feedback
+        sending = true;
+
+        // Simulate processing delay
+        setTimeout(async () => {
+            // For now, we can't really do anything without the backend support
+            // So we just reset the state.
+            // Ideally, we would simulate a user message saying "[Audio Message]"
+            // if we wanted to test the flow.
+
+            // await api.conversations.addTurn(conversationId, "[Audio Message Placeholder]", "idea");
+
+            sending = false;
+        }, 1500);
     }
 
     function handleShowTextInput() {
@@ -130,7 +150,7 @@
     }
 
     async function handleSendMessage() {
-        if (!messageInput.trim()) return;
+        if (!messageInput.trim() || !conversationId) return;
 
         sending = true;
 
@@ -146,13 +166,7 @@
 
 <div class="conversation-container">
     <div class="background"></div>
-    <MeshGradient
-        color1="#000000"
-        color2="#ffffff"
-        color3="#4b5563"
-        color4="#d1d5db"
-        color5="#1f2937"
-    />
+
     <div class="content relative">
         {#if courseId}
             <div class="absolute top-6 left-6 z-50">
@@ -240,10 +254,10 @@
                 <div class="controls-section">
                     <VoiceControls
                         {showKeywords}
-                        {isRecording}
+                        bind:isRecording
                         onToggleKeywords={handleToggleKeywords}
-                        onToggleRecording={handleToggleRecording}
                         onShowTextInput={handleShowTextInput}
+                        onRecordingComplete={handleRecordingComplete}
                     />
                 </div>
 
@@ -261,6 +275,32 @@
         position: fixed;
         inset: 0;
         overflow: hidden;
+    }
+
+    .background {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            135deg,
+            #5a5a5a 0%,
+            #3a3a3a 50%,
+            #4a4a4a 100%
+        );
+        z-index: -1;
+    }
+
+    .background::before {
+        content: "";
+        position: absolute;
+        top: -20%;
+        left: -10%;
+        width: 60%;
+        height: 60%;
+        background: radial-gradient(
+            ellipse,
+            rgba(100, 100, 100, 0.4) 0%,
+            transparent 70%
+        );
     }
 
     .content {

@@ -12,7 +12,7 @@
     let course = $state<Course | null>(null);
     let topics = $state<Topic[]>([]);
     let loading = $state(true);
-    // let error = $state<string | null>(null);
+    let error = $state<string | null>(null);
     let isEnrolled = $state(false);
     let joining = $state(false);
 
@@ -23,6 +23,7 @@
     });
 
     async function loadData() {
+        if (!courseId) return;
         loading = true;
         try {
             const [courseRes, topicsRes, enrolledRes] = await Promise.all([
@@ -34,7 +35,7 @@
             if (courseRes.success) {
                 course = courseRes.data;
             } else {
-                console.error(courseRes.error);
+                error = courseRes.error;
             }
 
             if (topicsRes.success) {
@@ -45,7 +46,7 @@
                 isEnrolled = enrolledRes.data.some((c) => c.id === courseId);
             }
         } catch (e) {
-            console.error(e);
+            error = "Failed to load course";
         } finally {
             loading = false;
         }

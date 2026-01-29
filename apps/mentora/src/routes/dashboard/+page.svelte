@@ -8,7 +8,12 @@
     import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
-    import { api, type Course, type Conversation } from "$lib/api";
+    import {
+        api,
+        type Course,
+        type Assignment,
+        type Conversation,
+    } from "$lib/api";
 
     // Data State
     let courses = $state<Course[]>([]);
@@ -20,7 +25,7 @@
 
     // Loading State
     let loading = $state(true);
-    // let error = $state<string | null>(null);
+    let error = $state<string | null>(null);
 
     const user = $derived(api.currentUser);
     const profile = $derived(api.currentUserProfile);
@@ -97,7 +102,7 @@
             }
         } catch (e) {
             console.error("Failed to load dashboard data", e);
-            // error = "Failed to load data";
+            error = "Failed to load data";
         } finally {
             loading = false;
         }
@@ -131,7 +136,7 @@
     <title>Dashboard - Mentora</title>
 </svelte:head>
 
-<div class="min-h-screen pb-24">
+<div class="min-h-screen bg-gradient-to-br from-[#404040] to-[#858585] pb-24">
     <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
         <DashboardHeader
             userName={profile?.displayName || user?.displayName || "User"}
