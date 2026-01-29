@@ -60,7 +60,7 @@
     // State
     let currentIndex = $state(0);
     let answers = $state<Record<string, string | string[]>>({});
-    let loading = $state(true);
+    // let loading = $state(true);
     let submitting = $state(false);
     let questions = $state<Question[]>([]);
 
@@ -119,7 +119,9 @@
 
             if (submissionRes.success) {
                 // Restore answers from submission
+                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
                 if ((submissionRes.data as any).answers) {
+                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
                     answers = (submissionRes.data as any).answers as Record<
                         string,
                         string | string[]

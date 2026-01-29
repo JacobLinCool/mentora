@@ -48,7 +48,6 @@
     let currentStage = $derived(2); // TODO: Derive from conversation metadata
     let totalStages = $derived(5);
 
-    let currentResponse = $state("");
     let currentQuestion = $state("");
     let keywords = $state<string[]>([]);
 
@@ -74,7 +73,6 @@
                 // New assistant message
                 const content = lastTurn.content;
 
-                currentResponse = "";
                 currentQuestion = content;
 
                 lastProcessedTurnId = lastTurn.id;
@@ -104,11 +102,11 @@
         }
     });
 
-    function handleResponseComplete() {
+    /* function handleResponseComplete() {
         setTimeout(() => {
             typingPhase = "question";
         }, 300);
-    }
+    } */
 
     function handleQuestionComplete() {
         setTimeout(() => {

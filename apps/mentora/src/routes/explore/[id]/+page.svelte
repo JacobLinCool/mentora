@@ -12,7 +12,7 @@
     let course = $state<Course | null>(null);
     let topics = $state<Topic[]>([]);
     let loading = $state(true);
-    let error = $state<string | null>(null);
+    // let error = $state<string | null>(null);
     let isEnrolled = $state(false);
     let joining = $state(false);
 
@@ -45,8 +45,8 @@
             if (enrolledRes.success && course) {
                 isEnrolled = enrolledRes.data.some((c) => c.id === courseId);
             }
-        } catch (e) {
-            error = "Failed to load course";
+        } catch {
+            // error = "Failed to load course";
         } finally {
             loading = false;
         }

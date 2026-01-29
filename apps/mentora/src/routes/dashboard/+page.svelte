@@ -8,24 +8,19 @@
     import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
-    import {
-        api,
-        type Course,
-        type Assignment,
-        type Conversation,
-    } from "$lib/api";
+    import { api, type Course, type Conversation } from "$lib/api";
 
     // Data State
     let courses = $state<Course[]>([]);
-    let deadlines = $state<any[]>([]);
-    let selectedDeadline = $state<any>(null);
+    let deadlines = $state<{ date: Date; title: string; id: string }[]>([]);
+    let selectedDeadline = $state<string | null>(null);
     let deadlineDates = $state<Date[]>([]);
     let lastConversation = $state<Conversation | null>(null);
     let lastConversationTitle = $state("");
 
     // Loading State
     let loading = $state(true);
-    let error = $state<string | null>(null);
+    // let error = $state<string | null>(null);
 
     const user = $derived(api.currentUser);
     const profile = $derived(api.currentUserProfile);

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { SvelteMap } from "svelte/reactivity";
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
@@ -59,7 +60,7 @@
                 const groups: Record<string, CourseAssignment[]> = {};
 
                 // Fetch status for all assignments (might be heavy but needed for 'completed')
-                const submissionsMap = new Map();
+                const submissionsMap = new SvelteMap();
 
                 // Parallel fetch
                 await Promise.all(
