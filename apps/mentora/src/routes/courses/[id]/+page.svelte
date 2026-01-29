@@ -139,7 +139,7 @@
         currentTopicIndex = index;
     }
 
-    async function handleAssignmentClick(assignment: any) {
+    async function handleAssignmentClick(assignment: CourseAssignment) {
         if (assignment.locked) return;
 
         // Try to start submission if not present
