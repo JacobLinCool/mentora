@@ -27,7 +27,7 @@ export function createTopicsCommand(
                         `${topic.title} (order: ${topic.order}) [${topic.id}]`,
                 );
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -42,7 +42,7 @@ export function createTopicsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -67,11 +67,13 @@ export function createTopicsCommand(
                     title: options.title,
                     description: options.description || "",
                     order: options.order,
+                    contents: [],
+                    contentTypes: [],
                 });
                 if (result.success) {
                     success(`Topic created with ID: ${result.data}`);
                 } else {
-                    error(result.error, result.code);
+                    error(result.error);
                     process.exit(1);
                 }
             },
@@ -109,7 +111,7 @@ export function createTopicsCommand(
                 if (result.success) {
                     success("Topic updated successfully.");
                 } else {
-                    error(result.error, result.code);
+                    error(result.error);
                     process.exit(1);
                 }
             },
@@ -125,7 +127,7 @@ export function createTopicsCommand(
             if (result.success) {
                 success("Topic deleted successfully.");
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });

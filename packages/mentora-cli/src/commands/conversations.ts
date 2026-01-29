@@ -39,7 +39,7 @@ export function createConversationsCommand(
                     outputData(result.data);
                 }
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -54,7 +54,7 @@ export function createConversationsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -69,7 +69,7 @@ export function createConversationsCommand(
             if (result.success) {
                 success(`Conversation ID: ${result.data.id}`);
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -88,7 +88,7 @@ export function createConversationsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });
@@ -103,7 +103,7 @@ export function createConversationsCommand(
             if (result.success) {
                 success("Conversation ended successfully.");
             } else {
-                error(result.error, result.code);
+                error(result.error);
                 process.exit(1);
             }
         });

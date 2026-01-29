@@ -1,19 +1,7 @@
 /**
  * Topic operations
  */
-import {
-	collection,
-	deleteDoc,
-	doc,
-	getDoc,
-	getDocs,
-	limit,
-	orderBy,
-	query,
-	setDoc,
-	updateDoc,
-	where
-} from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Topics, type Topic } from 'mentora-firebase';
 import { callBackend } from './backend.js';
 import {
@@ -69,12 +57,10 @@ export async function listCourseTopics(
 
 /**
  * Create a new topic
- *
- * Automatically calculates order if not provided.
  */
 export async function createTopic(
 	config: MentoraAPIConfig,
-	topic: Omit<Topic, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'> & { order?: number | null }
+	topic: Omit<Topic, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
 ): Promise<APIResult<string>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
@@ -83,37 +69,16 @@ export async function createTopic(
 
 	return tryCatch(async () => {
 		const now = Date.now();
-
-		// Calculate order if not provided
-		let topicOrder = topic.order;
-		if (topicOrder === undefined || topicOrder === null) {
-			const existingTopicsQuery = query(
-				collection(config.db, Topics.collectionPath()),
-				where('courseId', '==', topic.courseId),
-				orderBy('order', 'desc'),
-				limit(1)
-			);
-			const existingTopics = await getDocs(existingTopicsQuery);
-
-			if (existingTopics.empty) {
-				topicOrder = 1;
-			} else {
-				const lastTopic = existingTopics.docs[0].data();
-				topicOrder = ((lastTopic.order as number) || 0) + 1;
-			}
-		}
-
 		const docRef = doc(collection(config.db, Topics.collectionPath()));
 		const topicData: Topic = {
 			...topic,
-			order: topicOrder,
 			id: docRef.id,
 			createdBy: currentUser.uid,
 			createdAt: now,
 			updatedAt: now
 		};
 
-		// Validate schema
+		// Validate against schema before sending
 		Topics.schema.parse(topicData);
 
 		await setDoc(docRef, topicData);
@@ -129,18 +94,22 @@ export async function updateTopic(
 	config: MentoraAPIConfig,
 	topicId: string,
 	updates: Partial<Omit<Topic, 'id' | 'courseId' | 'createdBy' | 'createdAt'>>
-): Promise<APIResult<void>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
+): Promise<APIResult<Topic>> {
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Topics.docPath(topicId));
+
 		await updateDoc(docRef, {
 			...updates,
 			updatedAt: Date.now()
 		});
+
+		// Return updated topic
+		const snapshot = await getDoc(docRef);
+		if (!snapshot.exists()) {
+			throw new Error('Topic not found');
+		}
+
+		return Topics.schema.parse(snapshot.data());
 	});
 }
 
@@ -151,11 +120,6 @@ export async function deleteTopic(
 	config: MentoraAPIConfig,
 	topicId: string
 ): Promise<APIResult<void>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
 	return tryCatch(async () => {
 		const docRef = doc(config.db, Topics.docPath(topicId));
 		await deleteDoc(docRef);

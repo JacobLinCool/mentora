@@ -4,7 +4,7 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { m } from "$lib/paraglide/messages";
-    import BottomNav from "$lib/components/dashboard/BottomNav.svelte";
+    import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import { api, type Course, type Topic } from "$lib/api";
 
     const courseId = $derived(page.params.id);
@@ -12,7 +12,7 @@
     let course = $state<Course | null>(null);
     let topics = $state<Topic[]>([]);
     let loading = $state(true);
-    // let error = $state<string | null>(null);
+    let error = $state<string | null>(null);
     let isEnrolled = $state(false);
     let joining = $state(false);
 
