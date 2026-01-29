@@ -58,10 +58,10 @@ describe('Topics Module (Integration)', () => {
 				courseId: testCourseId,
 				title: `Test Topic ${generateTestId()}`,
 				description: 'Integration test topic',
-				order: null,
-				contents: [],
-				contentTypes: []
+				order: null
 			});
+
+			expect(result.success).toBe(true);
 			if (result.success) {
 				testTopicId = result.data;
 				expect(testTopicId).toBeDefined();

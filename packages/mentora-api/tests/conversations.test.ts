@@ -29,6 +29,7 @@ describe('Conversations Module (Integration)', () => {
 			const assignmentResult = await client.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `Test Assignment for Conversations ${generateTestId()}`,
 				prompt: 'Integration test prompt',
 				mode: 'instant',

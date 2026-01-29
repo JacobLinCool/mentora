@@ -33,9 +33,7 @@ describe('Assignments Module (Integration)', () => {
 				courseId: testCourseId,
 				title: `Test Topic ${generateTestId()}`,
 				description: 'Topic for assignment tests',
-				order: null,
-				contents: [],
-				contentTypes: []
+				order: null
 			});
 			if (topicResult.success) {
 				testTopicId = topicResult.data;
@@ -86,6 +84,7 @@ describe('Assignments Module (Integration)', () => {
 			const result = await client.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `Test Assignment ${generateTestId()}`,
 				prompt: 'Integration test prompt',
 				mode: 'instant',
@@ -112,6 +111,7 @@ describe('Assignments Module (Integration)', () => {
 			const result = await client.assignments.create({
 				courseId: testCourseId,
 				topicId: testTopicId,
+				orderInTopic: 1,
 				title: `Test Assignment with Topic ${generateTestId()}`,
 				prompt: 'Assignment within a topic',
 				mode: 'instant',
@@ -139,6 +139,7 @@ describe('Assignments Module (Integration)', () => {
 			const result = await client.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `Assignment with due date ${generateTestId()}`,
 				prompt: 'This assignment has a due date',
 				mode: 'instant',
@@ -168,6 +169,7 @@ describe('Assignments Module (Integration)', () => {
 			const result = await client.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `Assignment instant mode ${generateTestId()}`,
 				prompt: 'Testing instant mode',
 				mode: 'instant',
@@ -454,6 +456,7 @@ describe('Assignments Module (Integration)', () => {
 			const createResult = await client.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `Lifecycle Assignment ${generateTestId()}`,
 				prompt: 'Lifecycle test',
 				mode: 'instant',

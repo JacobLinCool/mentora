@@ -43,6 +43,7 @@ export function createWalletsCommand(
                         } else {
                             error(
                                 `Failed to fetch ledger: ${ledgerResult.error}`,
+                                ledgerResult.code,
                             );
                         }
                     }
@@ -51,7 +52,7 @@ export function createWalletsCommand(
                     info("No wallet found.");
                 }
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -73,7 +74,7 @@ export function createWalletsCommand(
                     // The backend returns { id } for the transaction
                     console.log(`Transaction ID: ${result.data.id}`);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -89,7 +90,7 @@ export function createWalletsCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -111,7 +112,7 @@ export function createWalletsCommand(
                         `${entry.amountCredits > 0 ? "+" : ""}${entry.amountCredits} credits - ${entry.type} [${formatTimestamp(entry.createdAt)}]`,
                 );
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });

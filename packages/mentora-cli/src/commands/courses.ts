@@ -52,7 +52,7 @@ export function createCoursesCommand(
                             `${course.title} (${course.code}) [${course.id}]`,
                     );
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -68,7 +68,7 @@ export function createCoursesCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -84,7 +84,7 @@ export function createCoursesCommand(
             if (result.success) {
                 success(`Course created with ID: ${result.data}`);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -106,7 +106,7 @@ export function createCoursesCommand(
                         `${member.email} (${member.role}) - Joined: ${formatTimestamp(member.joinedAt)}`,
                 );
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -147,7 +147,7 @@ export function createCoursesCommand(
                     success("Course updated successfully.");
                     outputData(result.data);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -163,7 +163,7 @@ export function createCoursesCommand(
             if (result.success) {
                 success("Course deleted successfully.");
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -189,7 +189,7 @@ export function createCoursesCommand(
                 if (result.success) {
                     success(`Invited ${email} to course as ${options.role}.`);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -209,7 +209,7 @@ export function createCoursesCommand(
             if (result.success) {
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });
@@ -239,7 +239,7 @@ export function createCoursesCommand(
                 if (result.success) {
                     success(`Course copied. New ID: ${result.data}`);
                 } else {
-                    error(result.error);
+                    error(result.error, result.code);
                     process.exit(1);
                 }
             },
@@ -260,7 +260,7 @@ export function createCoursesCommand(
                 success("Announcement posted.");
                 outputData(result.data);
             } else {
-                error(result.error);
+                error(result.error, result.code);
                 process.exit(1);
             }
         });

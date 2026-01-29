@@ -8,7 +8,6 @@ export * from './wallets.js';
 export * from './health.js';
 export * from './topics.js';
 export * from './assignments.js';
-export * from './questionnaires.js';
 export * from './utils.js';
 
 import { conversationRoutes } from './conversations.js';
@@ -17,7 +16,6 @@ import { walletRoutes } from './wallets.js';
 import { healthRoutes } from './health.js';
 import { topicRoutes } from './topics.js';
 import { assignmentRoutes } from './assignments.js';
-import { questionnaireRoutes } from './questionnaires.js';
 import type { RouteDefinition } from '../types.js';
 
 /**
@@ -29,6 +27,5 @@ export const allRoutes: RouteDefinition[] = [
 	...walletRoutes,
 	...healthRoutes,
 	...topicRoutes,
-	...assignmentRoutes,
-	...questionnaireRoutes
+	...assignmentRoutes
 ];

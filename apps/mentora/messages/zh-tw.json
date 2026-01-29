@@ -260,16 +260,5 @@
     "explore_password_cancel": "取消",
     "explore_password_error": "密碼錯誤",
     "explore_intro": "簡介",
-    "explore_topics": "主題",
-    "mentor_nav_dashboard": "儀表板",
-    "mentor_nav_topics": "主題",
-    "mentor_nav_members": "成員",
-    "mentor_nav_settings": "設定",
-    "mentor_dashboard_announcement": "公告",
-    "mentor_dashboard_create": "新增",
-    "mentor_dashboard_table_title": "標題",
-    "mentor_dashboard_table_created_date": "建立日期",
-    "mentor_topics_coming_soon": "主題管理功能即將推出",
-    "mentor_members_coming_soon": "成員管理功能即將推出",
-    "mentor_settings_coming_soon": "設定功能即將推出"
+    "explore_topics": "主題"
 }

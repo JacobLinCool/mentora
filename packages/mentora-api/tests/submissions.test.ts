@@ -60,6 +60,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			const result1 = await teacherClient.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `Allow Resubmit ${generateTestId()}`,
 				prompt: 'Can be resubmitted',
 				mode: 'instant',
@@ -76,6 +77,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			const result2 = await teacherClient.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `No Resubmit ${generateTestId()}`,
 				prompt: 'Cannot be resubmitted',
 				mode: 'instant',
@@ -93,6 +95,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			const result3 = await teacherClient.assignments.create({
 				courseId: testCourseId,
 				topicId: null,
+				orderInTopic: null,
 				title: `Past Due Date ${generateTestId()}`,
 				prompt: 'Due date is in the past',
 				mode: 'instant',
