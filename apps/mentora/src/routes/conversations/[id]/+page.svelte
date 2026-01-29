@@ -6,6 +6,7 @@
     import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
     import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
+    import MeshGradient from "$lib/components/ui/MeshGradient.svelte";
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
@@ -145,7 +146,13 @@
 
 <div class="conversation-container">
     <div class="background"></div>
-
+    <MeshGradient
+        color1="#000000"
+        color2="#ffffff"
+        color3="#4b5563"
+        color4="#d1d5db"
+        color5="#1f2937"
+    />
     <div class="content relative">
         {#if courseId}
             <div class="absolute top-6 left-6 z-50">
@@ -254,32 +261,6 @@
         position: fixed;
         inset: 0;
         overflow: hidden;
-    }
-
-    .background {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            135deg,
-            #5a5a5a 0%,
-            #3a3a3a 50%,
-            #4a4a4a 100%
-        );
-        z-index: -1;
-    }
-
-    .background::before {
-        content: "";
-        position: absolute;
-        top: -20%;
-        left: -10%;
-        width: 60%;
-        height: 60%;
-        background: radial-gradient(
-            ellipse,
-            rgba(100, 100, 100, 0.4) 0%,
-            transparent 70%
-        );
     }
 
     .content {
