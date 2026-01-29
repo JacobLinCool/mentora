@@ -259,5 +259,16 @@
     "explore_password_cancel": "Cancel",
     "explore_password_error": "Incorrect password",
     "explore_intro": "Intro",
-    "explore_topics": "Topics"
+    "explore_topics": "Topics",
+    "mentor_nav_dashboard": "Dashboard",
+    "mentor_nav_topics": "Topics",
+    "mentor_nav_members": "Members",
+    "mentor_nav_settings": "Settings",
+    "mentor_dashboard_announcement": "Announcement",
+    "mentor_dashboard_create": "Create",
+    "mentor_dashboard_table_title": "Title",
+    "mentor_dashboard_table_created_date": "Created Date",
+    "mentor_topics_coming_soon": "Topics management coming soon",
+    "mentor_members_coming_soon": "Members management coming soon",
+    "mentor_settings_coming_soon": "Settings coming soon"
 }

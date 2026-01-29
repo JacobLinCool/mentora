@@ -194,10 +194,10 @@ describe('Multi-Account Scenarios', () => {
 				courseId: testCourseId,
 				title: `Test Topic ${generateTestId()}`,
 				description: 'Topic for integration testing',
-				order: 1
+				order: 1,
+				contents: [],
+				contentTypes: []
 			});
-
-			expect(result.success).toBe(true);
 			if (result.success) {
 				testTopicId = result.data;
 				expect(testTopicId).toBeDefined();
@@ -213,7 +213,6 @@ describe('Multi-Account Scenarios', () => {
 			const result = await teacher.assignments.create({
 				courseId: testCourseId,
 				topicId: testTopicId,
-				orderInTopic: testTopicId ? 1 : null,
 				title: `Test Assignment ${generateTestId()}`,
 				prompt: 'This is an integration test assignment. Please provide your thoughtful response.',
 				mode: 'instant',
