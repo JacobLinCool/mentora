@@ -127,8 +127,11 @@
     }
 
     async function saveAnswers() {
-        if (!assignmentId || !api.currentUser) return;
-
+        if (!assignmentId || !api.currentUser || !conversationId) return;
+        console.log("Api not implemented, skipping save.");
+        return;
+        /*
+        
         try {
             // If we don't have a conversation ID, try to find or create one
             if (!conversationId) {
@@ -159,7 +162,7 @@
             const result = await api.conversations.addTurn(
                 conversationId,
                 JSON.stringify(answers),
-                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any 
                 "questionnaire_response" as any,
             );
 
@@ -169,6 +172,7 @@
         } catch (e) {
             console.error("Failed to save answers", e);
         }
+        */
     }
 
     function goBack() {
