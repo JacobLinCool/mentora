@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { CircleMinus, CirclePlus, X } from "@lucide/svelte";
+    import { CircleMinus, X } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
     import Pagination from "./Pagination.svelte";
 

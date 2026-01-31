@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Pencil, Trash2, Plus, Save, CircleX } from "@lucide/svelte";
+    import { Pencil, Trash2, Plus, Save } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
 
     let { announcements = [] } = $props();
@@ -20,7 +20,11 @@
         isModalOpen = true;
     }
 
-    function openEditModal(item: any) {
+    function openEditModal(item: {
+        id: string | number;
+        title: string;
+        content?: string;
+    }) {
         modalMode = "edit";
         editingId = item.id;
         newTitle = item.title;
@@ -28,7 +32,11 @@
         isModalOpen = true;
     }
 
-    function openViewModal(item: any) {
+    function openViewModal(item: {
+        id: string | number;
+        title: string;
+        content?: string;
+    }) {
         modalMode = "view";
         editingId = item.id;
         newTitle = item.title;

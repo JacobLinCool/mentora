@@ -61,7 +61,7 @@
         <ChevronLeft size={16} />
     </button>
 
-    {#each getVisiblePages(currentPage, totalPages) as page}
+    {#each getVisiblePages(currentPage, totalPages) as page (page)}
         {#if page === -1}
             <span class="flex h-8 w-8 items-center justify-center text-gray-400"
                 >...</span
