@@ -2,7 +2,13 @@
  * Conversation route handlers
  */
 
-import { Assignments, Conversations, Courses, type Conversation, type Turn } from 'mentora-firebase';
+import {
+	Assignments,
+	Conversations,
+	Courses,
+	type Conversation,
+	type Turn
+} from 'mentora-firebase';
 import { CreateConversationSchema, AddTurnWithAudioSchema } from '../schemas.js';
 import {
 	errorResponse,
@@ -13,6 +19,7 @@ import {
 	type RouteDefinition
 } from '../types.js';
 import { parseBody, requireAuth, requireParam } from './utils.js';
+import { processWithLLM, extractConversationSummary } from '../llm-service.js';
 import { randomUUID } from 'crypto';
 
 /**
@@ -212,13 +219,16 @@ async function parseMultipartForm(request: Request): Promise<{ text?: string; au
 
 /**
  * POST /api/conversations/:id/turns
- * Add a turn to a conversation and trigger AI response
+ * Add a turn to a conversation and trigger AI response via LLM
  *
- * PROTOTYPE: Accepts text or audio blob
- * - If audio: stores blob for later transcription
- * - If text: stores directly
- * - Creates placeholder for AI response (pending state)
- * - LLM processing will be integrated later
+ * Flow:
+ * 1. Parse and validate user input (text or audio placeholder)
+ * 2. Create user turn in conversation
+ * 3. Process with LLM orchestrator (calls mentora-ai)
+ * 4. Update conversation with AI response turn
+ * 5. Return updated conversation state
+ *
+ * Note: Audio transcription is deferred to future implementation
  */
 async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
@@ -260,70 +270,120 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		);
 	}
 
-	const now = Date.now();
-	const turnId = randomUUID();
+	try {
+		const now = Date.now();
+		const userTurnId = randomUUID();
 
-	// PROTOTYPE: Create user turn
-	// If audio was provided, use a placeholder text initially
-	// Actual transcription would happen in LLM service
-	const userTurnText = input.text || `[Audio message - ${input.audio?.type || 'audio/webm'}]`;
+		// Prepare user input text
+		// If audio was provided, use a placeholder for now
+		// TODO: Implement audio transcription service
+		const userInputText = input.text || `[Audio message - ${input.audio?.type || 'audio/webm'}]`;
 
-	const userTurn: Turn = {
-		id: turnId,
-		type: 'idea', // Can be extended to accept from request
-		text: userTurnText,
-		analysis: null,
-		pendingStartAt: null,
-		createdAt: now
-	};
+		// Create user turn
+		const userTurn: Turn = {
+			id: userTurnId,
+			type: 'idea',
+			text: userInputText,
+			analysis: null,
+			pendingStartAt: null,
+			createdAt: now
+		};
 
-	// PROTOTYPE: Create placeholder for AI response
-	// This will be updated by LLM service later
-	const aiTurnId = randomUUID();
-	const aiTurn: Turn = {
-		id: aiTurnId,
-		type: 'followup',
-		text: '[Waiting for AI response...]', // Placeholder
-		analysis: null,
-		pendingStartAt: now, // Mark as pending
-		createdAt: now
-	};
+		// Get assignment for topic context
+		const assignmentDoc = await ctx.firestore
+			.doc(Assignments.docPath(conversation.assignmentId))
+			.get();
+		const assignment = assignmentDoc.exists ? Assignments.schema.parse(assignmentDoc.data()) : null;
+		const topicContext = assignment?.description || '';
 
-	// Update conversation with both turns
-	const updatedTurns = [...conversation.turns, userTurn, aiTurn];
-
-	await conversationRef.update({
-		turns: updatedTurns,
-		lastActionAt: now,
-		updatedAt: now,
-		// Could update state based on conversation flow
-		// state: 'awaiting_response' // Example state transition
-	});
-
-	// TODO: If audio was provided, store blob reference for transcription service
-	// Example: Store metadata about audio file for async processing
-	if (input.audio) {
-		console.log(`[PROTOTYPE] Audio blob received: ${input.audio.type}, size: ${input.audio.size} bytes`);
-		// In production, you might:
-		// 1. Upload to Cloud Storage
-		// 2. Queue transcription job
-		// 3. Store reference in Firestore for tracking
-	}
-
-	// TODO: Trigger LLM service to:
-	// 1. Process user input (transcribe if audio)
-	// 2. Generate AI response
-	// 3. Update the aiTurn placeholder with actual response
-
-	return jsonResponse(
-		{
+		// Process with LLM orchestrator
+		// This handles: state initialization → dialogue stage → response generation
+		const llmResult = await processWithLLM(
+			ctx.firestore,
 			conversationId,
-			userTurnId: turnId,
-			aiTurnId: aiTurnId,
-			message: 'Turn added. AI is processing your message...'
-		},
-		HttpStatus.CREATED
-	);
+			userInputText,
+			topicContext
+		);
+
+		// Create AI turn from LLM response
+		const aiTurnId = randomUUID();
+		const aiTurn: Turn = {
+			id: aiTurnId,
+			type: 'followup',
+			text: llmResult.aiMessage,
+			analysis: null, // TODO: Add stance analysis
+			pendingStartAt: null,
+			createdAt: now
+		};
+
+		// Update conversation with both turns
+		const updatedTurns = [...conversation.turns, userTurn, aiTurn];
+		const conversationState = llmResult.ended ? 'closed' : conversation.state;
+
+		await conversationRef.update({
+			turns: updatedTurns,
+			state: conversationState,
+			lastActionAt: now,
+			updatedAt: now
+		});
+
+		// Extract summary for response
+		const summary = extractConversationSummary(llmResult.updatedState);
+
+		// Handle audio blob if provided (async, non-blocking)
+		if (input.audio) {
+			console.log(
+				`[API] Audio blob received for turn ${userTurnId}: ${input.audio.type}, size: ${input.audio.size} bytes`
+			);
+			// TODO: Upload to Cloud Storage and queue transcription job
+		}
+
+		return jsonResponse(
+			{
+				conversationId,
+				userTurnId,
+				aiTurnId,
+				aiMessage: llmResult.aiMessage,
+				conversationEnded: llmResult.ended,
+				stage: summary.stage,
+				stance: summary.currentStance,
+				principle: summary.currentPrinciple
+			},
+			HttpStatus.CREATED
+		);
+	} catch (error) {
+		// Error handling for LLM service issues
+		if (error instanceof Error) {
+			if (error.message.includes('GOOGLE_GENAI_API_KEY')) {
+				return errorResponse(
+					'LLM service not configured',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+			if (error.message.includes('API quota')) {
+				return errorResponse(
+					'LLM service rate limited. Please try again later.',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+			if (error.message.includes('deadline exceeded') || error.message.includes('timeout')) {
+				return errorResponse(
+					'LLM request timed out. Please try again.',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+		}
+
+		console.error('[API] Error processing turn:', error);
+		return errorResponse(
+			'Failed to process your input. Please try again.',
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			ServerErrorCode.INTERNAL_ERROR
+		);
+	}
 }
 
 /**
