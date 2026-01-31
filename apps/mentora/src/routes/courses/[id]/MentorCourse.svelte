@@ -13,39 +13,44 @@
 
     // State
     let activeTab = $state("dashboard"); // dashboard, topics, members, settings
-    let courseTitle = $state("Course01"); // Default or loading
-
-    // Mock Announcements
-    let announcements = $state([
-        {
-            id: 1,
-            title: "Welcome to the course",
-            createdDate: "2026.01.14 23:59",
-        },
-        {
-            id: 2,
-            title: "pretest",
-            createdDate: "2026.01.14 23:59",
-        },
-        {
-            id: 3,
-            title: "pretest",
-            createdDate: "2026.01.14 23:59",
-        },
-        {
-            id: 4,
-            title: "pretest",
-            createdDate: "2026.01.14 23:59",
-        },
-    ]);
+    let courseTitle = $state("Loading...");
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    let announcements = $state<any[]>([]);
 
     async function loadCourseData() {
         if (courseId) {
             const courseResult = await api.courses.get(courseId);
             if (courseResult.success) {
                 courseTitle = courseResult.data.title;
+                // Map API announcements to UI format (assuming UI expects {id, title, createdDate})
+                // API announcements have {id, content, createdAt}
+                announcements = (courseResult.data.announcements || []).map(
+                    (a) => ({
+                        id: a.id,
+                        title:
+                            a.content.substring(0, 50) +
+                            (a.content.length > 50 ? "..." : ""), // Use content as title
+                        createdDate: formatDate(a.createdAt),
+                    }),
+                );
             }
         }
+    }
+
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    function formatDate(ts: any) {
+        if (!ts) return "-";
+        const d =
+            typeof ts === "number"
+                ? new Date(ts)
+                : ts.toDate
+                  ? ts.toDate()
+                  : new Date(ts);
+        return (
+            d.toLocaleDateString() +
+            " " +
+            d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        );
     }
 
     onMount(() => {

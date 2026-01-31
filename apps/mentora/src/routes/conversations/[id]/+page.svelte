@@ -45,7 +45,16 @@
     let isRecording = $state(false);
 
     // Data derived
-    let currentStage = $derived(2); // TODO: Derive from conversation metadata
+    const stageMap: Record<string, number> = {
+        awaiting_idea: 1,
+        adding_counterpoint: 2,
+        awaiting_followup: 3,
+        adding_final_summary: 4,
+        closed: 5,
+    };
+    let currentStage = $derived(
+        conversation?.state ? (stageMap[conversation.state as string] ?? 1) : 1,
+    );
     let totalStages = $derived(5);
 
     let currentQuestion = $state("");
@@ -69,9 +78,29 @@
         const lastTurn = turns.at(-1);
 
         if (lastTurn && lastTurn.id !== lastProcessedTurnId) {
-            if (lastTurn.role === "assistant") {
+            // Determine role by userId (if it matches prompt agent or system, it is assistant, but here we only have user id)
+            // Turns don't have role. We infer it.
+            // If turn.userId == conversation.userId, it is user.
+            // If turn.userId is missing or different? Wait, Turn schema doesn't have userId.
+            // Turn schema: id, type, text, analysis, pendingStartAt, createdAt.
+            // Actually, in this system, USER turns are created. AI turns are created.
+            // How do we distinguish?
+            // "type" field.
+            // User types: idea, followup.
+            // AI types: topic, counterpoint, summary, evaluation?
+            // Let's assume types: 'idea', 'followup' imply USER.
+            // 'topic', 'counterpoint', 'summary' imply AI.
+            // But 'type' is just string.
+
+            // Heuristic: If type is 'idea' or 'followup', it is likely user.
+            const isUser =
+                lastTurn.type === "idea" ||
+                lastTurn.type === "followup" ||
+                lastTurn.type === "questionnaire_response";
+
+            if (!isUser) {
                 // New assistant message
-                const content = lastTurn.content;
+                const content = lastTurn.text;
 
                 currentQuestion = content;
 
@@ -84,17 +113,19 @@
                 // User message
                 lastProcessedTurnId = lastTurn.id;
                 // Stay in ready or show thinking?
-                // For now, ensure we show the user's question if needed,
-                // but typically we just wait for the assistant stream.
             }
         } else if (turns.length > 0 && lastProcessedTurnId === null) {
-            // First load initialization if we missed the change detection
-            // because lastProcessedTurnId started as null
+            // First load initialization
             const last = turns.at(-1);
             if (last) {
                 lastProcessedTurnId = last.id;
-                if (last.role === "assistant") {
-                    currentQuestion = last.content;
+                const isUser =
+                    last.type === "idea" ||
+                    last.type === "followup" ||
+                    last.type === "questionnaire_response";
+
+                if (!isUser) {
+                    currentQuestion = last.text;
                     // Don't re-type on load, just show
                     phase = "ready";
                 }

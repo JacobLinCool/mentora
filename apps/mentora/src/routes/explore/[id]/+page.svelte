@@ -12,7 +12,7 @@
     let course = $state<Course | null>(null);
     let topics = $state<Topic[]>([]);
     let loading = $state(true);
-    let error = $state<string | null>(null);
+    // let error = $state<string | null>(null); // Unused
     let isEnrolled = $state(false);
     let joining = $state(false);
 
@@ -35,7 +35,7 @@
             if (courseRes.success) {
                 course = courseRes.data;
             } else {
-                error = courseRes.error;
+                // error = courseRes.error;
             }
 
             if (topicsRes.success) {

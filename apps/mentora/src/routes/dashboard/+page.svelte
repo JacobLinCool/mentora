@@ -1,11 +1,10 @@
 <script lang="ts">
     import MentorDashboard from "./MentorDashboard.svelte";
     import StudentDashboard from "./StudentDashboard.svelte";
-    // import { userProfile } from "$lib/temp.svelte";
 
     let props = $props();
 
-    // Mock role check until backend is ready
+    // Default to Student view for now
     const isMentor = false;
 </script>
 

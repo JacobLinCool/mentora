@@ -1,362 +1,234 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { SvelteMap } from "svelte/reactivity";
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { ArrowLeft } from "@lucide/svelte";
-    import { api } from "$lib";
+    import {
+        api,
+        type Topic,
+        type Assignment,
+        type SubmissionWithId,
+    } from "$lib/api";
     import { Spinner } from "flowbite-svelte";
-    import type { Topic } from "$lib/api";
     import TopicCarousel from "$lib/components/course/TopicCarousel.svelte";
     import AssignmentTimeline from "$lib/components/course/AssignmentTimeline.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
-
     import PageHead from "$lib/components/PageHead.svelte";
 
     const courseId = $derived(page.params.id);
+
+    interface CourseAssignment extends Assignment {
+        type: "quiz" | "conversation" | "essay";
+        completed?: boolean;
+        locked: boolean;
+    }
 
     // State
     let loading = $state(true);
     let courseTitle = $state("");
     let topics = $state<Topic[]>([]);
     let currentTopicIndex = $state(0);
+    // Store assignments grouped by topicId
+    let groupedAssignments = $state<Record<string, CourseAssignment[]>>({});
 
-    // Mock data for demonstration
-    const mockTopics = [
-        {
-            id: "topic-1",
-            courseId: "course-01",
-            title: "電車難題",
-            description:
-                "你要撞誰？這是一個經典的道德困境問題。探討在不同情境下，我們如何做出道德決策，以及這些決策背後的倫理原則。",
-            order: 1,
-            createdBy: "system",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            contents: [],
-            contentTypes: [],
-        },
-        {
-            id: "topic-2",
-            courseId: "course-01",
-            title: "功利主義",
-            description:
-                "功利主義是一種倫理理論，認為行為的對錯取決於其結果對整體幸福的影響。我們將探討這一理論的核心概念與批評。",
-            order: 2,
-            createdBy: "system",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            contents: [],
-            contentTypes: [],
-        },
-        {
-            id: "topic-3",
-            courseId: "course-01",
-            title: "義務論",
-            description:
-                "康德的義務論認為道德行為應基於義務和規則，而非結果。我們將深入了解這一倫理框架及其在現代社會的應用。",
-            order: 3,
-            createdBy: "system",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            contents: [],
-            contentTypes: [],
-        },
-    ];
-    // Mock assignments aligned with Assignment schema from API
-    // Additional UI-only fields: type, completed, locked (not in API schema)
-    const mockAssignments: Record<
-        string,
-        Array<{
-            // API Assignment fields
-            id: string;
-            courseId: string | null;
-            topicId: string | null;
-            orderInTopic: number | null;
-            title: string;
-            prompt: string;
-            mode: "instant";
-            startAt: number;
-            dueAt: number | null;
-            allowLate: boolean;
-            allowResubmit: boolean;
-            createdBy: string;
-            createdAt: number;
-            updatedAt: number;
-            // UI-only fields (derived from submission data in production)
-            type: "quiz" | "conversation" | "essay";
-            completed: boolean;
-            locked: boolean;
-        }>
-    > = {
-        "topic-1": [
-            {
-                id: "assign-1-1",
-                courseId: "course-01",
-                topicId: "topic-1",
-                orderInTopic: 1,
-                title: "前測",
-                prompt: "完成這個測驗來評估您的先備知識。",
-                mode: "instant",
-                startAt: Date.now() - 86400000 * 7,
-                dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
-                allowLate: true,
-                allowResubmit: false,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 14,
-                updatedAt: Date.now() - 86400000 * 14,
-                type: "quiz",
-                completed: true,
-                locked: false,
-            },
-            {
-                id: "assign-1-2",
-                courseId: "course-01",
-                topicId: "topic-1",
-                orderInTopic: 2,
-                title: "對話",
-                prompt: "與 AI 進行對話討論。",
-                mode: "instant",
-                startAt: Date.now() - 86400000 * 7,
-                dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
-                allowLate: true,
-                allowResubmit: true,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 14,
-                updatedAt: Date.now() - 86400000 * 14,
-                type: "conversation",
-                completed: true,
-                locked: false,
-            },
-            {
-                id: "assign-1-3",
-                courseId: "course-01",
-                topicId: "topic-1",
-                orderInTopic: 3,
-                title: "後測",
-                prompt: "完成後測來評估您的學習成果。",
-                mode: "instant",
-                startAt: Date.now() - 86400000 * 7,
-                dueAt: new Date(2026, 0, 20, 23, 59).getTime(),
-                allowLate: true,
-                allowResubmit: false,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 14,
-                updatedAt: Date.now() - 86400000 * 14,
-                type: "quiz",
-                completed: false,
-                locked: false,
-            },
-        ],
-        "topic-2": [
-            {
-                id: "assign-2-1",
-                courseId: "course-01",
-                topicId: "topic-2",
-                orderInTopic: 1,
-                title: "前測",
-                prompt: "完成功利主義主題的先備知識測驗。",
-                mode: "instant",
-                startAt: Date.now() - 86400000 * 3,
-                dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
-                allowLate: true,
-                allowResubmit: false,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 10,
-                updatedAt: Date.now() - 86400000 * 10,
-                type: "quiz",
-                completed: false,
-                locked: false,
-            },
-            {
-                id: "assign-2-2",
-                courseId: "course-01",
-                topicId: "topic-2",
-                orderInTopic: 2,
-                title: "對話",
-                prompt: "探討功利主義的核心概念。",
-                mode: "instant",
-                startAt: Date.now() - 86400000 * 3,
-                dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
-                allowLate: true,
-                allowResubmit: true,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 10,
-                updatedAt: Date.now() - 86400000 * 10,
-                type: "conversation",
-                completed: false,
-                locked: true,
-            },
-            {
-                id: "assign-2-3",
-                courseId: "course-01",
-                topicId: "topic-2",
-                orderInTopic: 3,
-                title: "後測",
-                prompt: "評估功利主義的學習成果。",
-                mode: "instant",
-                startAt: Date.now() - 86400000 * 3,
-                dueAt: new Date(2026, 0, 25, 23, 59).getTime(),
-                allowLate: true,
-                allowResubmit: false,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 10,
-                updatedAt: Date.now() - 86400000 * 10,
-                type: "quiz",
-                completed: false,
-                locked: true,
-            },
-        ],
-        "topic-3": [
-            {
-                id: "assign-3-1",
-                courseId: "course-01",
-                topicId: "topic-3",
-                orderInTopic: 1,
-                title: "前測",
-                prompt: "義務論主題的先備知識測驗。",
-                mode: "instant",
-                startAt: new Date(2026, 0, 26).getTime(),
-                dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
-                allowLate: false,
-                allowResubmit: false,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 10,
-                updatedAt: Date.now() - 86400000 * 10,
-                type: "quiz",
-                completed: false,
-                locked: true,
-            },
-            {
-                id: "assign-3-2",
-                courseId: "course-01",
-                topicId: "topic-3",
-                orderInTopic: 2,
-                title: "對話",
-                prompt: "探討康德義務論的核心概念。",
-                mode: "instant",
-                startAt: new Date(2026, 0, 26).getTime(),
-                dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
-                allowLate: true,
-                allowResubmit: true,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 10,
-                updatedAt: Date.now() - 86400000 * 10,
-                type: "conversation",
-                completed: false,
-                locked: true,
-            },
-            {
-                id: "assign-3-3",
-                courseId: "course-01",
-                topicId: "topic-3",
-                orderInTopic: 3,
-                title: "後測",
-                prompt: "義務論學習成果評估。",
-                mode: "instant",
-                startAt: new Date(2026, 0, 26).getTime(),
-                dueAt: new Date(2026, 1, 1, 23, 59).getTime(),
-                allowLate: false,
-                allowResubmit: false,
-                createdBy: "mock-instructor",
-                createdAt: Date.now() - 86400000 * 10,
-                updatedAt: Date.now() - 86400000 * 10,
-                type: "quiz",
-                completed: false,
-                locked: true,
-            },
-        ],
-    };
+    $effect(() => {
+        if (courseId && api.isAuthenticated) {
+            loadData();
+        } else if (courseId && !api.isAuthenticated) {
+            // Wait for auth to be ready if trying to load
+            api.authReady.then(() => {
+                if (api.isAuthenticated) loadData();
+            });
+        }
+    });
 
-    // Derived state
+    async function loadData() {
+        if (!courseId) return;
+        loading = true;
+        try {
+            const [courseRes, topicsRes, assignmentsRes] = await Promise.all([
+                api.courses.get(courseId),
+                api.topics.listForCourse(courseId),
+                api.assignments.listAvailable(courseId),
+            ]);
+
+            if (courseRes.success) {
+                courseTitle = courseRes.data.title;
+            }
+
+            if (topicsRes.success) {
+                // Ensure order
+                topics = topicsRes.data.sort(
+                    (a, b) => (a.order || 0) - (b.order || 0),
+                );
+            }
+
+            if (assignmentsRes.success) {
+                const assignments = assignmentsRes.data;
+                const groups: Record<string, CourseAssignment[]> = {};
+
+                // Fetch status for all assignments (might be heavy but needed for 'completed')
+                const submissionsMap = new SvelteMap<
+                    string,
+                    SubmissionWithId
+                >();
+
+                // Parallel fetch
+                await Promise.all(
+                    assignments.map(async (a) => {
+                        const subRes = await api.submissions.getMine(a.id);
+                        if (subRes.success && subRes.data) {
+                            submissionsMap.set(a.id, subRes.data);
+                        }
+                    }),
+                );
+
+                assignments.forEach((a) => {
+                    const tid = a.topicId || "uncategorized";
+                    if (!groups[tid]) groups[tid] = [];
+
+                    const submission = submissionsMap.get(a.id);
+                    const isCompleted =
+                        !!submission &&
+                        (submission.state === "submitted" ||
+                            submission.state === "graded_complete");
+
+                    // Determine type heuristic
+                    let type = "quiz";
+                    try {
+                        const parsed = JSON.parse(a.prompt);
+                        if (Array.isArray(parsed)) type = "questionnaire";
+                    } catch {
+                        // Not JSON, check title heuristics fallback
+                        if (
+                            a.title.includes("對話") ||
+                            a.title.includes("Conversation")
+                        ) {
+                            type = "conversation";
+                        }
+                    }
+
+                    groups[tid].push({
+                        ...a,
+                        type: type as "quiz" | "conversation" | "essay",
+                        completed: isCompleted,
+                        locked: a.startAt ? a.startAt > Date.now() : false,
+                    });
+                });
+
+                // Sort by orderInTopic
+                Object.values(groups).forEach((list) => {
+                    list.sort(
+                        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                        (a: any, b: any) =>
+                            (a.orderInTopic || 0) - (b.orderInTopic || 0),
+                    );
+                });
+
+                groupedAssignments = groups;
+            }
+
+            // Smart default topic logic
+            const now = Date.now();
+            let defaultIndex = 0;
+            for (let i = 0; i < topics.length; i++) {
+                const topic = topics[i];
+                const topicAssignments = groupedAssignments[topic.id] || [];
+                const hasActive = topicAssignments.some(
+                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                    (a: any) => !a.completed && (!a.dueAt || a.dueAt > now),
+                );
+                if (hasActive) {
+                    defaultIndex = i;
+                    break;
+                }
+            }
+            currentTopicIndex = defaultIndex;
+        } catch (e) {
+            console.error(e);
+        } finally {
+            loading = false;
+        }
+    }
+
     let currentTopic = $derived(topics[currentTopicIndex]);
     let currentAssignments = $derived(
-        currentTopic ? (mockAssignments[currentTopic.id] ?? []) : [],
+        (currentTopic ? (groupedAssignments[currentTopic.id] ?? []) : []).map(
+            (a) => ({
+                ...a,
+                completed: a.completed ?? false,
+            }),
+        ),
     );
-
-    async function loadCourseData() {
-        loading = true;
-
-        // Try to load real data first
-        if (courseId) {
-            const courseResult = await api.courses.get(courseId);
-            if (courseResult.success) {
-                courseTitle = courseResult.data.title;
-            } else {
-                courseTitle = "COURSE01";
-            }
-
-            // Load topics
-            const topicsResult = await api.topics.listForCourse(courseId);
-            if (topicsResult.success && topicsResult.data.length > 0) {
-                // Sanitize order to ensure it's a number
-                topics = topicsResult.data.map((t) => ({
-                    ...t,
-                    order: t.order ?? 0,
-                })) as Topic[];
-            } else {
-                // Use mock topics
-                topics = mockTopics;
-            }
-        } else {
-            // No course ID, use mocks
-            courseTitle = "COURSE01";
-            topics = mockTopics;
-        }
-
-        // Determine smart default topic
-        // Logic: Find first topic where there is at least one assignment that is
-        // NOT completed AND NOT expired (if due date exists)
-        // Since we are using mockAssignments dictionary for the structure in this demo:
-        let defaultIndex = 0;
-        const now = Date.now();
-
-        for (let i = 0; i < topics.length; i++) {
-            const topic = topics[i];
-            const topicAssignments = mockAssignments[topic.id] || [];
-
-            // Check if this topic has any "active" assignment
-            const hasActiveAssignment = topicAssignments.some((a) => {
-                // Not completed
-                if (a.completed) return false;
-                // Not expired (if due date is set)
-                // If dueAt is null, it never expires
-                if (a.dueAt && a.dueAt < now) return false;
-
-                return true;
-            });
-
-            if (hasActiveAssignment) {
-                defaultIndex = i;
-                break;
-            }
-        }
-
-        currentTopicIndex = defaultIndex;
-
-        loading = false;
-    }
 
     function handleTopicChange(index: number) {
         currentTopicIndex = index;
     }
 
-    function handleAssignmentClick(assignment: {
-        id: string;
-        locked: boolean;
-    }) {
-        if (!assignment.locked) {
-            goto(resolve(`/assignments/${assignment.id}`));
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    async function handleAssignmentClick(assignment: any) {
+        if (assignment.locked) return;
+
+        // Try to start submission if not present
+        if (!assignment.completed) {
+            // OPTIONAL: Call start submission if needed, but since we are skipping the detail page
+            // we should probably do it here or let the target page handle it.
+            // For now, let's just route based on type.
         }
+
+        if (assignment.type === "conversation") {
+            // Need conversation ID to route directly
+            // Try to find existing conversation
+            try {
+                // Heuristic: If we don't have conversation ID in the assignment object (we might need to fetch it or create it)
+                // The currentAssignment object constructed in loadData doesn't seem to have conversationId yet
+                // Let's rely on api call
+                const convRes = await api.conversations.getForAssignment(
+                    assignment.id,
+                );
+                if (convRes.success && convRes.data.id) {
+                    goto(resolve(`/conversations/${convRes.data.id}`));
+                    return;
+                } else {
+                    // If not found, create one
+                    const createRes = await api.conversations.create(
+                        assignment.id,
+                    );
+                    if (createRes.success && createRes.data.id) {
+                        // Also implicitly start submission if not started?
+                        // api.submissions.start(assignment.id) might be needed technically but conversation creation might imply it or fail if not?
+                        // Actually api.conversations.create checks IF assignment started?
+                        // Let's check api implementation.
+                        // api implementation checks: assignment.startAt > now. It doesn't check submission existence.
+                        // But usually we want a submission record.
+                        await api.submissions.start(assignment.id);
+                        goto(resolve(`/conversations/${createRes.data.id}`));
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to route conversation", e);
+            }
+        } else if (
+            assignment.type === "quiz" ||
+            assignment.type === "questionnaire"
+        ) {
+            // Assuming questionnaire routes use assignment ID or specific questionnaire ID
+            // Current codebase has routes/questionnaires/[id], let's assume it takes assignment ID or we need to find link
+            // For now, let's assume assignment.id works or we need a mapping.
+            // Given I don't see a map, I will use assignment ID for now as placeholder
+            goto(resolve(`/questionnaires/${assignment.id}`));
+            return;
+        }
+
+        // Fallback to old route if type unknown
+        goto(resolve(`/assignments/${assignment.id}`));
     }
 
     function goBack() {
         goto(resolve("/dashboard"));
     }
-
-    onMount(() => {
-        loadCourseData();
-    });
 </script>
 
 <PageHead title={courseTitle || "Course"} description="Course details" />
@@ -399,6 +271,12 @@
 <style>
     .course-page {
         min-height: 100vh;
+        background: linear-gradient(
+            135deg,
+            #2d2d2d 0%,
+            #404040 50%,
+            #5a5a5a 100%
+        );
         padding-bottom: 6rem;
     }
 

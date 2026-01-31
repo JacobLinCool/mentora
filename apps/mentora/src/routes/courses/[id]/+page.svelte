@@ -1,14 +1,12 @@
 <script lang="ts">
     import MentorCourse from "./MentorCourse.svelte";
     import StudentCourse from "./StudentCourse.svelte";
-    // import { api } from "$lib/api";
+    // import { api } from "$lib/api"; // Unused
 
     let props = $props();
 
-    // TODO: Implement actual role check when backend supports it
-    // For now, default to Student view
+    // Default to Student view for now
     const isMentor = false;
-    // const isMentor = $derived(api.currentUser?.role === 'instructor');
 </script>
 
 {#if isMentor}

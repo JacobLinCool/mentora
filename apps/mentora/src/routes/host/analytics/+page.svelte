@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
     import GlassCard from "$lib/components/ui/GlassCard.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
@@ -13,47 +14,54 @@
         Clock,
     } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
+    import { api } from "$lib/api";
 
-    // Mock Data for Analytics
-    const overviewStats = [
-        { label: "Active Students", value: "24", trend: "+2", icon: Users },
-        {
-            label: "Completion Rate",
-            value: "85%",
-            trend: "+5%",
-            icon: TrendingUp,
-        },
-        { label: "Avg. Engagement", value: "12m", trend: "+1m", icon: Clock },
+    // State
+    let overviewStats = $state([
+        { label: "Active Students", value: "-", trend: "-", icon: Users },
+        { label: "Completion Rate", value: "-", trend: "-", icon: TrendingUp },
+        { label: "Avg. Engagement", value: "-", trend: "-", icon: Clock },
         {
             label: "Total Arguments",
-            value: "348",
-            trend: "+24",
+            value: "-",
+            trend: "-",
             icon: MessageSquare,
         },
-    ];
+    ]);
 
-    // Mock Stance Spectrum Data
-    // Simulating student positions on a -10 (Strong Con) to +10 (Strong Pro) scale
-    const spectrumData = Array.from({ length: 24 }, (_, i) => ({
-        id: i,
-        initial: Math.random() * 20 - 10, // -10 to 10
-        current: Math.random() * 20 - 10, // -10 to 10
-        name: `Student ${i + 1}`,
-    }));
+    let spectrumData = $state<
+        { id: number; initial: number; current: number; name: string }[]
+    >([]);
+    let wordCloudData = $state<
+        { text: string; value: number; sentiment: string }[]
+    >([]);
 
-    // Mock Word Cloud Data
-    const wordCloudData = [
-        { text: "Ethics", value: 64, sentiment: "neutral" },
-        { text: "Privacy", value: 55, sentiment: "con" },
-        { text: "Innovation", value: 48, sentiment: "pro" },
-        { text: "Regulation", value: 42, sentiment: "neutral" },
-        { text: "Security", value: 38, sentiment: "con" },
-        { text: "Efficiency", value: 35, sentiment: "pro" },
-        { text: "Bias", value: 32, sentiment: "con" },
-        { text: "Automation", value: 28, sentiment: "pro" },
-        { text: "Transparency", value: 25, sentiment: "pro" },
-        { text: "Cost", value: 22, sentiment: "con" },
-    ];
+    onMount(async () => {
+        if (!api.isAuthenticated) await api.authReady;
+        await loadAnalytics();
+    });
+
+    async function loadAnalytics() {
+        // loading = true; // Unused
+        try {
+            // Call backend analytics endpoint (to be implemented)
+            const res = await api.backend.call<{
+                overview: typeof overviewStats;
+                spectrum: typeof spectrumData;
+                wordCloud: typeof wordCloudData;
+            }>("/analytics/dashboard", { method: "GET" });
+
+            if (res.success) {
+                overviewStats = res.data.overview;
+                spectrumData = res.data.spectrum;
+                wordCloudData = res.data.wordCloud;
+            } else {
+                console.warn("Analytics API unavailable:", res.error);
+            }
+        } catch (e) {
+            console.error("Failed to load analytics", e);
+        }
+    }
 
     function getWordColor(sentiment: string) {
         switch (sentiment) {
@@ -107,20 +115,18 @@
         <!-- Metric Cards -->
         <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {#each overviewStats as stat (stat.label)}
+                {@const Icon = stat.icon}
                 <GlassCard className="relative overflow-hidden group">
                     <div
                         class="absolute -top-4 -right-4 text-white/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                     >
-                        <svelte:component this={stat.icon} class="h-24 w-24" />
+                        <Icon class="h-24 w-24" />
                     </div>
                     <div class="relative z-10">
                         <div
                             class="text-text-secondary mb-2 flex items-center gap-2 text-sm font-medium tracking-wider uppercase"
                         >
-                            <svelte:component
-                                this={stat.icon}
-                                class="text-brand-gold h-4 w-4"
-                            />
+                            <Icon class="text-brand-gold h-4 w-4" />
                             {stat.label}
                         </div>
                         <div class="flex items-end gap-3">

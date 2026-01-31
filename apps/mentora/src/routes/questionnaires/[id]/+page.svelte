@@ -40,29 +40,12 @@
 
     type Question = SingleChoice | MultipleChoice | ShortAnswer;
 
-    // Mock data for testing
-    const fallbackQuestions: Question[] = [
-        {
-            type: "single_choice",
-            id: "q1",
-            question: "在這個論點中，您認為最關鍵的假設是什麼？",
-            options: [
-                "所有的數據都是準確的",
-                "過去的趨勢會延續到未來",
-                "外部因素不會改變",
-                "樣本具有代表性",
-            ],
-            required: true,
-        },
-        // ... more fallback questions
-    ];
-
     // State
     let currentIndex = $state(0);
     let answers = $state<Record<string, string | string[]>>({});
-    // let loading = $state(true);
     let submitting = $state(false);
     let questions = $state<Question[]>([]);
+    let conversationId = $state<string | null>(null);
 
     // Navigation state
     let courseId = $state<string | null>(null);
@@ -76,13 +59,10 @@
 
     async function loadData() {
         if (!assignmentId) return;
-        loading = true;
         try {
-            // Load assignment and submission
-            const [assignmentRes, submissionRes] = await Promise.all([
-                api.assignments.get(assignmentId),
-                api.submissions.getMine(assignmentId),
-            ]);
+            // Load assignment and submission status
+            const assignmentRes = await api.assignments.get(assignmentId);
+            const submissionRes = await api.submissions.getMine(assignmentId);
 
             if (assignmentRes.success) {
                 courseId = assignmentRes.data.courseId ?? null;
@@ -95,9 +75,7 @@
                         throw new Error("Invalid format");
                     }
                 } catch {
-                    // Fallback if prompt is not JSON or invalid
-                    // In real app, might show error or use prompt as single text question
-                    // For now, if prompt is just text, create a default question:
+                    // Fallback
                     if (
                         assignmentRes.data.prompt &&
                         !assignmentRes.data.prompt.startsWith("[")
@@ -111,30 +89,85 @@
                                 required: true,
                             },
                         ];
-                    } else {
-                        questions = fallbackQuestions;
                     }
                 }
             }
 
-            if (submissionRes.success) {
-                // Restore answers from submission
-                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                if ((submissionRes.data as any).answers) {
-                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                    answers = (submissionRes.data as any).answers as Record<
-                        string,
-                        string | string[]
-                    >;
-                }
-            } else {
-                // Start a submission if one doesn't exist
+            // Ensure submission exists (for state tracking)
+            if (!submissionRes.success) {
                 await api.submissions.start(assignmentId);
+            }
+
+            // Load answers from Linked Conversation
+            // We use conversations to store answers because we cannot modify the Submission schema
+            const convRes =
+                await api.conversations.getForAssignment(assignmentId);
+
+            if (convRes.success) {
+                conversationId = convRes.data.id;
+                // Find last turn with type 'questionnaire_response'
+                const turns = convRes.data.turns || [];
+                const lastResponse = [...turns]
+                    .reverse()
+                    .find((t) => t.type === "questionnaire_response");
+
+                if (lastResponse) {
+                    try {
+                        answers = JSON.parse(lastResponse.text);
+                    } catch (e) {
+                        console.error("Failed to parse answers", e);
+                    }
+                }
             }
         } catch (e) {
             console.error("Failed to load questionnaire", e);
         } finally {
-            loading = false;
+            // loading = false;
+        }
+    }
+
+    async function saveAnswers() {
+        if (!assignmentId || !api.currentUser) return;
+
+        try {
+            // If we don't have a conversation ID, try to find or create one
+            if (!conversationId) {
+                // Try get again
+                const check =
+                    await api.conversations.getForAssignment(assignmentId);
+                if (check.success) {
+                    conversationId = check.data.id;
+                } else {
+                    // Create
+                    const createRes =
+                        await api.conversations.create(assignmentId);
+                    if (createRes.success) {
+                        conversationId = createRes.data.id;
+                    } else {
+                        // Fallback message
+                        throw new Error(
+                            "Could not create conversation context",
+                        );
+                    }
+                }
+            }
+
+            if (!conversationId) return;
+
+            // Save answers as a conversation turn
+            // Backend schema permits 'questionnaire_response' as a valid turn type string
+            const result = await api.conversations.addTurn(
+                conversationId,
+                JSON.stringify(answers),
+                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                "questionnaire_response" as any,
+            );
+
+            if (!result.success) {
+                console.error("Failed to save answers:", result.error);
+            }
+        } catch (e) {
+            console.error("Failed to save answers", e);
         }
     }
 
@@ -147,14 +180,13 @@
     }
 
     // Derived
-    let currentQuestion = $derived(
-        questions[currentIndex] || fallbackQuestions[0],
-    );
-    let totalQuestions = $derived(questions.length > 0 ? questions.length : 1);
+    let currentQuestion = $derived(questions[currentIndex]);
+    let totalQuestions = $derived(questions.length > 0 ? questions.length : 0);
     let isLastQuestion = $derived(currentIndex === totalQuestions - 1);
 
     // Check if current question is answered (for required validation)
     let isCurrentAnswered = $derived(() => {
+        if (!currentQuestion) return false;
         const answer = answers[currentQuestion.id];
         if (!currentQuestion.required) return true;
         if (answer === undefined) return false;
@@ -163,6 +195,7 @@
     });
 
     function handleSingleChoiceAnswer(value: string) {
+        if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
         // Auto-advance after short delay
         setTimeout(() => {
@@ -173,10 +206,12 @@
     }
 
     function handleMultipleChoiceAnswer(value: string[]) {
+        if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
     }
 
     function handleShortAnswer(value: string) {
+        if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
     }
 
@@ -189,8 +224,10 @@
     async function handleNext() {
         if (currentIndex < totalQuestions - 1) {
             currentIndex++;
-            // Optional: Save progress automatically
-            // await api.submissions.saveProgress(assignmentId, answers);
+            // Save progress automatically
+            if (assignmentId) {
+                await saveAnswers();
+            }
         }
     }
 
@@ -199,24 +236,10 @@
         submitting = true;
 
         try {
+            // Save final answers
+            await saveAnswers();
+            // Submit assignment (updates status to 'submitted')
             await api.submissions.submit(assignmentId);
-            // TODO: We need a way to pass the final ANSWERS.
-            // Currently api.submissions.submit DOES NOT take a body in the client definition I saw?
-            // Checking client.ts... submit: (assignmentId) => ...
-            // Checking server logic...
-            // Wait, where do we save the answers?
-            // Submission 'save' often happens before 'submit'.
-            // I'll need to check if there is an update method or if submit takes args.
-
-            // Assuming I need to update first (simulating a save)
-            // But client.submissions.grade is for instructors.
-            // There is no client.submissions.update for students?
-            // I might need to implement `updateMySubmission` in client.
-
-            // FOR NOW: I will treat this as a placeholder pending API update for student submission updates.
-            // Actually, since I modified the Schema, I should ensure the API supports writing it.
-            // I'll leave a TODO here and simulate success.
-            console.log("Submitting answers:", answers);
 
             // Navigate back
             if (courseId) {
@@ -260,33 +283,39 @@
     <div class="content">
         <!-- Question area -->
         <div class="question-area">
-            {#key currentQuestion.id}
-                <div class="question-wrapper">
-                    {#if currentQuestion.type === "single_choice"}
-                        <SingleChoiceQuestion
-                            question={currentQuestion.question}
-                            options={currentQuestion.options}
-                            value={getCurrentAnswer(currentQuestion.id, "")}
-                            onAnswer={handleSingleChoiceAnswer}
-                        />
-                    {:else if currentQuestion.type === "multiple_choice"}
-                        <MultipleChoiceQuestion
-                            question={currentQuestion.question}
-                            options={currentQuestion.options}
-                            value={getCurrentAnswer(currentQuestion.id, [])}
-                            onAnswer={handleMultipleChoiceAnswer}
-                        />
-                    {:else if currentQuestion.type === "short_answer"}
-                        <ShortAnswerQuestion
-                            question={currentQuestion.question}
-                            placeholder={currentQuestion.placeholder}
-                            maxLength={currentQuestion.maxLength}
-                            value={getCurrentAnswer(currentQuestion.id, "")}
-                            onAnswer={handleShortAnswer}
-                        />
-                    {/if}
+            {#if currentQuestion}
+                {#key currentQuestion.id}
+                    <div class="question-wrapper">
+                        {#if currentQuestion.type === "single_choice"}
+                            <SingleChoiceQuestion
+                                question={currentQuestion.question}
+                                options={currentQuestion.options}
+                                value={getCurrentAnswer(currentQuestion.id, "")}
+                                onAnswer={handleSingleChoiceAnswer}
+                            />
+                        {:else if currentQuestion.type === "multiple_choice"}
+                            <MultipleChoiceQuestion
+                                question={currentQuestion.question}
+                                options={currentQuestion.options}
+                                value={getCurrentAnswer(currentQuestion.id, [])}
+                                onAnswer={handleMultipleChoiceAnswer}
+                            />
+                        {:else if currentQuestion.type === "short_answer"}
+                            <ShortAnswerQuestion
+                                question={currentQuestion.question}
+                                placeholder={currentQuestion.placeholder}
+                                maxLength={currentQuestion.maxLength}
+                                value={getCurrentAnswer(currentQuestion.id, "")}
+                                onAnswer={handleShortAnswer}
+                            />
+                        {/if}
+                    </div>
+                {/key}
+            {:else}
+                <div class="flex h-full w-full items-center justify-center">
+                    <p class="text-white/50">No questions available.</p>
                 </div>
-            {/key}
+            {/if}
         </div>
 
         <!-- Spacer -->
