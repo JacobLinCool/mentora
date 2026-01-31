@@ -268,7 +268,7 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		// Prepare user input text
 		// If audio was provided, use a placeholder for now
 		// TODO: Implement audio transcription service
-		const userInputText = input.text || `[Audio message - ${input.audio?.type || 'audio/webm'}]`;
+		const userInputText = input.text || `[Audio message - ${input.audio?.type || 'unknown'}]`;
 
 		// Create user turn
 		const userTurn: Turn = {
