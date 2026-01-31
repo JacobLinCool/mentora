@@ -1,6 +1,6 @@
 <script lang="ts">
-    import Table from "./Table.svelte";
-    import { Plus } from "@lucide/svelte";
+    import Table from "$lib/components/ui/Table.svelte";
+    import { Plus, Trash } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
 
     interface FileItem {
@@ -11,10 +11,16 @@
     interface Props {
         files: FileItem[];
         onUpload?: () => void;
+        onDelete?: (index: number) => void;
         showUploadButton?: boolean;
     }
 
-    let { files = [], onUpload, showUploadButton = true }: Props = $props();
+    let {
+        files = [],
+        onUpload,
+        onDelete,
+        showUploadButton = true,
+    }: Props = $props();
 
     const columns = [
         { key: "name", label: m.mentor_assignment_file_name(), sortable: true },
@@ -27,7 +33,19 @@
 </script>
 
 <div class="file-table-container">
-    <Table {columns} data={files} pageSize={10} />
+    <Table {columns} data={files} pageSize={10}>
+        {#snippet actions(row)}
+            {#if onDelete}
+                <button
+                    type="button"
+                    class="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-red-500"
+                    onclick={() => onDelete(files.indexOf(row))}
+                >
+                    <Trash size={16} />
+                </button>
+            {/if}
+        {/snippet}
+    </Table>
 
     {#if showUploadButton && onUpload}
         <button

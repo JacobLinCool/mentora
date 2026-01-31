@@ -1,6 +1,6 @@
 <script lang="ts">
     import PopupModal from "$lib/components/ui/PopupModal.svelte";
-    import FileTable from "$lib/components/ui/FileTable.svelte";
+    import FileTable from "$lib/components/course/mentor/table/FileTable.svelte";
     import QuestionItem from "./QuestionItem.svelte";
     import { Label, Input, Select, Textarea } from "flowbite-svelte";
     import { Button } from "flowbite-svelte";
@@ -177,6 +177,14 @@
         ];
     }
 
+    function handleDeleteFile(index: number) {
+        files = files.filter((_, i) => i !== index);
+        // Also update assignment object if we are in edit mode to ensure changes persist if submit happens immediately
+        if (assignment) {
+            assignment.files = files;
+        }
+    }
+
     function handleQuestionDndConsider(e: CustomEvent<{ items: Question[] }>) {
         questions = e.detail.items;
     }
@@ -254,6 +262,7 @@
                 <FileTable
                     {files}
                     onUpload={handleFileUpload}
+                    onDelete={handleDeleteFile}
                     showUploadButton={true}
                 />
             </div>

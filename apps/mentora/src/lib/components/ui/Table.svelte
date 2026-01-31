@@ -20,6 +20,8 @@
         pageSize?: number;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         renderCell?: Snippet<[item: any, key: string]>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        actions?: Snippet<[item: any]>;
         className?: string;
     }
 
@@ -28,6 +30,7 @@
         data,
         pageSize = 10,
         renderCell,
+        actions,
         className = "",
     }: Props = $props();
 
@@ -112,6 +115,10 @@
                         </div>
                     </th>
                 {/each}
+                {#if actions}
+                    <th class="w-[80px] px-4 py-3 font-medium text-gray-600">
+                    </th>
+                {/if}
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
@@ -126,6 +133,13 @@
                             {/if}
                         </td>
                     {/each}
+                    {#if actions}
+                        <td class="px-4 py-3 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                {@render actions(row)}
+                            </div>
+                        </td>
+                    {/if}
                 </tr>
             {/each}
         </tbody>
