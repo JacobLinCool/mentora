@@ -60,6 +60,7 @@
         "zod": "^4.3.4"
     },
     "dependencies": {
-        "echarts": "^6.0.0"
+        "echarts": "^6.0.0",
+        "svelte-dnd-action": "^0.9.69"
     }
 }
