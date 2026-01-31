@@ -2,7 +2,7 @@
     import PopupModal from "$lib/components/ui/PopupModal.svelte";
     import FileTable from "$lib/components/course/mentor/table/FileTable.svelte";
     import QuestionItem from "./QuestionItem.svelte";
-    import { Label, Input, Select, Textarea } from "flowbite-svelte";
+    import { Label, Input, Select, Textarea, Helper } from "flowbite-svelte";
     import { Button } from "flowbite-svelte";
     import { Plus } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
@@ -69,6 +69,13 @@
     let startAt = $state("");
     let dueAt = $state("");
 
+    let errors = $state<{
+        title?: string;
+        prompt?: string;
+        dates?: string;
+        questions?: string;
+    }>({});
+
     const flipDurationMs = 200;
 
     // Load assignment data when editing
@@ -102,6 +109,32 @@
     ];
 
     function handleSubmit() {
+        // Reset errors
+        errors = {};
+        let isValid = true;
+
+        if (!title.trim()) {
+            errors.title = m.mentor_assignment_error_title_required();
+            isValid = false;
+        }
+
+        if (assignmentType === "dialogue" && !prompt.trim()) {
+            errors.prompt = m.mentor_assignment_error_prompt_required();
+            isValid = false;
+        }
+
+        if (assignmentType === "questionnaire" && questions.length === 0) {
+            errors.questions = m.mentor_assignment_error_questions_required();
+            isValid = false;
+        }
+
+        if (startAt && dueAt && new Date(startAt) > new Date(dueAt)) {
+            errors.dates = m.mentor_assignment_error_end_date_before_start();
+            isValid = false;
+        }
+
+        if (!isValid) return;
+
         const assignmentData: Assignment = {
             id: assignment?.id || crypto.randomUUID(),
             title,
@@ -237,7 +270,11 @@
                     type="text"
                     bind:value={title}
                     placeholder={m.mentor_assignment_name()}
+                    color={errors.title ? "red" : undefined}
                 />
+                {#if errors.title}
+                    <Helper class="mt-2" color="red">{errors.title}</Helper>
+                {/if}
             </Label>
         </div>
 
@@ -251,8 +288,13 @@
                     bind:value={prompt}
                     rows={4}
                     placeholder={m.mentor_assignment_ai_prompt()}
-                    class="w-full"
+                    class="w-full {errors.prompt
+                        ? 'border-red-500 ring-red-500 focus:ring-red-500'
+                        : ''}"
                 />
+                {#if errors.prompt}
+                    <Helper class="mt-2" color="red">{errors.prompt}</Helper>
+                {/if}
             </Label>
 
             <div>
@@ -323,9 +365,16 @@
                 <span class="text-gray-700"
                     >{m.mentor_assignment_end_time()}</span
                 >
-                <Input type="datetime-local" bind:value={dueAt} />
+                <Input
+                    type="datetime-local"
+                    bind:value={dueAt}
+                    color={errors.dates ? "red" : undefined}
+                />
             </Label>
         </div>
+        {#if errors.dates}
+            <Helper class="mt-2" color="red">{errors.dates}</Helper>
+        {/if}
     </form>
 </PopupModal>
 

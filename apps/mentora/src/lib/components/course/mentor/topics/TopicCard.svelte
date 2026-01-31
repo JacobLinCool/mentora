@@ -56,6 +56,7 @@
     let editTitle = $state("");
     let editDescription = $state("");
     let localAssignments = $state<Assignment[]>([]);
+    let isError = $state(false);
 
     const flipDurationMs = 200;
 
@@ -73,6 +74,11 @@
     }
 
     function handleSave() {
+        if (!editTitle.trim()) {
+            isError = true;
+            return;
+        }
+        isError = false;
         onSave?.(editTitle, editDescription);
         isEditing = false;
     }
@@ -117,12 +123,22 @@
                     >Topic {String(topicIndex).padStart(2, "0")}</span
                 >
                 {#if isEditing}
-                    <input
-                        type="text"
-                        bind:value={editTitle}
-                        placeholder={m.mentor_topic_input_title()}
-                        class="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:ring-1 focus:ring-gray-400 focus:outline-none"
-                    />
+                    <div class="flex-1">
+                        <input
+                            type="text"
+                            bind:value={editTitle}
+                            placeholder={m.mentor_topic_input_title()}
+                            class="w-full rounded-md border px-3 py-1.5 text-sm text-gray-900 focus:outline-none {isError
+                                ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500'
+                                : 'border-gray-300 focus:ring-1 focus:ring-gray-400'}"
+                            oninput={() => (isError = false)}
+                        />
+                        {#if isError}
+                            <p class="mt-1 text-xs text-red-500">
+                                {m.mentor_assignment_error_title_required()}
+                            </p>
+                        {/if}
+                    </div>
                 {:else}
                     <span class="font-semibold text-gray-900"
                         >{initialTitle}</span

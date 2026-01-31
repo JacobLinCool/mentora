@@ -103,6 +103,17 @@
     }
 
     function handleSave() {
+        if (!currentQuestion.trim()) {
+            return; // Or show error locally
+        }
+
+        if (currentType !== "text") {
+            const validOptions = currentOptions.filter((o) => o.text.trim());
+            if (validOptions.length === 0) {
+                return; // Need at least one option
+            }
+        }
+
         // Clean up dnd properties before saving
         const cleanOptions = currentOptions.map((o) => {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -195,6 +206,12 @@
                     {/if}
                 </div>
             </div>
+
+            {#if isEditing && !currentQuestion.trim()}
+                <p class="mt-1 ml-32 pl-2 text-xs text-red-500">
+                    {m.mentor_assignment_error_question_required()}
+                </p>
+            {/if}
 
             <!-- Options: Collapsible (Only visible in Edit Mode) -->
             {#if isEditing && currentType !== "text"}

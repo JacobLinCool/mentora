@@ -295,5 +295,10 @@
     "mentor_assignment_question_type_multiple": "Multiple Choice",
     "mentor_assignment_question_type_text": "Short Answer",
     "mentor_assignment_enter_question": "Enter Question",
-    "mentor_assignment_option": "Option"
+    "mentor_assignment_option": "Option",
+    "mentor_assignment_error_title_required": "Title is required",
+    "mentor_assignment_error_prompt_required": "Prompt is required",
+    "mentor_assignment_error_questions_required": "At least one question is required",
+    "mentor_assignment_error_end_date_before_start": "End date must be after start date",
+    "mentor_assignment_error_question_required": "Question required"
 }

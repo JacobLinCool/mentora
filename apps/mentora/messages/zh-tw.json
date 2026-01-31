@@ -296,5 +296,10 @@
     "mentor_assignment_question_type_multiple": "多選題",
     "mentor_assignment_question_type_text": "問答題",
     "mentor_assignment_enter_question": "輸入問題",
-    "mentor_assignment_option": "選項"
+    "mentor_assignment_option": "選項",
+    "mentor_assignment_error_title_required": "請輸入標題",
+    "mentor_assignment_error_prompt_required": "請輸入 AI 引導詞",
+    "mentor_assignment_error_questions_required": "請至少新增一個問題",
+    "mentor_assignment_error_end_date_before_start": "結束時間必須晚於開始時間",
+    "mentor_assignment_error_question_required": "請輸入問題內容"
 }
