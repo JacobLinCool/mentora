@@ -160,7 +160,9 @@ export async function saveDialogueState(
  *
  * This function orchestrates the full flow:
  * 1. Load current DialogueState from Firestore (with ownership check)
- * 2. If first interaction: call orchestrator.startConversation() to generate initial question
+ * 2. If first interaction:
+ *    a. Call orchestrator.startConversation() to generate initial stance question
+ *    b. Call orchestrator.processStudentInput() to process the student's first message
  * 3. If subsequent: call orchestrator.processStudentInput() to handle the input
  * 4. Save updated DialogueState back to Firestore (with ownership check)
  * 5. Return AI response and updated state
@@ -198,9 +200,19 @@ export async function processWithLLM(
 	let result;
 
 	if (isFirstInteraction) {
-		// First interaction: generate initial stance question
+		// First interaction: initialize the dialogue, then process student's first message
 		console.log(`[MentoraLLM] First interaction detected, starting conversation`);
-		result = await orchestrator.startConversation(currentState, topicContext || '');
+
+		// Step 2a: Call startConversation to transition from awaiting_start to asking_stance
+		const initResult = await orchestrator.startConversation(currentState, topicContext || '');
+
+		// Step 2b: Immediately process the student's first message
+		console.log(`[MentoraLLM] Processing student's first message`);
+		result = await orchestrator.processStudentInput(
+			initResult.newState,
+			studentMessage,
+			topicContext || ''
+		);
 	} else {
 		// Subsequent interactions: process the student's input
 		console.log(`[MentoraLLM] Processing student input at stage: ${currentState.stage}`);
