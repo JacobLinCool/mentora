@@ -301,6 +301,7 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		const llmResult = await processWithLLM(
 			ctx.firestore,
 			conversationId,
+			user.uid,
 			userInputText,
 			topicContext
 		);

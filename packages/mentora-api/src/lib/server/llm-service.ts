@@ -3,11 +3,15 @@
  *
  * Thin wrapper around MentoraOrchestrator that handles Firestore persistence.
  * The core dialogue logic lives in mentora-ai; this file only manages state I/O.
+ *
+ * SECURITY: All functions validate user ownership of conversations before
+ * accessing dialogue state. Pass userId to ensure authorization checks are enforced.
  */
 
 import { MentoraOrchestrator, GeminiPromptExecutor, type DialogueState } from 'mentora-ai';
 import { GoogleGenAI } from '@google/genai';
 import type { Firestore } from 'fires2rest';
+import { Conversations } from 'mentora-firebase';
 
 /**
  * Singleton orchestrator instance
@@ -57,17 +61,38 @@ export function getOrchestrator(): MentoraOrchestrator {
  *
  * Path: conversations/{conversationId}/metadata/state
  *
+ * SECURITY: Validates that userId matches the conversation owner before loading state.
+ * This prevents unauthorized access to other users' dialogue states.
+ *
  * On first interaction (no saved state), returns a fresh DialogueState
  * via orchestrator.initializeSession()
  *
  * @param firestore - Firestore instance
  * @param conversationId - The conversation ID (used as dialogue topic on init)
+ * @param userId - The authenticated user ID (for ownership validation)
  * @returns DialogueState from Firestore, or new initial state
+ * @throws Error if user doesn't own this conversation
  */
 export async function loadDialogueState(
 	firestore: Firestore,
-	conversationId: string
+	conversationId: string,
+	userId: string
 ): Promise<DialogueState> {
+	// Verify user owns this conversation
+	const conversationRef = firestore.doc(Conversations.docPath(conversationId));
+	const conversationDoc = await conversationRef.get();
+
+	if (!conversationDoc.exists) {
+		throw new Error(`Conversation not found: ${conversationId}`);
+	}
+
+	const conversation = Conversations.schema.parse(conversationDoc.data());
+
+	if (conversation.userId !== userId) {
+		throw new Error('Unauthorized: User does not own this conversation');
+	}
+
+	// Safe to load state now that ownership is verified
 	const stateRef = firestore.doc(`conversations/${conversationId}/metadata/state`);
 
 	try {
@@ -93,17 +118,38 @@ export async function loadDialogueState(
 /**
  * Save DialogueState to Firestore
  *
+ * SECURITY: Validates that userId matches the conversation owner before saving state.
+ * This prevents unauthorized modification of other users' dialogue states.
+ *
  * Persists the current dialogue state so it can be restored on next interaction
  *
  * @param firestore - Firestore instance
  * @param conversationId - The conversation ID
+ * @param userId - The authenticated user ID (for ownership validation)
  * @param state - DialogueState to persist
+ * @throws Error if user doesn't own this conversation
  */
 export async function saveDialogueState(
 	firestore: Firestore,
 	conversationId: string,
+	userId: string,
 	state: DialogueState
 ): Promise<void> {
+	// Verify user owns this conversation
+	const conversationRef = firestore.doc(Conversations.docPath(conversationId));
+	const conversationDoc = await conversationRef.get();
+
+	if (!conversationDoc.exists) {
+		throw new Error(`Conversation not found: ${conversationId}`);
+	}
+
+	const conversation = Conversations.schema.parse(conversationDoc.data());
+
+	if (conversation.userId !== userId) {
+		throw new Error('Unauthorized: User does not own this conversation');
+	}
+
+	// Safe to save state now that ownership is verified
 	const stateRef = firestore.doc(`conversations/${conversationId}/metadata/state`);
 	await stateRef.set(state);
 	console.log(`[MentoraLLM] Saved dialogue state for ${conversationId}`);
@@ -113,22 +159,26 @@ export async function saveDialogueState(
  * Process student input through the LLM dialogue system
  *
  * This function orchestrates the full flow:
- * 1. Load current DialogueState from Firestore
+ * 1. Load current DialogueState from Firestore (with ownership check)
  * 2. If first interaction: call orchestrator.startConversation() to generate initial question
  * 3. If subsequent: call orchestrator.processStudentInput() to handle the input
- * 4. Save updated DialogueState back to Firestore
+ * 4. Save updated DialogueState back to Firestore (with ownership check)
  * 5. Return AI response and updated state
+ *
+ * SECURITY: Validates user ownership at both load and save steps.
  *
  * @param firestore - Firestore instance
  * @param conversationId - The conversation ID
+ * @param userId - The authenticated user ID (for ownership validation)
  * @param studentMessage - The student's text input
  * @param topicContext - Optional assignment description/context for LLM
  * @returns Object with aiMessage, updatedState, and whether conversation ended
- * @throws Error if orchestrator or LLM encounters issues
+ * @throws Error if orchestrator encounters issues or user doesn't own conversation
  */
 export async function processWithLLM(
 	firestore: Firestore,
 	conversationId: string,
+	userId: string,
 	studentMessage: string,
 	topicContext?: string
 ): Promise<{
@@ -138,8 +188,8 @@ export async function processWithLLM(
 }> {
 	const orchestrator = getOrchestrator();
 
-	// Step 1: Load current state from Firestore
-	let currentState = await loadDialogueState(firestore, conversationId);
+	// Step 1: Load current state from Firestore (includes ownership validation)
+	let currentState = await loadDialogueState(firestore, conversationId, userId);
 
 	// Step 2: Determine if this is first interaction
 	// The orchestrator marks new states with stage === 'awaiting_start'
@@ -161,8 +211,8 @@ export async function processWithLLM(
 		);
 	}
 
-	// Step 3: Save updated state to Firestore
-	await saveDialogueState(firestore, conversationId, result.newState);
+	// Step 3: Save updated state to Firestore (includes ownership validation)
+	await saveDialogueState(firestore, conversationId, userId, result.newState);
 
 	// Step 4: Return formatted result
 	return {
