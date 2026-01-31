@@ -2,11 +2,16 @@ import { firestore } from "$lib/server/firestore";
 import { json } from "@sveltejs/kit";
 import {
     joinPath,
-    type Assignment,
+    type Conversation,
     type CourseDoc,
+    type Submission,
     type Topic,
 } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
+
+// Helper to create conversation derived type locally if not exported fully or just use 'any' for generation flexibility
+// But better to use type safety.
+// Checking exports... type Conversation is in mentora-firebase.
 
 export const GET: RequestHandler = async ({ url }) => {
     const allow = url.searchParams.get("allow");
@@ -65,15 +70,12 @@ export const GET: RequestHandler = async ({ url }) => {
                 createdBy: userId,
                 createdAt: now,
                 updatedAt: now,
+                contents: [],
+                contentTypes: [],
             };
 
-            // Fix: Store topics in root collection 'topics', not subcollection
             await firestore.collection("topics").doc(topicId).set(topic);
             topicsData.push(topic);
-
-            // Create Assignments for Topic
-            // i=1: Fundamentals (Contains Overdue and Active)
-            // i=2: Advanced (Contains Future)
 
             const assignmentsCount = 3;
             for (let j = 0; j < assignmentsCount; j++) {
@@ -85,11 +87,13 @@ export const GET: RequestHandler = async ({ url }) => {
                 let dueAt: number | null = null;
                 let typeName = "Quiz";
                 let promptContent = `Complete this assignment.`;
+                let createSubmission = false;
+                let createConversation = false;
 
                 if (i === 1) {
                     if (j === 0) {
-                        // Overdue - Quiz with JSON content
-                        typeName = "Quiz (Overdue)";
+                        // Overdue - Quiz with JSON content (Questionnaire)
+                        typeName = "Logic Fundamentals Quiz (Overdue)";
                         dueAt = now - ONE_DAY;
 
                         const questions = [
@@ -97,7 +101,7 @@ export const GET: RequestHandler = async ({ url }) => {
                                 type: "single_choice",
                                 id: "q1",
                                 question:
-                                    "What is the primary fallacy in the provided text?",
+                                    "Which fallacy attacks the person rather than the argument?",
                                 options: [
                                     "Ad Hominem",
                                     "Straw Man",
@@ -109,36 +113,37 @@ export const GET: RequestHandler = async ({ url }) => {
                             {
                                 type: "multiple_choice",
                                 id: "q2",
-                                question:
-                                    "Which of the following are valid premises? (Select all that apply)",
+                                question: "Select all valid deductive forms:",
                                 options: [
-                                    "All men are mortal",
-                                    "Socrates is a man",
-                                    "Therefore Socrates is mortal",
-                                    "The sky is blue",
+                                    "Modus Ponens",
+                                    "Modus Tollens",
+                                    "Affirming the Consequent",
+                                    "Denying the Antecedent",
                                 ],
                                 required: true,
                             },
                             {
                                 type: "short_answer",
                                 id: "q3",
-                                question:
-                                    "Explain why validity does not imply truth.",
+                                question: "Define 'Soundness' in one sentence.",
                                 placeholder: "Type your answer here...",
                                 maxLength: 200,
                                 required: true,
                             },
                         ];
                         promptContent = JSON.stringify(questions);
+                        createSubmission = true; // In progress
                     } else if (j === 1) {
-                        // Due Soon (Active)
-                        typeName = "Conversation (Due Soon)";
+                        // Due Soon (Active) - Conversation
+                        typeName = "AI Ethics Debate (Conversation)";
                         dueAt = now + ONE_DAY;
                         promptContent =
                             "Engage in a debate about the ethics of artificial intelligence. Focus on the trolley problem adaptation.";
+                        createSubmission = true;
+                        createConversation = true;
                     } else {
-                        // No Deadline
-                        typeName = "Essay (No Deadline)";
+                        // No Deadline - Essay
+                        typeName = "Political Trends Essay";
                         dueAt = null;
                         promptContent =
                             "Write a 500-word essay analyzing the impact of social media on political polarization.";
@@ -151,7 +156,8 @@ export const GET: RequestHandler = async ({ url }) => {
                     promptContent = `Prepare for the advanced task on logic structures.`;
                 }
 
-                const assignment: Assignment = {
+                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                const assignment: any = {
                     id: assignmentId,
                     courseId: courseId,
                     topicId: topicId,
@@ -168,20 +174,80 @@ export const GET: RequestHandler = async ({ url }) => {
                     updatedAt: now,
                 };
 
-                // Fix: Store assignments in root collection 'assignments'
                 await firestore
                     .collection("assignments")
                     .doc(assignmentId)
                     .set(assignment);
                 assignmentsData.push(assignment);
+
+                // Create Submission
+                if (createSubmission) {
+                    const submission: Submission = {
+                        userId: userId,
+                        state: "in_progress",
+                        startedAt: now - ONE_DAY,
+                        submittedAt: null,
+                        late: false,
+                        scoreCompletion: null,
+                        notes: null,
+                    };
+
+                    await firestore
+                        .collection(
+                            joinPath(
+                                "assignments",
+                                assignmentId,
+                                "submissions",
+                            ),
+                        )
+                        .doc(userId)
+                        .set(submission);
+                }
+
+                // Create Conversation
+                if (createConversation) {
+                    const conversationId = `conv-${assignmentId}-${userId}`;
+                    const conversation: Conversation = {
+                        assignmentId: assignmentId,
+                        userId: userId,
+                        state: "awaiting_followup", // Simulate mid-conversation
+                        lastActionAt: now,
+                        createdAt: now - ONE_DAY,
+                        updatedAt: now,
+                        turns: [
+                            {
+                                id: "turn-1",
+                                type: "topic",
+                                text: "I want to discuss the trolley problem.",
+                                createdAt: now - ONE_DAY,
+                                analysis: null,
+                                pendingStartAt: null,
+                            },
+                            {
+                                id: "turn-2",
+                                type: "idea",
+                                text: "That is a classic ethical dilemma. Would you pull the lever?",
+                                createdAt: now - ONE_DAY + 1000,
+                                analysis: {
+                                    stance: "neutral",
+                                },
+                                pendingStartAt: null,
+                            },
+                        ],
+                    };
+
+                    await firestore
+                        .collection("conversations")
+                        .doc(conversationId)
+                        .set(conversation);
+                }
             }
         }
 
-        // Enroll the user (optional, but good for "Enrolled Courses" list)
-        // Membership path: courses/{courseId}/roster/{userId}
+        // Enroll the user
         const memberData = {
             userId: userId,
-            email: "test@example.com", // Added required field
+            email: "test@example.com",
             role: "student",
             status: "active",
             joinedAt: now,
@@ -195,9 +261,9 @@ export const GET: RequestHandler = async ({ url }) => {
             success: true,
             message: "Sample data created",
             data: {
-                course,
-                topics: topicsData,
-                assignments: assignmentsData,
+                courseId,
+                topics: topicsData.length,
+                assignments: assignmentsData.length,
             },
         });
     } catch (e) {
