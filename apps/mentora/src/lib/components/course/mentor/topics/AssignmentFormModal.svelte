@@ -116,13 +116,10 @@
         } else {
             // Clean up internal dnd properties before saving
             assignmentData.questions = questions.map((q) => {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const {
-                    [SHADOW_ITEM_MARKER_PROPERTY_NAME]: _,
-                    initialEditMode: __,
-                    ...rest
-                } = q;
-                return rest;
+                const copy = { ...q };
+                delete copy[SHADOW_ITEM_MARKER_PROPERTY_NAME];
+                delete copy.initialEditMode;
+                return copy;
             });
         }
 
