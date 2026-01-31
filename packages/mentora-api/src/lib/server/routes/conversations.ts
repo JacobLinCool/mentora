@@ -237,15 +237,6 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	// Parse request body (text or audio)
 	const input = await parseMultipartForm(request);
 
-	// Validate input
-	if (!input.text && !input.audio) {
-		return errorResponse(
-			'Either text or audio is required',
-			HttpStatus.BAD_REQUEST,
-			ServerErrorCode.INVALID_INPUT
-		);
-	}
-
 	// Get conversation
 	const conversationRef = ctx.firestore.doc(Conversations.docPath(conversationId));
 	const conversationDoc = await conversationRef.get();
@@ -306,6 +297,9 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			topicContext
 		);
 
+		// Capture fresh timestamp after LLM processing completes
+		const aiTurnCreatedAt = Date.now();
+
 		// Create AI turn from LLM response
 		const aiTurnId = randomUUID();
 		const aiTurn: Turn = {
@@ -314,7 +308,7 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			text: llmResult.aiMessage,
 			analysis: null, // TODO: Add stance analysis
 			pendingStartAt: null,
-			createdAt: now
+			createdAt: aiTurnCreatedAt
 		};
 
 		// Update conversation with both turns
@@ -353,6 +347,9 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			HttpStatus.CREATED
 		);
 	} catch (error) {
+		// Re-throw Response errors from utility functions (auth, validation, etc.)
+		if (error instanceof Response) throw error;
+
 		// Error handling for LLM service issues
 		if (error instanceof Error) {
 			if (error.message.includes('GOOGLE_GENAI_API_KEY')) {
