@@ -9,7 +9,7 @@ import {
 	type Conversation,
 	type Turn
 } from 'mentora-firebase';
-import { CreateConversationSchema, AddTurnWithAudioSchema } from '../schemas.js';
+import { CreateConversationSchema } from '../schemas.js';
 import {
 	errorResponse,
 	HttpStatus,
