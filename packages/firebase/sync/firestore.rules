@@ -534,6 +534,7 @@ service cloud.firestore {
           request.auth.uid == resource.data.userId ||
           (
             // Verify courseId matches the questionnaire's courseId and user can edit that course
+            'courseId' in resource.data &&
             resource.data.courseId != null &&
             exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
             resource.data.courseId == questionnaireDoc(resource.data.questionnaireId).data.courseId &&
