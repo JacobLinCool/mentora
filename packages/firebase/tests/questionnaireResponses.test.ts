@@ -296,6 +296,7 @@ describe("QuestionnaireResponses Security Rules", () => {
                 db
                     .collection("questionnaireResponses")
                     .where("questionnaireId", "==", questionnaireId)
+                    .where("courseId", "==", courseId)
                     .get(),
             );
             expect(result.size).toBe(2);
