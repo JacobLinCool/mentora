@@ -13,8 +13,9 @@
         title: string;
         dueAt: number | null;
         type: "quiz" | "conversation" | "essay" | "questionnaire";
-        completed: boolean;
+        completed: boolean; // This maps to "is done"
         locked: boolean;
+        submissionState?: "in_progress" | "submitted" | "graded_complete"; // NEW: Explicit state
     }
 
     interface Props {
@@ -102,7 +103,16 @@
                     <Icon class="type-icon" />
                 </div>
                 <div class="card-content">
-                    <h4 class="card-title">{assignment.title}</h4>
+                    <div class="flex items-center justify-between gap-2">
+                        <h4 class="card-title">{assignment.title}</h4>
+                        {#if assignment.submissionState === "submitted" || assignment.submissionState === "graded_complete" || assignment.completed}
+                            <span
+                                class="rounded bg-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400"
+                            >
+                                Submitted
+                            </span>
+                        {/if}
+                    </div>
                     {#if assignment.dueAt}
                         <p class="card-due">
                             <Clock size={12} class="me-1 inline-block" />

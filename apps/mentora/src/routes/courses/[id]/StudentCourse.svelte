@@ -8,6 +8,7 @@
         api,
         type Topic,
         type Assignment,
+        type Questionnaire,
         type SubmissionWithId,
     } from "$lib/api";
     import { Spinner } from "flowbite-svelte";
@@ -18,20 +19,24 @@
 
     const courseId = $derived(page.params.id);
 
-    interface CourseAssignment extends Assignment {
-        type: "quiz" | "conversation" | "essay" | "questionnaire";
+    // Unified Type for the UI
+    interface CourseItem extends Assignment {
+        type: "quiz" | "conversation" | "questionnaire";
         completed?: boolean;
         locked: boolean;
         orderInTopic?: number;
+        submissionState?: "in_progress" | "submitted" | "graded_complete";
     }
+    // Alias for backward compat if needed, or I'll update usages
+    type CourseAssignment = CourseItem;
 
     // State
     let loading = $state(true);
     let courseTitle = $state("");
     let topics = $state<Topic[]>([]);
     let currentTopicIndex = $state(0);
-    // Store assignments grouped by topicId
-    let groupedAssignments = $state<Record<string, CourseAssignment[]>>({});
+    // Store items grouped by topicId
+    let groupedAssignments = $state<Record<string, CourseItem[]>>({});
 
     $effect(() => {
         let mounted = true;
@@ -52,11 +57,13 @@
         if (!courseId) return;
         loading = true;
         try {
-            const [courseRes, topicsRes, assignmentsRes] = await Promise.all([
-                api.courses.get(courseId),
-                api.topics.listForCourse(courseId),
-                api.assignments.listAvailable(courseId),
-            ]);
+            const [courseRes, topicsRes, assignmentsRes, questionnairesRes] =
+                await Promise.all([
+                    api.courses.get(courseId),
+                    api.topics.listForCourse(courseId),
+                    api.assignments.listAvailable(courseId),
+                    api.questionnaires.listAvailable(courseId),
+                ]);
 
             if (courseRes.success) {
                 courseTitle = courseRes.data.title;
@@ -69,75 +76,127 @@
                 );
             }
 
+            // Create Maps for O(1) Lookup
+            const assignmentMap = new Map<string, Assignment>();
             if (assignmentsRes.success) {
-                const assignments = assignmentsRes.data;
-                const groups: Record<string, CourseAssignment[]> = {};
+                assignmentsRes.data.forEach((a) => assignmentMap.set(a.id, a));
+            }
 
-                // Fetch status for all assignments (might be heavy but needed for 'completed')
-                const submissionsMap = new SvelteMap<
-                    string,
-                    SubmissionWithId
-                >();
+            const questionnaireMap = new Map<string, Questionnaire>();
+            if (questionnairesRes.success) {
+                questionnairesRes.data.forEach((q) =>
+                    questionnaireMap.set(q.id, q),
+                );
+            }
 
-                // Parallel fetch with concurrency limit (chunk of 5)
+            const groups: Record<string, CourseItem[]> = {};
+            const submissionsMap = new SvelteMap<string, SubmissionWithId>();
+
+            // 1. Resolve Submissions for Assignments AND Questionnaires (Parallel)
+
+            // Collect all item IDs that allow submissions
+            const allSubmissionIds: string[] = [];
+            if (assignmentsRes.success)
+                assignmentsRes.data.forEach((a) => allSubmissionIds.push(a.id));
+            if (questionnairesRes.success)
+                questionnairesRes.data.forEach((q) =>
+                    allSubmissionIds.push(q.id),
+                );
+
+            if (allSubmissionIds.length > 0) {
                 const chunk = 5;
-                for (let i = 0; i < assignments.length; i += chunk) {
+                for (let i = 0; i < allSubmissionIds.length; i += chunk) {
                     if (!mounted) break;
-                    const batch = assignments.slice(i, i + chunk);
+                    const batch = allSubmissionIds.slice(i, i + chunk);
                     await Promise.all(
-                        batch.map(async (a) => {
-                            const subRes = await api.submissions.getMine(a.id);
+                        batch.map(async (id) => {
+                            const subRes = await api.submissions.getMine(id);
                             if (subRes.success && subRes.data) {
-                                submissionsMap.set(a.id, subRes.data);
+                                submissionsMap.set(id, subRes.data);
                             }
                         }),
                     );
                 }
+            }
 
-                if (!mounted) return;
+            if (!mounted) return;
 
-                assignments.forEach((a) => {
-                    const tid = a.topicId || "uncategorized";
-                    if (!groups[tid]) groups[tid] = [];
+            // 2. Build Timeline from Topic contents
+            if (topicsRes.success) {
+                topicsRes.data.forEach((topic) => {
+                    groups[topic.id] = [];
 
-                    const submission = submissionsMap.get(a.id);
-                    const isCompleted =
-                        !!submission &&
-                        (submission.state === "submitted" ||
-                            submission.state === "graded_complete");
+                    const addItem = (id: string, itemType: string) => {
+                        if (itemType === "questionnaire") {
+                            const q = questionnaireMap.get(id);
+                            if (!q) return;
 
-                    // Determine type heuristic
-                    let type = "quiz";
-                    try {
-                        const parsed = JSON.parse(a.prompt);
-                        if (Array.isArray(parsed)) type = "questionnaire";
-                    } catch {
-                        // Not JSON, check title heuristics fallback
-                        if (
-                            a.title.includes("對話") ||
-                            a.title.includes("Conversation")
-                        ) {
-                            type = "conversation";
+                            const sub = submissionsMap.get(id);
+                            const isCompleted =
+                                !!sub &&
+                                (sub.state === "submitted" ||
+                                    sub.state === "graded_complete");
+
+                            groups[topic.id].push({
+                                ...q,
+                                type: "questionnaire",
+                                prompt: "", // Dummy to satisfy interface
+                                mode: "instant",
+                                submissionState: sub?.state,
+                                completed: isCompleted, // Correctly setting completed based on submission
+                                locked: q.startAt
+                                    ? q.startAt > Date.now()
+                                    : false,
+                                orderInTopic: groups[topic.id].length,
+                            });
+                        } else {
+                            // Assignment
+                            const a = assignmentMap.get(id);
+                            if (!a) return;
+
+                            const sub = submissionsMap.get(id);
+                            const isCompleted =
+                                !!sub &&
+                                (sub.state === "submitted" ||
+                                    sub.state === "graded_complete");
+
+                            // Determine type from itemType (topic data), fallback to 'conversation' only if unspecified or generic 'assignment'
+                            let finalType =
+                                itemType === "assignment"
+                                    ? "conversation"
+                                    : itemType;
+
+                            groups[topic.id].push({
+                                ...a,
+                                type: finalType as any,
+                                completed: isCompleted,
+                                submissionState: sub?.state,
+                                locked: a.startAt
+                                    ? a.startAt > Date.now()
+                                    : false,
+                                orderInTopic: groups[topic.id].length,
+                            });
+                        }
+                    };
+
+                    if (topic.contents && topic.contents.length > 0) {
+                        topic.contents.forEach((id, idx) => {
+                            const type =
+                                topic.contentTypes?.[idx] || "assignment";
+                            addItem(id, type);
+                        });
+                    } else {
+                        // Legacy Fallback
+                        if (assignmentsRes.success) {
+                            assignmentsRes.data
+                                .filter((a) => a.topicId === topic.id)
+                                .forEach((a) => addItem(a.id, "assignment"));
                         }
                     }
-
-                    groups[tid].push({
-                        ...a,
-                        type: type as "quiz" | "conversation" | "essay",
-                        completed: isCompleted,
-                        locked: a.startAt ? a.startAt > Date.now() : false,
-                    });
                 });
-
-                // Sort by orderInTopic
-                Object.values(groups).forEach((list) => {
-                    list.sort(
-                        (a, b) => (a.orderInTopic || 0) - (b.orderInTopic || 0),
-                    );
-                });
-
-                groupedAssignments = groups;
             }
+
+            groupedAssignments = groups;
 
             // Smart default topic logic
             const now = Date.now();
@@ -175,64 +234,59 @@
         currentTopicIndex = index;
     }
 
-    async function handleAssignmentClick(item: unknown) {
-        const assignment = item as CourseAssignment;
-        if (assignment.locked) return;
+    async function handleAssignmentClick(item: any) {
+        if (item.locked) return;
 
-        // Try to start submission if not present
-        if (!assignment.completed) {
-            // OPTIONAL: Call start submission if needed, but since we are skipping the detail page
-            // we should probably do it here or let the target page handle it.
-            // For now, let's just route based on type.
+        if (item.type === "questionnaire") {
+            goto(resolve(`/questionnaires/${item.id}`));
+            return;
         }
 
-        if (assignment.type === "conversation") {
-            // Need conversation ID to route directly
-            // Try to find existing conversation
+        if (item.type === "conversation") {
             try {
-                // Heuristic: If we don't have conversation ID in the assignment object (we might need to fetch it or create it)
-                // The currentAssignment object constructed in loadData doesn't seem to have conversationId yet
-                // Let's rely on api call
+                // Check if a conversation actually exists or can be created
                 const convRes = await api.conversations.getForAssignment(
-                    assignment.id,
+                    item.id,
                 );
                 if (convRes.success && convRes.data.id) {
                     goto(resolve(`/conversations/${convRes.data.id}`));
                     return;
                 } else {
-                    // If not found, create one
-                    const createRes = await api.conversations.create(
-                        assignment.id,
-                    );
+                    // Try to create only if we are sure it's meant to be a conversation
+                    // For now, if getForAssignment fails, we MIGHT assume it's just an assignment (Essay)
+                    // But if it's truly a new conversation assignment, we should create it.
+                    // The issue: Essays are labeled 'conversation' by default.
+                    // Heuristic: Try to create. If backend says "Not a conversation assignment" (if checks existed) it would fail.
+                    // But backend create doesn't check type.
+
+                    // NEW STRATEGY:
+                    // Assume that if the type is ambiguous ('conversation'), we check the local storage or just rely on the user to correct the data.
+                    // But since we can't fix data, we'll try to create.
+
+                    // Actually, if it's an Essay, we want /assignments/[id].
+                    // Let's assume ONLY "Quiz" and "Questionnaire" are strict.
+                    // If it is 'conversation' (generic default), we check if the title contains "Essay" as a last resort hack,
+                    // OR we just route to assignments if conversation creation fails.
+
+                    const createRes = await api.conversations.create(item.id);
                     if (createRes.success && createRes.data.id) {
-                        // Also implicitly start submission if not started?
-                        // api.submissions.start(assignment.id) might be needed technically but conversation creation might imply it or fail if not?
-                        // Actually api.conversations.create checks IF assignment started?
-                        // Let's check api implementation.
-                        // api implementation checks: assignment.startAt > now. It doesn't check submission existence.
-                        // But usually we want a submission record.
-                        await api.submissions.start(assignment.id);
+                        await api.submissions.start(item.id);
                         goto(resolve(`/conversations/${createRes.data.id}`));
                         return;
                     }
+
+                    // If creation failed/returned null, fall through to assignment page
                 }
             } catch (e) {
-                console.error("Failed to route conversation", e);
+                console.warn(
+                    "Routing as standard assignment due to conversation error",
+                    e,
+                );
             }
-        } else if (
-            assignment.type === "quiz" ||
-            assignment.type === "questionnaire"
-        ) {
-            // Assuming questionnaire routes use assignment ID or specific questionnaire ID
-            // Current codebase has routes/questionnaires/[id], let's assume it takes assignment ID or we need to find link
-            // For now, let's assume assignment.id works or we need a mapping.
-            // Given I don't see a map, I will use assignment ID for now as placeholder
-            goto(resolve(`/questionnaires/${assignment.id}`));
-            return;
         }
 
-        // Fallback to old route if type unknown
-        goto(resolve(`/assignments/${assignment.id}`));
+        // Fallback for Essays or unknown types
+        goto(resolve(`/assignments/${item.id}`));
     }
 
     function goBack() {

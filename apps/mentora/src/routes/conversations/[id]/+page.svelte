@@ -19,6 +19,9 @@
     $effect(() => {
         if (conversationId && api.isAuthenticated) {
             api.conversationsSubscribe.subscribe(conversationId, convState);
+            return () => {
+                convState.cleanup();
+            };
         }
     });
 
@@ -169,11 +172,29 @@
 
         sending = true;
 
-        await api.conversations.addTurn(conversationId, messageInput, "idea");
-
-        messageInput = "";
-        sending = false;
-        showTextInput = false;
+        try {
+            const res = await api.conversations.addTurn(
+                conversationId,
+                messageInput,
+                "idea",
+            );
+            if (!res.success) {
+                console.error("Failed to add turn:", res.error);
+                const msg =
+                    typeof res.error === "object" && res.error
+                        ? (res.error as any).message
+                        : String(res.error);
+                alert("Failed to send message: " + (msg || "Unknown error"));
+            } else {
+                messageInput = "";
+                showTextInput = false;
+            }
+        } catch (e) {
+            console.error("Error sending message:", e);
+            alert("Error sending message. Check console for details.");
+        } finally {
+            sending = false;
+        }
     }
 </script>
 

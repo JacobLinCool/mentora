@@ -45,7 +45,6 @@
     let answers = $state<Record<string, string | string[]>>({});
     let submitting = $state(false);
     let questions = $state<Question[]>([]);
-    let conversationId = $state<string | null>(null);
 
     // Navigation state
     let courseId = $state<string | null>(null);
@@ -60,78 +59,70 @@
     async function loadData() {
         if (!assignmentId) return;
         try {
-            // Load assignment and submission status
-            const assignmentRes = await api.assignments.get(assignmentId);
-            const submissionRes = await api.submissions.getMine(assignmentId);
+            // Load questionnaire and assignment details (for courseId)
+            const [questionnaireRes, assignmentRes] = await Promise.all([
+                api.questionnaires.get(assignmentId),
+                api.assignments.get(assignmentId),
+            ]);
 
             if (assignmentRes.success) {
                 courseId = assignmentRes.data.courseId ?? null;
-                // Try to parse questions from prompt
-                try {
-                    const parsed = JSON.parse(assignmentRes.data.prompt);
-                    if (Array.isArray(parsed)) {
-                        questions = parsed as Question[];
-                    } else {
-                        throw new Error("Invalid format");
-                    }
-                } catch {
-                    // Fallback
-                    if (
-                        assignmentRes.data.prompt &&
-                        !assignmentRes.data.prompt.startsWith("[")
-                    ) {
-                        questions = [
-                            {
-                                type: "short_answer",
-                                id: "default_q1",
-                                question: assignmentRes.data.prompt,
-                                placeholder: "Enter your answer...",
-                                required: true,
-                            },
-                        ];
-                    } else {
-                        // Malformed or empty JSON
-                        console.error("Malformed questionnaire prompt");
-                        questions = [
-                            {
-                                type: "short_answer",
-                                id: "error_q1",
-                                question:
-                                    "Error: Unable to load questionnaire questions. Please contact your instructor.",
-                                placeholder: "...",
-                                required: false,
-                            },
-                        ];
-                    }
+            }
+
+            const submissionRes = await api.submissions.getMine(assignmentId);
+
+            if (questionnaireRes.success) {
+                const qa = questionnaireRes.data;
+                courseId = qa.courseId ?? null;
+
+                // Ensure submission exists (Start it if not)
+                if (!submissionRes.success || !submissionRes.data) {
+                    await api.submissions.start(assignmentId);
                 }
-            }
 
-            // Ensure submission exists (for state tracking)
-            if (!submissionRes.success) {
-                await api.submissions.start(assignmentId);
-            }
+                if (qa.questions && Array.isArray(qa.questions)) {
+                    // Map backend question schema to UI question schema
+                    questions = qa.questions.map((q: any) => {
+                        const base = q.question;
+                        let type = base.type;
+                        // Map backend types to frontend component types
+                        if (type === "single_answer_choice")
+                            type = "single_choice";
+                        if (type === "multiple_answer_choice")
+                            type = "multiple_choice";
+                        // Keep 'short_answer' as is
 
-            // Load answers from Linked Conversation
-            // We use conversations to store answers because we cannot modify the Submission schema
-            const convRes =
-                await api.conversations.getForAssignment(assignmentId);
+                        return {
+                            ...base,
+                            type,
+                            required: q.required,
+                            id:
+                                q.questionId ||
+                                Math.random().toString(36).substr(2, 9),
+                        };
+                    });
 
-            if (convRes.success) {
-                conversationId = convRes.data.id;
-                // Find last turn with type 'questionnaire_response'
-                const turns = convRes.data.turns || [];
-                const lastResponse = [...turns]
-                    .reverse()
-                    .find((t) => t.type === "questionnaire_response");
-
-                if (lastResponse) {
-                    try {
-                        answers = JSON.parse(lastResponse.text);
-                    } catch (e) {
-                        console.error("Failed to parse answers", e);
+                    // Restore existing answers
+                    if (qa.responses && Array.isArray(qa.responses)) {
+                        qa.responses.forEach((r: any) => {
+                            if (
+                                r.response &&
+                                r.response.response !== undefined
+                            ) {
+                                answers[r.questionId] = r.response.response;
+                            }
+                        });
                     }
+                } else {
+                    questions = [];
                 }
+            } else {
+                console.error(
+                    "Failed to load questionnaire",
+                    questionnaireRes.error,
+                );
             }
+            // Temporarily skip legacy fallback logic which confused Assignment and Questionnaire
         } catch (e) {
             console.error("Failed to load questionnaire", e);
         } finally {
@@ -140,58 +131,71 @@
     }
 
     async function saveAnswers() {
-        if (!assignmentId || !api.currentUser || !conversationId) return;
-        console.log("Api not implemented, skipping save.");
-        return;
-        /*
-        
-        try {
-            // If we don't have a conversation ID, try to find or create one
-            if (!conversationId) {
-                // Try get again
-                const check =
-                    await api.conversations.getForAssignment(assignmentId);
-                if (check.success) {
-                    conversationId = check.data.id;
-                } else {
-                    // Create
-                    const createRes =
-                        await api.conversations.create(assignmentId);
-                    if (createRes.success) {
-                        conversationId = createRes.data.id;
-                    } else {
-                        // Fallback message
-                        throw new Error(
-                            "Could not create conversation context",
-                        );
-                    }
+        if (!assignmentId || !api.currentUser) return;
+
+        // Map UI answers to Backend Schema Responses
+        // Schema requires: { questionId: string, response: { type: string, response: any } }[]
+        const responses = questions
+            .map((q) => {
+                const answerVal = answers[q.id];
+
+                // Skip missing answers
+                if (answerVal === undefined) return null;
+
+                // Construct strictly typed response object based on question type
+                if (q.type === "short_answer") {
+                    return {
+                        questionId: q.id,
+                        response: {
+                            type: "short_answer",
+                            response: answerVal as string,
+                        },
+                    };
                 }
-            }
+                if (q.type === "single_choice") {
+                    return {
+                        questionId: q.id,
+                        response: {
+                            type: "single_answer_choice",
+                            response: answerVal as string,
+                        },
+                    };
+                }
+                if (q.type === "multiple_choice") {
+                    return {
+                        questionId: q.id,
+                        response: {
+                            type: "multiple_answer_choice",
+                            response: answerVal as string[],
+                        },
+                    };
+                }
+                return null;
+            })
+            .filter((r) => r !== null);
 
-            if (!conversationId) return;
-
-            // Save answers as a conversation turn
-            // Backend schema permits 'questionnaire_response' as a valid turn type string
-            const result = await api.conversations.addTurn(
-                conversationId,
-                JSON.stringify(answers),
-                "questionnaire_response" as unknown as "user",
+        try {
+            // Call api.questionnaires.submitResponse as requested
+            // Note: This assumes the user has permission to update the questionnaire doc.
+            const result = await api.questionnaires.submitResponse(
+                assignmentId,
+                responses as any, // Type assertion to match Backend Schema if needed
             );
 
             if (!result.success) {
                 console.error("Failed to save answers:", result.error);
+                // If permission denied, it confirms the backend model mismatch
             }
         } catch (e) {
             console.error("Failed to save answers", e);
         }
-        */
     }
 
     function goBack() {
         if (courseId) {
             goto(resolve(`/courses/${courseId}`));
         } else {
-            goto(resolve("/assignments"));
+            goto(resolve("/dashboard"));
         }
     }
 
@@ -328,8 +332,16 @@
                     </div>
                 {/key}
             {:else}
-                <div class="flex h-full w-full items-center justify-center">
+                <div
+                    class="flex h-full w-full flex-col items-center justify-center gap-4"
+                >
                     <p class="text-white/50">No questions available.</p>
+                    <button
+                        class="icon-btn rounded-full bg-white/10 p-2 hover:bg-white/20"
+                        onclick={goBack}
+                    >
+                        <ArrowLeft size={24} color="white" />
+                    </button>
                 </div>
             {/if}
         </div>
