@@ -197,12 +197,13 @@
 
     <!-- Topics list with drag-and-drop -->
     <div
-        class="topics-list"
+        class="topics-list outline-none"
         use:dndzone={{
             items: topics,
             flipDurationMs,
             dragDisabled: false,
             type: "topic",
+            dropTargetStyle: {},
         }}
         onconsider={(e) => handleTopicDndConsider(e)}
         onfinalize={(e) => handleTopicDndFinalize(e)}

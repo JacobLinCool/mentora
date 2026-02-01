@@ -105,7 +105,7 @@
 </script>
 
 <div
-    class="topic-card mb-4 rounded-lg bg-white p-4 shadow-sm"
+    class="topic-card mb-4 rounded-lg bg-white p-4 shadow-sm focus:ring-0 focus:outline-none"
     class:opacity-50={isDragging}
 >
     <!-- Header -->
@@ -201,12 +201,13 @@
     <!-- Assignments list with drag-and-drop -->
     {#if localAssignments.length > 0 || isEditing}
         <div
-            class="assignments-list ml-8 border-l-2 border-gray-100 pl-4"
+            class="assignments-list ml-8 border-l-2 border-gray-100 pl-4 outline-none"
             use:dndzone={{
                 items: localAssignments,
                 flipDurationMs,
                 dragDisabled: !isEditing,
                 type: "assignment",
+                dropTargetStyle: {},
             }}
             onconsider={(e) => handleAssignmentDndConsider(e)}
             onfinalize={(e) => handleAssignmentDndFinalize(e)}

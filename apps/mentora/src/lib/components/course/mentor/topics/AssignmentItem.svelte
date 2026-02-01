@@ -41,7 +41,7 @@
 
 <div class="flex flex-col">
     <div
-        class="assignment-item flex items-center gap-3 py-2"
+        class="assignment-item flex items-center gap-3 py-3 focus:ring-0 focus:outline-none"
         class:opacity-50={isDragging}
     >
         {#if editMode}
@@ -92,7 +92,7 @@
     </div>
 
     {#if !isLast}
-        <div class="-my-1.5 flex items-center gap-3">
+        <div class="flex items-center gap-3 py-0.5">
             {#if editMode}
                 <div class="w-[18px]"></div>
             {/if}
