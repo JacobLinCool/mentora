@@ -531,7 +531,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (
         targetNotExists() ||
         (resource.data != null && (
-          request.auth.uid == resource.data.userId ||
+          ('userId' in resource.data && request.auth.uid == resource.data.userId) ||
           (
             // Verify courseId matches the questionnaire's courseId and user can edit that course
             'courseId' in resource.data &&
