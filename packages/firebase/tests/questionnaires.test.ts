@@ -39,7 +39,7 @@ function createQuestionnaireData(overrides: Record<string, unknown> = {}) {
                 required: true,
             },
         ],
-        responses: null,
+
         startAt: Date.now(),
         dueAt: null,
         allowLate: false,

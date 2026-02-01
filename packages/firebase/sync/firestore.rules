@@ -161,17 +161,12 @@ service cloud.firestore {
              value is bool;
     }
 
-    // Recursively validate a list of scalar answers
-    function isValidScalarAnswerList(list, index) {
-      return index >= list.size() ||
-             (isValidScalarAnswer(list[index]) && isValidScalarAnswerList(list, index + 1));
-    }
+
 
     // Validate answer response (scalar or list of scalars)
     function isValidAnswerResponse(value) {
       return isValidScalarAnswer(value) ||
-             (value is list && value.size() <= 100 &&
-              isValidScalarAnswerList(value, 0));
+             (value is list && value.size() <= 100);
     }
 
     // Validate a single questionnaire response item
@@ -188,19 +183,13 @@ service cloud.firestore {
              isValidAnswerResponse(item.answer.response);
     }
 
-    // Recursively validate all response items
-    function isValidQuestionnaireResponsesList(responses, index) {
-      return index >= responses.size() ||
-             (isValidQuestionnaireResponseItem(responses[index]) &&
-              isValidQuestionnaireResponsesList(responses, index + 1));
-    }
+
 
     function isValidQuestionnaireResponse(data) {
       return data.questionnaireId is string && data.questionnaireId.size() <= 128 &&
              data.userId is string && data.userId.size() <= 128 &&
              (data.courseId == null || (data.courseId is string && data.courseId.size() <= 128)) &&
              data.responses is list && data.responses.size() >= 1 && data.responses.size() <= 100 &&
-             isValidQuestionnaireResponsesList(data.responses, 0) &&
              data.submittedAt is number;
     }
 
