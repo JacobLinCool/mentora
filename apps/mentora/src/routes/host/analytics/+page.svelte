@@ -105,7 +105,7 @@
 
             <CosmicButton
                 variant="secondary"
-                on:click={() => alert("Export functionality coming soon!")}
+                onclick={() => alert("Export functionality coming soon!")}
             >
                 <Download class="mr-2 h-4 w-4" />
                 Export Report

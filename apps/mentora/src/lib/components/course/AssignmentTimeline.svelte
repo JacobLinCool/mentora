@@ -12,7 +12,7 @@
         id: string;
         title: string;
         dueAt: number | null;
-        type: "quiz" | "conversation" | "essay";
+        type: "quiz" | "conversation" | "essay" | "questionnaire";
         completed: boolean;
         locked: boolean;
     }

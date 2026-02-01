@@ -1,3 +1,4 @@
+import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json } from "@sveltejs/kit";
 import {
@@ -13,7 +14,8 @@ import type { RequestHandler } from "./$types";
 // But better to use type safety.
 // Checking exports... type Conversation is in mentora-firebase.
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async (event) => {
+    const { url } = event;
     const allow = url.searchParams.get("allow");
     if (allow !== "true") {
         return json(
@@ -22,7 +24,9 @@ export const GET: RequestHandler = async ({ url }) => {
         );
     }
 
-    const userId = url.searchParams.get("uid") || "test-user-1";
+    // Security: Use authenticated user ID from token
+    const user = await requireAuth(event);
+    const userId = user.uid;
 
     // Generate Random Data
     const courseId = `course-${Date.now()}`;
@@ -85,8 +89,8 @@ export const GET: RequestHandler = async ({ url }) => {
                 const ONE_DAY = 86400000;
                 let startAt = now - 5 * ONE_DAY;
                 let dueAt: number | null = null;
-                let typeName = "Quiz";
-                let promptContent = `Complete this assignment.`;
+                let typeName;
+                let promptContent;
                 let createSubmission = false;
                 let createConversation = false;
 
@@ -156,8 +160,7 @@ export const GET: RequestHandler = async ({ url }) => {
                     promptContent = `Prepare for the advanced task on logic structures.`;
                 }
 
-                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                const assignment: any = {
+                const assignment = {
                     id: assignmentId,
                     courseId: courseId,
                     topicId: topicId,

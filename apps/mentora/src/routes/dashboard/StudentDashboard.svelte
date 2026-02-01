@@ -53,7 +53,8 @@
         if (api.isAuthenticated) {
             await loadData();
         } else {
-            loading = false;
+            /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+            goto(resolve("/auth" as any));
         }
     });
 
@@ -66,19 +67,30 @@
                 courses = coursesResult.data;
 
                 // 2. Fetch Assignments for deadlines
-                const assignmentsPromises = courses.map((course) =>
-                    api.assignments
-                        .listAvailable(course.id)
-                        .then((res) =>
-                            res.success
-                                ? res.data.map((a) => ({ ...a, course }))
-                                : [],
-                        ),
-                );
+                // Optimization: Fetch in chunks to avoid thundering herd
+                const allAssignments = [];
+                const courseChunks = [];
+                for (let i = 0; i < courses.length; i += 3) {
+                    courseChunks.push(courses.slice(i, i + 3));
+                }
 
-                const allAssignments = (
-                    await Promise.all(assignmentsPromises)
-                ).flat();
+                for (const chunk of courseChunks) {
+                    const chunkRes = await Promise.all(
+                        chunk.map((course) =>
+                            api.assignments
+                                .listAvailable(course.id)
+                                .then((res) =>
+                                    res.success
+                                        ? res.data.map((a) => ({
+                                              ...a,
+                                              course,
+                                          }))
+                                        : [],
+                                ),
+                        ),
+                    );
+                    allAssignments.push(...chunkRes.flat());
+                }
 
                 // Filter assignments with due dates in the future
                 const now = Date.now();
@@ -141,8 +153,6 @@
     function handleContinueConversation() {
         if (lastConversation) {
             goto(resolve(`/conversations/${lastConversation.id}`));
-        } else {
-            goto(resolve("/courses"));
         }
     }
 </script>

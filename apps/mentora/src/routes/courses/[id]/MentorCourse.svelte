@@ -14,8 +14,13 @@
     // State
     let activeTab = $state("dashboard"); // dashboard, topics, members, settings
     let courseTitle = $state("Loading...");
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    let announcements = $state<any[]>([]);
+
+    interface UIAnnouncement {
+        id: string;
+        title: string;
+        createdDate: string;
+    }
+    let announcements = $state<UIAnnouncement[]>([]);
 
     async function loadCourseData() {
         if (courseId) {
@@ -37,15 +42,16 @@
         }
     }
 
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    function formatDate(ts: any) {
+    function formatDate(
+        ts: number | Date | { toDate: () => Date } | null | undefined,
+    ) {
         if (!ts) return "-";
         const d =
             typeof ts === "number"
                 ? new Date(ts)
-                : ts.toDate
+                : !(ts instanceof Date) && "toDate" in ts
                   ? ts.toDate()
-                  : new Date(ts);
+                  : new Date(ts as Date | number | string);
         return (
             d.toLocaleDateString() +
             " " +

@@ -43,7 +43,9 @@
             isRecording = true;
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            // You might want to expose an error callback here
+            alert(
+                "Microphone access denied or not available. Please check your browser settings.",
+            );
         }
     }
 

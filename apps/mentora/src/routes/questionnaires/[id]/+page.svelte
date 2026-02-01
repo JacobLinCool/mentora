@@ -89,6 +89,19 @@
                                 required: true,
                             },
                         ];
+                    } else {
+                        // Malformed or empty JSON
+                        console.error("Malformed questionnaire prompt");
+                        questions = [
+                            {
+                                type: "short_answer",
+                                id: "error_q1",
+                                question:
+                                    "Error: Unable to load questionnaire questions. Please contact your instructor.",
+                                placeholder: "...",
+                                required: false,
+                            },
+                        ];
                     }
                 }
             }
@@ -162,8 +175,7 @@
             const result = await api.conversations.addTurn(
                 conversationId,
                 JSON.stringify(answers),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any 
-                "questionnaire_response" as any,
+                "questionnaire_response" as unknown as "user",
             );
 
             if (!result.success) {

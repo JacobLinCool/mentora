@@ -16,13 +16,13 @@
         {m.dashboard_upcoming_deadline()}
     </h2>
 
-    {#if deadline}
-        <WeekCalendar
-            selectedDate={deadline.date}
-            {deadlineDates}
-            {onDateSelect}
-        />
+    <WeekCalendar
+        selectedDate={deadline?.date}
+        {deadlineDates}
+        {onDateSelect}
+    />
 
+    {#if deadline}
         <div class="mt-4 mb-4">
             <p class="text-text-primary flex items-center">
                 <span class="text-xl font-bold">{deadline.course}</span>

@@ -28,6 +28,11 @@
             api.assignments.get(conv.assignmentId).then((res) => {
                 if (res.success && res.data.courseId) {
                     courseId = res.data.courseId;
+                } else if (!res.success) {
+                    // Fallback: If we can't find the course, we might be in an orphan conversation
+                    console.warn(
+                        "Could not find linked course for this conversation",
+                    );
                 }
             });
         }
@@ -78,25 +83,9 @@
         const lastTurn = turns.at(-1);
 
         if (lastTurn && lastTurn.id !== lastProcessedTurnId) {
-            // Determine role by userId (if it matches prompt agent or system, it is assistant, but here we only have user id)
-            // Turns don't have role. We infer it.
-            // If turn.userId == conversation.userId, it is user.
-            // If turn.userId is missing or different? Wait, Turn schema doesn't have userId.
-            // Turn schema: id, type, text, analysis, pendingStartAt, createdAt.
-            // Actually, in this system, USER turns are created. AI turns are created.
-            // How do we distinguish?
-            // "type" field.
-            // User types: idea, followup.
-            // AI types: topic, counterpoint, summary, evaluation?
-            // Let's assume types: 'idea', 'followup' imply USER.
-            // 'topic', 'counterpoint', 'summary' imply AI.
-            // But 'type' is just string.
-
             // Heuristic: If type is 'idea' or 'followup', it is likely user.
             const isUser =
-                lastTurn.type === "idea" ||
-                lastTurn.type === "followup" ||
-                lastTurn.type === "questionnaire_response";
+                lastTurn.type === "idea" || lastTurn.type === "followup";
 
             if (!isUser) {
                 // New assistant message
@@ -119,10 +108,7 @@
             const last = turns.at(-1);
             if (last) {
                 lastProcessedTurnId = last.id;
-                const isUser =
-                    last.type === "idea" ||
-                    last.type === "followup" ||
-                    last.type === "questionnaire_response";
+                const isUser = last.type === "idea" || last.type === "followup";
 
                 if (!isUser) {
                     currentQuestion = last.text;

@@ -14,8 +14,6 @@
 
     onMount(async () => {
         const result = await api.courses.listPublic();
-        // show all courses in console
-        console.log("Public Courses:", result);
 
         if (result.success) {
             allCourses = result.data;

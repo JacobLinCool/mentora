@@ -19,9 +19,10 @@
     const courseId = $derived(page.params.id);
 
     interface CourseAssignment extends Assignment {
-        type: "quiz" | "conversation" | "essay";
+        type: "quiz" | "conversation" | "essay" | "questionnaire";
         completed?: boolean;
         locked: boolean;
+        orderInTopic?: number;
     }
 
     // State
@@ -33,17 +34,21 @@
     let groupedAssignments = $state<Record<string, CourseAssignment[]>>({});
 
     $effect(() => {
+        let mounted = true;
         if (courseId && api.isAuthenticated) {
-            loadData();
+            loadData(mounted);
         } else if (courseId && !api.isAuthenticated) {
             // Wait for auth to be ready if trying to load
             api.authReady.then(() => {
-                if (api.isAuthenticated) loadData();
+                if (api.isAuthenticated && mounted) loadData(mounted);
             });
         }
+        return () => {
+            mounted = false;
+        };
     });
 
-    async function loadData() {
+    async function loadData(mounted: boolean) {
         if (!courseId) return;
         loading = true;
         try {
@@ -74,15 +79,22 @@
                     SubmissionWithId
                 >();
 
-                // Parallel fetch
-                await Promise.all(
-                    assignments.map(async (a) => {
-                        const subRes = await api.submissions.getMine(a.id);
-                        if (subRes.success && subRes.data) {
-                            submissionsMap.set(a.id, subRes.data);
-                        }
-                    }),
-                );
+                // Parallel fetch with concurrency limit (chunk of 5)
+                const chunk = 5;
+                for (let i = 0; i < assignments.length; i += chunk) {
+                    if (!mounted) break;
+                    const batch = assignments.slice(i, i + chunk);
+                    await Promise.all(
+                        batch.map(async (a) => {
+                            const subRes = await api.submissions.getMine(a.id);
+                            if (subRes.success && subRes.data) {
+                                submissionsMap.set(a.id, subRes.data);
+                            }
+                        }),
+                    );
+                }
+
+                if (!mounted) return;
 
                 assignments.forEach((a) => {
                     const tid = a.topicId || "uncategorized";
@@ -120,9 +132,7 @@
                 // Sort by orderInTopic
                 Object.values(groups).forEach((list) => {
                     list.sort(
-                        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                        (a: any, b: any) =>
-                            (a.orderInTopic || 0) - (b.orderInTopic || 0),
+                        (a, b) => (a.orderInTopic || 0) - (b.orderInTopic || 0),
                     );
                 });
 
@@ -136,8 +146,7 @@
                 const topic = topics[i];
                 const topicAssignments = groupedAssignments[topic.id] || [];
                 const hasActive = topicAssignments.some(
-                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                    (a: any) => !a.completed && (!a.dueAt || a.dueAt > now),
+                    (a) => !a.completed && (!a.dueAt || a.dueAt > now),
                 );
                 if (hasActive) {
                     defaultIndex = i;
@@ -166,8 +175,8 @@
         currentTopicIndex = index;
     }
 
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    async function handleAssignmentClick(assignment: any) {
+    async function handleAssignmentClick(item: unknown) {
+        const assignment = item as CourseAssignment;
         if (assignment.locked) return;
 
         // Try to start submission if not present

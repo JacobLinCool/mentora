@@ -56,8 +56,8 @@
                 errorMessage = result.error;
             }
         } catch (e) {
-            /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-            errorMessage = (e as any).message || "Failed to create course";
+            errorMessage =
+                e instanceof Error ? e.message : "Failed to create course";
         } finally {
             loading = false;
         }
