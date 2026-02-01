@@ -286,6 +286,13 @@ export class MentoraClient {
 		delete: (questionnaireId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() =>
 				QuestionnairesModule.deleteQuestionnaire(this._config, questionnaireId)
+			),
+		submitResponse: (
+			questionnaireId: string,
+			responses: Questionnaire['responses']
+		): Promise<APIResult<void>> =>
+			this.authReadyThen(() =>
+				QuestionnairesModule.submitResponse(this._config, questionnaireId, responses)
 			)
 	};
 

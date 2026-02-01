@@ -150,3 +150,21 @@ export async function deleteQuestionnaire(
 		await deleteDoc(docRef);
 	});
 }
+
+/**
+ * Submit a response to a questionnaire
+ */
+export async function submitResponse(
+	config: MentoraAPIConfig,
+	questionnaireId: string,
+	responses: Questionnaire['responses']
+): Promise<APIResult<void>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, Questionnaires.docPath(questionnaireId));
+
+		await updateDoc(docRef, {
+			responses,
+			updatedAt: Date.now()
+		});
+	});
+}
