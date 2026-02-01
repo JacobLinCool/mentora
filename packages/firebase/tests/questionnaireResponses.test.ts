@@ -300,6 +300,81 @@ describe("QuestionnaireResponses Security Rules", () => {
             );
             expect(result.size).toBe(2);
         });
+
+        it("should deny instructors from reading responses with forged courseId", async () => {
+            const responseId = "response123";
+            const questionnaireId = "questionnaire123";
+            const realCourseId = "course456";
+            const forgedCourseId = "course789";
+            const instructorId = "instructor999";
+            const studentId = "student456";
+            const db = testEnv.authenticatedContext(instructorId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                // Create real course
+                await fs.collection("courses").doc(realCourseId).set({
+                    id: realCourseId,
+                    title: "Real Course",
+                    code: "REAL123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                // Create forged course where instructor has access
+                await fs.collection("courses").doc(forgedCourseId).set({
+                    id: forgedCourseId,
+                    title: "Forged Course",
+                    code: "FAKE123",
+                    ownerId: "owner999",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                await fs
+                    .collection("courses")
+                    .doc(forgedCourseId)
+                    .collection("roster")
+                    .doc(instructorId)
+                    .set({
+                        userId: instructorId,
+                        email: "instructor@example.com",
+                        role: "instructor",
+                        status: "active",
+                        joinedAt: Date.now(),
+                    });
+                // Create questionnaire in real course
+                await fs.collection("questionnaires").doc(questionnaireId).set({
+                    id: questionnaireId,
+                    courseId: realCourseId,
+                    topicId: null,
+                    title: "Test Questionnaire",
+                    questions: [],
+                    startAt: Date.now(),
+                    dueAt: null,
+                    allowLate: false,
+                    allowResubmit: false,
+                    createdBy: "instructor123",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                });
+                // Create response with forged courseId
+                await fs
+                    .collection("questionnaireResponses")
+                    .doc(responseId)
+                    .set(
+                        createResponseData({
+                            questionnaireId: questionnaireId,
+                            userId: studentId,
+                            courseId: forgedCourseId, // Forged courseId!
+                        }),
+                    );
+            });
+
+            // Instructor should NOT be able to read this response
+            await assertFails(
+                db.collection("questionnaireResponses").doc(responseId).get(),
+            );
+        });
     });
 
     describe("Create Access", () => {
@@ -701,6 +776,165 @@ describe("QuestionnaireResponses Security Rules", () => {
                                     answer: {
                                         type: "slider_answer",
                                         response: 8,
+                                    },
+                                },
+                            ],
+                        }),
+                    ),
+            );
+        });
+
+        it("should deny response with missing answer.type", async () => {
+            const responseId = "response123";
+            const studentId = "student456";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await assertFails(
+                db
+                    .collection("questionnaireResponses")
+                    .doc(responseId)
+                    .set(
+                        createResponseData({
+                            userId: studentId,
+                            responses: [
+                                {
+                                    questionIndex: 0,
+                                    answer: {
+                                        // Missing type field
+                                        response: "Option A",
+                                    },
+                                },
+                            ],
+                        }),
+                    ),
+            );
+        });
+
+        it("should deny response with missing answer.response", async () => {
+            const responseId = "response123";
+            const studentId = "student456";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await assertFails(
+                db
+                    .collection("questionnaireResponses")
+                    .doc(responseId)
+                    .set(
+                        createResponseData({
+                            userId: studentId,
+                            responses: [
+                                {
+                                    questionIndex: 0,
+                                    answer: {
+                                        type: "single_answer_choice",
+                                        // Missing response field
+                                    },
+                                },
+                            ],
+                        }),
+                    ),
+            );
+        });
+
+        it("should deny response with wrong primitive type", async () => {
+            const responseId = "response123";
+            const studentId = "student456";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await assertFails(
+                db
+                    .collection("questionnaireResponses")
+                    .doc(responseId)
+                    .set(
+                        createResponseData({
+                            userId: studentId,
+                            responses: [
+                                {
+                                    questionIndex: 0,
+                                    answer: {
+                                        type: "slider_answer",
+                                        response: "not a number", // Should be number
+                                    },
+                                },
+                            ],
+                        }),
+                    ),
+            );
+        });
+
+        it("should deny response with nested object instead of scalar", async () => {
+            const responseId = "response123";
+            const studentId = "student456";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await assertFails(
+                db
+                    .collection("questionnaireResponses")
+                    .doc(responseId)
+                    .set(
+                        createResponseData({
+                            userId: studentId,
+                            responses: [
+                                {
+                                    questionIndex: 0,
+                                    answer: {
+                                        type: "single_answer_choice",
+                                        response: { nested: "object" }, // Should be string
+                                    },
+                                },
+                            ],
+                        }),
+                    ),
+            );
+        });
+
+        it("should deny response with missing questionIndex", async () => {
+            const responseId = "response123";
+            const studentId = "student456";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await assertFails(
+                db
+                    .collection("questionnaireResponses")
+                    .doc(responseId)
+                    .set(
+                        createResponseData({
+                            userId: studentId,
+                            responses: [
+                                {
+                                    // Missing questionIndex
+                                    answer: {
+                                        type: "single_answer_choice",
+                                        response: "Option A",
+                                    },
+                                },
+                            ],
+                        }),
+                    ),
+            );
+        });
+
+        it("should deny response with non-scalar values in array", async () => {
+            const responseId = "response123";
+            const studentId = "student456";
+            const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await assertFails(
+                db
+                    .collection("questionnaireResponses")
+                    .doc(responseId)
+                    .set(
+                        createResponseData({
+                            userId: studentId,
+                            responses: [
+                                {
+                                    questionIndex: 0,
+                                    answer: {
+                                        type: "multiple_answer_choice",
+                                        response: [
+                                            "Option A",
+                                            { bad: "object" },
+                                        ], // Array should only contain scalars
                                     },
                                 },
                             ],

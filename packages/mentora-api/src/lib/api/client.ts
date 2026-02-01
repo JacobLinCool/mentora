@@ -301,10 +301,11 @@ export class MentoraClient {
 	// ============ Questionnaire Responses ============
 	questionnaireResponses = {
 		get: (
-			responseId: string
+			questionnaireId: string,
+			userId: string
 		): Promise<APIResult<import('mentora-firebase').QuestionnaireResponse>> =>
 			this.authReadyThen(() =>
-				QuestionnaireResponsesModule.getQuestionnaireResponse(this._config, responseId)
+				QuestionnaireResponsesModule.getQuestionnaireResponse(this._config, questionnaireId, userId)
 			),
 		listForQuestionnaire: (
 			questionnaireId: string,
@@ -342,20 +343,24 @@ export class MentoraClient {
 					courseId
 				)
 			),
-		update: (
-			responseId: string,
+		updateMine: (
+			questionnaireId: string,
 			responses: import('mentora-firebase').QuestionnaireResponse['responses']
 		): Promise<APIResult<import('mentora-firebase').QuestionnaireResponse>> =>
 			this.authReadyThen(() =>
-				QuestionnaireResponsesModule.updateQuestionnaireResponse(
+				QuestionnaireResponsesModule.updateMyQuestionnaireResponse(
 					this._config,
-					responseId,
+					questionnaireId,
 					responses
 				)
 			),
-		delete: (responseId: string): Promise<APIResult<void>> =>
+		delete: (questionnaireId: string, userId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() =>
-				QuestionnaireResponsesModule.deleteQuestionnaireResponse(this._config, responseId)
+				QuestionnaireResponsesModule.deleteQuestionnaireResponse(
+					this._config,
+					questionnaireId,
+					userId
+				)
 			)
 	};
 

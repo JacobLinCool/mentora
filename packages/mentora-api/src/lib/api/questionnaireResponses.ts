@@ -7,13 +7,13 @@ import {
 	doc,
 	getDoc,
 	getDocs,
+	limit,
 	query,
 	setDoc,
 	updateDoc,
 	where
 } from 'firebase/firestore';
 import { QuestionnaireResponses, type QuestionnaireResponse } from 'mentora-firebase';
-import { callBackend } from './backend.js';
 import {
 	failure,
 	tryCatch,
@@ -23,14 +23,17 @@ import {
 } from './types.js';
 
 /**
- * Get a questionnaire response by ID
+ * Get a questionnaire response for a specific user
+ * Used by instructors to view student responses
  */
 export async function getQuestionnaireResponse(
 	config: MentoraAPIConfig,
-	responseId: string
+	questionnaireId: string,
+	userId: string
 ): Promise<APIResult<QuestionnaireResponse>> {
 	return tryCatch(async () => {
-		const docRef = doc(config.db, QuestionnaireResponses.docPath(responseId));
+		const docId = `${questionnaireId}_${userId}`;
+		const docRef = doc(config.db, QuestionnaireResponses.collectionPath(), docId);
 		const snapshot = await getDoc(docRef);
 
 		if (!snapshot.exists()) {
@@ -42,27 +45,26 @@ export async function getQuestionnaireResponse(
 }
 
 /**
- * List questionnaire responses for a specific questionnaire (via backend)
+ * List questionnaire responses for a specific questionnaire
+ * Requires instructor/TA access to the course
  */
 export async function listQuestionnaireResponses(
 	config: MentoraAPIConfig,
 	questionnaireId: string,
 	options?: QueryOptions
 ): Promise<APIResult<QuestionnaireResponse[]>> {
-	const params = new URLSearchParams({ questionnaireId });
-	if (options?.limit) {
-		params.set('limit', options.limit.toString());
-	}
+	return tryCatch(async () => {
+		const collectionRef = collection(config.db, QuestionnaireResponses.collectionPath());
 
-	const result = await callBackend<unknown[]>(config, `/questionnaire-responses?${params}`);
-	if (!result.success) {
-		return result;
-	}
+		let q = query(collectionRef, where('questionnaireId', '==', questionnaireId));
 
-	return {
-		success: true,
-		data: result.data.map((r: unknown) => QuestionnaireResponses.schema.parse(r))
-	};
+		if (options?.limit) {
+			q = query(q, limit(options.limit));
+		}
+
+		const snapshot = await getDocs(q);
+		return snapshot.docs.map((doc) => QuestionnaireResponses.schema.parse(doc.data()));
+	});
 }
 
 /**
@@ -83,9 +85,7 @@ export async function listMyQuestionnaireResponses(
 		let q = query(collectionRef, where('userId', '==', currentUser.uid));
 
 		if (options?.limit) {
-			// Import limit dynamically to avoid circular deps
-			const { limit: limitFn } = await import('firebase/firestore');
-			q = query(q, limitFn(options.limit));
+			q = query(q, limit(options.limit));
 		}
 
 		const snapshot = await getDocs(q);
@@ -95,6 +95,7 @@ export async function listMyQuestionnaireResponses(
 
 /**
  * Get user's response to a specific questionnaire
+ * Uses fixed document ID (similar to getMySubmission)
  */
 export async function getMyQuestionnaireResponse(
 	config: MentoraAPIConfig,
@@ -106,26 +107,16 @@ export async function getMyQuestionnaireResponse(
 	}
 
 	return tryCatch(async () => {
-		const collectionRef = collection(config.db, QuestionnaireResponses.collectionPath());
+		// Use fixed document ID: questionnaireId_userId
+		const docId = `${questionnaireId}_${currentUser.uid}`;
+		const docRef = doc(config.db, QuestionnaireResponses.collectionPath(), docId);
+		const snapshot = await getDoc(docRef);
 
-		const q = query(
-			collectionRef,
-			where('userId', '==', currentUser.uid),
-			where('questionnaireId', '==', questionnaireId)
-		);
-
-		const snapshot = await getDocs(q);
-
-		if (snapshot.empty) {
+		if (!snapshot.exists()) {
 			return null;
 		}
 
-		// Return the most recent response if multiple exist
-		const responses = snapshot.docs
-			.map((doc) => QuestionnaireResponses.schema.parse(doc.data()))
-			.sort((a, b) => b.submittedAt - a.submittedAt);
-
-		return responses[0];
+		return QuestionnaireResponses.schema.parse(snapshot.data());
 	});
 }
 
@@ -145,7 +136,8 @@ export async function submitQuestionnaireResponse(
 
 	return tryCatch(async () => {
 		const now = Date.now();
-		const docRef = doc(collection(config.db, QuestionnaireResponses.collectionPath()));
+		const docId = `${questionnaireId}_${currentUser.uid}`;
+		const docRef = doc(config.db, QuestionnaireResponses.collectionPath(), docId);
 
 		const responseData: QuestionnaireResponse = {
 			questionnaireId,
@@ -165,15 +157,21 @@ export async function submitQuestionnaireResponse(
 }
 
 /**
- * Update a questionnaire response (for resubmission)
+ * Update current user's questionnaire response (for resubmission)
  */
-export async function updateQuestionnaireResponse(
+export async function updateMyQuestionnaireResponse(
 	config: MentoraAPIConfig,
-	responseId: string,
+	questionnaireId: string,
 	responses: QuestionnaireResponse['responses']
 ): Promise<APIResult<QuestionnaireResponse>> {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		return failure('Not authenticated');
+	}
+
 	return tryCatch(async () => {
-		const docRef = doc(config.db, QuestionnaireResponses.docPath(responseId));
+		const docId = `${questionnaireId}_${currentUser.uid}`;
+		const docRef = doc(config.db, QuestionnaireResponses.collectionPath(), docId);
 
 		await updateDoc(docRef, {
 			responses,
@@ -191,14 +189,16 @@ export async function updateQuestionnaireResponse(
 }
 
 /**
- * Delete a questionnaire response
+ * Delete a questionnaire response (instructor only)
  */
 export async function deleteQuestionnaireResponse(
 	config: MentoraAPIConfig,
-	responseId: string
+	questionnaireId: string,
+	userId: string
 ): Promise<APIResult<void>> {
 	return tryCatch(async () => {
-		const docRef = doc(config.db, QuestionnaireResponses.docPath(responseId));
+		const docId = `${questionnaireId}_${userId}`;
+		const docRef = doc(config.db, QuestionnaireResponses.collectionPath(), docId);
 		await deleteDoc(docRef);
 	});
 }

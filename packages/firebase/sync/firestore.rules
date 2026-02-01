@@ -154,11 +154,53 @@ service cloud.firestore {
              data.createdAt is number && data.updatedAt is number;
     }
 
+    // Validate scalar answer values (string, number, or bool with size limits)
+    function isValidScalarAnswer(value) {
+      return (value is string && value.size() <= 10000) ||
+             value is number ||
+             value is bool;
+    }
+
+    // Recursively validate a list of scalar answers
+    function isValidScalarAnswerList(list, index) {
+      return index >= list.size() ||
+             (isValidScalarAnswer(list[index]) && isValidScalarAnswerList(list, index + 1));
+    }
+
+    // Validate answer response (scalar or list of scalars)
+    function isValidAnswerResponse(value) {
+      return isValidScalarAnswer(value) ||
+             (value is list && value.size() <= 100 &&
+              isValidScalarAnswerList(value, 0));
+    }
+
+    // Validate a single questionnaire response item
+    function isValidQuestionnaireResponseItem(item) {
+      return ('questionIndex' in item) &&
+             (item.questionIndex is number) &&
+             item.questionIndex >= 0 &&
+             item.questionIndex <= 1000 &&
+             ('answer' in item) &&
+             (item.answer is map) &&
+             ('type' in item.answer) &&
+             (item.answer.type is string && item.answer.type.size() >= 1 && item.answer.type.size() <= 64) &&
+             ('response' in item.answer) &&
+             isValidAnswerResponse(item.answer.response);
+    }
+
+    // Recursively validate all response items
+    function isValidQuestionnaireResponsesList(responses, index) {
+      return index >= responses.size() ||
+             (isValidQuestionnaireResponseItem(responses[index]) &&
+              isValidQuestionnaireResponsesList(responses, index + 1));
+    }
+
     function isValidQuestionnaireResponse(data) {
       return data.questionnaireId is string && data.questionnaireId.size() <= 128 &&
              data.userId is string && data.userId.size() <= 128 &&
              (data.courseId == null || (data.courseId is string && data.courseId.size() <= 128)) &&
              data.responses is list && data.responses.size() >= 1 && data.responses.size() <= 100 &&
+             isValidQuestionnaireResponsesList(data.responses, 0) &&
              data.submittedAt is number;
     }
 
@@ -486,9 +528,10 @@ service cloud.firestore {
         targetNotExists() ||
         request.auth.uid == resource.data.userId ||
         (
-          // Check if questionnaire exists and get courseId
+          // Verify courseId matches the questionnaire's courseId and user can edit that course
           resource.data.courseId != null &&
           exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+          resource.data.courseId == questionnaireDoc(resource.data.questionnaireId).data.courseId &&
           canEditCourseResource(resource.data.courseId)
         )
       );
@@ -501,24 +544,37 @@ service cloud.firestore {
         (resource.data != null && (
           request.auth.uid == resource.data.userId ||
           (
+            // Verify courseId matches the questionnaire's courseId and user can edit that course
             resource.data.courseId != null &&
             exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+            resource.data.courseId == questionnaireDoc(resource.data.questionnaireId).data.courseId &&
             canEditCourseResource(resource.data.courseId)
           )
         ))
       );
 
       // CREATE: student creates their own response only
+      // Verify courseId matches the questionnaire's courseId
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
-        isValidQuestionnaireResponse(request.resource.data);
+        isValidQuestionnaireResponse(request.resource.data) &&
+        (
+          // Either both are null (standalone) or courseId must match questionnaire's courseId
+          (request.resource.data.courseId == null &&
+           (!exists(/databases/$(database)/documents/questionnaires/$(request.resource.data.questionnaireId)) ||
+            questionnaireDoc(request.resource.data.questionnaireId).data.courseId == null)) ||
+          (request.resource.data.courseId != null &&
+           exists(/databases/$(database)/documents/questionnaires/$(request.resource.data.questionnaireId)) &&
+           request.resource.data.courseId == questionnaireDoc(request.resource.data.questionnaireId).data.courseId)
+        );
 
       // UPDATE: student can update their own response only
-      // Cannot change userId or questionnaireId
+      // Cannot change userId, questionnaireId, or courseId
       allow update: if isSignedIn() &&
         request.auth.uid == resource.data.userId &&
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.questionnaireId == resource.data.questionnaireId &&
+        request.resource.data.courseId == resource.data.courseId &&
         isValidQuestionnaireResponse(request.resource.data);
 
       // DELETE:
@@ -528,6 +584,7 @@ service cloud.firestore {
         resource.data != null &&
         resource.data.courseId != null &&
         exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+        resource.data.courseId == questionnaireDoc(resource.data.questionnaireId).data.courseId &&
         canEditCourseResource(resource.data.courseId);
     }
 
