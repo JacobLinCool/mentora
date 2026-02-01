@@ -154,8 +154,20 @@ service cloud.firestore {
              data.createdAt is number && data.updatedAt is number;
     }
 
+    function isValidQuestionnaireResponse(data) {
+      return data.questionnaireId is string && data.questionnaireId.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             (data.courseId == null || (data.courseId is string && data.courseId.size() <= 128)) &&
+             data.responses is list && data.responses.size() >= 1 && data.responses.size() <= 100 &&
+             data.submittedAt is number;
+    }
+
     function assignmentDoc(assignmentId) {
       return get(/databases/$(database)/documents/assignments/$(assignmentId));
+    }
+
+    function questionnaireDoc(questionnaireId) {
+      return get(/databases/$(database)/documents/questionnaires/$(questionnaireId));
     }
 
     /* ---------- Users ---------- */
@@ -463,6 +475,55 @@ service cloud.firestore {
            canEditCourseResource(resource.data.courseId)) ||
         (resource.data.courseId == null && resource.data.createdBy == request.auth.uid)
       );
+    }
+
+    /* ---------- QuestionnaireResponses (top-level) ---------- */
+    match /questionnaireResponses/{rid} {
+      // GET:
+      // - Student can read their own response
+      // - Instructors/TAs can read responses for questionnaires in their course
+      allow get: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        (
+          // Check if questionnaire exists and get courseId
+          resource.data.courseId != null &&
+          exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+          canEditCourseResource(resource.data.courseId)
+        )
+      );
+
+      // LIST:
+      // - Student can list their own responses
+      // - Instructors/TAs can list responses for questionnaires in their course
+      allow list: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        (
+          resource.data.courseId != null &&
+          exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+          canEditCourseResource(resource.data.courseId)
+        )
+      );
+
+      // CREATE: student creates their own response only
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        isValidQuestionnaireResponse(request.resource.data);
+
+      // UPDATE: student can update their own response only
+      // Cannot change userId or questionnaireId
+      allow update: if isSignedIn() &&
+        request.auth.uid == resource.data.userId &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.questionnaireId == resource.data.questionnaireId &&
+        isValidQuestionnaireResponse(request.resource.data);
+
+      // DELETE:
+      // - Students cannot delete
+      // - Instructors/TAs can delete responses in their course
+      allow delete: if isSignedIn() &&
+        resource.data.courseId != null &&
+        exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+        canEditCourseResource(resource.data.courseId);
     }
 
     /* ---------- Collection Group Rules ---------- */
