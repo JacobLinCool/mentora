@@ -1,3 +1,3 @@
 export const userProfile = $state({
-    isMentor: false,
+    isMentor: true,
 });
