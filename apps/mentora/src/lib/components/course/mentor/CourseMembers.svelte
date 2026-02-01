@@ -1,10 +1,18 @@
 <script lang="ts">
-    import { CircleMinus, X } from "@lucide/svelte";
+    import { CircleMinus, CirclePlus, X } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
-    import Pagination from "./Pagination.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
 
     // Mock Data
-    let members = $state([
+    type Member = {
+        id: number;
+        name: string;
+        email: string;
+        joinedDate: string;
+        role: string;
+    };
+
+    let members: Member[] = $state([
         {
             id: 1,
             name: "王小紀",
@@ -35,80 +43,89 @@
         },
     ]);
 
-    let currentPage = $state(1);
-    let pageSize = 10;
-    let paginatedMembers = $derived(
-        members.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    );
+    function toggleRole(member: Member) {
+        const index = members.findIndex((m) => m.id === member.id);
+        if (index !== -1) {
+            members[index] = {
+                ...member,
+                role: member.role === "student" ? "auditor" : "student",
+            };
+        }
+    }
+
+    function removeMember(id: number) {
+        members = members.filter((m) => m.id !== id);
+    }
 </script>
 
 <!-- Members Table -->
-<div
-    class="overflow-hidden rounded-xl border border-gray-100 bg-[#F5F5F5] shadow-sm"
->
-    <!-- Header -->
-    <div
-        class="grid grid-cols-[1fr_2fr_1.5fr_0.8fr_2fr] border-b border-gray-200/50 p-6 font-semibold text-gray-500"
+<div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <Table
+        columns={[
+            {
+                key: "name",
+                label: m.course_members_name(),
+                sortable: true,
+            },
+            {
+                key: "email",
+                label: m.course_members_email(),
+                sortable: true,
+            },
+            {
+                key: "joinedDate",
+                label: m.course_members_joined_date(),
+                sortable: true,
+            },
+            {
+                key: "role",
+                label: m.course_members_role(),
+                sortable: true,
+            },
+        ]}
+        data={members}
+        {renderCell}
+        actions={renderActions}
+    />
+</div>
+
+{#snippet renderCell(item: Member, key: string)}
+    {#if key === "role"}
+        <div class="font-medium text-gray-600">
+            {item.role === "student"
+                ? m.course_members_role_student()
+                : m.course_members_role_auditor()}
+        </div>
+    {:else}
+        <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
+        <div class="text-gray-600">{(item as any)[key]}</div>
+    {/if}
+{/snippet}
+
+{#snippet renderActions(member: Member)}
+    {#if member.role === "student"}
+        <button
+            class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+            onclick={() => toggleRole(member)}
+        >
+            <CircleMinus size={16} class="fill-gray-600 text-white" />
+            {m.course_members_change_to_auditor()}
+        </button>
+    {:else}
+        <button
+            class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+            onclick={() => toggleRole(member)}
+        >
+            <CirclePlus size={16} class="fill-gray-600 text-white" />
+            {m.course_members_change_to_student()}
+        </button>
+    {/if}
+
+    <button
+        class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+        onclick={() => removeMember(member.id)}
     >
-        <div>{m.course_members_name()}</div>
-        <div>{m.course_members_email()}</div>
-        <div>{m.course_members_joined_date()}</div>
-        <div>{m.course_members_role()}</div>
-        <div></div>
-    </div>
-
-    <!-- Rows -->
-    <div class="flex flex-col divide-y divide-gray-200/50">
-        {#each paginatedMembers as member (member.id)}
-            <div
-                class="grid grid-cols-[1fr_2fr_1.5fr_0.8fr_2fr] items-center p-6 transition-colors hover:bg-gray-50"
-            >
-                <div class="text-gray-600">{member.name}</div>
-                <div class="text-gray-600">{member.email}</div>
-                <div class="text-gray-600">{member.joinedDate}</div>
-                <div class="font-medium text-gray-600">
-                    {member.role === "student"
-                        ? m.course_members_role_student()
-                        : m.course_members_role_auditor()}
-                </div>
-                <div class="flex justify-end gap-3 text-gray-500">
-                    {#if member.role === "student"}
-                        <button
-                            class="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-                        >
-                            <CircleMinus
-                                size={16}
-                                class="fill-gray-600 text-white"
-                            />
-                            {m.course_members_change_to_auditor()}
-                        </button>
-                    {:else}
-                        <button
-                            class="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-                        >
-                            <!-- <CirclePlus
-                                size={16}
-                                class="fill-gray-600 text-white"
-                            /> -->
-                            {m.course_members_change_to_student()}
-                        </button>
-                    {/if}
-
-                    <button
-                        class="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-                    >
-                        <X size={16} class="text-gray-600" />
-                        {m.course_members_remove()}
-                    </button>
-                </div>
-            </div>
-        {/each}
-    </div>
-</div>
-
-<!-- Pagination -->
-<div class="mt-6 flex justify-center">
-    <div class="mt-6 flex justify-center">
-        <Pagination bind:currentPage totalCount={members.length} {pageSize} />
-    </div>
-</div>
+        <X size={16} class="text-gray-600" />
+        {m.course_members_remove()}
+    </button>
+{/snippet}

@@ -268,7 +268,7 @@
                         </div>
                         <button
                             onclick={handleCopyLink}
-                            class="item-center flex justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-600 shadow-sm transition-all duration-200 hover:bg-gray-50"
+                            class="flex cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white p-2 text-gray-600 shadow-sm transition-all duration-200 hover:bg-gray-50"
                             class:!bg-green-50={isCopied}
                             class:!text-green-600={isCopied}
                             class:!border-green-200={isCopied}
@@ -299,7 +299,7 @@
                         >
                         <button
                             onclick={handleResetPassword}
-                            class="flex items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
+                            class="flex cursor-pointer items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
                         >
                             <RotateCw size={14} />
                             {m.course_settings_reset_password()}
