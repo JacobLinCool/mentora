@@ -483,6 +483,7 @@ service cloud.firestore {
       // - Student can read their own response
       // - Instructors/TAs can read responses for questionnaires in their course
       allow get: if isSignedIn() && (
+        targetNotExists() ||
         request.auth.uid == resource.data.userId ||
         (
           // Check if questionnaire exists and get courseId
@@ -496,12 +497,15 @@ service cloud.firestore {
       // - Student can list their own responses
       // - Instructors/TAs can list responses for questionnaires in their course
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.userId ||
-        (
-          resource.data.courseId != null &&
-          exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
-          canEditCourseResource(resource.data.courseId)
-        )
+        targetNotExists() ||
+        (resource.data != null && (
+          request.auth.uid == resource.data.userId ||
+          (
+            resource.data.courseId != null &&
+            exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+            canEditCourseResource(resource.data.courseId)
+          )
+        ))
       );
 
       // CREATE: student creates their own response only
@@ -521,6 +525,7 @@ service cloud.firestore {
       // - Students cannot delete
       // - Instructors/TAs can delete responses in their course
       allow delete: if isSignedIn() &&
+        resource.data != null &&
         resource.data.courseId != null &&
         exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
         canEditCourseResource(resource.data.courseId);
