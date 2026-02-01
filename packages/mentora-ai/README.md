@@ -23,10 +23,7 @@ The package is organized into three main modules:
 
 ```typescript
 import { GoogleGenAI } from "@google/genai";
-import {
-    GeminiPromptExecutor,
-    MentoraOrchestrator,
-} from "mentora-ai";
+import { GeminiPromptExecutor, MentoraOrchestrator } from "mentora-ai";
 
 const genai = new GoogleGenAI({});
 const executor = new GeminiPromptExecutor(genai, "gemini-2.5-flash-lite");

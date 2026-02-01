@@ -17,6 +17,18 @@ const zSingleChoiceQuestion = z
     })
     .describe("Single answer choice question.");
 
+const zSignalChiceResponse = z
+    .object({
+        type: z.literal("single_answer_choice"),
+        response: z
+            .string()
+            .min(1)
+            .max(500)
+            .optional()
+            .describe("The selected answer option."),
+    })
+    .describe("Single answer choice response.");
+
 const zMultipleChoiceQuestion = z
     .object({
         type: z.literal("multiple_answer_choice"),
@@ -33,6 +45,15 @@ const zMultipleChoiceQuestion = z
     })
     .describe("Multiple answer choice question.");
 
+const zMultipleChoiceResponse = z
+    .object({
+        type: z.literal("multiple_answer_choice"),
+        response: z
+            .array(z.string().min(1).max(500))
+            .describe("The selected answer options."),
+    })
+    .describe("Multiple answer choice response.");
+
 const zShortAnswerQuestion = z
     .object({
         type: z.literal("short_answer"),
@@ -43,6 +64,17 @@ const zShortAnswerQuestion = z
             .describe("The text of the question."),
     })
     .describe("Short answer question.");
+
+const zShortAnswerResponse = z
+    .object({
+        type: z.literal("short_answer"),
+        response: z
+            .string()
+            .min(1)
+            .max(5000)
+            .describe("The short answer response."),
+    })
+    .describe("The short answer response.");
 
 const zSliderAnswerQuestion = z
     .object({
@@ -68,6 +100,13 @@ const zSliderAnswerQuestion = z
     })
     .describe("Slider answer question.");
 
+const zSliderAnswerResponse = z
+    .object({
+        type: z.literal("slider_answer"),
+        response: z.number().describe("The selected slider value."),
+    })
+    .describe("The selected slider value.");
+
 const zQuestion = z.object({
     question: z
         .union([
@@ -78,6 +117,18 @@ const zQuestion = z.object({
         ])
         .describe("Question in the questionnaire."),
     required: z.boolean().describe("Indicates if the question is required."),
+});
+
+const zResponse = z.object({
+    questionId: z.string().describe("ID of the question."),
+    response: z
+        .union([
+            zSignalChiceResponse,
+            zMultipleChoiceResponse,
+            zShortAnswerResponse,
+            zSliderAnswerResponse,
+        ])
+        .describe("Response to the question."),
 });
 
 export const zQuestionnaire = z
@@ -115,6 +166,13 @@ export const zQuestionnaire = z
             .min(1)
             .max(100)
             .describe("List of questions in the questionnaire."),
+        responses: z
+            .array(zResponse)
+            .min(1)
+            .max(100)
+            .nullable()
+            .default(null)
+            .describe("List of responses to the questionnaire."),
         startAt: zFirebaseTimestamp.describe(
             "When the questionnaire becomes available.",
         ),
