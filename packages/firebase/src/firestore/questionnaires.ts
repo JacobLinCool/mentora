@@ -14,14 +14,6 @@ const zSingleChoiceQuestion = z
             .min(1)
             .max(100)
             .describe("Answer options for single answer choice question."),
-        response: z
-            .string()
-            .min(1)
-            .max(500)
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("The selected answer option."),
     })
     .describe("Single answer choice question.");
 
@@ -38,12 +30,6 @@ const zMultipleChoiceQuestion = z
             .min(1)
             .max(100)
             .describe("Answer options for multiple answer choice question."),
-        response: z
-            .array(z.string().min(1).max(500))
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("The selected answer options."),
     })
     .describe("Multiple answer choice question.");
 
@@ -55,14 +41,6 @@ const zShortAnswerQuestion = z
             .min(1)
             .max(5000)
             .describe("The text of the question."),
-        response: z
-            .string()
-            .min(1)
-            .max(5000)
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("The short answer response."),
     })
     .describe("Short answer question.");
 
@@ -87,12 +65,6 @@ const zSliderAnswerQuestion = z
         minValue: z.number().describe("Minimum value of the slider."),
         maxValue: z.number().describe("Maximum value of the slider."),
         step: z.number().positive().describe("Step value for the slider."),
-        response: z
-            .number()
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("The selected slider value."),
     })
     .describe("Slider answer question.");
 

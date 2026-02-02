@@ -18,6 +18,7 @@ import * as AssignmentsModule from './assignments.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
 import * as QuestionnairesModule from './questionnaires.js';
+import * as QuestionnaireResponsesModule from './questionnaireResponses.js';
 import * as SubmissionsModule from './submissions.js';
 import * as TopicsModule from './topics.js';
 import type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
@@ -30,6 +31,7 @@ export type {
 	CourseDoc,
 	CourseMembership,
 	Questionnaire,
+	QuestionnaireResponse,
 	Submission,
 	Topic,
 	Turn,
@@ -286,6 +288,72 @@ export class MentoraClient {
 		delete: (questionnaireId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() =>
 				QuestionnairesModule.deleteQuestionnaire(this._config, questionnaireId)
+			)
+	};
+
+	// ============ Questionnaire Responses ============
+	questionnaireResponses = {
+		get: (
+			questionnaireId: string,
+			userId: string
+		): Promise<APIResult<import('mentora-firebase').QuestionnaireResponse>> =>
+			this.authReadyThen(() =>
+				QuestionnaireResponsesModule.getQuestionnaireResponse(this._config, questionnaireId, userId)
+			),
+		listForQuestionnaire: (
+			questionnaireId: string,
+			options?: QueryOptions
+		): Promise<APIResult<import('mentora-firebase').QuestionnaireResponse[]>> =>
+			this.authReadyThen(() =>
+				QuestionnaireResponsesModule.listQuestionnaireResponses(
+					this._config,
+					questionnaireId,
+					options
+				)
+			),
+		listMine: (
+			options?: QueryOptions
+		): Promise<APIResult<import('mentora-firebase').QuestionnaireResponse[]>> =>
+			this.authReadyThen(() =>
+				QuestionnaireResponsesModule.listMyQuestionnaireResponses(this._config, options)
+			),
+		getMine: (
+			questionnaireId: string
+		): Promise<APIResult<import('mentora-firebase').QuestionnaireResponse | null>> =>
+			this.authReadyThen(() =>
+				QuestionnaireResponsesModule.getMyQuestionnaireResponse(this._config, questionnaireId)
+			),
+		submit: (
+			questionnaireId: string,
+			responses: import('mentora-firebase').QuestionnaireResponse['responses'],
+			courseId?: string | null
+		): Promise<APIResult<string>> =>
+			this.authReadyThen(() =>
+				QuestionnaireResponsesModule.submitQuestionnaireResponse(
+					this._config,
+					questionnaireId,
+					responses,
+					courseId
+				)
+			),
+		updateMine: (
+			questionnaireId: string,
+			responses: import('mentora-firebase').QuestionnaireResponse['responses']
+		): Promise<APIResult<import('mentora-firebase').QuestionnaireResponse>> =>
+			this.authReadyThen(() =>
+				QuestionnaireResponsesModule.updateMyQuestionnaireResponse(
+					this._config,
+					questionnaireId,
+					responses
+				)
+			),
+		delete: (questionnaireId: string, userId: string): Promise<APIResult<void>> =>
+			this.authReadyThen(() =>
+				QuestionnaireResponsesModule.deleteQuestionnaireResponse(
+					this._config,
+					questionnaireId,
+					userId
+				)
 			)
 	};
 
