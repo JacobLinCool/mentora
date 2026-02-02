@@ -2,7 +2,7 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { page } from "$app/state";
-    import { api } from "$lib/api";
+    import { api, type QuestionnaireResponse } from "$lib/api";
     import { ArrowLeft } from "@lucide/svelte";
 
     import PageHead from "$lib/components/PageHead.svelte";
@@ -60,10 +60,12 @@
         if (!assignmentId) return;
         try {
             // Load questionnaire and assignment details (for courseId)
-            const [questionnaireRes, assignmentRes] = await Promise.all([
-                api.questionnaires.get(assignmentId),
-                api.assignments.get(assignmentId),
-            ]);
+            const [questionnaireRes, assignmentRes, myResponseRes] =
+                await Promise.all([
+                    api.questionnaires.get(assignmentId),
+                    api.assignments.get(assignmentId),
+                    api.questionnaireResponses.getMine(assignmentId),
+                ]);
 
             if (assignmentRes.success) {
                 courseId = assignmentRes.data.courseId ?? null;
@@ -82,9 +84,9 @@
 
                 if (qa.questions && Array.isArray(qa.questions)) {
                     // Map backend question schema to UI question schema
-                    questions = qa.questions.map((q: any) => {
+                    questions = qa.questions.map((q, index: number) => {
                         const base = q.question;
-                        let type = base.type;
+                        let type: string = base.type;
                         // Map backend types to frontend component types
                         if (type === "single_answer_choice")
                             type = "single_choice";
@@ -94,24 +96,35 @@
 
                         return {
                             ...base,
+                            question: base.questionText,
                             type,
                             required: q.required,
-                            id:
-                                q.questionId ||
-                                Math.random().toString(36).substr(2, 9),
-                        };
+                            id: index.toString(),
+                        } as unknown as Question;
                     });
 
-                    // Restore existing answers
-                    if (qa.responses && Array.isArray(qa.responses)) {
-                        qa.responses.forEach((r: any) => {
-                            if (
-                                r.response &&
-                                r.response.response !== undefined
-                            ) {
-                                answers[r.questionId] = r.response.response;
-                            }
-                        });
+                    // Restore existing answers from QuestionnaireResponse
+                    if (myResponseRes.success && myResponseRes.data) {
+                        const savedResponses = myResponseRes.data.responses;
+                        if (Array.isArray(savedResponses)) {
+                            savedResponses.forEach((r) => {
+                                // Identify question by index
+                                const qIndex = r.questionIndex;
+                                if (qIndex >= 0 && qIndex < questions.length) {
+                                    const qId = questions[qIndex].id;
+                                    if (
+                                        r.answer &&
+                                        r.answer.response !== undefined
+                                    ) {
+                                        const val = r.answer.response;
+                                        answers[qId] =
+                                            typeof val === "number"
+                                                ? String(val)
+                                                : val;
+                                    }
+                                }
+                            });
+                        }
                     }
                 } else {
                     questions = [];
@@ -122,7 +135,6 @@
                     questionnaireRes.error,
                 );
             }
-            // Temporarily skip legacy fallback logic which confused Assignment and Questionnaire
         } catch (e) {
             console.error("Failed to load questionnaire", e);
         } finally {
@@ -134,9 +146,10 @@
         if (!assignmentId || !api.currentUser) return;
 
         // Map UI answers to Backend Schema Responses
-        // Schema requires: { questionId: string, response: { type: string, response: any } }[]
-        const responses = questions
-            .map((q) => {
+        // Schema requires: { questionIndex: number, answer: { type: string, response: any } }[]
+        const responses: QuestionnaireResponse["responses"] = questions
+            .map((q, index) => {
+                // Use index for backend mapping
                 const answerVal = answers[q.id];
 
                 // Skip missing answers
@@ -145,46 +158,46 @@
                 // Construct strictly typed response object based on question type
                 if (q.type === "short_answer") {
                     return {
-                        questionId: q.id,
-                        response: {
-                            type: "short_answer",
+                        questionIndex: index,
+                        answer: {
+                            type: "short_answer" as const,
                             response: answerVal as string,
                         },
                     };
                 }
                 if (q.type === "single_choice") {
                     return {
-                        questionId: q.id,
-                        response: {
-                            type: "single_answer_choice",
+                        questionIndex: index,
+                        answer: {
+                            type: "single_answer_choice" as const,
                             response: answerVal as string,
                         },
                     };
                 }
                 if (q.type === "multiple_choice") {
                     return {
-                        questionId: q.id,
-                        response: {
-                            type: "multiple_answer_choice",
+                        questionIndex: index,
+                        answer: {
+                            type: "multiple_answer_choice" as const,
                             response: answerVal as string[],
                         },
                     };
                 }
                 return null;
             })
-            .filter((r) => r !== null);
+            // Filter out nulls and satisfy TS
+            .filter((r): r is NonNullable<typeof r> => r !== null);
 
         try {
-            // Call api.questionnaires.submitResponse as requested
-            // Note: This assumes the user has permission to update the questionnaire doc.
-            const result = await api.questionnaires.submitResponse(
+            // Call api.questionnaireResponses.submit
+            const result = await api.questionnaireResponses.submit(
                 assignmentId,
-                responses as any, // Type assertion to match Backend Schema if needed
+                responses,
+                courseId,
             );
 
             if (!result.success) {
                 console.error("Failed to save answers:", result.error);
-                // If permission denied, it confirms the backend model mismatch
             }
         } catch (e) {
             console.error("Failed to save answers", e);
@@ -253,6 +266,15 @@
 
     async function handleSubmit() {
         if (submitting || !assignmentId) return;
+
+        // Final validation: Ensure current question is answered if required
+        // Especially critical for Essays/Short Answer if user types nothing
+        if (!isCurrentAnswered()) {
+            // Optional: Show a toast or visual shake? For now, we rely on the button disabled state.
+            // But if this is called programmatically or button not disabled correctly:
+            return;
+        }
+
         submitting = true;
 
         try {

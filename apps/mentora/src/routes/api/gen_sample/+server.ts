@@ -67,7 +67,7 @@ export const GET: RequestHandler = async (event) => {
 
                 // Determine deadlines
                 const ONE_DAY = 86400000;
-                let startAt = now - 5 * ONE_DAY;
+                const startAt = now - 5 * ONE_DAY;
                 let dueAt: number | null = null;
                 let typeName;
                 let promptContent;
@@ -126,7 +126,7 @@ export const GET: RequestHandler = async (event) => {
                                 required: true,
                             },
                         ],
-                        responses: null,
+                        // responses: null, // REMOVED: responses handled globally in questionnaireResponses collection
                         startAt: qStartAt,
                         dueAt: qDueAt,
                         allowLate: true,
@@ -190,7 +190,7 @@ export const GET: RequestHandler = async (event) => {
                                 required: true,
                             },
                         ],
-                        responses: null,
+                        // responses: null, // REMOVED: responses handled globally
                         startAt: qStartAt,
                         dueAt: qDueAt,
                         allowLate: true,
@@ -210,10 +210,6 @@ export const GET: RequestHandler = async (event) => {
                 }
 
                 // Assignments
-                let targetType: "assignment" | "questionnaire" = "assignment";
-                let intendedSubtype: "conversation" | "essay" | "assignment" =
-                    "conversation";
-
                 if (i === 1) {
                     if (j === 1) {
                         // Due Soon (Active) - Conversation
@@ -223,7 +219,7 @@ export const GET: RequestHandler = async (event) => {
                             "Engage in a debate about the ethics of artificial intelligence. Focus on the trolley problem adaptation.";
                         createSubmission = true;
                         createConversation = true;
-                        intendedSubtype = "conversation";
+                        // intendedSubtype = "conversation";
 
                         // Create Assignment (Conversation)
                         const assignment = {

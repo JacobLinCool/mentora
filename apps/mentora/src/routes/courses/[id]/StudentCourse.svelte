@@ -27,8 +27,6 @@
         orderInTopic?: number;
         submissionState?: "in_progress" | "submitted" | "graded_complete";
     }
-    // Alias for backward compat if needed, or I'll update usages
-    type CourseAssignment = CourseItem;
 
     // State
     let loading = $state(true);
@@ -77,12 +75,12 @@
             }
 
             // Create Maps for O(1) Lookup
-            const assignmentMap = new Map<string, Assignment>();
+            const assignmentMap = new SvelteMap<string, Assignment>();
             if (assignmentsRes.success) {
                 assignmentsRes.data.forEach((a) => assignmentMap.set(a.id, a));
             }
 
-            const questionnaireMap = new Map<string, Questionnaire>();
+            const questionnaireMap = new SvelteMap<string, Questionnaire>();
             if (questionnairesRes.success) {
                 questionnairesRes.data.forEach((q) =>
                     questionnaireMap.set(q.id, q),
@@ -168,7 +166,7 @@
 
                             groups[topic.id].push({
                                 ...a,
-                                type: finalType as any,
+                                type: finalType as CourseItem["type"],
                                 completed: isCompleted,
                                 submissionState: sub?.state,
                                 locked: a.startAt
@@ -234,7 +232,8 @@
         currentTopicIndex = index;
     }
 
-    async function handleAssignmentClick(item: any) {
+    async function handleAssignmentClick(assignment: Assignment) {
+        const item = assignment as CourseItem;
         if (item.locked) return;
 
         if (item.type === "questionnaire") {
@@ -322,7 +321,9 @@
             <h3 class="section-title">作業進度</h3>
             <AssignmentTimeline
                 assignments={currentAssignments}
-                onAssignmentClick={handleAssignmentClick}
+                onAssignmentClick={handleAssignmentClick as unknown as (
+                    item: object,
+                ) => void}
             />
         </section>
     {/if}

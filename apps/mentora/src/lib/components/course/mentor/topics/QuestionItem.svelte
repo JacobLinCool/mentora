@@ -14,6 +14,7 @@
         dndzone,
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
     } from "svelte-dnd-action";
+    import { untrack } from "svelte";
 
     type QuestionType = "single" | "multiple" | "text";
 
@@ -53,13 +54,27 @@
     // Local Edit state
     // We start in edit mode ONLY if explicitly requested AND we are not dragging.
     // This prevents drag operations (which may recreate components) from triggering edit mode.
-    let isEditing = $state(initialEditMode && !isDragging);
+    let isEditing = $state(untrack(() => initialEditMode && !isDragging));
 
-    let currentType = $state<QuestionType>(initialType);
-    let currentQuestion = $state(initialQuestion);
-    let currentOptions = $state<Option[]>([...initialOptions]);
+    let currentType = $state<QuestionType>(untrack(() => initialType));
+    let currentQuestion = $state(untrack(() => initialQuestion));
+    let currentOptions = $state<Option[]>(untrack(() => [...initialOptions]));
 
     const flipDurationMs = 200;
+
+    const typeOptions: { value: QuestionType; label: string }[] = [
+        { value: "single", label: m.mentor_assignment_question_type_single() },
+        {
+            value: "multiple",
+            label: m.mentor_assignment_question_type_multiple(),
+        },
+        { value: "text", label: m.mentor_assignment_question_type_text() },
+    ];
+
+    let Icon = $derived(getTypeIcon(initialType));
+    let typeLabel = $derived(
+        typeOptions.find((o) => o.value === initialType)?.label,
+    );
 
     // Reset edit state when props change
     $effect(() => {
@@ -70,15 +85,6 @@
             currentOptions = [...initialOptions];
         }
     });
-
-    const typeOptions: { value: QuestionType; label: string }[] = [
-        { value: "single", label: m.mentor_assignment_question_type_single() },
-        {
-            value: "multiple",
-            label: m.mentor_assignment_question_type_multiple(),
-        },
-        { value: "text", label: m.mentor_assignment_question_type_text() },
-    ];
 
     function getTypeIcon(t: QuestionType) {
         switch (t) {
@@ -175,15 +181,8 @@
                         <div
                             class="flex items-center gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5 text-sm text-gray-600"
                         >
-                            <svelte:component
-                                this={getTypeIcon(initialType)}
-                                size={16}
-                            />
-                            <span class="truncate"
-                                >{typeOptions.find(
-                                    (o) => o.value === initialType,
-                                )?.label}</span
-                            >
+                            <Icon size={16} />
+                            <span class="truncate">{typeLabel}</span>
                         </div>
                     {/if}
                 </div>

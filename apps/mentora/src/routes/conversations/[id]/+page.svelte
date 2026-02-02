@@ -180,10 +180,14 @@
             );
             if (!res.success) {
                 console.error("Failed to add turn:", res.error);
-                const msg =
-                    typeof res.error === "object" && res.error
-                        ? (res.error as any).message
-                        : String(res.error);
+                let msg = String(res.error);
+                if (
+                    typeof res.error === "object" &&
+                    res.error !== null &&
+                    "message" in res.error
+                ) {
+                    msg = (res.error as { message: string }).message;
+                }
                 alert("Failed to send message: " + (msg || "Unknown error"));
             } else {
                 messageInput = "";
