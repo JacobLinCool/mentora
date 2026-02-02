@@ -13,7 +13,9 @@
     } from "$lib/api";
     import { Spinner } from "flowbite-svelte";
     import TopicCarousel from "$lib/components/course/TopicCarousel.svelte";
-    import AssignmentTimeline from "$lib/components/course/AssignmentTimeline.svelte";
+    import AssignmentTimeline, {
+        type Assignment as TimelineAssignment,
+    } from "$lib/components/course/AssignmentTimeline.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import PageHead from "$lib/components/PageHead.svelte";
 
@@ -249,7 +251,7 @@
         currentTopicIndex = index;
     }
 
-    async function handleAssignmentClick(item: CourseItem) {
+    async function handleAssignmentClick(item: TimelineAssignment) {
         if (item.locked) return;
 
         if (item.type === "questionnaire") {
@@ -315,9 +317,7 @@
             <h3 class="section-title">作業進度</h3>
             <AssignmentTimeline
                 assignments={currentAssignments}
-                onAssignmentClick={handleAssignmentClick as (
-                    item: Assignment,
-                ) => void}
+                onAssignmentClick={handleAssignmentClick}
             />
         </section>
     {/if}

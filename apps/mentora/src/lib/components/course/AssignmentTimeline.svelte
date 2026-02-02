@@ -1,3 +1,15 @@
+<script module lang="ts">
+    export interface Assignment {
+        id: string;
+        title: string;
+        dueAt: number | null;
+        type: "quiz" | "conversation" | "essay" | "questionnaire";
+        completed: boolean; // This maps to "is done"
+        locked: boolean;
+        submissionState?: "in_progress" | "submitted" | "graded_complete"; // NEW: Explicit state
+    }
+</script>
+
 <script lang="ts">
     import {
         Calendar,
@@ -7,16 +19,6 @@
         Check,
         Clock,
     } from "@lucide/svelte";
-
-    interface Assignment {
-        id: string;
-        title: string;
-        dueAt: number | null;
-        type: "quiz" | "conversation" | "essay" | "questionnaire";
-        completed: boolean; // This maps to "is done"
-        locked: boolean;
-        submissionState?: "in_progress" | "submitted" | "graded_complete"; // NEW: Explicit state
-    }
 
     interface Props {
         assignments: Assignment[];
