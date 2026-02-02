@@ -70,8 +70,6 @@ describe('LLM Service (Integration)', () => {
 			topicId: null,
 			title: `LLM Test Assignment ${generateTestId()}`,
 			prompt: 'Test philosophical prompt for LLM dialogue',
-			description:
-				'Should the education system prioritize individual achievement or collective well-being?',
 			mode: 'instant',
 			startAt: Date.now(),
 			dueAt: null,
@@ -154,31 +152,37 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: 'case_challenge',
+				subState: 'main',
 				loopCount: 2,
 				stanceHistory: [
 					{
 						version: 1,
 						position: 'Individual achievement is important',
-						reason: 'Motivates personal growth'
+						reason: 'Motivates personal growth',
+						establishedAt: Date.now()
 					}
 				],
 				currentStance: {
 					version: 1,
 					position: 'Individual achievement is important',
-					reason: 'Motivates personal growth'
+					reason: 'Motivates personal growth',
+					establishedAt: Date.now()
 				},
 				principleHistory: [
 					{
 						version: 1,
 						statement: 'Merit-based systems are fair',
-						classification: 'justice'
+						classification: 'justice',
+						establishedAt: Date.now()
 					}
 				],
 				currentPrinciple: {
 					version: 1,
 					statement: 'Merit-based systems are fair',
-					classification: 'justice'
+					classification: 'justice',
+					establishedAt: Date.now()
 				},
+				conversationHistory: [],
 				discussionSatisfied: false,
 				summary: null
 			};
@@ -216,11 +220,13 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: 'principle_reasoning',
+				subState: 'main',
 				loopCount: 1,
 				stanceHistory: [],
 				currentStance: null,
 				principleHistory: [],
 				currentPrinciple: null,
+				conversationHistory: [],
 				discussionSatisfied: false,
 				summary: null
 			};
@@ -241,11 +247,13 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: 'non-existent',
 				stage: 'awaiting_start',
+				subState: 'main',
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
 				principleHistory: [],
 				currentPrinciple: null,
+				conversationHistory: [],
 				discussionSatisfied: false,
 				summary: null
 			};
@@ -262,11 +270,13 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: 'awaiting_start',
+				subState: 'main',
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
 				principleHistory: [],
 				currentPrinciple: null,
+				conversationHistory: [],
 				discussionSatisfied: false,
 				summary: null
 			};
@@ -282,11 +292,13 @@ describe('LLM Service (Integration)', () => {
 			const state: DialogueState = {
 				topic: 'test',
 				stage: 'awaiting_start',
+				subState: 'main',
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
 				principleHistory: [],
 				currentPrinciple: null,
+				conversationHistory: [],
 				discussionSatisfied: false,
 				summary: null
 			};
@@ -303,14 +315,16 @@ describe('LLM Service (Integration)', () => {
 			const state: DialogueState = {
 				topic: 'test',
 				stage: 'case_challenge',
+				subState: 'main',
 				loopCount: 2,
 				stanceHistory: [
-					{ version: 1, position: 'Stance 1', reason: 'Reason 1' },
-					{ version: 2, position: 'Stance 2', reason: 'Reason 2' }
+					{ version: 1, position: 'Stance 1', reason: 'Reason 1', establishedAt: Date.now() },
+					{ version: 2, position: 'Stance 2', reason: 'Reason 2', establishedAt: Date.now() }
 				],
-				currentStance: { version: 2, position: 'Stance 2', reason: 'Reason 2' },
-				principleHistory: [{ version: 1, statement: 'Principle 1', classification: 'justice' }],
-				currentPrinciple: { version: 1, statement: 'Principle 1', classification: 'justice' },
+				currentStance: { version: 2, position: 'Stance 2', reason: 'Reason 2', establishedAt: Date.now() },
+				principleHistory: [{ version: 1, statement: 'Principle 1', classification: 'justice', establishedAt: Date.now() }],
+				currentPrinciple: { version: 1, statement: 'Principle 1', classification: 'justice', establishedAt: Date.now() },
+				conversationHistory: [],
 				discussionSatisfied: false,
 				summary: null
 			};
@@ -321,7 +335,8 @@ describe('LLM Service (Integration)', () => {
 			expect(summary.currentStance).toEqual({
 				version: 2,
 				position: 'Stance 2',
-				reason: 'Reason 2'
+				reason: 'Reason 2',
+				establishedAt: Date.now()
 			});
 			expect(summary.principleCount).toBe(1);
 			expect(summary.loopCount).toBe(2);

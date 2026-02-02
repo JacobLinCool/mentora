@@ -49,7 +49,6 @@ describe('addTurn Route Handler (Integration)', () => {
 			topicId: null,
 			title: `addTurn Test Assignment ${generateTestId()}`,
 			prompt: 'Test prompt',
-			description: 'Test philosophical question for dialogue',
 			mode: 'instant',
 			startAt: Date.now(),
 			dueAt: null,

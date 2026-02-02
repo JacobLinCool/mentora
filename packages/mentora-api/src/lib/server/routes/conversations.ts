@@ -285,7 +285,7 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			.doc(Assignments.docPath(conversation.assignmentId))
 			.get();
 		const assignment = assignmentDoc.exists ? Assignments.schema.parse(assignmentDoc.data()) : null;
-		const topicContext = assignment?.description || '';
+		const topicContext = assignment?.prompt || '';
 
 		// Process with LLM orchestrator
 		// This handles: state initialization → dialogue stage → response generation

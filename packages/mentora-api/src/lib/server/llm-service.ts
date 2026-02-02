@@ -100,8 +100,10 @@ export async function loadDialogueState(
 
 		if (stateDoc.exists) {
 			const data = stateDoc.data();
-			console.log(`[MentoraLLM] Loaded dialogue state for ${conversationId}`);
-			return data as DialogueState;
+			if (data) {
+				console.log(`[MentoraLLM] Loaded dialogue state for ${conversationId}`);
+				return data as unknown as DialogueState;
+			}
 		}
 	} catch (error) {
 		console.error(`[MentoraLLM] Error loading dialogue state for ${conversationId}:`, error);
