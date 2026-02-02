@@ -145,10 +145,6 @@ describe('Conversations Module (Integration)', () => {
 		});
 	});
 
-	describe('addTurn()', () => {
-		// REMOVED: "should add a turn to conversation" - requires LLM API key configured
-	});
-
 	describe('endConversation()', () => {
 		it('should end conversation', async () => {
 			if (!testConversationId) {

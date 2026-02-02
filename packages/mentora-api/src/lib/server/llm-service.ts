@@ -65,7 +65,6 @@ export function getOrchestrator(): MentoraOrchestrator {
  * This prevents unauthorized access to other users' dialogue states.
  *
  * On first interaction (no saved state), returns a fresh DialogueState
- * via orchestrator.initializeSession()
  *
  * @param firestore - Firestore instance
  * @param conversationId - The conversation ID (used as dialogue topic on init)
@@ -78,7 +77,7 @@ export async function loadDialogueState(
 	conversationId: string,
 	userId: string
 ): Promise<DialogueState> {
-	// Verify user owns this conversation
+	// Verify user owns this conversation FIRST (before any other operations)
 	const conversationRef = firestore.doc(Conversations.docPath(conversationId));
 	const conversationDoc = await conversationRef.get();
 
@@ -111,9 +110,21 @@ export async function loadDialogueState(
 
 	console.log(`[MentoraLLM] State document not found for ${conversationId}, will initialize new`);
 
-	// First interaction - initialize new state using orchestrator
-	const orchestrator = getOrchestrator();
-	const newState = orchestrator.initializeSession(conversationId);
+	// First interaction - return a fresh initial state without requiring API key
+	// The orchestrator will be initialized in processWithLLM when actually needed
+	const newState: DialogueState = {
+		topic: conversationId,
+		stage: 'awaiting_start',
+		subState: 'main',
+		loopCount: 0,
+		stanceHistory: [],
+		currentStance: null,
+		principleHistory: [],
+		currentPrinciple: null,
+		conversationHistory: [],
+		discussionSatisfied: false,
+		summary: null
+	};
 	console.log(`[MentoraLLM] Initialized new dialogue state for ${conversationId}`);
 
 	return newState;

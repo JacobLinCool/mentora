@@ -203,9 +203,17 @@ describe('addTurn Route Handler (Integration)', () => {
 				return;
 			}
 
+				// Create a fresh conversation for this test
+			const newConvResult = await studentClient.conversations.create(testAssignmentId);
+			if (!newConvResult.success) {
+				console.log('Skipping - could not create test conversation');
+				return;
+			}
+			const testConvId = newConvResult.data.id;
+
 			// With no API key, the backend should return an error
 			const result = await studentClient.conversations.addTurn(
-				testConversationId,
+				testConvId,
 				'Test message',
 				'idea'
 			);
