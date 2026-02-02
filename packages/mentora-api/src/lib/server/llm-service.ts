@@ -155,7 +155,7 @@ export async function saveDialogueState(
 
 	// Safe to save state now that ownership is verified
 	const stateRef = firestore.doc(joinPath('conversations', conversationId, 'metadata', 'state'));
-	await stateRef.set(state);
+	await stateRef.set(state as unknown as Record<string, unknown>);
 	console.log(`[MentoraLLM] Saved dialogue state for ${conversationId}`);
 }
 

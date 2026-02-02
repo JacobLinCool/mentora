@@ -20,6 +20,7 @@ import {
 	getOrchestrator
 } from '../src/lib/server/llm-service.js';
 import type { DialogueState } from 'mentora-ai';
+import { DialogueStage, SubState } from 'mentora-ai';
 import {
 	setupTeacherClient,
 	setupStudentClient,
@@ -142,7 +143,7 @@ describe('LLM Service (Integration)', () => {
 			const state = await loadDialogueState(firestore, testConversationId, studentUserId);
 
 			expect(state).toBeDefined();
-			expect(state.stage).toBe('awaiting_start');
+			expect(state.stage).toBe(DialogueStage.AWAITING_START);
 			expect(state.loopCount).toBe(0);
 			expect(state.stanceHistory).toEqual([]);
 		});
@@ -151,8 +152,8 @@ describe('LLM Service (Integration)', () => {
 			// First, save a state
 			const mockState: DialogueState = {
 				topic: testConversationId,
-				stage: 'case_challenge',
-				subState: 'main',
+				stage: DialogueStage.CASE_CHALLENGE,
+				subState: SubState.MAIN,
 				loopCount: 2,
 				stanceHistory: [
 					{
@@ -192,7 +193,7 @@ describe('LLM Service (Integration)', () => {
 
 			const loadedState = await loadDialogueState(firestore, testConversationId, studentUserId);
 
-			expect(loadedState.stage).toBe('case_challenge');
+			expect(loadedState.stage).toBe(DialogueStage.CASE_CHALLENGE);
 			expect(loadedState.loopCount).toBe(2);
 			expect(loadedState.stanceHistory).toHaveLength(1);
 		});
@@ -219,8 +220,8 @@ describe('LLM Service (Integration)', () => {
 		it('should persist dialogue state to Firestore', async () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
-				stage: 'principle_reasoning',
-				subState: 'main',
+				stage: DialogueStage.PRINCIPLE_REASONING,
+				subState: SubState.MAIN,
 				loopCount: 1,
 				stanceHistory: [],
 				currentStance: null,
@@ -239,15 +240,15 @@ describe('LLM Service (Integration)', () => {
 
 			expect(stateDoc.exists).toBe(true);
 			const savedData = stateDoc.data() as DialogueState;
-			expect(savedData.stage).toBe('principle_reasoning');
+			expect(savedData.stage).toBe(DialogueStage.PRINCIPLE_REASONING);
 			expect(savedData.loopCount).toBe(1);
 		});
 
 		it('should throw error if conversation does not exist', async () => {
 			const mockState: DialogueState = {
 				topic: 'non-existent',
-				stage: 'awaiting_start',
-				subState: 'main',
+				stage: DialogueStage.AWAITING_START,
+				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -269,8 +270,8 @@ describe('LLM Service (Integration)', () => {
 
 			const mockState: DialogueState = {
 				topic: testConversationId,
-				stage: 'awaiting_start',
-				subState: 'main',
+				stage: DialogueStage.AWAITING_START,
+				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -291,8 +292,8 @@ describe('LLM Service (Integration)', () => {
 		it('should extract summary from empty dialogue state', () => {
 			const state: DialogueState = {
 				topic: 'test',
-				stage: 'awaiting_start',
-				subState: 'main',
+				stage: DialogueStage.AWAITING_START,
+				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -305,7 +306,7 @@ describe('LLM Service (Integration)', () => {
 
 			const summary = extractConversationSummary(state);
 
-			expect(summary.stage).toBe('awaiting_start');
+			expect(summary.stage).toBe(DialogueStage.AWAITING_START);
 			expect(summary.currentStance).toBeNull();
 			expect(summary.principleCount).toBe(0);
 			expect(summary.currentPrinciple).toBeNull();
@@ -314,8 +315,8 @@ describe('LLM Service (Integration)', () => {
 		it('should extract summary from dialogue state with content', () => {
 			const state: DialogueState = {
 				topic: 'test',
-				stage: 'case_challenge',
-				subState: 'main',
+				stage: DialogueStage.CASE_CHALLENGE,
+				subState: SubState.MAIN,
 				loopCount: 2,
 				stanceHistory: [
 					{ version: 1, position: 'Stance 1', reason: 'Reason 1', establishedAt: Date.now() },
@@ -331,7 +332,7 @@ describe('LLM Service (Integration)', () => {
 
 			const summary = extractConversationSummary(state);
 
-			expect(summary.stage).toBe('case_challenge');
+			expect(summary.stage).toBe(DialogueStage.CASE_CHALLENGE);
 			expect(summary.currentStance).toEqual({
 				version: 2,
 				position: 'Stance 2',
@@ -353,7 +354,7 @@ describe('LLM Service (Integration)', () => {
 
 			// Load initial state
 			const initialState = await loadDialogueState(firestore, testConversationId, studentUserId);
-			expect(initialState.stage).toBe('awaiting_start');
+			expect(initialState.stage).toBe(DialogueStage.AWAITING_START);
 
 			// Process first interaction (this will call orchestrator.startConversation)
 			const result = await processWithLLM(
