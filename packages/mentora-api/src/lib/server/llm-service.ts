@@ -11,7 +11,7 @@
 import { MentoraOrchestrator, GeminiPromptExecutor, type DialogueState } from 'mentora-ai';
 import { GoogleGenAI } from '@google/genai';
 import type { Firestore } from 'fires2rest';
-import { Conversations } from 'mentora-firebase';
+import { Conversations, joinPath } from 'mentora-firebase';
 
 /**
  * Singleton orchestrator instance
@@ -50,7 +50,7 @@ export function getOrchestrator(): MentoraOrchestrator {
 	orchestratorInstance = new MentoraOrchestrator(executor, {
 		maxLoops: 5,
 		minLoopsForClosure: 1,
-		logger: (msg, ...args: any[]) => console.log(`[MentoraLLM] ${msg}`, ...args)
+		logger: (msg: string, ...args: unknown[]) => console.log(`[MentoraLLM] ${msg}`, ...args)
 	});
 
 	return orchestratorInstance;
@@ -93,7 +93,7 @@ export async function loadDialogueState(
 	}
 
 	// Safe to load state now that ownership is verified
-	const stateRef = firestore.doc(`conversations/${conversationId}/metadata/state`);
+	const stateRef = firestore.doc(joinPath('conversations', conversationId, 'metadata', 'state'));
 
 	try {
 		const stateDoc = await stateRef.get();
@@ -152,7 +152,7 @@ export async function saveDialogueState(
 	}
 
 	// Safe to save state now that ownership is verified
-	const stateRef = firestore.doc(`conversations/${conversationId}/metadata/state`);
+	const stateRef = firestore.doc(joinPath('conversations', conversationId, 'metadata', 'state'));
 	await stateRef.set(state);
 	console.log(`[MentoraLLM] Saved dialogue state for ${conversationId}`);
 }
