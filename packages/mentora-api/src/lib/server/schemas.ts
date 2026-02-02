@@ -19,13 +19,26 @@ export const AddTurnSchema = z.object({
  * Schema for adding a turn with either text or audio
  * Audio will be stored as blob for later transcription
  */
-export const AddTurnWithAudioSchema = z.object({
-	text: z.string().optional().or(z.literal('')),
-	audio: z.instanceof(Blob).optional(),
-	type: z.enum(['idea', 'followup', 'summary', 'counterpoint']).optional().default('idea'),
-	// For LLM type distinction: 'user' = human input, 'assistant' = AI response
-	turnType: z.enum(['user', 'assistant']).optional().default('user')
-});
+export const AddTurnWithAudioSchema = z
+	.object({
+		text: z.string().optional(),
+		audio: z.instanceof(Blob).optional(),
+		type: z.enum(['idea', 'followup', 'summary', 'counterpoint']).optional().default('idea'),
+		// For LLM type distinction: 'user' = human input, 'assistant' = AI response
+		turnType: z.enum(['user', 'assistant']).optional().default('user')
+	})
+	.refine(
+		(data) => {
+			const hasText =
+				typeof data.text === 'string' && data.text.trim().length > 0;
+			const hasAudio = !!data.audio;
+			return hasText || hasAudio;
+		},
+		{
+			message: 'Either text or audio is required',
+			path: ['text']
+		}
+	);
 
 // ============ Courses ============
 
