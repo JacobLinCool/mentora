@@ -10,6 +10,7 @@
 
 import { MentoraOrchestrator, GeminiPromptExecutor, type DialogueState } from 'mentora-ai';
 import { GoogleGenAI } from '@google/genai';
+import { DialogueStage, SubState } from 'mentora-ai';
 import type { Firestore } from 'fires2rest';
 import { Conversations, joinPath } from 'mentora-firebase';
 
@@ -114,8 +115,8 @@ export async function loadDialogueState(
 	// The orchestrator will be initialized in processWithLLM when actually needed
 	const newState: DialogueState = {
 		topic: conversationId,
-		stage: 'awaiting_start',
-		subState: 'main',
+		stage: DialogueStage.AWAITING_START,
+		subState: SubState.MAIN,
 		loopCount: 0,
 		stanceHistory: [],
 		currentStance: null,
@@ -203,12 +204,13 @@ export async function processWithLLM(
 	updatedState: DialogueState;
 	ended: boolean;
 }> {
-	const orchestrator = getOrchestrator();
-
-	// Step 1: Load current state from Firestore (includes ownership validation)
+	// Step 1: Load current state from Firestore (includes ownership validation FIRST)
 	const currentState = await loadDialogueState(firestore, conversationId, userId);
 
-	// Step 2: Determine if this is first interaction
+	// Step 2: Only initialize orchestrator after authorization is confirmed
+	const orchestrator = getOrchestrator();
+
+	// Step 3: Determine if this is first interaction
 	// The orchestrator marks new states with stage === 'awaiting_start'
 	const isFirstInteraction = currentState.stage === 'awaiting_start';
 
@@ -218,10 +220,10 @@ export async function processWithLLM(
 		// First interaction: initialize the dialogue, then process student's first message
 		console.log(`[MentoraLLM] First interaction detected, starting conversation`);
 
-		// Step 2a: Call startConversation to transition from awaiting_start to asking_stance
+		// Step 3a: Call startConversation to transition from awaiting_start to asking_stance
 		const initResult = await orchestrator.startConversation(currentState, topicContext || '');
 
-		// Step 2b: Immediately process the student's first message
+		// Step 3b: Immediately process the student's first message
 		console.log(`[MentoraLLM] Processing student's first message`);
 		result = await orchestrator.processStudentInput(
 			initResult.newState,
@@ -238,10 +240,10 @@ export async function processWithLLM(
 		);
 	}
 
-	// Step 3: Save updated state to Firestore (includes ownership validation)
+	// Step 4: Save updated state to Firestore (includes ownership validation)
 	await saveDialogueState(firestore, conversationId, userId, result.newState);
 
-	// Step 4: Return formatted result
+	// Step 5: Return formatted result
 	return {
 		aiMessage: result.message,
 		updatedState: result.newState,

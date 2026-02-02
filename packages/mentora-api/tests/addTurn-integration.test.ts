@@ -201,19 +201,22 @@ describe('addTurn Route Handler (Integration)', () => {
 			if (process.env.GOOGLE_GENAI_API_KEY) {
 				console.log('Skipping - GOOGLE_GENAI_API_KEY is configured');
 				return;
-			}
+				}
 
-				// Create a fresh conversation for this test
+			// Create a completely fresh conversation for this test
+			// This test needs a brand new conversation to avoid state from previous tests
 			const newConvResult = await studentClient.conversations.create(testAssignmentId);
 			if (!newConvResult.success) {
 				console.log('Skipping - could not create test conversation');
 				return;
 			}
-			const testConvId = newConvResult.data.id;
+			const freshConversationId = newConvResult.data.id;
+
+			await delay(100); // Small delay to ensure conversation is fully created
 
 			// With no API key, the backend should return an error
 			const result = await studentClient.conversations.addTurn(
-				testConvId,
+				freshConversationId,
 				'Test message',
 				'idea'
 			);
@@ -223,6 +226,8 @@ describe('addTurn Route Handler (Integration)', () => {
 				return;
 			}
 
+			// Should get API key error, not "Conversation is closed"
+			expect(result.success).toBe(false);
 			if (!result.success) {
 				expect(result.error).toMatch(/configured|API key|GOOGLE_GENAI/i);
 			}
