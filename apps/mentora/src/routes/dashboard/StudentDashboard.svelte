@@ -23,6 +23,7 @@
             assignment: string;
             assignmentId: string;
             dueDate: Date;
+            type: string;
         }[]
     >([]);
     let selectedDeadline = $state<{
@@ -34,6 +35,7 @@
         assignment: string;
         assignmentId: string;
         dueDate: Date;
+        type: string;
     } | null>(null);
     let deadlineDates = $state<Date[]>([]);
     let lastConversation = $state<Conversation | null>(null);
@@ -106,6 +108,7 @@
                     assignment: a.title,
                     assignmentId: a.id,
                     dueDate: new Date(a.dueAt!),
+                    type: "assignment",
                 }));
 
                 deadlineDates = deadlines.map((d) => d.dueDate);
