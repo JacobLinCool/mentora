@@ -323,7 +323,7 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		// Handle audio blob if provided (async, non-blocking)
 		if (input.audio) {
 			console.log(
-				`[API] Audio blob received for turn ${userTurnId}: ${input.audio.type}, size: ${input.audio.size} bytes`
+				`[API] Audio blob received for turn ${userTurnId}: ${input.audio?.type}, size: ${input.audio?.size} bytes`
 			);
 			// TODO: Upload to Cloud Storage and queue transcription job
 		}
