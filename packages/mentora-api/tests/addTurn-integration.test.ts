@@ -65,7 +65,7 @@ describe('addTurn Route Handler (Integration)', () => {
 		const courseDocResult = await teacherClient.courses.get(testCourseId);
 		let joinCode = 'test-code';
 		if (courseDocResult.success) {
-			joinCode = (courseDocResult.data as Course).joinCode || 'test-code';
+			joinCode = (courseDocResult.data as Course).code || 'test-code';
 		}
 
 		const enrollResult = await studentClient.courses.joinByCode(joinCode);
