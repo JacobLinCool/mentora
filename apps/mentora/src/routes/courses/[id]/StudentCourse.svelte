@@ -37,21 +37,23 @@
     let groupedAssignments = $state<Record<string, CourseItem[]>>({});
 
     $effect(() => {
-        let mounted = true;
+        const cancelToken = { cancelled: false };
+
         if (courseId && api.isAuthenticated) {
-            loadData(mounted);
+            loadData(cancelToken);
         } else if (courseId && !api.isAuthenticated) {
             // Wait for auth to be ready if trying to load
             api.authReady.then(() => {
-                if (api.isAuthenticated && mounted) loadData(mounted);
+                if (api.isAuthenticated && !cancelToken.cancelled)
+                    loadData(cancelToken);
             });
         }
         return () => {
-            mounted = false;
+            cancelToken.cancelled = true;
         };
     });
 
-    async function loadData(mounted: boolean) {
+    async function loadData(cancelToken: { cancelled: boolean }) {
         if (!courseId) return;
         loading = true;
         try {
@@ -62,6 +64,8 @@
                     api.assignments.listAvailable(courseId),
                     api.questionnaires.listAvailable(courseId),
                 ]);
+
+            if (cancelToken.cancelled) return;
 
             if (courseRes.success) {
                 courseTitle = courseRes.data.title;
@@ -104,20 +108,33 @@
             if (allSubmissionIds.length > 0) {
                 const chunk = 5;
                 for (let i = 0; i < allSubmissionIds.length; i += chunk) {
-                    if (!mounted) break;
+                    if (cancelToken.cancelled) break;
                     const batch = allSubmissionIds.slice(i, i + chunk);
-                    await Promise.all(
+
+                    const results = await Promise.allSettled(
                         batch.map(async (id) => {
+                            // Check before each fetch (optimization) matches race condition prevention?
+                            // No, just fetch. We check token before setting.
                             const subRes = await api.submissions.getMine(id);
+                            // We need to pass the result out
+                            return { id, subRes };
+                        }),
+                    );
+
+                    if (cancelToken.cancelled) break;
+
+                    for (const result of results) {
+                        if (result.status === "fulfilled") {
+                            const { id, subRes } = result.value;
                             if (subRes.success && subRes.data) {
                                 submissionsMap.set(id, subRes.data);
                             }
-                        }),
-                    );
+                        }
+                    }
                 }
             }
 
-            if (!mounted) return;
+            if (cancelToken.cancelled) return;
 
             // 2. Build Timeline from Topic contents
             if (topicsRes.success) {
@@ -232,8 +249,7 @@
         currentTopicIndex = index;
     }
 
-    async function handleAssignmentClick(assignment: Assignment) {
-        const item = assignment as CourseItem;
+    async function handleAssignmentClick(item: CourseItem) {
         if (item.locked) return;
 
         if (item.type === "questionnaire") {
@@ -241,51 +257,29 @@
             return;
         }
 
-        if (item.type === "conversation") {
-            try {
-                // Check if a conversation actually exists or can be created
-                const convRes = await api.conversations.getForAssignment(
-                    item.id,
-                );
-                if (convRes.success && convRes.data.id) {
-                    goto(resolve(`/conversations/${convRes.data.id}`));
-                    return;
-                } else {
-                    // Try to create only if we are sure it's meant to be a conversation
-                    // For now, if getForAssignment fails, we MIGHT assume it's just an assignment (Essay)
-                    // But if it's truly a new conversation assignment, we should create it.
-                    // The issue: Essays are labeled 'conversation' by default.
-                    // Heuristic: Try to create. If backend says "Not a conversation assignment" (if checks existed) it would fail.
-                    // But backend create doesn't check type.
-
-                    // NEW STRATEGY:
-                    // Assume that if the type is ambiguous ('conversation'), we check the local storage or just rely on the user to correct the data.
-                    // But since we can't fix data, we'll try to create.
-
-                    // Actually, if it's an Essay, we want /assignments/[id].
-                    // Let's assume ONLY "Quiz" and "Questionnaire" are strict.
-                    // If it is 'conversation' (generic default), we check if the title contains "Essay" as a last resort hack,
-                    // OR we just route to assignments if conversation creation fails.
-
-                    const createRes = await api.conversations.create(item.id);
-                    if (createRes.success && createRes.data.id) {
-                        await api.submissions.start(item.id);
-                        goto(resolve(`/conversations/${createRes.data.id}`));
-                        return;
-                    }
-
-                    // If creation failed/returned null, fall through to assignment page
-                }
-            } catch (e) {
-                console.warn(
-                    "Routing as standard assignment due to conversation error",
-                    e,
-                );
+        // Treat everything else as conversation (or specific conversation type)
+        // because we don't have separate assignment pages anymore.
+        try {
+            // Check if a conversation actually exists or can be created
+            const convRes = await api.conversations.getForAssignment(item.id);
+            if (convRes.success && convRes.data.id) {
+                goto(resolve(`/conversations/${convRes.data.id}`));
+                return;
             }
+
+            // Try to create
+            const createRes = await api.conversations.create(item.id);
+            if (createRes.success && createRes.data.id) {
+                await api.submissions.start(item.id);
+                goto(resolve(`/conversations/${createRes.data.id}`));
+                return;
+            }
+        } catch (e) {
+            console.error("Failed to route to conversation", e);
         }
 
-        // Fallback for Essays or unknown types
-        goto(resolve(`/assignments/${item.id}`));
+        // If we fall through here, it means we couldn't find or create a conversation.
+        // We do NOT redirect to /assignments anymore.
     }
 
     function goBack() {
@@ -321,8 +315,8 @@
             <h3 class="section-title">作業進度</h3>
             <AssignmentTimeline
                 assignments={currentAssignments}
-                onAssignmentClick={handleAssignmentClick as unknown as (
-                    item: object,
+                onAssignmentClick={handleAssignmentClick as (
+                    item: Assignment,
                 ) => void}
             />
         </section>

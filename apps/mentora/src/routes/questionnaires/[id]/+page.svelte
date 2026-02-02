@@ -84,24 +84,47 @@
 
                 if (qa.questions && Array.isArray(qa.questions)) {
                     // Map backend question schema to UI question schema
-                    questions = qa.questions.map((q, index: number) => {
-                        const base = q.question;
-                        let type: string = base.type;
-                        // Map backend types to frontend component types
-                        if (type === "single_answer_choice")
-                            type = "single_choice";
-                        if (type === "multiple_answer_choice")
-                            type = "multiple_choice";
-                        // Keep 'short_answer' as is
+                    questions = qa.questions.map(
+                        (q, index: number): Question => {
+                            const base = q.question;
+                            const id = index.toString();
+                            const required = q.required;
+                            const questionText = base.questionText;
 
-                        return {
-                            ...base,
-                            question: base.questionText,
-                            type,
-                            required: q.required,
-                            id: index.toString(),
-                        } as unknown as Question;
-                    });
+                            if (base.type === "single_answer_choice") {
+                                return {
+                                    type: "single_choice",
+                                    id,
+                                    question: questionText,
+                                    options: base.options,
+                                    required,
+                                };
+                            } else if (base.type === "multiple_answer_choice") {
+                                return {
+                                    type: "multiple_choice",
+                                    id,
+                                    question: questionText,
+                                    options: base.options,
+                                    required,
+                                };
+                            } else {
+                                // short_answer
+                                // Define interface for potential extra fields
+                                const shortBase = base as {
+                                    placeholder?: string;
+                                    maxLength?: number;
+                                };
+                                return {
+                                    type: "short_answer",
+                                    id,
+                                    question: questionText,
+                                    required,
+                                    placeholder: shortBase.placeholder,
+                                    maxLength: shortBase.maxLength,
+                                };
+                            }
+                        },
+                    );
 
                     // Restore existing answers from QuestionnaireResponse
                     if (myResponseRes.success && myResponseRes.data) {

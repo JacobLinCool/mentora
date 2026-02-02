@@ -54,6 +54,7 @@
     // Local Edit state
     // We start in edit mode ONLY if explicitly requested AND we are not dragging.
     // This prevents drag operations (which may recreate components) from triggering edit mode.
+    // Use untrack to prevent Svelte warning about prop usage in $state initialization.
     let isEditing = $state(untrack(() => initialEditMode && !isDragging));
 
     let currentType = $state<QuestionType>(untrack(() => initialType));

@@ -71,8 +71,6 @@ export const GET: RequestHandler = async (event) => {
                 let dueAt: number | null = null;
                 let typeName;
                 let promptContent;
-                let createSubmission = false;
-                let createConversation = false;
 
                 if (i === 1 && j === 0) {
                     // Questionnaire (Quiz-like)
@@ -126,7 +124,6 @@ export const GET: RequestHandler = async (event) => {
                                 required: true,
                             },
                         ],
-                        // responses: null, // REMOVED: responses handled globally in questionnaireResponses collection
                         startAt: qStartAt,
                         dueAt: qDueAt,
                         allowLate: true,
@@ -190,7 +187,6 @@ export const GET: RequestHandler = async (event) => {
                                 required: true,
                             },
                         ],
-                        // responses: null, // REMOVED: responses handled globally
                         startAt: qStartAt,
                         dueAt: qDueAt,
                         allowLate: true,
@@ -217,8 +213,6 @@ export const GET: RequestHandler = async (event) => {
                         dueAt = now + ONE_DAY;
                         promptContent =
                             "Engage in a debate about the ethics of artificial intelligence. Focus on the trolley problem adaptation.";
-                        createSubmission = true;
-                        createConversation = true;
                         // intendedSubtype = "conversation";
 
                         // Create Assignment (Conversation)
@@ -249,62 +243,58 @@ export const GET: RequestHandler = async (event) => {
                         assignmentsData.push(assignment);
 
                         // Create Submission
-                        if (createSubmission) {
-                            const submission: Submission = {
-                                userId: userId,
-                                state: "in_progress",
-                                startedAt: now - ONE_DAY,
-                                submittedAt: null,
-                                late: false,
-                                scoreCompletion: null,
-                                notes: null,
-                            };
+                        const submission: Submission = {
+                            userId: userId,
+                            state: "in_progress",
+                            startedAt: now - ONE_DAY,
+                            submittedAt: null,
+                            late: false,
+                            scoreCompletion: null,
+                            notes: null,
+                        };
 
-                            await firestore
-                                .collection("assignments")
-                                .doc(assignmentId)
-                                .collection("submissions")
-                                .doc(userId)
-                                .set(submission);
-                        }
+                        await firestore
+                            .collection("assignments")
+                            .doc(assignmentId)
+                            .collection("submissions")
+                            .doc(userId)
+                            .set(submission);
 
                         // Create Conversation
-                        if (createConversation) {
-                            const conversationId = `conv-${assignmentId}-${userId}`;
-                            const conversation: Conversation = {
-                                assignmentId: assignmentId,
-                                userId: userId,
-                                state: "awaiting_followup", // Simulate mid-conversation
-                                lastActionAt: now,
-                                createdAt: now - ONE_DAY,
-                                updatedAt: now,
-                                turns: [
-                                    {
-                                        id: "turn-1",
-                                        type: "topic",
-                                        text: "I want to discuss the trolley problem.",
-                                        createdAt: now - ONE_DAY,
-                                        analysis: null,
-                                        pendingStartAt: null,
+                        const conversationId = `conv-${assignmentId}-${userId}`;
+                        const conversation: Conversation = {
+                            assignmentId: assignmentId,
+                            userId: userId,
+                            state: "awaiting_followup", // Simulate mid-conversation
+                            lastActionAt: now,
+                            createdAt: now - ONE_DAY,
+                            updatedAt: now,
+                            turns: [
+                                {
+                                    id: "turn-1",
+                                    type: "topic",
+                                    text: "I want to discuss the trolley problem.",
+                                    createdAt: now - ONE_DAY,
+                                    analysis: null,
+                                    pendingStartAt: null,
+                                },
+                                {
+                                    id: "turn-2",
+                                    type: "idea",
+                                    text: "That is a classic ethical dilemma. Would you pull the lever?",
+                                    createdAt: now - ONE_DAY + 1000,
+                                    analysis: {
+                                        stance: "neutral",
                                     },
-                                    {
-                                        id: "turn-2",
-                                        type: "idea",
-                                        text: "That is a classic ethical dilemma. Would you pull the lever?",
-                                        createdAt: now - ONE_DAY + 1000,
-                                        analysis: {
-                                            stance: "neutral",
-                                        },
-                                        pendingStartAt: null,
-                                    },
-                                ],
-                            };
+                                    pendingStartAt: null,
+                                },
+                            ],
+                        };
 
-                            await firestore
-                                .collection("conversations")
-                                .doc(conversationId)
-                                .set(conversation);
-                        }
+                        await firestore
+                            .collection("conversations")
+                            .doc(conversationId)
+                            .set(conversation);
                     } else {
                         // No Deadline - Essay -> NOW QUESTIONNAIRE (Essay Type)
                         // STRATEGY: Create BOTH Assignment and Questionnaire with SAME ID
@@ -355,7 +345,6 @@ export const GET: RequestHandler = async (event) => {
                                     required: true,
                                 },
                             ],
-                            responses: null, // No responses stored here
                             startAt: now - ONE_DAY,
                             dueAt: null,
                             allowLate: true,
@@ -443,7 +432,6 @@ export const GET: RequestHandler = async (event) => {
                         createdBy: userId,
                         createdAt: now,
                         updatedAt: now,
-                        responses: null,
                     };
 
                     await firestore

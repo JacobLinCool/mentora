@@ -20,7 +20,9 @@
         if (conversationId && api.isAuthenticated) {
             api.conversationsSubscribe.subscribe(conversationId, convState);
             return () => {
-                convState.cleanup();
+                if (convState) {
+                    convState.cleanup();
+                }
             };
         }
     });

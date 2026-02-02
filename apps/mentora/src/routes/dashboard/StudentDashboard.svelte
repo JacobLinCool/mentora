@@ -53,8 +53,7 @@
         if (api.isAuthenticated) {
             await loadData();
         } else {
-            /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-            goto(resolve("/auth" as any));
+            goto(resolve("/auth"));
         }
     });
 
