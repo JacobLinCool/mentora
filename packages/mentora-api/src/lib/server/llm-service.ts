@@ -50,7 +50,7 @@ export function getOrchestrator(): MentoraOrchestrator {
 	orchestratorInstance = new MentoraOrchestrator(executor, {
 		maxLoops: 5,
 		minLoopsForClosure: 1,
-		logger: (msg, ...args) => console.log(`[MentoraLLM] ${msg}`, ...args)
+		logger: (msg, ...args: any[]) => console.log(`[MentoraLLM] ${msg}`, ...args)
 	});
 
 	return orchestratorInstance;
@@ -104,13 +104,10 @@ export async function loadDialogueState(
 			return data as DialogueState;
 		}
 	} catch (error) {
-		console.error(
-			`[MentoraLLM] Error loading dialogue state for ${conversationId}:`,
-			error
-		);
+		console.error(`[MentoraLLM] Error loading dialogue state for ${conversationId}:`, error);
 	}
-		console.log(`[MentoraLLM] State document not found for ${conversationId}, will initialize new`);
-	}
+
+	console.log(`[MentoraLLM] State document not found for ${conversationId}, will initialize new`);
 
 	// First interaction - initialize new state using orchestrator
 	const orchestrator = getOrchestrator();
