@@ -171,13 +171,16 @@ async function parseMultipartForm(request: Request): Promise<{ text?: string; au
 	if (contentType.includes('application/json')) {
 		try {
 			const body = await request.json();
-			return { text: body.text };
-		} catch {
-			throw errorResponse(
-				'Invalid JSON body',
-				HttpStatus.BAD_REQUEST,
-				ServerErrorCode.INVALID_INPUT
-			);
+			const text = body.text as string | undefined;
+
+			if (!text || text.trim().length === 0) {
+				throw new Error('Text input is required');
+			}
+
+			return { text: text.trim() };
+		} catch (error) {
+			if (error instanceof Error) throw error;
+			throw new Error('Invalid JSON body');
 		}
 	}
 
@@ -189,32 +192,24 @@ async function parseMultipartForm(request: Request): Promise<{ text?: string; au
 			const audio = formData.get('audio') as Blob | null;
 
 			if (!text && !audio) {
-				throw errorResponse(
-					'Either text or audio is required',
-					HttpStatus.BAD_REQUEST,
-					ServerErrorCode.INVALID_INPUT
-				);
+				throw new Error('Either text or audio is required');
+			}
+
+			if (text && text.trim().length === 0 && !audio) {
+				throw new Error('Text input cannot be empty');
 			}
 
 			return {
-				text: text || undefined,
+				text: text ? text.trim() : undefined,
 				audio: audio || undefined
 			};
 		} catch (error) {
-			if (error instanceof Response) throw error;
-			throw errorResponse(
-				'Failed to parse form data',
-				HttpStatus.BAD_REQUEST,
-				ServerErrorCode.INVALID_INPUT
-			);
+			if (error instanceof Error) throw error;
+			throw new Error('Failed to parse form data');
 		}
 	}
 
-	throw errorResponse(
-		'Content-Type must be application/json or multipart/form-data',
-		HttpStatus.BAD_REQUEST,
-		ServerErrorCode.INVALID_INPUT
-	);
+	throw new Error('Content-Type must be application/json or multipart/form-data');
 }
 
 /**

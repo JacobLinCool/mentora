@@ -239,7 +239,7 @@ describe('LLM Service (Integration)', () => {
 			const stateDoc = await stateRef.get();
 
 			expect(stateDoc.exists).toBe(true);
-			const savedData = stateDoc.data() as DialogueState;
+			const savedData = stateDoc.data() as unknown as DialogueState;
 			expect(savedData.stage).toBe(DialogueStage.PRINCIPLE_REASONING);
 			expect(savedData.loopCount).toBe(1);
 		});
@@ -313,18 +313,19 @@ describe('LLM Service (Integration)', () => {
 		});
 
 		it('should extract summary from dialogue state with content', () => {
+			const now = Date.now();
 			const state: DialogueState = {
 				topic: 'test',
 				stage: DialogueStage.CASE_CHALLENGE,
 				subState: SubState.MAIN,
 				loopCount: 2,
 				stanceHistory: [
-					{ version: 1, position: 'Stance 1', reason: 'Reason 1', establishedAt: Date.now() },
-					{ version: 2, position: 'Stance 2', reason: 'Reason 2', establishedAt: Date.now() }
+					{ version: 1, position: 'Stance 1', reason: 'Reason 1', establishedAt: now },
+					{ version: 2, position: 'Stance 2', reason: 'Reason 2', establishedAt: now }
 				],
-				currentStance: { version: 2, position: 'Stance 2', reason: 'Reason 2', establishedAt: Date.now() },
-				principleHistory: [{ version: 1, statement: 'Principle 1', classification: 'justice', establishedAt: Date.now() }],
-				currentPrinciple: { version: 1, statement: 'Principle 1', classification: 'justice', establishedAt: Date.now() },
+				currentStance: { version: 2, position: 'Stance 2', reason: 'Reason 2', establishedAt: now },
+				principleHistory: [{ version: 1, statement: 'Principle 1', classification: 'justice', establishedAt: now }],
+				currentPrinciple: { version: 1, statement: 'Principle 1', classification: 'justice', establishedAt: now },
 				conversationHistory: [],
 				discussionSatisfied: false,
 				summary: null
@@ -337,7 +338,7 @@ describe('LLM Service (Integration)', () => {
 				version: 2,
 				position: 'Stance 2',
 				reason: 'Reason 2',
-				establishedAt: Date.now()
+				establishedAt: now
 			});
 			expect(summary.principleCount).toBe(1);
 			expect(summary.loopCount).toBe(2);
