@@ -9,17 +9,17 @@
  * - LLM service integration with real HTTP calls
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
 	setupTeacherClient,
 	setupStudentClient,
 	teardownAllClients,
 	generateTestId,
 	delay,
-	getStudentUser,
-	getTeacherUser
 } from './emulator-setup.js';
 import type { MentoraClient } from '../src/lib/api/client.js';
+import type { Course } from '../src/lib/api/courses.js';
+import type { Conversation } from '../src/lib/api/conversations.js';
 
 describe('addTurn Route Handler (Integration)', () => {
 	let teacherClient: MentoraClient;
@@ -27,14 +27,10 @@ describe('addTurn Route Handler (Integration)', () => {
 	let testCourseId: string;
 	let testAssignmentId: string;
 	let testConversationId: string;
-	let studentUserId: string;
 
 	beforeAll(async () => {
 		teacherClient = await setupTeacherClient();
 		studentClient = await setupStudentClient();
-
-		const studentUser = getStudentUser();
-		studentUserId = studentUser?.uid || '';
 
 		// Create test course
 		const courseResult = await teacherClient.courses.create(
@@ -69,7 +65,7 @@ describe('addTurn Route Handler (Integration)', () => {
 		const courseDocResult = await teacherClient.courses.get(testCourseId);
 		let joinCode = 'test-code';
 		if (courseDocResult.success) {
-			joinCode = (courseDocResult.data as any).joinCode || 'test-code';
+			joinCode = (courseDocResult.data as Course).joinCode || 'test-code';
 		}
 
 		const enrollResult = await studentClient.courses.joinByCode(joinCode);
@@ -101,8 +97,6 @@ describe('addTurn Route Handler (Integration)', () => {
 
 	describe('Authorization and Ownership', () => {
 		it('should reject turn from unauthorized user', async () => {
-			const teacherUser = getTeacherUser();
-			const teacherUserId = teacherUser?.uid || '';
 
 			// Teacher tries to add turn to student's conversation
 			const result = await teacherClient.conversations.addTurn(
@@ -273,7 +267,7 @@ describe('addTurn Route Handler (Integration)', () => {
 			expect(initialConv.success).toBe(true);
 			if (initialConv.success) {
 				// Should start in awaiting_idea or similar state
-				expect((initialConv.data as any).state).toBeDefined();
+				expect((initialConv.data as Conversation).state).toBeDefined();
 			}
 
 			// Add a turn
@@ -295,7 +289,7 @@ describe('addTurn Route Handler (Integration)', () => {
 				expect(updatedConv.success).toBe(true);
 				if (updatedConv.success) {
 					// State should have changed
-					expect((updatedConv.data as any).state).toBeDefined();
+					expect((updatedConv.data as Conversation).state).toBeDefined();
 				}
 			}
 
@@ -317,7 +311,7 @@ describe('addTurn Route Handler (Integration)', () => {
 			// Get initial turns
 			const beforeConv = await studentClient.conversations.get(newConversationId);
 			const initialTurnCount = beforeConv.success
-				? ((beforeConv.data as any).turns || []).length
+				? ((beforeConv.data as Conversation).turns || []).length
 				: 0;
 
 			// Add a turn
@@ -339,7 +333,7 @@ describe('addTurn Route Handler (Integration)', () => {
 				expect(afterConv.success).toBe(true);
 
 				if (afterConv.success) {
-					const finalTurns = ((afterConv.data as any).turns || []) as any[];
+					const finalTurns = ((afterConv.data as Conversation).turns || []);
 					// Should have more turns now (user turn + AI response)
 					expect(finalTurns.length).toBeGreaterThan(initialTurnCount);
 

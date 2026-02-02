@@ -30,6 +30,7 @@ import {
 	getStudentUser
 } from './emulator-setup.js';
 import type { MentoraClient } from '../src/lib/api/client.js';
+import type { Course } from '../src/lib/api/courses.js';
 
 // Use emulator for Firestore
 const firestore = Firestore.useEmulator();
@@ -86,7 +87,7 @@ describe('LLM Service (Integration)', () => {
 		const courseDocResult = await teacherClient.courses.get(testCourseId);
 		let joinCode = 'test-code';
 		if (courseDocResult.success) {
-			joinCode = (courseDocResult.data as any).joinCode || 'test-code';
+			joinCode = (courseDocResult.data as Course).joinCode || 'test-code';
 		}
 
 		// Enroll student in course

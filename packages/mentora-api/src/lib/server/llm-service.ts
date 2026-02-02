@@ -104,6 +104,11 @@ export async function loadDialogueState(
 			return data as DialogueState;
 		}
 	} catch (error) {
+		console.error(
+			`[MentoraLLM] Error loading dialogue state for ${conversationId}:`,
+			error
+		);
+	}
 		console.log(`[MentoraLLM] State document not found for ${conversationId}, will initialize new`);
 	}
 
@@ -191,7 +196,7 @@ export async function processWithLLM(
 	const orchestrator = getOrchestrator();
 
 	// Step 1: Load current state from Firestore (includes ownership validation)
-	let currentState = await loadDialogueState(firestore, conversationId, userId);
+	const currentState = await loadDialogueState(firestore, conversationId, userId);
 
 	// Step 2: Determine if this is first interaction
 	// The orchestrator marks new states with stage === 'awaiting_start'
