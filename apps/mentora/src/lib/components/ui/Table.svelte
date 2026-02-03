@@ -1,10 +1,6 @@
 <script lang="ts">
-    import {
-        ChevronLeft,
-        ChevronRight,
-        ChevronUp,
-        ChevronDown,
-    } from "@lucide/svelte";
+    import { ChevronUp, ChevronDown } from "@lucide/svelte";
+    import Pagination from "./Pagination.svelte";
     import type { Snippet } from "svelte";
 
     interface Column {
@@ -39,7 +35,7 @@
     let sortDirection = $state<"asc" | "desc">("asc");
 
     // Pagination state
-    let currentPage = $state(0);
+    let currentPage = $state(1);
 
     // Computed: sorted data
     const sortedData = $derived.by(() => {
@@ -57,7 +53,7 @@
     // Computed: paginated data
     const totalPages = $derived(Math.ceil(sortedData.length / pageSize));
     const paginatedData = $derived(
-        sortedData.slice(currentPage * pageSize, (currentPage + 1) * pageSize),
+        sortedData.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     );
 
     function handleSort(key: string) {
@@ -70,15 +66,7 @@
             sortKey = key;
             sortDirection = "asc";
         }
-        currentPage = 0;
-    }
-
-    function prevPage() {
-        if (currentPage > 0) currentPage--;
-    }
-
-    function nextPage() {
-        if (currentPage < totalPages - 1) currentPage++;
+        currentPage = 1;
     }
 </script>
 
@@ -146,31 +134,12 @@
     </table>
 
     {#if totalPages > 1}
-        <div
-            class="flex items-center justify-end gap-2 px-4 py-3 text-sm text-gray-600"
-        >
-            <span>
-                {currentPage * pageSize + 1}-{Math.min(
-                    (currentPage + 1) * pageSize,
-                    data.length,
-                )} / {data.length}
-            </span>
-            <button
-                type="button"
-                class="rounded p-1 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-30"
-                disabled={currentPage === 0}
-                onclick={prevPage}
-            >
-                <ChevronLeft size={18} />
-            </button>
-            <button
-                type="button"
-                class="rounded p-1 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-30"
-                disabled={currentPage >= totalPages - 1}
-                onclick={nextPage}
-            >
-                <ChevronRight size={18} />
-            </button>
+        <div class="border-t border-gray-200 px-4 py-3">
+            <Pagination
+                bind:currentPage
+                totalCount={sortedData.length}
+                {pageSize}
+            />
         </div>
     {/if}
 </div>
