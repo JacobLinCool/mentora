@@ -20,7 +20,7 @@ import {
 } from '../types.js';
 import { parseBody, requireAuth, requireParam } from './utils.js';
 import { processWithLLM, extractConversationSummary } from '../llm-service.js';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 /**
  * POST /api/conversations
