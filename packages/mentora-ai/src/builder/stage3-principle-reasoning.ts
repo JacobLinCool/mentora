@@ -2,271 +2,155 @@ import type { Content } from "@google/genai";
 import { z } from "zod";
 
 import type { JsonValue, Prompt, PromptBuilder } from "../types.js";
+import {
+    CLASSIFIER_OUTPUT_FORMAT,
+    RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT,
+    RESPONSE_GENERATOR_OUTPUT_FORMAT,
+} from "./prompts.js";
+import { buildContents } from "./utils.js";
 
 /**
- * Schema for Stage 3 decision output
+ * Schema for Stage 3 Classifier output
  */
-export const PrincipleReasoningDecisionSchema = z.object({
-    action: z
-        .enum(["clarify", "scaffold", "loop_to_stage2", "advance_to_closure"])
-        .describe("Action to take based on student's principle articulation"),
-    principleIdentified: z
-        .boolean()
-        .describe("Whether a clear underlying principle was identified"),
-    principle: z
-        .string()
-        .nullable()
-        .describe("The principle statement extracted from student's reasoning"),
-    principleClassification: z
-        .string()
-        .nullable()
-        .describe(
-            "Classification of the principle (e.g., consequentialist, deontological, virtue-based)",
-        ),
-    principleChallenge: z
-        .string()
-        .nullable()
-        .describe(
-            "A challenge or edge case that tests this principle (for loop_to_stage2)",
-        ),
-    message: z.string().describe("Response message to send to the student"),
-    reasoning: z.string().describe("Internal reasoning for the decision"),
+export const PrincipleReasoningClassifierSchema = z.object({
+    thought_process: z.string().describe("簡短分析使用者的回答邏輯、清晰度"),
+    detected_intent: z
+        .enum(["TR_CLARIFY", "TR_SCAFFOLD", "TR_NEXT_CASE", "TR_COMPLETE"])
+        .describe("對應狀態轉移表中的 Trigger ID"),
+    confidence_score: z.number().min(0).max(1).describe("信心分數 (0.0 - 1.0)"),
+    extracted_data: z
+        .object({
+            stance: z
+                .string()
+                .optional()
+                .describe("Updated stance if applicable"),
+            reasoning: z
+                .string()
+                .optional()
+                .describe("The principle or reasoning extracted"),
+        })
+        .describe("選填：若有提取到關鍵資訊放在這裡"),
 });
 
-export type PrincipleReasoningDecision = z.infer<
-    typeof PrincipleReasoningDecisionSchema
+export type PrincipleReasoningClassifier = z.infer<
+    typeof PrincipleReasoningClassifierSchema
 >;
 
 /**
- * Builder for principle reasoning extraction
- * Guides student to articulate the underlying principle behind their stance
+ * Schema for Stage 3 Response Generator output
  */
-export class PrincipleReasoningBuilder implements PromptBuilder {
+export const PrincipleReasoningResponseSchema = z.object({
+    thought_process: z.string().describe("根據使用者的輸入簡要規劃要說的話"),
+    response_message: z.string().describe("主要對話文字（確認、過渡或解釋）"),
+    concise_question: z.string().describe("用於觸發使用者下一個思考的具體問題"),
+});
+
+export type PrincipleReasoningResponse = z.infer<
+    typeof PrincipleReasoningResponseSchema
+>;
+
+/**
+ * Stage 3 Classifier Builder
+ */
+export class PrincipleReasoningClassifierBuilder implements PromptBuilder {
     async build<
         I extends Record<string, string>,
         O extends Record<string, JsonValue> | null,
     >(contents: Content[], input: I): Promise<Prompt<O>> {
-        const topic = input.topic || "";
         const currentStance = input.currentStance || "";
-        const currentReason = input.currentReason || "";
-        const stanceHistory = input.stanceHistory || "";
+        const userInput = input.userInput || "";
 
-        const systemPrompt = `你是 Mentora，正在進行 Stage 3: Principle Reasoning（原則推理）。
+        const systemInstruction = `You are a Dialogue State Classifier.
+Current Stage: [PrincipleReasoning_Main]
+Goal: Evaluate the abstract principle provided by the student.
 
-===== 討論主題 =====
-${topic}
+Rules:
+1. **TR_CLARIFY**: The principle is too vague (e.g., "Just do good things"), tautological, or lacks substance.
+2. **TR_SCAFFOLD**: The principle logically conflicts with accepted moral standards (e.g., justifying crime for safety) OR conflicts with the student's own previous admissions.
+3. **TR_NEXT_CASE**: The principle is understandable but feels "shaky" or "incomplete". It needs testing with another case to verify its robustness. (Use this for looping back to Stage 2).
+4. **TR_COMPLETE**: The principle is solid, comprehensive, and consistent. The student has demonstrated deep thinking. (Ready for Closure).
 
-===== 學生當前立場 =====
-立場：${currentStance}
-理由：${currentReason}
+Context:
+Current Stance: ${currentStance}
+User Input: ${userInput}
 
-${stanceHistory ? `===== 立場演變歷程 =====\n${stanceHistory}` : ""}
-
-===== 你的任務 =====
-引導學生歸納其立場背後的核心原則：
-1. 肯定學生經過思考得出的立場
-2. 請學生嘗試將其立場抽象化為一個更普遍的原則/規則
-3. 這個原則應該能指導類似情境的判斷
-
-===== 引導問題示例 =====
-- 「基於您的立場，您會如何制定一個判斷準則？」
-- 「什麼樣的一般性原則支持您的這個觀點？」
-- 「如果要寫一條適用於類似情境的規則，您會怎麼寫？」
-
-===== 輸出格式 =====
-用繁體中文輸出引導學生歸納原則的問題。`;
-
-        const newContents: Content[] = [
-            {
-                role: "user",
-                parts: [{ text: systemPrompt }],
-            },
-            ...contents,
-        ];
+${CLASSIFIER_OUTPUT_FORMAT}`;
 
         return {
-            contents: newContents,
-            schema: null,
+            systemInstruction,
+            contents: buildContents(contents),
+            schema: PrincipleReasoningClassifierSchema as unknown as z.ZodType<O>,
         };
     }
 }
 
 /**
- * Builder for analyzing student's principle articulation
+ * Stage 3 Response Generator Builder (Principle Extraction)
  */
-export class PrincipleReasoningAnalyzerBuilder implements PromptBuilder {
+export class PrincipleReasoningResponseBuilder implements PromptBuilder {
     async build<
         I extends Record<string, string>,
         O extends Record<string, JsonValue> | null,
     >(contents: Content[], input: I): Promise<Prompt<O>> {
-        const topic = input.topic || "";
-        const currentStance = input.currentStance || "";
-        const studentMessage = input.studentMessage || "";
-        const loopCount = input.loopCount || "0";
+        const discussionSummary = input.discussionSummary || "";
 
-        const systemPrompt = `你是 Mentora 的分析模組。分析學生表述的原則。
+        const systemInstruction = `${RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT}
 
-===== 討論主題 =====
-${topic}
+當前階段: [PrincipleReasoning_Main]
+討論歷史摘要: "${discussionSummary}"
 
-===== 學生當前立場 =====
-${currentStance}
+任務:
+1. 總結到目前為止從討論案例中獲得的見解。
+2. 要求使用者制定一個處理這些情況的一般性原則或規則。
 
-===== 學生的原則表述 =====
-${studentMessage}
-
-===== 分析標準 =====
-
-1. **clarify** - 當原則表述不明確或過於籠統
-   - 例如：「就是看結果好不好」（太模糊）
-   - 例如：「反正安全最重要」（需要更具體）
-
-2. **scaffold** - 當發現原則有內在張力，需要引導學生調整
-   - 原則與學生自己的道德直覺可能衝突
-   - 原則的邏輯推論可能導致學生不接受的結果
-
-3. **loop_to_stage2** - 當原則需要用新案例來測試
-   - 原則太過於極端，需要反例挑戰
-   - 原則存在明顯道德風險，需要用案例呈現
-   - 設計一個能挑戰此原則的案例作為 principleChallenge
-
-4. **advance_to_closure** - 當原則清晰、一致、且經過充分討論
-   - 學生能清楚表達原則
-   - 原則與其立場一致
-   - 已經過足夠的打磨（loopCount >= 1）
-
-===== 循環次數 =====
-當前已進行 ${loopCount} 次 Stage 2-3 循環。
-
-===== 輸出要求 =====
-請用繁體中文作答，message 字段是要直接給學生看的回覆。`;
-
-        const newContents: Content[] = [
-            {
-                role: "user",
-                parts: [{ text: systemPrompt }],
-            },
-            ...contents,
-        ];
+${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
 
         return {
-            contents: newContents,
-            schema: PrincipleReasoningDecisionSchema as unknown as z.ZodType<O>,
+            systemInstruction,
+            contents: buildContents(contents),
+            schema: PrincipleReasoningResponseSchema as unknown as z.ZodType<O>,
         };
     }
 }
 
 /**
- * Builder for clarifying unclear principle
- */
-export class PrincipleReasoningClarifyBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
-        const topic = input.topic || "";
-        const unclearPrinciple = input.unclearPrinciple || "";
-
-        const systemPrompt = `你是 Mentora，正在進行 Stage 3 的澄清流程。
-
-===== 討論主題 =====
-${topic}
-
-===== 學生的原則表述（不夠清晰）=====
-${unclearPrinciple}
-
-===== 當前情況 =====
-學生的原則表述過於籠統或不夠精確，需要引導他們更清楚地定義。
-
-===== 你的任務 =====
-生成引導問題，幫助學生更精確地表述原則：
-1. 指出目前表述可能的模糊之處
-2. 使用具體例子幫助學生思考
-3. 詢問更精確的界定
-
-===== 示例澄清問題 =====
-- 「您說的『結果好』具體指什麼？只要技術進步就算結果好嗎？」
-- 「這個原則是否意味著任何手段都可以接受？」
-- 「請舉一個例子說明這個原則會如何應用？」
-
-===== 輸出格式 =====
-直接輸出繁體中文的澄清問題。`;
-
-        const newContents: Content[] = [
-            {
-                role: "user",
-                parts: [{ text: systemPrompt }],
-            },
-            ...contents,
-        ];
-
-        return {
-            contents: newContents,
-            schema: null,
-        };
-    }
-}
-
-/**
- * Builder for scaffolding principle refinement
+ * Stage 3 TR_SCAFFOLD Response Generator Builder
  */
 export class PrincipleReasoningScaffoldBuilder implements PromptBuilder {
     async build<
         I extends Record<string, string>,
         O extends Record<string, JsonValue> | null,
     >(contents: Content[], input: I): Promise<Prompt<O>> {
-        const topic = input.topic || "";
-        const originalPrinciple = input.originalPrinciple || "";
-        const tensionIdentified = input.tensionIdentified || "";
-        const studentResponse = input.studentResponse || "";
+        const userPrinciple = input.userPrinciple || "";
+        const detectedTension =
+            input.detectedTension ||
+            "Safety vs. Morality (or Logic Inconsistency)";
 
-        const systemPrompt = `你是 Mentora，正在進行 Stage 3 的 Scaffold（鷹架引導）。
+        const systemInstruction = `${RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT}
 
-===== 討論主題 =====
-${topic}
+當前階段: [PrincipleReasoning_Scaffold]
+使用者的原則: "${userPrinciple}"
+偵測到的張力: ${detectedTension}
 
-===== 學生原先的原則 =====
-${originalPrinciple}
+任務:
+1. 使用「蘇格拉底式挑戰」來突顯其原則的後果。
+2. 詢問他們是否接受這個後果，或者是否想修改該原則。
 
-===== 學生最新的回應 =====
-${studentResponse}
-
-===== 發現的張力/衝突 =====
-${tensionIdentified}
-
-===== 你的任務 =====
-引導學生完善其原則：
-1. 客觀指出原則與道德直覺之間的張力
-2. 不批評學生，而是幫助他們看到調整的必要
-3. 詢問是否需要為原則添加限制條件或調整
-4. 提供結構化問題幫助學生重新表述
-
-===== 引導示例 =====
-「您發現了『安全結果』與『道德手段』之間的衝突。這意味著我們不能只看結果。您是否想要更新您的原則，加入對手段的道德限制？」
-
-===== 輸出格式 =====
-用繁體中文輸出：
-1. 對張力的客觀觀察
-2. 引導學生更新原則的問題`;
-
-        const newContents: Content[] = [
-            {
-                role: "user",
-                parts: [{ text: systemPrompt }],
-            },
-            ...contents,
-        ];
+${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
 
         return {
-            contents: newContents,
-            schema: null,
+            systemInstruction,
+            contents: buildContents(contents),
+            schema: PrincipleReasoningResponseSchema as unknown as z.ZodType<O>,
         };
     }
 }
 
+/**
+ * Exported builders for Stage 3
+ */
 export const principleReasoningBuilders = {
-    reasoning: new PrincipleReasoningBuilder(),
-    analyzer: new PrincipleReasoningAnalyzerBuilder(),
-    clarify: new PrincipleReasoningClarifyBuilder(),
+    classifier: new PrincipleReasoningClassifierBuilder(),
+    reasoning: new PrincipleReasoningResponseBuilder(),
     scaffold: new PrincipleReasoningScaffoldBuilder(),
 };
