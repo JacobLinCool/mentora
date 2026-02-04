@@ -339,10 +339,8 @@ describe.skipIf(!shouldRunIntegrationTests())(
                         Record<string, string>,
                         PrincipleReasoningClassifier
                     >(contents, {
-                        topic,
                         currentStance,
-                        loopCount: "1",
-                        studentMessage:
+                        userInput:
                             "原則就是...嗯...就是要好啦，好的事情就是對的。",
                     });
 
@@ -414,10 +412,8 @@ describe.skipIf(!shouldRunIntegrationTests())(
                         Record<string, string>,
                         PrincipleReasoningClassifier
                     >(contents, {
-                        topic,
                         currentStance,
-                        loopCount: "3", // Sufficient loops with refinement
-                        studentMessage:
+                        userInput:
                             "我的最終原則是：在受控環境中，不直接傷害無辜第三方（包括資料外洩和服務中斷）的前提下，允許透過合法對抗來強化整體系統安全。這個原則經過了多次討論和修正，是我的最終版本。",
                     });
 
@@ -446,10 +442,8 @@ describe.skipIf(!shouldRunIntegrationTests())(
                         Record<string, string>,
                         PrincipleReasoningClassifier
                     >(contents, {
-                        topic,
                         currentStance: "完全支持黑帽駭客存在",
-                        loopCount: "0", // First loop, extreme principle must be challenged with a case
-                        studentMessage:
+                        userInput:
                             "我的原則十分清楚：為了安全，任何攻擊手段都可以。入侵醫院系統？可以。入侵金融系統？可以。入侵核電廠？可以。只要最終系統更安全就好。我完全不設限制。",
                     });
 
