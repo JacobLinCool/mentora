@@ -523,7 +523,7 @@ describe.skipIf(!shouldRunIntegrationTests())(
 
                 const decision = await executor.execute(prompt);
 
-                expect(decision.detected_intent).toBe("TR_CONFIRM_END");
+                expect(decision.detected_intent).toBe("TR_CONFIRM");
                 // Note: summaryAccepted may be populated but is not strictly required
                 expect(decision.extracted_data).toBeDefined();
             }, 30000);
