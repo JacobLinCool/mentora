@@ -15,20 +15,6 @@ import { createStanceVersion, transitionTo } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
 /**
- * Create empty token usage
- */
-function emptyUsage() {
-    return {
-        cachedContentTokenCount: 0,
-        candidatesTokenCount: 0,
-        promptTokenCount: 0,
-        thoughtsTokenCount: 0,
-        toolUsePromptTokenCount: 0,
-        totalTokenCount: 0,
-    };
-}
-
-/**
  * Handler for Stage 1: Asking Stance
  *
  * Responsibilities:

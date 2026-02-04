@@ -66,29 +66,11 @@ export class GeminiPromptExecutor implements PromptExecutor {
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                if (attempt > 1) {
-                    console.log(
-                        `[GeminiExecutor] Retry ${attempt}/${maxRetries}`,
-                    );
-                }
-
-                console.log(
-                    "[GeminiExecutor] Sending prompt with config:",
-                    JSON.stringify(config, null, 2),
-                );
-                console.log(
-                    "[GeminiExecutor] Prompt contents:",
-                    JSON.stringify(prompt.contents, null, 2),
-                );
                 const response = await this.genai.models.generateContent({
                     model: this.model,
                     contents: prompt.contents,
                     config,
                 });
-                console.log(
-                    "[GeminiExecutor] Raw response:",
-                    JSON.stringify(response, null, 2),
-                );
 
                 // Accumulate token usage for current turn from Gemini API
                 const usage = response.usageMetadata;
@@ -121,21 +103,9 @@ export class GeminiPromptExecutor implements PromptExecutor {
                 }
 
                 const parsed = JSON.parse(text);
-                console.log(
-                    "[GeminiExecutor] Parsed response:",
-                    JSON.stringify(parsed, null, 2),
-                );
                 const result = prompt.schema?.safeParse(parsed);
 
                 if (!result?.success) {
-                    console.error(
-                        "[GeminiExecutor] Schema validation failed:",
-                        result?.error?.issues,
-                    );
-                    console.error(
-                        "[GeminiExecutor] Received:",
-                        JSON.stringify(parsed, null, 2),
-                    );
                     throw new Error(
                         `Schema validation failed: ${result?.error?.issues?.[0]?.message || "unknown error"}`,
                     );

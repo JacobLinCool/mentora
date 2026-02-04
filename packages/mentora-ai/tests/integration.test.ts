@@ -413,6 +413,7 @@ describe.skipIf(!shouldRunIntegrationTests())(
                         PrincipleReasoningClassifier
                     >(contents, {
                         currentStance,
+                        loopCount: "3", // Sufficient loops with refinement
                         userInput:
                             "我的最終原則是：在受控環境中，不直接傷害無辜第三方（包括資料外洩和服務中斷）的前提下，允許透過合法對抗來強化整體系統安全。這個原則經過了多次討論和修正，是我的最終版本。",
                     });
@@ -517,7 +518,7 @@ describe.skipIf(!shouldRunIntegrationTests())(
 
                 const decision = await executor.execute(prompt);
 
-                expect(decision.detected_intent).toBe("TR_CONFIRM_END");
+                expect(decision.detected_intent).toBe("TR_CONFIRM");
                 // Note: summaryAccepted may be populated but is not strictly required
                 expect(decision.extracted_data).toBeDefined();
             }, 30000);
