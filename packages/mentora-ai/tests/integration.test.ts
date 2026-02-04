@@ -417,7 +417,7 @@ describe.skipIf(!shouldRunIntegrationTests())(
                         topic,
                         currentStance,
                         loopCount: "3", // Sufficient loops with refinement
-                        studentMessage:
+                        userInput:
                             "我的最終原則是：在受控環境中，不直接傷害無辜第三方（包括資料外洩和服務中斷）的前提下，允許透過合法對抗來強化整體系統安全。這個原則經過了多次討論和修正，是我的最終版本。",
                     });
 
