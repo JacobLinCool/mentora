@@ -164,10 +164,9 @@ describe.skipIf(!shouldRunIntegrationTests())(
                     Record<string, string>,
                     CaseChallengeClassifier
                 >(contents, {
-                    topic,
-                    currentStance: "需要黑帽駭客存在",
-                    caseDescription,
-                    studentMessage:
+                    previousStance: "需要黑帽駭客存在",
+                    currentCase: caseDescription,
+                    userInput:
                         "嗯...這個...我不太確定怎麼說...這很難回答...可以換個問題嗎？",
                 });
 
@@ -196,10 +195,9 @@ describe.skipIf(!shouldRunIntegrationTests())(
                     Record<string, string>,
                     CaseChallengeClassifier
                 >(contents, {
-                    topic,
-                    currentStance: "需要黑帽駭客存在",
-                    caseDescription,
-                    studentMessage:
+                    previousStance: "需要黑帽駭客存在",
+                    currentCase: caseDescription,
+                    userInput:
                         "這個案例讓我改變想法了。如果黑帽駭客會造成這麼嚴重的傷害，也許他們的存在弊大於利。我想修正我的立場：反對黑帽駭客存在。",
                 });
 
@@ -227,10 +225,9 @@ describe.skipIf(!shouldRunIntegrationTests())(
                     Record<string, string>,
                     CaseChallengeClassifier
                 >(contents, {
-                    topic,
-                    currentStance: "需要黑帽駭客存在",
-                    caseDescription,
-                    studentMessage:
+                    previousStance: "需要黑帽駭客存在",
+                    currentCase: caseDescription,
+                    userInput:
                         "我目前維持原來的立場：需要黑帽駭客存在。這個案例讓我思考到需要一些限制，但還不足以改變我的基本觀點。我願意看更多案例來測試我的想法。",
                 });
 
@@ -301,12 +298,10 @@ describe.skipIf(!shouldRunIntegrationTests())(
                     Record<string, string>,
                     CaseChallengeClassifier
                 >(contents, {
-                    topic,
-                    currentStance: "需要黑帽駭客存在，但必須在法律框架內",
-                    caseDescription: "已討論醫院、核電廠、金融系統案例",
-                    studentMessage:
+                    previousStance: "需要黑帽駭客存在，但必須在法律框架內",
+                    currentCase: "已討論醫院、核電廠、金融系統案例",
+                    userInput:
                         "經過三個案例的挑戰，我的立場完全沒有改變。我已經反覆考慮過這個問題，我的結論很清楚：需要黑帽駭客存在，但必須有法律監管。不需要更多案例了，請讓我說明我的原則。",
-                    loopCount: "2",
                 });
 
                 const decision = await executor.execute(prompt);
@@ -413,7 +408,6 @@ describe.skipIf(!shouldRunIntegrationTests())(
                         PrincipleReasoningClassifier
                     >(contents, {
                         currentStance,
-                        loopCount: "3", // Sufficient loops with refinement
                         userInput:
                             "我的最終原則是：在受控環境中，不直接傷害無辜第三方（包括資料外洩和服務中斷）的前提下，允許透過合法對抗來強化整體系統安全。這個原則經過了多次討論和修正，是我的最終版本。",
                     });
