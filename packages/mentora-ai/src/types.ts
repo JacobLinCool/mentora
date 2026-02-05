@@ -56,14 +56,10 @@ export interface PromptBuilder {
 /**
  * Executor interface for running prompts against an LLM
  */
-export interface PromptExecutor {
-    /**
-     * Execute a prompt and return the response
-     */
-    execute<O extends Record<string, JsonValue> | null>(
-        prompt: Prompt<O>,
-    ): Promise<O extends null ? string : O>;
-
+/**
+ * Interface for components that track token usage
+ */
+export interface TokenTracker {
     /**
      * Get the token usage for the current turn
      * Returns accumulated usage since last reset
@@ -74,4 +70,29 @@ export interface PromptExecutor {
      * Reset the token usage counter for a new turn
      */
     resetTokenUsage(): void;
+}
+
+/**
+ * Executor interface for running prompts against an LLM
+ */
+export interface PromptExecutor extends TokenTracker {
+    /**
+     * Execute a prompt and return the response
+     */
+    execute<O extends Record<string, JsonValue> | null>(
+        prompt: Prompt<O>,
+    ): Promise<O extends null ? string : O>;
+}
+
+/**
+ * Executor interface for running ASR (Automatic Speech Recognition) tasks
+ */
+export interface ASRExecutor extends TokenTracker {
+    /**
+     * Transcribe audio content
+     * @param audioBase64 - Base64 encoded audio string
+     * @param mimeType - MIME type of the audio (default: audio/mp3)
+     * @returns Transcribed text
+     */
+    transcribe(audioBase64: string, mimeType?: string): Promise<string>;
 }
