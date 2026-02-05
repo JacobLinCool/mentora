@@ -1,4 +1,4 @@
-import type { GoogleGenAI, Part } from "@google/genai";
+import type { GoogleGenAI } from "@google/genai";
 
 import type { ASRExecutor, TokenUsage } from "../types.js";
 
@@ -52,30 +52,22 @@ export class GeminiASRExecutor implements ASRExecutor {
         mimeType: string = "audio/mp3",
     ): Promise<string> {
         // Construct the audio part
-        const audioPart: Part = {
-            inlineData: {
-                data: audioBase64,
-                mimeType: mimeType,
-            },
-        };
 
         // Construct the prompt for transcription
-        const prompt = {
-            contents: [
-                {
-                    role: "user",
-                    parts: [
-                        audioPart,
-                        { text: "Please transcribe the audio accurately." },
-                    ],
+        const contents = [
+            { text: "請將以下音訊語音辨識成繁體中文文字" },
+            {
+                inlineData: {
+                    data: audioBase64,
+                    mimeType: mimeType,
                 },
-            ],
-        };
+            },
+        ];
 
         try {
             const response = await this.genai.models.generateContent({
                 model: this.model,
-                contents: prompt.contents,
+                contents: contents,
             });
 
             // Accumulate token usage
