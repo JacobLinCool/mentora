@@ -93,7 +93,12 @@ export class AskingStanceHandler implements StageHandler {
         const extractedReason = classification.extracted_data?.reasoning || "";
 
         // Create initial stance (V1)
-        const stance = createStanceVersion(extractedStance, extractedReason, 1);
+        const stance = createStanceVersion(
+            extractedStance,
+            extractedReason,
+            1,
+            1.0, // Initial confidence assumed high if confirmed
+        );
 
         // Generate first case challenge (Stage 2 entry)
         const casePrompt = await caseChallengeBuilders.challenge.build(

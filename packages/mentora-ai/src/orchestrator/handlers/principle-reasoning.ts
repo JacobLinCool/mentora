@@ -16,9 +16,9 @@ import {
 } from "../../builder/stage4-closure.js";
 import { DialogueStage } from "../../builder/types.js";
 import {
-    createPrincipleVersion,
     formatStanceHistory,
     transitionTo,
+    updatePrinciple,
 } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
@@ -146,16 +146,11 @@ export class PrincipleReasoningHandler implements StageHandler {
         // Save the principle before looping back
         let updatedState = { ...state };
         if (classification.extracted_data?.reasoning) {
-            const principle = createPrincipleVersion(
+            updatedState = updatePrinciple(
+                updatedState,
                 classification.extracted_data.reasoning,
                 null,
-                state.principleHistory.length + 1,
             );
-            updatedState.principleHistory = [
-                ...state.principleHistory,
-                principle,
-            ];
-            updatedState.currentPrinciple = principle;
         }
 
         // Generate new case challenge
@@ -202,16 +197,7 @@ export class PrincipleReasoningHandler implements StageHandler {
         let updatedState = { ...state };
         const finalPrinciple = classification.extracted_data?.reasoning || "";
         if (finalPrinciple) {
-            const principle = createPrincipleVersion(
-                finalPrinciple,
-                null,
-                state.principleHistory.length + 1,
-            );
-            updatedState.principleHistory = [
-                ...state.principleHistory,
-                principle,
-            ];
-            updatedState.currentPrinciple = principle;
+            updatedState = updatePrinciple(updatedState, finalPrinciple, null);
         }
 
         // Get stance evolution for summary

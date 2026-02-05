@@ -32,6 +32,8 @@ export interface StanceVersion {
     reason: string;
     /** Timestamp when this stance was established */
     establishedAt: number;
+    /** Confidence score (0-1) */
+    confidence?: number;
 }
 
 /**

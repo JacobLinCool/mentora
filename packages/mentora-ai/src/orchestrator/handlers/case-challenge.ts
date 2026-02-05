@@ -11,11 +11,7 @@ import {
     type PrincipleReasoningResponse,
 } from "../../builder/stage3-principle-reasoning.js";
 import { DialogueStage } from "../../builder/types.js";
-import {
-    createStanceVersion,
-    formatStanceHistory,
-    transitionTo,
-} from "../state.js";
+import { formatStanceHistory, transitionTo, updateStance } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
 /**
@@ -127,16 +123,12 @@ export class CaseChallengeHandler implements StageHandler {
         // Update stance if new stance was extracted
         let newState = transitionTo(state, DialogueStage.CASE_CHALLENGE);
         if (classification.extracted_data?.stance) {
-            const newStance = createStanceVersion(
+            newState = updateStance(
+                newState,
                 classification.extracted_data.stance,
                 classification.extracted_data.reasoning || "",
-                state.stanceHistory.length + 1,
+                classification.confidence_score,
             );
-            newState = {
-                ...newState,
-                currentStance: newStance,
-                stanceHistory: [...state.stanceHistory, newStance],
-            };
         }
 
         return {

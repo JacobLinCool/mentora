@@ -35,12 +35,14 @@ export function createStanceVersion(
     position: string,
     reason: string,
     version: number,
+    confidence?: number,
 ): StanceVersion {
     return {
         version,
         position,
         reason,
         establishedAt: Date.now(),
+        confidence,
     };
 }
 
@@ -84,11 +86,13 @@ export function updateStance(
     state: DialogueState,
     position: string,
     reason: string,
+    confidence?: number,
 ): DialogueState {
     const newStance = createStanceVersion(
         position,
         reason,
         state.stanceHistory.length + 1,
+        confidence,
     );
     return {
         ...state,
