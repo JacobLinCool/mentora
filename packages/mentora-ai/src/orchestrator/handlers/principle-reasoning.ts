@@ -138,6 +138,11 @@ export class PrincipleReasoningHandler implements StageHandler {
         const { executor, state } = context;
         const currentStance = state.currentStance!;
 
+        // Check if we've reached max loops
+        if (state.loopCount >= context.config.maxLoops) {
+            return this.handleComplete(context, classification);
+        }
+
         // Save the principle before looping back
         let updatedState = { ...state };
         if (classification.extracted_data?.reasoning) {
@@ -187,6 +192,11 @@ export class PrincipleReasoningHandler implements StageHandler {
         classification: PrincipleReasoningClassifier,
     ): Promise<StageResult> {
         const { executor, state } = context;
+
+        // Check if we haven't met min loops requirement
+        if (state.loopCount < context.config.minLoopsForClosure) {
+            return this.handleNextCase(context, classification);
+        }
 
         // Save final principle
         let updatedState = { ...state };

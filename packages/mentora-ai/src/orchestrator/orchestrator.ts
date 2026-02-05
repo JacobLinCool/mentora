@@ -154,6 +154,7 @@ export class MentoraOrchestrator {
             executor: this.executor,
             state: stateWithMessage,
             studentMessage,
+            config: this.config,
         };
 
         const result = await handler.handle(context);

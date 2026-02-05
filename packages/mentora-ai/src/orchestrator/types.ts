@@ -36,6 +36,8 @@ export interface StageContext {
     state: DialogueState;
     /** Student's input message */
     studentMessage: string;
+    /** Orchestrator configuration */
+    config: Required<OrchestratorConfig>;
 }
 
 /**
