@@ -46,7 +46,7 @@ function printState(state: DialogueState) {
 }
 
 async function main() {
-    console.log("Mentora AI Termimal Interface");
+    console.log("Mentora AI Terminal Interface");
     console.log("----------------------------");
 
     rl.question(
