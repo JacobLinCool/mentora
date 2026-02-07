@@ -70,6 +70,7 @@ describe('LLM Service (Integration)', () => {
 			courseId: testCourseId,
 			topicId: null,
 			title: `LLM Test Assignment ${generateTestId()}`,
+			question: 'Should education prioritize individual or collective well-being?',
 			prompt: 'Test philosophical prompt for LLM dialogue',
 			mode: 'instant',
 			startAt: Date.now(),
@@ -316,7 +317,8 @@ describe('LLM Service (Integration)', () => {
 				testConversationId,
 				studentUserId,
 				'I believe education should focus on individual achievement',
-				'Should education prioritize individual or collective well-being?'
+				'Should education prioritize individual or collective well-being?',
+				'Test philosophical prompt for LLM dialogue'
 			);
 
 			expect(result).toBeDefined();
@@ -339,7 +341,8 @@ describe('LLM Service (Integration)', () => {
 				testConversationId,
 				studentUserId,
 				'That makes sense, but what about equity?',
-				'Should education prioritize individual or collective well-being?'
+				'Should education prioritize individual or collective well-being?',
+				'Test philosophical prompt for LLM dialogue'
 			);
 
 			expect(result).toBeDefined();
@@ -357,6 +360,7 @@ describe('LLM Service (Integration)', () => {
 					testConversationId,
 					teacherUserId,
 					'Unauthorized message',
+					'Test question',
 					'Test context'
 				)
 			).rejects.toThrow('Unauthorized');
@@ -382,6 +386,7 @@ describe('LLM Service (Integration)', () => {
 				newConversationId,
 				studentUserId,
 				'Test input',
+				'Test question',
 				'' // Empty context
 			);
 
