@@ -43,14 +43,11 @@ export interface Prompt<T> {
 /**
  * Builder interface for creating prompts
  */
-export interface PromptBuilder {
-    build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(
-        contents: Content[],
-        input: I,
-    ): Promise<Prompt<O>>;
+export interface PromptBuilder<
+    I extends Record<string, string>,
+    O extends Record<string, JsonValue> | null,
+> {
+    build(contents: Content[], input: I): Promise<Prompt<O>>;
 }
 
 /**
@@ -95,4 +92,16 @@ export interface ASRExecutor extends TokenTracker {
      * @returns Transcribed text
      */
     transcribe(audioBase64: string, mimeType?: string): Promise<string>;
+}
+
+/**
+ * Executor interface for generating reference content based on a question to guild student's answer
+ */
+export interface ContentExecutor extends TokenTracker {
+    /**
+     * Generate reference content based on a question to guide student's answer
+     * @param question - The question or prompt to generate reference content for
+     * @returns Generated reference content as a string
+     */
+    generateContent(question: string): Promise<string>;
 }

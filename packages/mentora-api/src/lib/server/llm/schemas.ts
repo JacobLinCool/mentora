@@ -40,6 +40,12 @@ export const AddTurnWithAudioSchema = z
 		}
 	);
 
+// ============ Assignments ============
+
+export const GenerateContentSchema = z.object({
+	question: z.string().min(1, 'Question is required').max(2000, 'Question is too long')
+});
+
 // ============ Courses ============
 
 export const CreateCourseSchema = z.object({
@@ -84,6 +90,7 @@ export const AddCreditsSchema = z.object({
 export type CreateConversationInput = z.infer<typeof CreateConversationSchema>;
 export type AddTurnInput = z.infer<typeof AddTurnSchema>;
 export type AddTurnWithAudioInput = z.infer<typeof AddTurnWithAudioSchema>;
+export type GenerateContentInput = z.infer<typeof GenerateContentSchema>;
 export type CreateCourseInput = z.infer<typeof CreateCourseSchema>;
 export type CopyCourseInput = z.infer<typeof CopyCourseSchema>;
 export type JoinCourseInput = z.infer<typeof JoinCourseSchema>;

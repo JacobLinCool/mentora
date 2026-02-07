@@ -1,7 +1,7 @@
 import type { Content } from "@google/genai";
 import { z } from "zod";
 
-import type { JsonValue, Prompt, PromptBuilder } from "../types.js";
+import type { Prompt, PromptBuilder } from "../types.js";
 import {
     CLASSIFIER_OUTPUT_FORMAT,
     RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT,
@@ -49,14 +49,33 @@ export const CaseChallengeResponseSchema = z.object({
 
 export type CaseChallengeResponse = z.infer<typeof CaseChallengeResponseSchema>;
 
+type CaseChallengeClassifyInput = {
+    previousStance: string;
+    currentCase: string;
+    userInput: string;
+};
+
+type CaseChallengeResponseInput = {
+    currentStance: string;
+    caseContent: string;
+};
+
+type CaseChallengeScaffoldInput = {
+    userInput: string;
+    currentStance: string;
+};
+
 /**
  * Stage 2 Classifier Builder
  */
-export class CaseChallengeClassifierBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class CaseChallengeClassifierBuilder implements PromptBuilder<
+    CaseChallengeClassifyInput,
+    CaseChallengeClassifier
+> {
+    async build(
+        contents: Content[],
+        input: CaseChallengeClassifyInput,
+    ): Promise<Prompt<CaseChallengeClassifier>> {
         const previousStance = input.previousStance || "";
         const currentCase = input.currentCase || "";
         const userInput = input.userInput || "";
@@ -80,7 +99,7 @@ ${CLASSIFIER_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: CaseChallengeClassifierSchema as unknown as z.ZodType<O>,
+            schema: CaseChallengeClassifierSchema,
         };
     }
 }
@@ -88,11 +107,14 @@ ${CLASSIFIER_OUTPUT_FORMAT}`;
 /**
  * Stage 2 Response Generator Builder (Case Challenge)
  */
-export class CaseChallengeResponseBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class CaseChallengeResponseBuilder implements PromptBuilder<
+    CaseChallengeResponseInput,
+    CaseChallengeResponse
+> {
+    async build(
+        contents: Content[],
+        input: CaseChallengeResponseInput,
+    ): Promise<Prompt<CaseChallengeResponse>> {
         const currentStance = input.currentStance || "";
         const caseContent = input.caseContent || "";
 
@@ -116,7 +138,7 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: CaseChallengeResponseSchema as unknown as z.ZodType<O>,
+            schema: CaseChallengeResponseSchema,
         };
     }
 }
@@ -124,11 +146,14 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
 /**
  * Stage 2 TR_SCAFFOLD Response Generator Builder
  */
-export class CaseChallengeScaffoldBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class CaseChallengeScaffoldBuilder implements PromptBuilder<
+    CaseChallengeScaffoldInput,
+    CaseChallengeResponse
+> {
+    async build(
+        contents: Content[],
+        input: CaseChallengeScaffoldInput,
+    ): Promise<Prompt<CaseChallengeResponse>> {
         const userInput = input.userInput || "";
         const currentStance = input.currentStance || "";
 
@@ -147,7 +172,7 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: CaseChallengeResponseSchema as unknown as z.ZodType<O>,
+            schema: CaseChallengeResponseSchema,
         };
     }
 }

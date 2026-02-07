@@ -1,7 +1,7 @@
 import type { Content } from "@google/genai";
 import { z } from "zod";
 
-import type { JsonValue, Prompt, PromptBuilder } from "../types.js";
+import type { Prompt, PromptBuilder } from "../types.js";
 import {
     CLASSIFIER_OUTPUT_FORMAT,
     RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT,
@@ -41,17 +41,27 @@ export const AskingStanceResponseSchema = z.object({
 
 export type AskingStanceResponse = z.infer<typeof AskingStanceResponseSchema>;
 
+type AskingStanceClassifyInput = {
+    currentQuestion: string;
+    userInput: string;
+};
+
+type AskingStanceResponseInput = {
+    topic?: string;
+    topicDescription?: string;
+};
+
 /**
  * Stage 1 Classifier Builder
  */
-export class AskingStanceClassifierBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
-        const currentQuestion = input.currentQuestion || "";
-        const userInput = input.userInput || "";
-
+export class AskingStanceClassifierBuilder implements PromptBuilder<
+    AskingStanceClassifyInput,
+    AskingStanceClassifier
+> {
+    async build(
+        contents: Content[],
+        input: AskingStanceClassifyInput,
+    ): Promise<Prompt<AskingStanceClassifier>> {
         const systemInstruction = `You are a Dialogue State Classifier for an educational AI.
 Current Stage: [AskingStance_Main]
 Goal: Determine if the student has clearly expressed their initial stance (Yes/No/Depends) with a basic reason.
@@ -61,15 +71,15 @@ Rules:
 2. If the user expresses a clear stance (even if simple) -> Output "TR_V1_ESTABLISHED".
 
 Analyze the user input below:
-Question: ${currentQuestion}
-User Input: ${userInput}
+Question: ${input.currentQuestion}
+User Input: ${input.userInput}
 
 ${CLASSIFIER_OUTPUT_FORMAT}`;
 
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: AskingStanceClassifierSchema as unknown as z.ZodType<O>,
+            schema: AskingStanceClassifierSchema,
         };
     }
 }
@@ -77,11 +87,14 @@ ${CLASSIFIER_OUTPUT_FORMAT}`;
 /**
  * Stage 1 Response Generator Builder (Initial)
  */
-export class AskingStanceResponseBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class AskingStanceResponseBuilder implements PromptBuilder<
+    AskingStanceResponseInput,
+    AskingStanceResponse
+> {
+    async build(
+        contents: Content[],
+        input: AskingStanceResponseInput,
+    ): Promise<Prompt<AskingStanceResponse>> {
         const topicDescription = input.topicDescription || input.topic || "";
 
         const systemInstruction = `${RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT}
@@ -101,7 +114,7 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: AskingStanceResponseSchema as unknown as z.ZodType<O>,
+            schema: AskingStanceResponseSchema,
         };
     }
 }

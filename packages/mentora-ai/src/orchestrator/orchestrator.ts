@@ -97,7 +97,7 @@ export class MentoraOrchestrator {
 
         const prompt = await askingStanceBuilders.initial.build([], {
             topic: state.topic,
-            topicContext,
+            topicDescription: topicContext,
         });
 
         const response = await this.executor.execute(prompt);

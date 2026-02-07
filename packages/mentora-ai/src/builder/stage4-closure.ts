@@ -1,7 +1,7 @@
 import type { Content } from "@google/genai";
 import { z } from "zod";
 
-import type { JsonValue, Prompt, PromptBuilder } from "../types.js";
+import type { Prompt, PromptBuilder } from "../types.js";
 import {
     CLASSIFIER_OUTPUT_FORMAT,
     RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT,
@@ -42,14 +42,28 @@ export const ClosureResponseSchema = z.object({
 
 export type ClosureResponse = z.infer<typeof ClosureResponseSchema>;
 
+type ClosureClassifyInput = {
+    generatedSummary: string;
+    userInput: string;
+};
+
+type ClosureResponseInput = {
+    stanceV1: string;
+    stanceFinal: string;
+    keyReasoning: string;
+};
+
 /**
  * Stage 4 Classifier Builder
  */
-export class ClosureClassifierBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class ClosureClassifierBuilder implements PromptBuilder<
+    ClosureClassifyInput,
+    ClosureClassifier
+> {
+    async build(
+        contents: Content[],
+        input: ClosureClassifyInput,
+    ): Promise<Prompt<ClosureClassifier>> {
         const generatedSummary = input.generatedSummary || "";
         const userInput = input.userInput || "";
 
@@ -70,7 +84,7 @@ ${CLASSIFIER_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: ClosureClassifierSchema as unknown as z.ZodType<O>,
+            schema: ClosureClassifierSchema,
         };
     }
 }
@@ -78,11 +92,14 @@ ${CLASSIFIER_OUTPUT_FORMAT}`;
 /**
  * Stage 4 Response Generator Builder (Summary)
  */
-export class ClosureResponseBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class ClosureResponseBuilder implements PromptBuilder<
+    ClosureResponseInput,
+    ClosureResponse
+> {
+    async build(
+        contents: Content[],
+        input: ClosureResponseInput,
+    ): Promise<Prompt<ClosureResponse>> {
         const stanceV1 = input.stanceV1 || "";
         const stanceFinal = input.stanceFinal || "";
         const keyReasoning = input.keyReasoning || "";
@@ -105,7 +122,7 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: ClosureResponseSchema as unknown as z.ZodType<O>,
+            schema: ClosureResponseSchema,
         };
     }
 }

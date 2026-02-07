@@ -1,7 +1,7 @@
 import type { Content } from "@google/genai";
 import { z } from "zod";
 
-import type { JsonValue, Prompt, PromptBuilder } from "../types.js";
+import type { Prompt, PromptBuilder } from "../types.js";
 import {
     CLASSIFIER_OUTPUT_FORMAT,
     RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT,
@@ -49,14 +49,31 @@ export type PrincipleReasoningResponse = z.infer<
     typeof PrincipleReasoningResponseSchema
 >;
 
+type PrincipleReasoningClassifyInput = {
+    currentStance: string;
+    userInput: string;
+};
+
+type PrincipleReasoningResponseInput = {
+    discussionSummary: string;
+};
+
+type PrincipleReasoningScaffoldInput = {
+    userPrinciple: string;
+    detectedTension?: string;
+};
+
 /**
  * Stage 3 Classifier Builder
  */
-export class PrincipleReasoningClassifierBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class PrincipleReasoningClassifierBuilder implements PromptBuilder<
+    PrincipleReasoningClassifyInput,
+    PrincipleReasoningClassifier
+> {
+    async build(
+        contents: Content[],
+        input: PrincipleReasoningClassifyInput,
+    ): Promise<Prompt<PrincipleReasoningClassifier>> {
         const currentStance = input.currentStance || "";
         const userInput = input.userInput || "";
 
@@ -79,7 +96,7 @@ ${CLASSIFIER_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: PrincipleReasoningClassifierSchema as unknown as z.ZodType<O>,
+            schema: PrincipleReasoningClassifierSchema,
         };
     }
 }
@@ -87,11 +104,14 @@ ${CLASSIFIER_OUTPUT_FORMAT}`;
 /**
  * Stage 3 Response Generator Builder (Principle Extraction)
  */
-export class PrincipleReasoningResponseBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class PrincipleReasoningResponseBuilder implements PromptBuilder<
+    PrincipleReasoningResponseInput,
+    PrincipleReasoningResponse
+> {
+    async build(
+        contents: Content[],
+        input: PrincipleReasoningResponseInput,
+    ): Promise<Prompt<PrincipleReasoningResponse>> {
         const discussionSummary = input.discussionSummary || "";
 
         const systemInstruction = `${RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT}
@@ -108,7 +128,7 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: PrincipleReasoningResponseSchema as unknown as z.ZodType<O>,
+            schema: PrincipleReasoningResponseSchema,
         };
     }
 }
@@ -116,11 +136,14 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
 /**
  * Stage 3 TR_SCAFFOLD Response Generator Builder
  */
-export class PrincipleReasoningScaffoldBuilder implements PromptBuilder {
-    async build<
-        I extends Record<string, string>,
-        O extends Record<string, JsonValue> | null,
-    >(contents: Content[], input: I): Promise<Prompt<O>> {
+export class PrincipleReasoningScaffoldBuilder implements PromptBuilder<
+    PrincipleReasoningScaffoldInput,
+    PrincipleReasoningResponse
+> {
+    async build(
+        contents: Content[],
+        input: PrincipleReasoningScaffoldInput,
+    ): Promise<Prompt<PrincipleReasoningResponse>> {
         const userPrinciple = input.userPrinciple || "";
         const detectedTension =
             input.detectedTension ||
@@ -141,7 +164,7 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
         return {
             systemInstruction,
             contents: buildContents(contents),
-            schema: PrincipleReasoningResponseSchema as unknown as z.ZodType<O>,
+            schema: PrincipleReasoningResponseSchema,
         };
     }
 }

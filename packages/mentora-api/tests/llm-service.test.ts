@@ -18,9 +18,9 @@ import {
 	processWithLLM,
 	extractConversationSummary,
 	getOrchestrator
-} from '../src/lib/server/llm-service.js';
+} from '../src/lib/server/llm/llm-service.js';
 import type { DialogueState } from 'mentora-ai';
-import { DialogueStage, SubState } from 'mentora-ai';
+import { DialogueStage } from 'mentora-ai';
 import {
 	setupTeacherClient,
 	setupStudentClient,
@@ -141,7 +141,6 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: DialogueStage.CASE_CHALLENGE,
-				subState: SubState.MAIN,
 				loopCount: 2,
 				stanceHistory: [
 					{
@@ -209,7 +208,6 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: DialogueStage.PRINCIPLE_REASONING,
-				subState: SubState.MAIN,
 				loopCount: 1,
 				stanceHistory: [],
 				currentStance: null,
@@ -236,7 +234,6 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: 'non-existent',
 				stage: DialogueStage.AWAITING_START,
-				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -259,7 +256,6 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: DialogueStage.AWAITING_START,
-				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -281,7 +277,6 @@ describe('LLM Service (Integration)', () => {
 			const state: DialogueState = {
 				topic: 'test',
 				stage: DialogueStage.AWAITING_START,
-				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
