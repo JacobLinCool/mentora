@@ -1,52 +1,145 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import { SvelteDate } from "svelte/reactivity";
     import DashboardHeader from "$lib/components/dashboard/student/DashboardHeader.svelte";
     import UpcomingDeadline from "$lib/components/dashboard/student/UpcomingDeadline.svelte";
     import ContinueConversation from "$lib/components/dashboard/student/ContinueConversation.svelte";
     import MyCourses from "$lib/components/dashboard/student/MyCourses.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
-
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+    import { api, type Course, type Conversation } from "$lib/api";
 
-    // Mock deadline data with multiple deadlines
-    const allDeadlines = [
+    // Data State
+    let courses = $state<Course[]>([]);
+    // Define exact shape matching HEAD logic
+    let deadlines = $state<
         {
-            date: new Date(2026, 0, 13),
-            course: "course 02",
-            assignment: "assignment02",
-            dueDate: new Date(2026, 0, 13, 23, 59, 59),
-        },
-        {
-            date: new Date(2026, 0, 15),
-            course: "course 01",
-            assignment: "assignment01",
-            dueDate: new Date(2026, 0, 15, 23, 59, 59),
-        },
-        {
-            date: new Date(2026, 0, 18),
-            course: "course 03",
-            assignment: "assignment03",
-            dueDate: new Date(2026, 0, 18, 23, 59, 59),
-        },
-        {
-            date: new Date(2026, 0, 22),
-            course: "course 04",
-            assignment: "assignment04",
-            dueDate: new Date(2026, 0, 22, 23, 59, 59),
-        },
-    ];
+            date: Date;
+            title: string;
+            id: string;
+            course: string;
+            courseId: string;
+            assignment: string;
+            assignmentId: string;
+            dueDate: Date;
+            type: string;
+        }[]
+    >([]);
+    let selectedDeadline = $state<{
+        date: Date;
+        title: string;
+        id: string;
+        course: string;
+        courseId: string;
+        assignment: string;
+        assignmentId: string;
+        dueDate: Date;
+        type: string;
+    } | null>(null);
+    let deadlineDates = $state<Date[]>([]);
+    let lastConversation = $state<Conversation | null>(null);
+    let lastConversationTitle = $state("");
 
-    // Current selected deadline (default to first one)
-    let selectedDeadline = $state(allDeadlines[0]);
+    // Loading State
+    let loading = $state(true);
 
-    // Mock deadline dates (for yellow indicator dots)
-    const deadlineDates = allDeadlines.map((d) => d.dueDate);
+    const user = $derived(api.currentUser);
+    const profile = $derived(api.currentUserProfile);
+
+    onMount(async () => {
+        if (!api.isAuthenticated) {
+            await api.authReady;
+        }
+
+        if (api.isAuthenticated) {
+            await loadData();
+        } else {
+            goto(resolve("/auth"));
+        }
+    });
+
+    async function loadData() {
+        loading = true;
+        try {
+            // 1. Fetch Workspaces/Courses
+            const coursesResult = await api.courses.listEnrolled();
+            if (coursesResult.success) {
+                courses = coursesResult.data;
+
+                // 2. Fetch Assignments for deadlines
+                // Optimization: Fetch in chunks to avoid thundering herd
+                const allAssignments = [];
+                const courseChunks = [];
+                for (let i = 0; i < courses.length; i += 3) {
+                    courseChunks.push(courses.slice(i, i + 3));
+                }
+
+                for (const chunk of courseChunks) {
+                    const chunkRes = await Promise.all(
+                        chunk.map((course) =>
+                            api.assignments
+                                .listAvailable(course.id)
+                                .then((res) =>
+                                    res.success
+                                        ? res.data.map((a) => ({
+                                              ...a,
+                                              course,
+                                          }))
+                                        : [],
+                                ),
+                        ),
+                    );
+                    allAssignments.push(...chunkRes.flat());
+                }
+
+                // Filter assignments with due dates in the future
+                const now = Date.now();
+                const upcoming = allAssignments
+                    .filter((a) => a.dueAt && a.dueAt > now)
+                    .sort((a, b) => (a.dueAt || 0) - (b.dueAt || 0));
+
+                deadlines = upcoming.map((a) => ({
+                    id: a.id,
+                    date: new Date(a.dueAt!),
+                    title: a.title,
+                    course: a.course.title,
+                    courseId: a.course.id,
+                    assignment: a.title,
+                    assignmentId: a.id,
+                    dueDate: new Date(a.dueAt!),
+                    type: "assignment",
+                }));
+
+                deadlineDates = deadlines.map((d) => d.dueDate);
+                if (deadlines.length > 0) {
+                    selectedDeadline = deadlines[0];
+                }
+            }
+
+            // 3. Fetch Last Conversation & Title
+            const convResult = await api.conversations.listMine({ limit: 1 });
+            if (convResult.success && convResult.data.length > 0) {
+                lastConversation = convResult.data[0];
+                if (lastConversation.assignmentId) {
+                    const assignRes = await api.assignments.get(
+                        lastConversation.assignmentId,
+                    );
+                    if (assignRes.success) {
+                        lastConversationTitle = assignRes.data.title;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load dashboard data", e);
+        } finally {
+            loading = false;
+        }
+    }
 
     // Handle date selection from calendar
     function handleDateSelect(selectedDate: SvelteDate) {
-        // Find deadline for the selected date
-        const deadline = allDeadlines.find((d) => {
+        const deadline = deadlines.find((d) => {
             return (
                 d.dueDate.getDate() === selectedDate.getDate() &&
                 d.dueDate.getMonth() === selectedDate.getMonth() &&
@@ -59,54 +152,10 @@
         }
     }
 
-    // Mock course data aligned with CourseDoc schema
-    const courses = [
-        {
-            id: "course-1",
-            title: "course01",
-            code: "COURSE01",
-            ownerId: "mock-owner-1",
-            visibility: "private",
-            theme: null,
-            description: null,
-            thumbnail: { storagePath: "", url: "/course-placeholder.jpg" },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-        },
-        {
-            id: "course-2",
-            title: "course02",
-            code: "COURSE02",
-            ownerId: "mock-owner-1",
-            visibility: "private",
-            theme: null,
-            description: null,
-            thumbnail: { storagePath: "", url: "/course-placeholder.jpg" },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-        },
-        {
-            id: "course-3",
-            title: "course03",
-            code: "COURSE03",
-            ownerId: "mock-owner-1",
-            visibility: "private",
-            theme: null,
-            description: null,
-            thumbnail: { storagePath: "", url: "/course-placeholder.jpg" },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-        },
-    ];
-
-    // Mock data for unfinished conversation
-    const unfinishedConversation = {
-        id: "conv-123",
-        title: "繼續討論電車難題",
-    };
-
     function handleContinueConversation() {
-        goto(resolve(`/conversations/${unfinishedConversation.id}`));
+        if (lastConversation) {
+            goto(resolve(`/conversations/${lastConversation.id}`));
+        }
     }
 </script>
 
@@ -114,24 +163,39 @@
     <title>Dashboard - Mentora</title>
 </svelte:head>
 
-<div class="min-h-screen pb-24">
+<div class="min-h-screen bg-gradient-to-br from-[#404040] to-[#858585] pb-24">
     <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
-        <DashboardHeader userName="user01" />
+        <DashboardHeader
+            userName={profile?.displayName || user?.displayName || "User"}
+        />
 
         <!-- Responsive grid layout for iPad -->
         <div class="md:grid md:grid-cols-2 md:gap-6">
             <!-- Left column: Deadline -->
             <div>
-                <UpcomingDeadline
-                    deadline={selectedDeadline}
-                    {deadlineDates}
-                    onDateSelect={handleDateSelect}
-                />
+                {#if loading}
+                    <div
+                        class="flex h-64 animate-pulse items-center justify-center rounded-xl bg-white/5 text-white/50"
+                    >
+                        Loading...
+                    </div>
+                {:else}
+                    <UpcomingDeadline
+                        deadline={selectedDeadline}
+                        {deadlineDates}
+                        onDateSelect={handleDateSelect}
+                    />
+                {/if}
             </div>
 
             <!-- Right column: Continue + Courses -->
             <div>
-                <ContinueConversation onclick={handleContinueConversation} />
+                {#if lastConversation}
+                    <ContinueConversation
+                        onclick={handleContinueConversation}
+                        title={lastConversationTitle}
+                    />
+                {/if}
 
                 <MyCourses {courses} />
             </div>

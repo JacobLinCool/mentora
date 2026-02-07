@@ -10,3 +10,4 @@ export const api = new MentoraAPI({
 });
 
 export * from "mentora-api";
+export type { Questionnaire, QuestionnaireResponse } from "mentora-firebase";

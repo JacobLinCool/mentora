@@ -1,20 +1,21 @@
 <script lang="ts">
-    import { Mic, Keyboard, FileText, FileX } from "@lucide/svelte";
+    import { Keyboard, FileText, FileX } from "@lucide/svelte";
+    import Record from "./Record.svelte";
 
     interface Props {
         showKeywords?: boolean;
         isRecording?: boolean;
         onToggleKeywords?: () => void;
-        onToggleRecording?: () => void;
         onShowTextInput?: () => void;
+        onRecordingComplete?: (blob: Blob) => void;
     }
 
     let {
         showKeywords = false,
-        isRecording = false,
+        isRecording = $bindable(false),
         onToggleKeywords,
-        onToggleRecording,
         onShowTextInput,
+        onRecordingComplete = () => {},
     }: Props = $props();
 </script>
 
@@ -34,14 +35,7 @@
     </button>
 
     <!-- Microphone (center) -->
-    <button
-        class="mic-btn"
-        class:recording={isRecording}
-        onclick={onToggleRecording}
-        aria-label={isRecording ? "Stop recording" : "Start recording"}
-    >
-        <Mic size={28} />
-    </button>
+    <Record bind:isRecording {onRecordingComplete} />
 
     <!-- Text input toggle (right) -->
     <button
@@ -81,32 +75,5 @@
 
     .control-btn.active {
         color: white;
-    }
-
-    .mic-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        border: none;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .mic-btn:hover {
-        background: rgba(255, 255, 255, 0.25);
-        transform: scale(1.05);
-    }
-
-    .mic-btn.recording {
-        background: rgba(255, 255, 255, 0.9);
-        color: #333;
-        box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
     }
 </style>

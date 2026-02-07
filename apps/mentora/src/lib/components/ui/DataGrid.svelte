@@ -1,13 +1,11 @@
-<script lang="ts">
+<script lang="ts" generics="T">
     import type { Snippet } from "svelte";
 
-    interface Props {
+    interface Props<T> {
         headers?: string[];
         className?: string;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data?: any[];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        renderCell?: (item: any, key: string) => string;
+        data?: T[];
+        renderCell?: (item: T, key: string) => string;
         children?: Snippet;
     }
 
@@ -17,7 +15,7 @@
         data = [],
         renderCell,
         children,
-    }: Props = $props();
+    }: Props<T> = $props();
 </script>
 
 <div class="w-full overflow-x-auto {className}">
