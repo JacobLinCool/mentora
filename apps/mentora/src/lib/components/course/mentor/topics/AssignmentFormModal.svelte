@@ -4,7 +4,7 @@
     import QuestionItem from "./QuestionItem.svelte";
     import { Label, Input, Select, Textarea, Helper } from "flowbite-svelte";
     import { Button } from "flowbite-svelte";
-    import { Plus } from "@lucide/svelte";
+    import { Plus, Sparkles } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
     import {
         dndzone,
@@ -36,6 +36,7 @@
     interface Assignment {
         id: string;
         title: string;
+        introduction?: string;
         type: AssignmentType;
         prompt?: string;
         files?: FileItem[];
@@ -63,6 +64,7 @@
     // Form state
     let assignmentType = $state<AssignmentType>("dialogue");
     let title = $state("");
+    let introduction = $state("");
     let prompt = $state("");
     let files = $state<FileItem[]>([]);
     let questions = $state<Question[]>([]);
@@ -83,6 +85,7 @@
         if (mode === "edit" && assignment) {
             assignmentType = assignment.type;
             title = assignment.title;
+            introduction = assignment.introduction || "";
             prompt = assignment.prompt || "";
             files = assignment.files || [];
             questions = assignment.questions || [];
@@ -92,6 +95,7 @@
             // Reset form for create mode
             assignmentType = "dialogue";
             title = "";
+            introduction = "";
             prompt = "";
             files = [];
             questions = [];
@@ -138,6 +142,7 @@
         const assignmentData: Assignment = {
             id: assignment?.id || crypto.randomUUID(),
             title,
+            introduction,
             type: assignmentType,
             startAt,
             dueAt,
@@ -225,6 +230,11 @@
     function handleQuestionDndFinalize(e: CustomEvent<{ items: Question[] }>) {
         questions = e.detail.items;
     }
+
+    function handleGenerateIntroduction() {
+        // Mock AI generation
+        introduction = "AI generated introduction...";
+    }
 </script>
 
 {#snippet footer()}
@@ -277,6 +287,29 @@
                 {/if}
             </Label>
         </div>
+
+        <!-- Introduction Field -->
+        <Label>
+            <div class="mb-2 flex items-center justify-between">
+                <span class="text-gray-700"
+                    >{m.mentor_assignment_introduction()}</span
+                >
+                <Button
+                    size="xs"
+                    class="cursor-pointer border border-gray-300 !bg-transparent text-gray-500 hover:bg-transparent hover:text-gray-700 focus:ring-0"
+                    onclick={handleGenerateIntroduction}
+                >
+                    <Sparkles class="mr-1 h-3 w-3" />
+                    {m.mentor_assignment_ai_generate()}
+                </Button>
+            </div>
+            <Textarea
+                bind:value={introduction}
+                rows={3}
+                class="w-full"
+                placeholder={m.mentor_assignment_introduction_placeholder()}
+            />
+        </Label>
 
         <!-- Dialogue-specific fields -->
         {#if assignmentType === "dialogue"}

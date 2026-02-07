@@ -347,5 +347,8 @@
     "course_settings_copied": "已複製！",
     "mentor_dashboard_delete_title": "刪除公告",
     "mentor_dashboard_delete_confirm": "您確定要刪除此公告嗎？此動作無法復原。",
-    "no_content": "無內容"
+    "no_content": "無內容",
+    "mentor_assignment_introduction": "問題介紹",
+    "mentor_assignment_introduction_placeholder": "在此寫下問題介紹，供學生於一開始理解問題。或點選\"AI 生成\"。",
+    "mentor_assignment_ai_generate": "AI 生成"
 }

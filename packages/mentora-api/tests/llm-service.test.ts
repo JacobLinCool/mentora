@@ -119,7 +119,7 @@ describe('LLM Service (Integration)', () => {
 
 	describe('getOrchestrator()', () => {
 		// REMOVED: "should create a singleton orchestrator instance" - requires GOOGLE_GENAI_API_KEY
-		
+
 		it('should throw error if GOOGLE_GENAI_API_KEY is not configured', () => {
 			// Skip this test if API key is configured (it's expected in normal operation)
 			if (process.env.GOOGLE_GENAI_API_KEY) {
@@ -135,7 +135,7 @@ describe('LLM Service (Integration)', () => {
 
 	describe('loadDialogueState()', () => {
 		// REMOVED: "should return new initial state for first interaction" - requires GOOGLE_GENAI_API_KEY during init
-		
+
 		it('should load existing state from Firestore', async () => {
 			// First, save a state
 			const mockState: DialogueState = {
