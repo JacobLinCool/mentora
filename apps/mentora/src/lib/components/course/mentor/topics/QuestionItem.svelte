@@ -58,6 +58,7 @@
     let currentType = $state<QuestionType>(initialType);
     let currentQuestion = $state(initialQuestion);
     let currentOptions = $state<Option[]>([...initialOptions]);
+    const TypeIcon = $derived(getTypeIcon(initialType));
 
     const flipDurationMs = 200;
 
@@ -175,10 +176,7 @@
                         <div
                             class="flex items-center gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5 text-sm text-gray-600"
                         >
-                            <svelte:component
-                                this={getTypeIcon(initialType)}
-                                size={16}
-                            />
+                            <TypeIcon size={16} />
                             <span class="truncate"
                                 >{typeOptions.find(
                                     (o) => o.value === initialType,

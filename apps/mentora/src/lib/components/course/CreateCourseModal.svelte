@@ -32,36 +32,22 @@
         loading = true;
         errorMessage = "";
 
-        // Simulate network delay
-        setTimeout(() => {
-            const newCourse = {
-                id: Math.floor(Math.random() * 10000),
-                name: title,
-                tag: code || "General",
-                createdDate: new Date()
-                    .toLocaleDateString("zh-TW", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })
-                    .replace(/\//g, "."),
-                visibility:
-                    visibilityOptions.find((o) => o.value === visibility)
-                        ?.name || "Private",
-            };
-
+        try {
             if (onCreate) {
-                onCreate(newCourse);
+                await onCreate({
+                    title,
+                    code,
+                    description,
+                    visibility,
+                });
             }
-
-            loading = false;
             open = false;
-
-            // Optionally navigate, but since we are mocking, maybe just update the dashboard list
-            // goto(resolve(`/courses/${newCourse.id}`));
-        }, 1000);
+        } catch (err) {
+            console.error(err);
+            errorMessage = "Failed to create course";
+        } finally {
+            loading = false;
+        }
     }
 </script>
 
