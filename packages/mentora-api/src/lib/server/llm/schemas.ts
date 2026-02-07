@@ -29,8 +29,7 @@ export const AddTurnWithAudioSchema = z
 	})
 	.refine(
 		(data) => {
-			const hasText =
-				typeof data.text === 'string' && data.text.trim().length > 0;
+			const hasText = typeof data.text === 'string' && data.text.trim().length > 0;
 			const hasAudio = !!data.audio;
 			return hasText || hasAudio;
 		},

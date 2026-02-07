@@ -149,3 +149,32 @@ export async function deleteAssignment(
 		await deleteDoc(docRef);
 	});
 }
+
+/**
+ * Generate detailed content from a question using AI
+ *
+ * This calls the backend API to generate comprehensive educational content
+ * including concept explanations, definitions, and reference information.
+ *
+ * The generated content should be used as the assignment's `prompt` field,
+ * while the original question goes into the `question` field.
+ *
+ * @param config - API configuration
+ * @param question - The teacher's short question (max 2000 chars)
+ * @returns Generated content and token usage statistics
+ */
+export async function generateContent(
+	config: MentoraAPIConfig,
+	question: string
+): Promise<APIResult<{ question: string; content: string; tokenUsage: any }>> {
+	const result = await callBackend<{ question: string; content: string; tokenUsage: any }>(
+		config,
+		'/assignments/generate-content',
+		{
+			method: 'POST',
+			body: JSON.stringify({ question })
+		}
+	);
+
+	return result;
+}

@@ -290,6 +290,9 @@ importers:
       fires2rest:
         specifier: ^0.3.0
         version: 0.3.0
+      genai:
+        specifier: ^0.0.18
+        version: 0.0.18
       globals:
         specifier: ^16.5.0
         version: 16.5.0
