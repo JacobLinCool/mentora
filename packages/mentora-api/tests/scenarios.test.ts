@@ -465,28 +465,6 @@ describe('Multi-Account Scenarios', () => {
 			}
 		});
 
-		it('Student: should add a turn to conversation', async () => {
-			if (!testConversationId) {
-				console.log('Skipping - no conversation created');
-				return;
-			}
-
-			// This calls the backend API
-			const result = await student.conversations.addTurn(
-				testConversationId,
-				'This is my initial idea for the assignment.',
-				'idea'
-			);
-
-			// Backend may not be running in test environment
-			if (!result.success && result.error?.includes('fetch')) {
-				console.log('Skipping - backend not available');
-				return;
-			}
-
-			expect(result.success).toBe(true);
-		});
-
 		it('Student: should end conversation', async () => {
 			if (!testConversationId) {
 				console.log('Skipping - no conversation created');

@@ -1,7 +1,7 @@
 <script>
     import { m } from "$lib/paraglide/messages";
 
-    let { onclick } = $props();
+    let { onclick, title = "" } = $props();
     const conversationTitle = m.dashboard_continue_conversation();
 </script>
 
@@ -17,10 +17,13 @@
         ></div>
 
         <!-- Text content -->
-        <p
-            class="text-text-primary font-serif-tc relative z-10 text-lg font-medium"
+        <div
+            class="text-text-primary font-serif-tc relative z-10 flex flex-col items-center gap-1 text-lg font-medium"
         >
-            {conversationTitle}
-        </p>
+            <p>{conversationTitle}</p>
+            {#if title}
+                <p class="text-sm opacity-80">{title}</p>
+            {/if}
+        </div>
     </button>
 </div>

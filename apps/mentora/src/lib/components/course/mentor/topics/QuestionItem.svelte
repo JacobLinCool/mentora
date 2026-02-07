@@ -9,12 +9,12 @@
         Save,
         Plus,
     } from "@lucide/svelte";
-    import { untrack } from "svelte";
     import * as m from "$lib/paraglide/messages.js";
     import {
         dndzone,
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
     } from "svelte-dnd-action";
+    import { untrack } from "svelte";
 
     type QuestionType = "single" | "multiple" | "text";
 
@@ -86,14 +86,6 @@
 
     const flipDurationMs = 200;
 
-    // Reset edit state when props change
-    $effect(() => {
-        // If we are NOT editing locally, sync with props
-        if (!vm.isEditing) {
-            vm.reset(initialType, initialQuestion, initialOptions);
-        }
-    });
-
     const typeOptions: { value: QuestionType; label: string }[] = [
         { value: "single", label: m.mentor_assignment_question_type_single() },
         {
@@ -102,6 +94,14 @@
         },
         { value: "text", label: m.mentor_assignment_question_type_text() },
     ];
+
+    // Reset edit state when props change
+    $effect(() => {
+        // If we are NOT editing locally, sync with props
+        if (!vm.isEditing) {
+            vm.reset(initialType, initialQuestion, initialOptions);
+        }
+    });
 
     function getTypeIcon(t: QuestionType) {
         switch (t) {

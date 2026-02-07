@@ -1,6 +1,9 @@
-<script lang="ts">
+﻿<script lang="ts">
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+    import { page } from "$app/state";
+    import { api, type QuestionnaireResponse } from "$lib/api";
+    import { ArrowLeft } from "@lucide/svelte";
 
     import PageHead from "$lib/components/PageHead.svelte";
     import SingleChoiceQuestion from "$lib/components/questionnaire/SingleChoiceQuestion.svelte";
@@ -37,66 +40,209 @@
 
     type Question = SingleChoice | MultipleChoice | ShortAnswer;
 
-    // Mock data for testing
-    const mockQuestions: Question[] = [
-        {
-            type: "single_choice",
-            id: "q1",
-            question: "在這個論點中，您認為最關鍵的假設是什麼？",
-            options: [
-                "所有的數據都是準確的",
-                "過去的趨勢會延續到未來",
-                "外部因素不會改變",
-                "樣本具有代表性",
-            ],
-            required: true,
-        },
-        {
-            type: "multiple_choice",
-            id: "q2",
-            question: "以下哪些是批判性思維的核心要素？（可複選）",
-            options: [
-                "分析論證的結構",
-                "識別隱含假設",
-                "評估證據的可靠性",
-                "考慮替代觀點",
-                "接受權威的意見",
-            ],
-            required: true,
-        },
-        {
-            type: "short_answer",
-            id: "q3",
-            question: "請簡述您對這個觀點的看法，並提供支持您立場的理由。",
-            placeholder: "請輸入您的想法...",
-            maxLength: 500,
-            required: true,
-        },
-        {
-            type: "single_choice",
-            id: "q4",
-            question: "當面對相互矛盾的資訊時，您通常會採取什麼策略？",
-            options: [
-                "選擇最可信的來源",
-                "尋找更多資訊來驗證",
-                "分析每個來源的偏見",
-                "暫時保留判斷",
-            ],
-            required: true,
-        },
-    ];
-
     // State
     let currentIndex = $state(0);
     let answers = $state<Record<string, string | string[]>>({});
+    let submitting = $state(false);
+    let questions = $state<Question[]>([]);
+
+    // Navigation state
+    let courseId = $state<string | null>(null);
+    const assignmentId = $derived(page.params.id);
+
+    $effect(() => {
+        if (assignmentId && api.isAuthenticated) {
+            loadData();
+        }
+    });
+
+    async function loadData() {
+        if (!assignmentId) return;
+        try {
+            // Load questionnaire and assignment details (for courseId)
+            const [questionnaireRes, assignmentRes, myResponseRes] =
+                await Promise.all([
+                    api.questionnaires.get(assignmentId),
+                    api.assignments.get(assignmentId),
+                    api.questionnaireResponses.getMine(assignmentId),
+                ]);
+
+            if (assignmentRes.success) {
+                courseId = assignmentRes.data.courseId ?? null;
+            }
+
+            const submissionRes = await api.submissions.getMine(assignmentId);
+
+            if (questionnaireRes.success) {
+                const qa = questionnaireRes.data;
+                courseId = qa.courseId ?? null;
+
+                // Ensure submission exists (Start it if not)
+                if (!submissionRes.success || !submissionRes.data) {
+                    await api.submissions.start(assignmentId);
+                }
+
+                if (qa.questions && Array.isArray(qa.questions)) {
+                    // Map backend question schema to UI question schema
+                    questions = qa.questions.map(
+                        (q, index: number): Question => {
+                            const base = q.question;
+                            const id = index.toString();
+                            const required = q.required;
+                            const questionText = base.questionText;
+
+                            if (base.type === "single_answer_choice") {
+                                return {
+                                    type: "single_choice",
+                                    id,
+                                    question: questionText,
+                                    options: base.options,
+                                    required,
+                                };
+                            } else if (base.type === "multiple_answer_choice") {
+                                return {
+                                    type: "multiple_choice",
+                                    id,
+                                    question: questionText,
+                                    options: base.options,
+                                    required,
+                                };
+                            } else {
+                                // short_answer
+                                // Define interface for potential extra fields
+                                const shortBase = base as {
+                                    placeholder?: string;
+                                    maxLength?: number;
+                                };
+                                return {
+                                    type: "short_answer",
+                                    id,
+                                    question: questionText,
+                                    required,
+                                    placeholder: shortBase.placeholder,
+                                    maxLength: shortBase.maxLength,
+                                };
+                            }
+                        },
+                    );
+
+                    // Restore existing answers from QuestionnaireResponse
+                    if (myResponseRes.success && myResponseRes.data) {
+                        const savedResponses = myResponseRes.data.responses;
+                        if (Array.isArray(savedResponses)) {
+                            savedResponses.forEach((r) => {
+                                // Identify question by index
+                                const qIndex = r.questionIndex;
+                                if (qIndex >= 0 && qIndex < questions.length) {
+                                    const qId = questions[qIndex].id;
+                                    if (
+                                        r.answer &&
+                                        r.answer.response !== undefined
+                                    ) {
+                                        const val = r.answer.response;
+                                        answers[qId] =
+                                            typeof val === "number"
+                                                ? String(val)
+                                                : val;
+                                    }
+                                }
+                            });
+                        }
+                    }
+                } else {
+                    questions = [];
+                }
+            } else {
+                console.error(
+                    "Failed to load questionnaire",
+                    questionnaireRes.error,
+                );
+            }
+        } catch (e) {
+            console.error("Failed to load questionnaire", e);
+        } finally {
+            // loading = false;
+        }
+    }
+
+    async function saveAnswers() {
+        if (!assignmentId || !api.currentUser) return;
+
+        // Map UI answers to Backend Schema Responses
+        // Schema requires: { questionIndex: number, answer: { type: string, response: any } }[]
+        const responses: QuestionnaireResponse["responses"] = questions
+            .map((q, index) => {
+                // Use index for backend mapping
+                const answerVal = answers[q.id];
+
+                // Skip missing answers
+                if (answerVal === undefined) return null;
+
+                // Construct strictly typed response object based on question type
+                if (q.type === "short_answer") {
+                    return {
+                        questionIndex: index,
+                        answer: {
+                            type: "short_answer" as const,
+                            response: answerVal as string,
+                        },
+                    };
+                }
+                if (q.type === "single_choice") {
+                    return {
+                        questionIndex: index,
+                        answer: {
+                            type: "single_answer_choice" as const,
+                            response: answerVal as string,
+                        },
+                    };
+                }
+                if (q.type === "multiple_choice") {
+                    return {
+                        questionIndex: index,
+                        answer: {
+                            type: "multiple_answer_choice" as const,
+                            response: answerVal as string[],
+                        },
+                    };
+                }
+                return null;
+            })
+            // Filter out nulls and satisfy TS
+            .filter((r): r is NonNullable<typeof r> => r !== null);
+
+        try {
+            // Call api.questionnaireResponses.submit
+            const result = await api.questionnaireResponses.submit(
+                assignmentId,
+                responses,
+                courseId,
+            );
+
+            if (!result.success) {
+                console.error("Failed to save answers:", result.error);
+            }
+        } catch (e) {
+            console.error("Failed to save answers", e);
+        }
+    }
+
+    function goBack() {
+        if (courseId) {
+            goto(resolve(`/courses/${courseId}`));
+        } else {
+            goto(resolve("/dashboard"));
+        }
+    }
 
     // Derived
-    let currentQuestion = $derived(mockQuestions[currentIndex]);
-    let totalQuestions = $derived(mockQuestions.length);
+    let currentQuestion = $derived(questions[currentIndex]);
+    let totalQuestions = $derived(questions.length > 0 ? questions.length : 0);
     let isLastQuestion = $derived(currentIndex === totalQuestions - 1);
 
     // Check if current question is answered (for required validation)
     let isCurrentAnswered = $derived(() => {
+        if (!currentQuestion) return false;
         const answer = answers[currentQuestion.id];
         if (!currentQuestion.required) return true;
         if (answer === undefined) return false;
@@ -105,6 +251,7 @@
     });
 
     function handleSingleChoiceAnswer(value: string) {
+        if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
         // Auto-advance after short delay
         setTimeout(() => {
@@ -115,10 +262,12 @@
     }
 
     function handleMultipleChoiceAnswer(value: string[]) {
+        if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
     }
 
     function handleShortAnswer(value: string) {
+        if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
     }
 
@@ -128,17 +277,46 @@
         }
     }
 
-    function handleNext() {
+    async function handleNext() {
         if (currentIndex < totalQuestions - 1) {
             currentIndex++;
+            // Save progress automatically
+            if (assignmentId) {
+                await saveAnswers();
+            }
         }
     }
 
-    function handleSubmit() {
-        // TODO: Submit answers to API
-        console.log("Submitting answers:", answers);
-        // Navigate back to assignment or show completion
-        goto(resolve("/assignments"));
+    async function handleSubmit() {
+        if (submitting || !assignmentId) return;
+
+        // Final validation: Ensure current question is answered if required
+        // Especially critical for Essays/Short Answer if user types nothing
+        if (!isCurrentAnswered()) {
+            // Optional: Show a toast or visual shake? For now, we rely on the button disabled state.
+            // But if this is called programmatically or button not disabled correctly:
+            return;
+        }
+
+        submitting = true;
+
+        try {
+            // Save final answers
+            await saveAnswers();
+            // Submit assignment (updates status to 'submitted')
+            await api.submissions.submit(assignmentId);
+
+            // Navigate back
+            if (courseId) {
+                goto(resolve(`/courses/${courseId}`));
+            } else {
+                goto(resolve("/dashboard"));
+            }
+        } catch (e) {
+            console.error("Failed to submit", e);
+        } finally {
+            submitting = false;
+        }
     }
 
     function getCurrentAnswer<T>(questionId: string, defaultValue: T): T {
@@ -154,37 +332,63 @@
     <!-- Background -->
     <div class="background"></div>
 
+    {#if courseId}
+        <div class="absolute top-6 left-6 z-50">
+            <button
+                class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:translate-x-[-2px] hover:bg-white/15"
+                onclick={goBack}
+                aria-label="Back to course"
+            >
+                <ArrowLeft class="h-5 w-5 text-white" />
+            </button>
+        </div>
+    {/if}
+
     <!-- Content -->
     <div class="content">
         <!-- Question area -->
         <div class="question-area">
-            {#key currentQuestion.id}
-                <div class="question-wrapper">
-                    {#if currentQuestion.type === "single_choice"}
-                        <SingleChoiceQuestion
-                            question={currentQuestion.question}
-                            options={currentQuestion.options}
-                            value={getCurrentAnswer(currentQuestion.id, "")}
-                            onAnswer={handleSingleChoiceAnswer}
-                        />
-                    {:else if currentQuestion.type === "multiple_choice"}
-                        <MultipleChoiceQuestion
-                            question={currentQuestion.question}
-                            options={currentQuestion.options}
-                            value={getCurrentAnswer(currentQuestion.id, [])}
-                            onAnswer={handleMultipleChoiceAnswer}
-                        />
-                    {:else if currentQuestion.type === "short_answer"}
-                        <ShortAnswerQuestion
-                            question={currentQuestion.question}
-                            placeholder={currentQuestion.placeholder}
-                            maxLength={currentQuestion.maxLength}
-                            value={getCurrentAnswer(currentQuestion.id, "")}
-                            onAnswer={handleShortAnswer}
-                        />
-                    {/if}
+            {#if currentQuestion}
+                {#key currentQuestion.id}
+                    <div class="question-wrapper">
+                        {#if currentQuestion.type === "single_choice"}
+                            <SingleChoiceQuestion
+                                question={currentQuestion.question}
+                                options={currentQuestion.options}
+                                value={getCurrentAnswer(currentQuestion.id, "")}
+                                onAnswer={handleSingleChoiceAnswer}
+                            />
+                        {:else if currentQuestion.type === "multiple_choice"}
+                            <MultipleChoiceQuestion
+                                question={currentQuestion.question}
+                                options={currentQuestion.options}
+                                value={getCurrentAnswer(currentQuestion.id, [])}
+                                onAnswer={handleMultipleChoiceAnswer}
+                            />
+                        {:else if currentQuestion.type === "short_answer"}
+                            <ShortAnswerQuestion
+                                question={currentQuestion.question}
+                                placeholder={currentQuestion.placeholder}
+                                maxLength={currentQuestion.maxLength}
+                                value={getCurrentAnswer(currentQuestion.id, "")}
+                                onAnswer={handleShortAnswer}
+                            />
+                        {/if}
+                    </div>
+                {/key}
+            {:else}
+                <div
+                    class="flex h-full w-full flex-col items-center justify-center gap-4"
+                >
+                    <p class="text-white/50">No questions available.</p>
+                    <button
+                        class="icon-btn rounded-full bg-white/10 p-2 hover:bg-white/20"
+                        onclick={goBack}
+                    >
+                        <ArrowLeft size={24} color="white" />
+                    </button>
                 </div>
-            {/key}
+            {/if}
         </div>
 
         <!-- Spacer -->
