@@ -15,6 +15,31 @@ export const AddTurnSchema = z.object({
 	type: z.enum(['idea', 'followup']).optional()
 });
 
+/**
+ * Schema for adding a turn with either text or audio
+ * Audio will be stored as blob for later transcription
+ */
+export const AddTurnWithAudioSchema = z
+	.object({
+		text: z.string().optional(),
+		audio: z.instanceof(Blob).optional(),
+		type: z.enum(['idea', 'followup', 'summary', 'counterpoint']).optional().default('idea'),
+		// For LLM type distinction: 'user' = human input, 'assistant' = AI response
+		turnType: z.enum(['user', 'assistant']).optional().default('user')
+	})
+	.refine(
+		(data) => {
+			const hasText =
+				typeof data.text === 'string' && data.text.trim().length > 0;
+			const hasAudio = !!data.audio;
+			return hasText || hasAudio;
+		},
+		{
+			message: 'Either text or audio is required',
+			path: ['text']
+		}
+	);
+
 // ============ Courses ============
 
 export const CreateCourseSchema = z.object({
@@ -58,6 +83,7 @@ export const AddCreditsSchema = z.object({
 
 export type CreateConversationInput = z.infer<typeof CreateConversationSchema>;
 export type AddTurnInput = z.infer<typeof AddTurnSchema>;
+export type AddTurnWithAudioInput = z.infer<typeof AddTurnWithAudioSchema>;
 export type CreateCourseInput = z.infer<typeof CreateCourseSchema>;
 export type CopyCourseInput = z.infer<typeof CopyCourseSchema>;
 export type JoinCourseInput = z.infer<typeof JoinCourseSchema>;
