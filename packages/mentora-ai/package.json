@@ -24,6 +24,7 @@
         "@google/genai": "^1.38.0",
         "@types/node": "^24.10.4",
         "dotenv": "^17.2.3",
+        "genai": "^0.0.18",
         "tsup": "^8.5.1",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",

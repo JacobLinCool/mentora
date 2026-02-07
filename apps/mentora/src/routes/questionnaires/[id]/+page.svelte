@@ -40,6 +40,55 @@
 
     type Question = SingleChoice | MultipleChoice | ShortAnswer;
 
+    // Mock data for testing
+    const mockQuestions: Question[] = [
+        {
+            type: "single_choice",
+            id: "q1",
+            question: "在這個論點中，您認為最關鍵的假設是什麼？",
+            options: [
+                "所有的數據都是準確的",
+                "過去的趨勢會延續到未來",
+                "外部因素不會改變",
+                "樣本具有代表性",
+            ],
+            required: true,
+        },
+        {
+            type: "multiple_choice",
+            id: "q2",
+            question: "以下哪些是批判性思維的核心要素？（可複選）",
+            options: [
+                "分析論證的結構",
+                "識別隱含假設",
+                "評估證據的可靠性",
+                "考慮替代觀點",
+                "接受權威的意見",
+            ],
+            required: true,
+        },
+        {
+            type: "short_answer",
+            id: "q3",
+            question: "請簡述您對這個觀點的看法，並提供支持您立場的理由。",
+            placeholder: "請輸入您的想法...",
+            maxLength: 500,
+            required: true,
+        },
+        {
+            type: "single_choice",
+            id: "q4",
+            question: "當面對相互矛盾的資訊時，您通常會採取什麼策略？",
+            options: [
+                "選擇最可信的來源",
+                "尋找更多資訊來驗證",
+                "分析每個來源的偏見",
+                "暫時保留判斷",
+            ],
+            required: true,
+        },
+    ];
+
     // State
     let currentIndex = $state(0);
     let answers = $state<Record<string, string | string[]>>({});
@@ -51,8 +100,12 @@
     const assignmentId = $derived(page.params.id);
 
     $effect(() => {
-        if (assignmentId && api.isAuthenticated) {
-            loadData();
+        if (assignmentId) {
+            api.assignments.get(assignmentId).then((res) => {
+                if (res.success && res.data.courseId) {
+                    courseId = res.data.courseId;
+                }
+            });
         }
     });
 
@@ -84,47 +137,24 @@
 
                 if (qa.questions && Array.isArray(qa.questions)) {
                     // Map backend question schema to UI question schema
-                    questions = qa.questions.map(
-                        (q, index: number): Question => {
-                            const base = q.question;
-                            const id = index.toString();
-                            const required = q.required;
-                            const questionText = base.questionText;
+                    questions = qa.questions.map((q, index: number) => {
+                        const base = q.question;
+                        let type: string = base.type;
+                        // Map backend types to frontend component types
+                        if (type === "single_answer_choice")
+                            type = "single_choice";
+                        if (type === "multiple_answer_choice")
+                            type = "multiple_choice";
+                        // Keep 'short_answer' as is
 
-                            if (base.type === "single_answer_choice") {
-                                return {
-                                    type: "single_choice",
-                                    id,
-                                    question: questionText,
-                                    options: base.options,
-                                    required,
-                                };
-                            } else if (base.type === "multiple_answer_choice") {
-                                return {
-                                    type: "multiple_choice",
-                                    id,
-                                    question: questionText,
-                                    options: base.options,
-                                    required,
-                                };
-                            } else {
-                                // short_answer
-                                // Define interface for potential extra fields
-                                const shortBase = base as {
-                                    placeholder?: string;
-                                    maxLength?: number;
-                                };
-                                return {
-                                    type: "short_answer",
-                                    id,
-                                    question: questionText,
-                                    required,
-                                    placeholder: shortBase.placeholder,
-                                    maxLength: shortBase.maxLength,
-                                };
-                            }
-                        },
-                    );
+                        return {
+                            ...base,
+                            question: base.questionText,
+                            type,
+                            required: q.required,
+                            id: index.toString(),
+                        } as unknown as Question;
+                    });
 
                     // Restore existing answers from QuestionnaireResponse
                     if (myResponseRes.success && myResponseRes.data) {
@@ -236,8 +266,8 @@
     }
 
     // Derived
-    let currentQuestion = $derived(questions[currentIndex]);
-    let totalQuestions = $derived(questions.length > 0 ? questions.length : 0);
+    let currentQuestion = $derived(mockQuestions[currentIndex]);
+    let totalQuestions = $derived(mockQuestions.length);
     let isLastQuestion = $derived(currentIndex === totalQuestions - 1);
 
     // Check if current question is answered (for required validation)
@@ -277,13 +307,9 @@
         }
     }
 
-    async function handleNext() {
+    function handleNext() {
         if (currentIndex < totalQuestions - 1) {
             currentIndex++;
-            // Save progress automatically
-            if (assignmentId) {
-                await saveAnswers();
-            }
         }
     }
 
