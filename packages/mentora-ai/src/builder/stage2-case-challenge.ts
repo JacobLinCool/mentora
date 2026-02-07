@@ -11,7 +11,6 @@ import { buildContents } from "./utils.js";
 
 /**
  * Schema for Stage 2 Classifier output
- * Matches CSV: detected_intent is TR_CLARIFY, TR_SCAFFOLD, or TR_CASE_COMPLETED
  */
 export const CaseChallengeClassifierSchema = z.object({
     thought_process: z

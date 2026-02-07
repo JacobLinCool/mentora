@@ -56,7 +56,6 @@ export class AskingStanceHandler implements StageHandler {
     private async handleClarify(context: StageContext): Promise<StageResult> {
         const { executor, state } = context;
 
-        // Use the initial builder to re-ask (as per CSV spec, no separate clarify prompt)
         const clarifyPrompt = await askingStanceBuilders.initial.build(
             state.conversationHistory,
             {

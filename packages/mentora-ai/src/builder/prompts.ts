@@ -1,5 +1,4 @@
 /**
- * Core prompt templates matching the CSV specification
  * These prompts are the authoritative source for the Mentora dialogue system
  */
 

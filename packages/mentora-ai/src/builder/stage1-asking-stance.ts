@@ -108,7 +108,6 @@ ${RESPONSE_GENERATOR_OUTPUT_FORMAT}`;
 
 /**
  * Exported builders for Stage 1
- * Note: Removed the separate "clarify" builder as it's not in the CSV spec.
  * TR_CLARIFY handling uses the same initial builder to re-ask.
  */
 export const askingStanceBuilders = {
