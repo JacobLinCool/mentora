@@ -23,8 +23,14 @@
     import MetricStat from "$lib/components/ui/MetricStat.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import DataGrid from "$lib/components/ui/DataGrid.svelte";
+    import { goto } from "$app/navigation";
 
     // --- Dashboard State (Existing) ---
+    $effect(() => {
+        if (api.isAuthenticated) {
+            goto(resolve("/dashboard"));
+        }
+    });
 
     const stats = [
         { label: "Active Courses", value: "3" },

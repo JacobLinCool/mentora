@@ -7,6 +7,7 @@
         Button,
         Textarea,
     } from "flowbite-svelte";
+    import { api } from "$lib/api";
 
     let { open = $bindable(false), onCreate } = $props();
 
@@ -32,36 +33,34 @@
         loading = true;
         errorMessage = "";
 
-        // Simulate network delay
-        setTimeout(() => {
-            const newCourse = {
-                id: Math.floor(Math.random() * 10000),
-                name: title,
-                tag: code || "General",
-                createdDate: new Date()
-                    .toLocaleDateString("zh-TW", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })
-                    .replace(/\//g, "."),
-                visibility:
-                    visibilityOptions.find((o) => o.value === visibility)
-                        ?.name || "Private",
-            };
+        try {
+            const result = await api.courses.create(title, code || undefined, {
+                visibility,
+                description: description || null,
+            });
 
-            if (onCreate) {
-                onCreate(newCourse);
+            if (result.success) {
+                const courseId = result.data;
+                // Fetch full course details to update UI
+                const courseRes = await api.courses.get(courseId);
+                if (courseRes.success && onCreate) {
+                    onCreate(courseRes.data);
+                }
+                open = false;
+                // Reset form
+                title = "";
+                code = "";
+                description = "";
+                visibility = "private";
+            } else {
+                errorMessage = result.error;
             }
-
+        } catch (e) {
+            errorMessage =
+                e instanceof Error ? e.message : "Failed to create course";
+        } finally {
             loading = false;
-            open = false;
-
-            // Optionally navigate, but since we are mocking, maybe just update the dashboard list
-            // goto(resolve(`/courses/${newCourse.id}`));
-        }, 1000);
+        }
     }
 </script>
 

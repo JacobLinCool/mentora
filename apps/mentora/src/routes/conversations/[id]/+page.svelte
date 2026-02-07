@@ -1,50 +1,136 @@
-<script lang="ts">
+﻿<script lang="ts">
     import { m } from "$lib/paraglide/messages";
-    import { Send } from "@lucide/svelte";
+    import { Send, ArrowLeft } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import TypewriterText from "$lib/components/conversation/TypewriterText.svelte";
     import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
     import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
-    import MeshGradient from "$lib/components/ui/MeshGradient.svelte";
+    import { page } from "$app/state";
+    import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
+    import { api, type Conversation } from "$lib/api";
+
+    const conversationId = $derived(page.params.id);
+    const convState = api.createState<Conversation>();
+
+    let courseId = $state<string | null>(null);
+
+    $effect(() => {
+        if (conversationId && api.isAuthenticated) {
+            api.conversationsSubscribe.subscribe(conversationId, convState);
+            return () => {
+                if (convState) {
+                    convState.cleanup();
+                }
+            };
+        }
+    });
+
+    $effect(() => {
+        const conv = convState.value;
+        if (conv && conv.assignmentId && !courseId) {
+            api.assignments.get(conv.assignmentId).then((res) => {
+                if (res.success && res.data.courseId) {
+                    courseId = res.data.courseId;
+                } else if (!res.success) {
+                    // Fallback: If we can't find the course, we might be in an orphan conversation
+                    console.warn(
+                        "Could not find linked course for this conversation",
+                    );
+                }
+            });
+        }
+    });
+
+    let conversation = $derived(convState.value);
 
     // UI State
     type Phase = "responding" | "ready";
-    let phase: Phase = $state("responding");
-    let typingPhase: "response" | "question" = $state("response"); // Which part is being typed
+    // Initialize to ready so we don't show blank screen if logic fails
+    let phase: Phase = $state("ready");
+    let typingPhase: "response" | "question" = $state("response");
     let showKeywords = $state(false);
     let showTextInput = $state(false);
     let isRecording = $state(false);
-    let currentStage = $state(2); // Mock: current stage index (0-based)
-    let totalStages = $state(5); // Mock: total stages
 
-    // Mock data for demo - separate response and question
-    let currentResponse = $state(
-        "You seem to be liking your personal experience directly...",
+    // Data derived
+    const stageMap: Record<string, number> = {
+        awaiting_idea: 1,
+        adding_counterpoint: 2,
+        awaiting_followup: 3,
+        adding_final_summary: 4,
+        closed: 5,
+    };
+    let currentStage = $derived(
+        conversation?.state ? (stageMap[conversation.state as string] ?? 1) : 1,
     );
-    let currentQuestion = $state(
-        "What leads you to believe this assumption is true?",
-    );
-    let keywords = $state([
-        "Bias",
-        "Intuition",
-        "Evidence",
-        "Personal Experience",
-        "Data",
-    ]);
+    let totalStages = $derived(5);
+
+    let currentQuestion = $state("");
+    let keywords = $state<string[]>([]);
 
     let messageInput = $state("");
     let sending = $state(false);
 
-    function handleResponseComplete() {
-        // After response finishes, start typing the question
+    let lastProcessedTurnId = $state<string | null>(null);
+
+    function goBack() {
+        if (courseId) {
+            goto(resolve(`/courses/${courseId}`));
+        } else {
+            goto(resolve("/dashboard"));
+        }
+    }
+
+    $effect(() => {
+        const turns = conversation?.turns || [];
+        const lastTurn = turns.at(-1);
+
+        if (lastTurn && lastTurn.id !== lastProcessedTurnId) {
+            // Heuristic: If type is 'idea' or 'followup', it is likely user.
+            const isUser =
+                lastTurn.type === "idea" || lastTurn.type === "followup";
+
+            if (!isUser) {
+                // New assistant message
+                const content = lastTurn.text;
+
+                currentQuestion = content;
+
+                lastProcessedTurnId = lastTurn.id;
+
+                // Trigger UI flow
+                phase = "responding";
+                typingPhase = "question";
+            } else {
+                // User message
+                lastProcessedTurnId = lastTurn.id;
+                // Stay in ready or show thinking?
+            }
+        } else if (turns.length > 0 && lastProcessedTurnId === null) {
+            // First load initialization
+            const last = turns.at(-1);
+            if (last) {
+                lastProcessedTurnId = last.id;
+                const isUser = last.type === "idea" || last.type === "followup";
+
+                if (!isUser) {
+                    currentQuestion = last.text;
+                    // Don't re-type on load, just show
+                    phase = "ready";
+                }
+            }
+        }
+    });
+
+    /* function handleResponseComplete() {
         setTimeout(() => {
             typingPhase = "question";
         }, 300);
-    }
+    } */
 
     function handleQuestionComplete() {
-        // Transition to ready phase after question completes
         setTimeout(() => {
             phase = "ready";
         }, 500);
@@ -54,8 +140,29 @@
         showKeywords = !showKeywords;
     }
 
-    function handleToggleRecording() {
-        isRecording = !isRecording;
+    async function handleRecordingComplete(blob: Blob) {
+        // Placeholder for audio processing
+        // In the future, this will:
+        // 1. Upload the blob to cloud storage
+        // 2. Call the transcription API (or send directly to LLM)
+        // 3. Add the user's turn with audioId
+
+        console.log("Audio recorded:", blob.size, "bytes");
+
+        // Simulate sending state for UI feedback
+        sending = true;
+
+        // Simulate processing delay
+        setTimeout(async () => {
+            // For now, we can't really do anything without the backend support
+            // So we just reset the state.
+            // Ideally, we would simulate a user message saying "[Audio Message]"
+            // if we wanted to test the flow.
+
+            // await api.conversations.addTurn(conversationId, "[Audio Message Placeholder]", "idea");
+
+            sending = false;
+        }, 1500);
     }
 
     function handleShowTextInput() {
@@ -63,74 +170,98 @@
     }
 
     async function handleSendMessage() {
-        if (!messageInput.trim()) return;
+        if (!messageInput.trim() || !conversationId) return;
 
         sending = true;
 
-        // Mock sending - just simulate response
-        setTimeout(() => {
-            messageInput = "";
-            showTextInput = false;
-            // Reset to responding phase for next turn
-            phase = "responding";
-            typingPhase = "response";
+        try {
+            const res = await api.conversations.addTurn(
+                conversationId,
+                messageInput,
+                "idea",
+            );
+            if (!res.success) {
+                console.error("Failed to add turn:", res.error);
+                let msg = String(res.error);
+                if (
+                    typeof res.error === "object" &&
+                    res.error !== null &&
+                    "message" in res.error
+                ) {
+                    msg = (res.error as { message: string }).message;
+                }
+                alert("Failed to send message: " + (msg || "Unknown error"));
+            } else {
+                messageInput = "";
+                showTextInput = false;
+            }
+        } catch (e) {
+            console.error("Error sending message:", e);
+            alert("Error sending message. Check console for details.");
+        } finally {
             sending = false;
-        }, 500);
+        }
     }
 </script>
 
-<PageHead
-    title={m.page_conversation_title()}
-    description={m.page_conversation_description()}
-/>
+<PageHead title="Conversation" />
 
 <div class="conversation-container">
-    <!-- Mesh Gradient Background -->
-    <MeshGradient
-        color1="#000000"
-        color2="#ffffff"
-        color3="#4b5563"
-        color4="#d1d5db"
-        color5="#1f2937"
-    />
+    <div class="background"></div>
 
-    <!-- Main content -->
-    <div class="content">
-        <!-- Phase 1: LLM Responding with typing effect -->
-        {#if phase === "responding"}
+    <div class="content relative">
+        {#if courseId}
+            <div class="absolute top-6 left-6 z-50">
+                <button
+                    class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:translate-x-[-2px] hover:bg-white/15"
+                    onclick={goBack}
+                    aria-label="Back to course"
+                >
+                    <ArrowLeft class="h-5 w-5 text-white" />
+                </button>
+            </div>
+        {/if}
+
+        {#if conversation}
+            <!-- Only show indicator if not in ready phase because ready phase might hide it on mobile? No, always show but positioned -->
+        {/if}
+
+        {#if !conversation}
+            <div class="flex h-full items-center justify-center">
+                <div class="animate-pulse text-white/50">
+                    Loading conversation...
+                </div>
+            </div>
+        {:else if phase === "responding"}
             <div class="responding-phase">
                 <div class="text-container">
-                    {#if typingPhase === "response"}
-                        <!-- Show response first -->
-                        <TypewriterText
-                            text={currentResponse}
-                            speed={50}
-                            onComplete={handleResponseComplete}
-                        />
-                    {:else}
-                        <!-- Show both response (static) + question (typing) -->
-                        <p class="response-text">{currentResponse}</p>
+                    {#if typingPhase === "response" || typingPhase === "question"}
+                        <div class="response-text">
+                            <!-- TODO: Separate response/question parts logic -->
+                        </div>
+                    {/if}
+
+                    {#if typingPhase === "question"}
                         <div class="question-typing">
                             <TypewriterText
                                 text={currentQuestion}
-                                speed={50}
+                                speed={30}
                                 onComplete={handleQuestionComplete}
                             />
                         </div>
                     {/if}
                 </div>
             </div>
-        {/if}
-
-        <!-- Phase 2: Ready for user input (only show question) -->
-        {#if phase === "ready"}
+        {:else}
+            <!-- Ready Phase -->
             <div class="ready-phase">
-                <!-- Question at top (only the question, not response) -->
-                <div class="question-section">
-                    <h1 class="question-text">{currentQuestion}</h1>
+                <div class="top-spacer"></div>
+
+                <div class="question-display">
+                    <h2 class="question-text">{currentQuestion}</h2>
                 </div>
 
-                <!-- Keywords panel (middle) -->
+                <!-- Keywords Panel (when visible) -->
                 {#if showKeywords}
                     <div class="keywords-section">
                         <KeywordsPanel {keywords} visible={showKeywords} />
@@ -165,10 +296,10 @@
                 <div class="controls-section">
                     <VoiceControls
                         {showKeywords}
-                        {isRecording}
+                        bind:isRecording
                         onToggleKeywords={handleToggleKeywords}
-                        onToggleRecording={handleToggleRecording}
                         onShowTextInput={handleShowTextInput}
+                        onRecordingComplete={handleRecordingComplete}
                     />
                 </div>
 
@@ -186,6 +317,32 @@
         position: fixed;
         inset: 0;
         overflow: hidden;
+    }
+
+    .background {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            135deg,
+            #5a5a5a 0%,
+            #3a3a3a 50%,
+            #4a4a4a 100%
+        );
+        z-index: -1;
+    }
+
+    .background::before {
+        content: "";
+        position: absolute;
+        top: -20%;
+        left: -10%;
+        width: 60%;
+        height: 60%;
+        background: radial-gradient(
+            ellipse,
+            rgba(100, 100, 100, 0.4) 0%,
+            transparent 70%
+        );
     }
 
     .content {
@@ -257,11 +414,110 @@
         }
     }
 
-    @media (min-width: 1024px) {
-        .ready-phase {
-            padding: 0 4rem;
-            max-width: 48rem;
+    .top-spacer {
+        flex: 1;
+        min-height: 2rem;
+    }
+
+    .question-display {
+        margin-bottom: 2rem;
+    }
+
+    .question-text {
+        font-family: "Noto Serif TC", "Times New Roman", serif;
+        font-size: 1.5rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: white;
+    }
+
+    @media (min-width: 768px) {
+        .question-text {
+            font-size: 1.75rem;
         }
+    }
+
+    .keywords-section {
+        margin-bottom: 1rem;
+    }
+
+    .spacer {
+        flex: 1;
+    }
+
+    .text-input-section {
+        margin-bottom: 1rem;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    .input-wrapper {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        border-radius: 1.5rem; /* Fully rounded */
+        padding: 0.5rem;
+        display: flex;
+        align-items: flex-end;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .input-wrapper textarea {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: white;
+        resize: none;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        line-height: 1.5;
+        outline: none;
+        max-height: 120px;
+    }
+
+    .input-wrapper textarea::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Custom scrollbar for textarea */
+    .input-wrapper textarea::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .input-wrapper textarea::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+    }
+
+    .send-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: #fff;
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0.25rem;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .send-btn:disabled {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.3);
+        cursor: not-allowed;
+    }
+
+    .send-btn:not(:disabled):hover {
+        transform: scale(1.05);
+        background: #f0f0f0;
+    }
+
+    .controls-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .stage-section {
+        margin-bottom: 2rem; /* Space from bottom */
     }
 
     @keyframes fadeIn {
@@ -273,103 +529,14 @@
         }
     }
 
-    .question-section {
-        padding-top: 3rem;
-        padding-bottom: 1rem;
-    }
-
-    .question-text {
-        font-family: "Noto Serif TC", serif;
-        font-size: 1.75rem;
-        font-weight: 400;
-        line-height: 1.5;
-        color: white;
-        margin: 0;
-    }
-
-    /* iPad responsive question text */
-    @media (min-width: 768px) {
-        .question-text {
-            font-size: 2rem;
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
         }
-    }
-
-    .keywords-section {
-        padding: 2rem 0;
-    }
-
-    .spacer {
-        flex: 1;
-    }
-
-    /* Text Input Section */
-    .text-input-section {
-        padding: 1rem 0;
-    }
-
-    .input-wrapper {
-        display: flex;
-        gap: 0.5rem;
-        align-items: flex-end;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 0.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .input-wrapper textarea {
-        flex: 1;
-        background: transparent;
-        border: none;
-        color: white;
-        font-size: 1rem;
-        padding: 0.75rem;
-        resize: none;
-        font-family: inherit;
-    }
-
-    .input-wrapper textarea::placeholder {
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    .input-wrapper textarea:focus {
-        outline: none;
-    }
-
-    .send-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border: none;
-        border-radius: 12px;
-        background: #d4a855;
-        color: white;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .send-btn:hover:not(:disabled) {
-        background: #e5b966;
-    }
-
-    .send-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .send-btn :global(.send-icon) {
-        width: 18px;
-        height: 18px;
-    }
-
-    .controls-section {
-        padding-bottom: 0.5rem;
-    }
-
-    .stage-section {
-        padding-bottom: env(safe-area-inset-bottom, 1rem);
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 </style>

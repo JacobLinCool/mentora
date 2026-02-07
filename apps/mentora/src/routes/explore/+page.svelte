@@ -1,79 +1,25 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
-
     import ExploreCard from "$lib/components/explore/ExploreCard.svelte";
     import { m } from "$lib/paraglide/messages";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+    import { api, type Course } from "$lib/api";
 
-    interface Course {
-        id: string;
-        title: string;
-        code: string;
-        ownerId: string;
-        visibility: string;
-        theme: string;
-        description: string | null;
-        thumbnail: { storagePath: string; url: string } | null;
-        createdAt: number;
-        updatedAt: number;
-        category: string;
-    }
-
-    // Mock Data aligned with CourseDoc schema
-    const allCourses: Course[] = [
-        {
-            id: "course01",
-            title: "course01",
-            code: "COURSE01",
-            ownerId: "mock-owner-1",
-            visibility: "public",
-            theme: "Psychology",
-            description: null,
-            thumbnail: {
-                storagePath: "",
-                url: "https://upload.wikimedia.org/wikipedia/en/6/66/Teletubbies_logo.png",
-            },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            category: "Psychology",
-        },
-        {
-            id: "course02",
-            title: "course02",
-            code: "COURSE02",
-            ownerId: "mock-owner-1",
-            visibility: "public",
-            theme: "History",
-            description: null,
-            thumbnail: {
-                storagePath: "",
-                url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Stick_Figure.svg/1200px-Stick_Figure.svg.png",
-            },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            category: "History",
-        },
-        {
-            id: "course03",
-            title: "course03",
-            code: "COURSE03",
-            ownerId: "mock-owner-1",
-            visibility: "public",
-            theme: "Logic",
-            description: null,
-            thumbnail: {
-                storagePath: "",
-                url: "/course-placeholder.jpg",
-            },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            category: "Logic",
-        },
-    ];
-
+    let allCourses = $state<Course[]>([]);
+    let loading = $state(true);
     let searchQuery = $state("");
     let selectedCategory = $state("All");
+
+    onMount(async () => {
+        const result = await api.courses.listPublic();
+
+        if (result.success) {
+            allCourses = result.data;
+        }
+        loading = false;
+    });
 
     // Mapping internal category keys to translation functions
     const categoryMap: Record<string, () => string> = {
@@ -89,16 +35,18 @@
     // Filtered courses
     let filteredCourses = $derived(
         allCourses.filter((course) => {
+            const courseCategory = course.theme || "";
             const matchesSearch =
                 course.title
                     .toLowerCase()
                     .includes(searchQuery.toLowerCase()) ||
-                course.category
+                courseCategory
                     .toLowerCase()
                     .includes(searchQuery.toLowerCase());
+
             const matchesCategory =
                 selectedCategory === "All" ||
-                course.category === selectedCategory;
+                courseCategory === selectedCategory;
             return matchesSearch && matchesCategory;
         }),
     );
@@ -161,19 +109,29 @@
         </div>
 
         <!-- Course List -->
-        <div class="grid gap-6 md:grid-cols-2">
-            {#each filteredCourses as course (course.id)}
-                <ExploreCard
-                    title={course.title}
-                    category={categoryMap[course.category]
-                        ? categoryMap[course.category]()
-                        : course.category}
-                    imageUrl={course.thumbnail?.url ??
-                        "/course-placeholder.jpg"}
-                    onclick={() => handleCourseClick(course.id)}
-                />
-            {/each}
-        </div>
+        {#if loading}
+            <div class="flex h-64 items-center justify-center text-white/50">
+                Loading...
+            </div>
+        {:else if filteredCourses.length === 0}
+            <div class="flex h-64 items-center justify-center text-white/50">
+                No courses found
+            </div>
+        {:else}
+            <div class="grid gap-6 md:grid-cols-2">
+                {#each filteredCourses as course (course.id)}
+                    <ExploreCard
+                        title={course.title}
+                        category={course.theme && categoryMap[course.theme]
+                            ? categoryMap[course.theme]()
+                            : course.theme || ""}
+                        imageUrl={course.thumbnail?.url ??
+                            "/course-placeholder.jpg"}
+                        onclick={() => handleCourseClick(course.id)}
+                    />
+                {/each}
+            </div>
+        {/if}
     </div>
 
     <BottomNav activeTab="explore" />
