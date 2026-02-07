@@ -250,9 +250,7 @@ export class MentoraClient {
 			),
 		delete: (assignmentId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => AssignmentsModule.deleteAssignment(this._config, assignmentId)),
-		generateContent: (
-			question: string
-		): Promise<APIResult<{ question: string; content: string; tokenUsage: any }>> =>
+		generateContent: (question: string): Promise<APIResult<{ content: string }>> =>
 			this.authReadyThen(() => AssignmentsModule.generateContent(this._config, question))
 	};
 

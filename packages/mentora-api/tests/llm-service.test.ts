@@ -120,16 +120,16 @@ describe('LLM Service (Integration)', () => {
 	describe('getOrchestrator()', () => {
 		// REMOVED: "should create a singleton orchestrator instance" - requires GOOGLE_GENAI_API_KEY
 
-		it('should throw error if GOOGLE_GENAI_API_KEY is not configured', () => {
+		it('should throw error if GOOGLE_GENAI_MODEL is not configured', () => {
 			// Skip this test if API key is configured (it's expected in normal operation)
-			if (process.env.GOOGLE_GENAI_API_KEY) {
-				console.log('Skipping - GOOGLE_GENAI_API_KEY is configured');
+			if (process.env.GOOGLE_GENAI_MODEL) {
+				console.log('Skipping - GOOGLE_GENAI_MODEL is configured');
 				return;
 			}
 
 			expect(() => {
 				getOrchestrator();
-			}).toThrow(/GOOGLE_GENAI_API_KEY/);
+			}).toThrow(/GOOGLE_GENAI_MODEL/);
 		});
 	});
 
