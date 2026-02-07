@@ -119,42 +119,13 @@ async function generateContent(ctx: RouteContext, request: Request): Promise<Res
 		// Generate detailed content from the question
 		const generatedContent = await contentExecutor.generateContent(question);
 
-		// Get token usage statistics
-		const tokenUsage = contentExecutor.getTokenUsage();
-
 		return jsonResponse(
 			{
-				question,
-				content: generatedContent,
-				tokenUsage
+				content: generatedContent
 			},
 			HttpStatus.OK
 		);
 	} catch (error) {
-		if (error instanceof Error) {
-			if (error.message.includes('GOOGLE_GENAI_API_KEY')) {
-				return errorResponse(
-					'Content generation service not configured',
-					HttpStatus.INTERNAL_SERVER_ERROR,
-					ServerErrorCode.INTERNAL_ERROR
-				);
-			}
-			if (error.message.includes('API quota') || error.message.includes('rate limit')) {
-				return errorResponse(
-					'Content generation service rate limited. Please try again later.',
-					HttpStatus.TOO_MANY_REQUESTS,
-					ServerErrorCode.RATE_LIMITED
-				);
-			}
-			if (error.message.includes('timeout')) {
-				return errorResponse(
-					'Content generation timed out. Please try again.',
-					HttpStatus.GATEWAY_TIMEOUT,
-					ServerErrorCode.INTERNAL_ERROR
-				);
-			}
-		}
-
 		console.error('[API] Error generating content:', error);
 		return errorResponse(
 			'Failed to generate content. Please try again.',

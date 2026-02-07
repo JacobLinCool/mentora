@@ -166,15 +166,11 @@ export async function deleteAssignment(
 export async function generateContent(
 	config: MentoraAPIConfig,
 	question: string
-): Promise<APIResult<{ question: string; content: string; tokenUsage: any }>> {
-	const result = await callBackend<{ question: string; content: string; tokenUsage: any }>(
-		config,
-		'/assignments/generate-content',
-		{
-			method: 'POST',
-			body: JSON.stringify({ question })
-		}
-	);
+): Promise<APIResult<{ content: string }>> {
+	const result = await callBackend<{ content: string }>(config, '/assignments/generate-content', {
+		method: 'POST',
+		body: JSON.stringify({ question })
+	});
 
 	return result;
 }
