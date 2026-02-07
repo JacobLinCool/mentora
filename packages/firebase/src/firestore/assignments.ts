@@ -32,6 +32,15 @@ export const zAssignment = z
             .min(1)
             .max(300)
             .describe("Student-facing assignment title."),
+        question: z
+            .string()
+            .max(2000)
+            .nullable()
+            .optional()
+            .default(null)
+            .describe(
+                "The initial question prompt for the assignment. Can be a simple question, a more detailed scenario, or any text that sets the context for the student's response.",
+            ),
         prompt: z
             .string()
             .min(1)

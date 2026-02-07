@@ -8,11 +8,11 @@
  * accessing dialogue state. Pass userId to ensure authorization checks are enforced.
  */
 
-import { MentoraOrchestrator, GeminiPromptExecutor, type DialogueState } from 'mentora-ai';
-import { GoogleGenAI } from '@google/genai';
-import { DialogueStage, SubState } from 'mentora-ai';
+import { MentoraOrchestrator, type DialogueState } from 'mentora-ai';
+import { DialogueStage } from 'mentora-ai';
 import type { Firestore } from 'fires2rest';
 import { Conversations, joinPath } from 'mentora-firebase';
+import { getPromptExecutor } from './executors.js';
 
 /**
  * Singleton orchestrator instance
@@ -36,16 +36,8 @@ export function getOrchestrator(): MentoraOrchestrator {
 		return orchestratorInstance;
 	}
 
-	const apiKey = process.env.GOOGLE_GENAI_API_KEY;
-	if (!apiKey) {
-		throw new Error(
-			'GOOGLE_GENAI_API_KEY environment variable not set. ' +
-				'Please configure it in your .env.local file.'
-		);
-	}
-
-	const genai = new GoogleGenAI({ apiKey });
-	const executor = new GeminiPromptExecutor(genai, 'gemini-2.0-flash');
+	// Get the shared PromptExecutor instance
+	const executor = getPromptExecutor();
 
 	// Initialize orchestrator with default config
 	orchestratorInstance = new MentoraOrchestrator(executor, {
@@ -116,7 +108,6 @@ export async function loadDialogueState(
 	const newState: DialogueState = {
 		topic: conversationId,
 		stage: DialogueStage.AWAITING_START,
-		subState: SubState.MAIN,
 		loopCount: 0,
 		stanceHistory: [],
 		currentStance: null,
@@ -177,7 +168,7 @@ export async function saveDialogueState(
  * This function orchestrates the full flow:
  * 1. Load current DialogueState from Firestore (with ownership check)
  * 2. If first interaction:
- *    a. Call orchestrator.startConversation() to generate initial stance question
+ *    a. Call orchestrator.startConversation() with both question and prompt to generate initial stance question
  *    b. Call orchestrator.processStudentInput() to process the student's first message
  * 3. If subsequent: call orchestrator.processStudentInput() to handle the input
  * 4. Save updated DialogueState back to Firestore (with ownership check)
@@ -189,7 +180,8 @@ export async function saveDialogueState(
  * @param conversationId - The conversation ID
  * @param userId - The authenticated user ID (for ownership validation)
  * @param studentMessage - The student's text input
- * @param topicContext - Optional assignment description/context for LLM
+ * @param question - The teacher's original question (short version)
+ * @param prompt - The generated detailed content/reference material
  * @returns Object with aiMessage, updatedState, and whether conversation ended
  * @throws Error if orchestrator encounters issues or user doesn't own conversation
  */
@@ -198,7 +190,8 @@ export async function processWithLLM(
 	conversationId: string,
 	userId: string,
 	studentMessage: string,
-	topicContext?: string
+	question: string,
+	prompt: string
 ): Promise<{
 	aiMessage: string;
 	updatedState: DialogueState;
@@ -220,24 +213,20 @@ export async function processWithLLM(
 		// First interaction: initialize the dialogue, then process student's first message
 		console.log(`[MentoraLLM] First interaction detected, starting conversation`);
 
+		// Combine question and prompt as topic context
+		// Format: "Question: {question}\n\nReference Content:\n{prompt}"
+		const topicContext = `問題：${question}\n\n參考內容：\n${prompt}`;
+
 		// Step 3a: Call startConversation to transition from awaiting_start to asking_stance
-		const initResult = await orchestrator.startConversation(currentState, topicContext || '');
+		const initResult = await orchestrator.startConversation(currentState, topicContext);
 
 		// Step 3b: Immediately process the student's first message
 		console.log(`[MentoraLLM] Processing student's first message`);
-		result = await orchestrator.processStudentInput(
-			initResult.newState,
-			studentMessage,
-			topicContext || ''
-		);
+		result = await orchestrator.processStudentInput(initResult.newState, studentMessage);
 	} else {
 		// Subsequent interactions: process the student's input
 		console.log(`[MentoraLLM] Processing student input at stage: ${currentState.stage}`);
-		result = await orchestrator.processStudentInput(
-			currentState,
-			studentMessage,
-			topicContext || ''
-		);
+		result = await orchestrator.processStudentInput(currentState, studentMessage);
 	}
 
 	// Step 4: Save updated state to Firestore (includes ownership validation)

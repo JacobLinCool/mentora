@@ -1,6 +1,9 @@
 // Core types
 export * from "./types.js";
 
+// Prompt templates
+export * from "./prompts.js";
+
 // Stage builders
 export * from "./stage1-asking-stance.js";
 export * from "./stage2-case-challenge.js";

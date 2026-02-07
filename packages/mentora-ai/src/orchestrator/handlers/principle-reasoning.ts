@@ -1,18 +1,24 @@
 /**
  * Stage 3: Principle Reasoning Handler
  */
-import { caseChallengeBuilders } from "../../builder/stage2-case-challenge.js";
+import {
+    caseChallengeBuilders,
+    type CaseChallengeResponse,
+} from "../../builder/stage2-case-challenge.js";
 import {
     principleReasoningBuilders,
-    type PrincipleReasoningDecision,
+    type PrincipleReasoningClassifier,
+    type PrincipleReasoningResponse,
 } from "../../builder/stage3-principle-reasoning.js";
-import { closureBuilders } from "../../builder/stage4-closure.js";
-import { DialogueStage, SubState } from "../../builder/types.js";
 import {
-    createPrincipleVersion,
-    formatPrincipleHistory,
+    closureBuilders,
+    type ClosureResponse,
+} from "../../builder/stage4-closure.js";
+import { DialogueStage } from "../../builder/types.js";
+import {
     formatStanceHistory,
     transitionTo,
+    updatePrinciple,
 } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
@@ -20,11 +26,11 @@ import type { StageContext, StageHandler, StageResult } from "../types.js";
  * Handler for Stage 3: Principle Reasoning
  *
  * Responsibilities:
- * - Guide principle extraction from stance
  * - Analyze principle clarity and consistency
- * - Scaffold principle refinement
- * - Loop back to Stage 2 if principle needs testing
- * - Advance to Closure when principle is solid
+ * - Re-ask when unclear (TR_CLARIFY)
+ * - Scaffold principle refinement (TR_SCAFFOLD)
+ * - Loop back to Stage 2 if principle needs testing (TR_NEXT_CASE)
+ * - Advance to Closure when principle is solid (TR_COMPLETE)
  */
 export class PrincipleReasoningHandler implements StageHandler {
     readonly stage = DialogueStage.PRINCIPLE_REASONING;
@@ -33,205 +39,197 @@ export class PrincipleReasoningHandler implements StageHandler {
         const { executor, state, studentMessage } = context;
         const currentStance = state.currentStance!;
 
-        // Analyze student's principle articulation
-        const analyzerPrompt = await principleReasoningBuilders.analyzer.build(
-            state.conversationHistory,
-            {
-                topic: state.topic,
-                currentStance: currentStance.position,
-                studentMessage,
-                loopCount: state.loopCount.toString(),
-            },
-        );
+        // Step 1: Classify user input using Classifier
+        const classifierPrompt =
+            await principleReasoningBuilders.classifier.build(
+                state.conversationHistory,
+                {
+                    currentStance: currentStance.position,
+                    userInput: studentMessage,
+                },
+            );
 
-        const decision = (await executor.execute(
-            analyzerPrompt,
-        )) as PrincipleReasoningDecision;
+        const classification = (await executor.execute(
+            classifierPrompt,
+        )) as PrincipleReasoningClassifier;
 
-        switch (decision.action) {
-            case "clarify":
-                return this.handleClarify(context, studentMessage);
+        // Step 2: Route based on detected intent
+        switch (classification.detected_intent) {
+            case "TR_CLARIFY":
+                return this.handleClarify(context);
 
-            case "scaffold":
-                return this.handleScaffold(context, decision);
+            case "TR_SCAFFOLD":
+                return this.handleScaffold(context, studentMessage);
 
-            case "loop_to_stage2":
-                return this.handleLoopToStage2(context, decision);
+            case "TR_NEXT_CASE":
+                return this.handleNextCase(context, classification);
 
-            case "advance_to_closure":
-                return this.handleAdvanceToClosure(context, decision);
-
-            default:
-                return {
-                    message: decision.message,
-                    newState: state,
-                    ended: false,
-                };
+            case "TR_COMPLETE":
+                return this.handleComplete(context, classification);
         }
     }
 
     /**
-     * Handle clarification for unclear principle
+     * Handle clarification for unclear principle (TR_CLARIFY)
      */
-    private async handleClarify(
-        context: StageContext,
-        studentMessage: string,
-    ): Promise<StageResult> {
+    private async handleClarify(context: StageContext): Promise<StageResult> {
         const { executor, state } = context;
 
-        const clarifyPrompt = await principleReasoningBuilders.clarify.build(
+        // Re-ask using the reasoning builder
+        const clarifyPrompt = await principleReasoningBuilders.reasoning.build(
             state.conversationHistory,
             {
-                topic: state.topic,
-                unclearPrinciple: studentMessage,
+                discussionSummary: formatStanceHistory(state.stanceHistory),
             },
         );
 
-        const message = (await executor.execute(clarifyPrompt)) as string;
+        const response = (await executor.execute(
+            clarifyPrompt,
+        )) as PrincipleReasoningResponse;
+
+        const message = `${response.response_message}\n\n${response.concise_question}`;
 
         return {
             message,
-            newState: transitionTo(
-                state,
-                DialogueStage.PRINCIPLE_REASONING,
-                SubState.CLARIFY,
-            ),
+            newState: transitionTo(state, DialogueStage.PRINCIPLE_REASONING),
             ended: false,
+            usage: executor.getTokenUsage(),
         };
     }
 
     /**
-     * Handle scaffolding for principle refinement
+     * Handle scaffolding for principle refinement (TR_SCAFFOLD)
      */
     private async handleScaffold(
         context: StageContext,
-        decision: PrincipleReasoningDecision,
+        userPrinciple: string,
     ): Promise<StageResult> {
-        const { executor, state, studentMessage } = context;
+        const { executor, state } = context;
 
         const scaffoldPrompt = await principleReasoningBuilders.scaffold.build(
             state.conversationHistory,
             {
-                topic: state.topic,
-                originalPrinciple:
-                    state.currentPrinciple?.statement || studentMessage,
-                tensionIdentified: decision.principleChallenge || "",
-                studentResponse: studentMessage,
+                userPrinciple,
+                detectedTension: "Safety vs. Morality (or Logic Inconsistency)",
             },
         );
 
-        const message = (await executor.execute(scaffoldPrompt)) as string;
+        const response = (await executor.execute(
+            scaffoldPrompt,
+        )) as PrincipleReasoningResponse;
 
-        // Update principle if identified
-        let newState = transitionTo(
-            state,
-            DialogueStage.PRINCIPLE_REASONING,
-            SubState.SCAFFOLD,
-        );
-
-        if (decision.principleIdentified && decision.principle) {
-            const newPrinciple = createPrincipleVersion(
-                decision.principle,
-                decision.principleClassification,
-                state.principleHistory.length + 1,
-            );
-            newState = {
-                ...newState,
-                currentPrinciple: newPrinciple,
-                principleHistory: [...state.principleHistory, newPrinciple],
-            };
-        }
+        const message = `${response.response_message}\n\n${response.concise_question}`;
 
         return {
             message,
-            newState,
+            newState: transitionTo(state, DialogueStage.PRINCIPLE_REASONING),
             ended: false,
+            usage: executor.getTokenUsage(),
         };
     }
 
     /**
-     * Handle loop back to Stage 2 for more case challenges
+     * Handle next case - loop back to Stage 2 with new case (TR_NEXT_CASE)
      */
-    private async handleLoopToStage2(
+    private async handleNextCase(
         context: StageContext,
-        decision: PrincipleReasoningDecision,
+        classification: PrincipleReasoningClassifier,
     ): Promise<StageResult> {
         const { executor, state } = context;
         const currentStance = state.currentStance!;
 
-        // Generate a new case challenge that tests the problematic principle
+        // Check if we've reached max loops
+        if (state.loopCount >= context.config.maxLoops) {
+            return this.handleComplete(context, classification);
+        }
+
+        // Save the principle before looping back
+        let updatedState = { ...state };
+        if (classification.extracted_data?.reasoning) {
+            updatedState = updatePrinciple(
+                updatedState,
+                classification.extracted_data.reasoning,
+                null,
+            );
+        }
+
+        // Generate new case challenge
         const casePrompt = await caseChallengeBuilders.challenge.build(
             state.conversationHistory,
             {
-                topic: state.topic,
                 currentStance: currentStance.position,
-                currentReason: currentStance.reason,
-                loopCount: state.loopCount.toString(),
-                previousCases: decision.principleChallenge || "",
+                caseContent: "", // Will be generated by the model
             },
         );
 
-        const message = (await executor.execute(casePrompt)) as string;
+        const response = (await executor.execute(
+            casePrompt,
+        )) as CaseChallengeResponse;
 
-        return {
-            message,
-            newState: transitionTo(
-                state,
-                DialogueStage.CASE_CHALLENGE,
-                SubState.MAIN,
-            ),
-            ended: false,
-        };
-    }
-
-    /**
-     * Handle advancement to closure (Stage 4)
-     */
-    private async handleAdvanceToClosure(
-        context: StageContext,
-        decision: PrincipleReasoningDecision,
-    ): Promise<StageResult> {
-        const { executor, state } = context;
-
-        // Save principle if identified
-        let newState = { ...state };
-        if (decision.principleIdentified && decision.principle) {
-            const finalPrinciple = createPrincipleVersion(
-                decision.principle,
-                decision.principleClassification,
-                state.principleHistory.length + 1,
-            );
-            newState = {
-                ...newState,
-                currentPrinciple: finalPrinciple,
-                principleHistory: [...state.principleHistory, finalPrinciple],
-            };
-        }
-
-        // Generate summary
-        const closurePrompt = await closureBuilders.summary.build(
-            state.conversationHistory,
-            {
-                topic: state.topic,
-                stanceHistory: formatStanceHistory(newState.stanceHistory),
-                finalStance: newState.currentStance?.position || "",
-                finalReason: newState.currentStance?.reason || "",
-                principleHistory: formatPrincipleHistory(
-                    newState.principleHistory,
-                ),
-                finalPrinciple: newState.currentPrinciple?.statement || "",
-            },
-        );
-
-        const message = (await executor.execute(closurePrompt)) as string;
+        const message = `${response.response_message}\n\n${response.concise_question}`;
 
         return {
             message,
             newState: {
-                ...transitionTo(newState, DialogueStage.CLOSURE, SubState.MAIN),
+                ...transitionTo(updatedState, DialogueStage.CASE_CHALLENGE),
+                loopCount: state.loopCount + 1,
+            },
+            ended: false,
+            usage: executor.getTokenUsage(),
+        };
+    }
+
+    /**
+     * Handle complete - advance to closure (TR_COMPLETE)
+     */
+    private async handleComplete(
+        context: StageContext,
+        classification: PrincipleReasoningClassifier,
+    ): Promise<StageResult> {
+        const { executor, state } = context;
+
+        // Check if we haven't met min loops requirement
+        if (state.loopCount < context.config.minLoopsForClosure) {
+            return this.handleNextCase(context, classification);
+        }
+
+        // Save final principle
+        let updatedState = { ...state };
+        const finalPrinciple = classification.extracted_data?.reasoning || "";
+        if (finalPrinciple) {
+            updatedState = updatePrinciple(updatedState, finalPrinciple, null);
+        }
+
+        // Get stance evolution for summary
+        const stanceV1 = state.stanceHistory[0]?.position || "";
+        const stanceFinal = state.currentStance?.position || "";
+        const keyReasoning = updatedState.currentPrinciple?.statement || "";
+
+        // Generate closure summary
+        const closurePrompt = await closureBuilders.summary.build(
+            state.conversationHistory,
+            {
+                stanceV1,
+                stanceFinal,
+                keyReasoning,
+            },
+        );
+
+        const response = (await executor.execute(
+            closurePrompt,
+        )) as ClosureResponse;
+
+        const message = `${response.response_message}\n\n${response.concise_question}`;
+
+        return {
+            message,
+            newState: {
+                ...transitionTo(updatedState, DialogueStage.CLOSURE),
+                summary: response.response_message,
                 discussionSatisfied: true,
             },
             ended: false,
+            usage: executor.getTokenUsage(),
         };
     }
 }

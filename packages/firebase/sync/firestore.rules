@@ -102,6 +102,7 @@ service cloud.firestore {
              (!('topicId' in data) || data.topicId == null || (data.topicId is string && data.topicId.size() <= 128)) &&
              data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
              data.prompt is string && data.prompt.size() >= 1 && data.prompt.size() <= 50000 &&
+             (!('question' in data) || data.question == null || (data.question is string && data.question.size() <= 2000)) &&
              data.mode == "instant" &&
              data.startAt is number &&
              (data.dueAt == null || data.dueAt is number) &&

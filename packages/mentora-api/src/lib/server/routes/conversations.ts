@@ -9,7 +9,7 @@ import {
 	type Conversation,
 	type Turn
 } from 'mentora-firebase';
-import { CreateConversationSchema } from '../schemas.js';
+import { CreateConversationSchema } from '../llm/schemas.js';
 import {
 	errorResponse,
 	HttpStatus,
@@ -19,7 +19,8 @@ import {
 	type RouteDefinition
 } from '../types.js';
 import { parseBody, requireAuth, requireParam } from './utils.js';
-import { processWithLLM, extractConversationSummary } from '../llm-service.js';
+import { processWithLLM, extractConversationSummary } from '../llm/llm-service.js';
+import { getASRExecutor } from '../llm/executors.js';
 import { randomUUID } from 'node:crypto';
 
 /**
@@ -261,9 +262,49 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		const userTurnId = randomUUID();
 
 		// Prepare user input text
-		// If audio was provided, use a placeholder for now
-		// TODO: Implement audio transcription service
-		const userInputText = input.text || `[Audio message - ${input.audio?.type || 'unknown'}]`;
+		let userInputText: string;
+		let transcribedText: string | null = null;
+
+		if (input.audio) {
+			// Audio provided - transcribe it
+			try {
+				const asrExecutor = getASRExecutor();
+				asrExecutor.resetTokenUsage();
+
+				// Convert Blob to base64
+				const arrayBuffer = await input.audio.arrayBuffer();
+				const base64Audio = Buffer.from(arrayBuffer).toString('base64');
+				const mimeType = input.audio.type || 'audio/mp3';
+
+				// Transcribe audio
+				transcribedText = await asrExecutor.transcribe(base64Audio, mimeType);
+				userInputText = transcribedText;
+
+				console.log(
+					`[API] Audio transcribed for turn ${userTurnId}: "${transcribedText.substring(0, 50)}..."`
+				);
+
+				// Log token usage
+				const tokenUsage = asrExecutor.getTokenUsage();
+				console.log(`[API] ASR token usage:`, tokenUsage);
+			} catch (error) {
+				console.error('[API] Error transcribing audio:', error);
+				return errorResponse(
+					'Failed to transcribe audio. Please try again or use text input.',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+		} else if (input.text) {
+			// Text provided directly
+			userInputText = input.text;
+		} else {
+			return errorResponse(
+				'Either text or audio is required',
+				HttpStatus.BAD_REQUEST,
+				ServerErrorCode.INVALID_INPUT
+			);
+		}
 
 		// Create user turn
 		const userTurn: Turn = {
@@ -279,8 +320,14 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		const assignmentDoc = await ctx.firestore
 			.doc(Assignments.docPath(conversation.assignmentId))
 			.get();
-		const assignment = assignmentDoc.exists ? Assignments.schema.parse(assignmentDoc.data()) : null;
-		const topicContext = assignment?.prompt || '';
+
+		if (!assignmentDoc.exists) {
+			return errorResponse('Assignment not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
+		}
+
+		const assignment = Assignments.schema.parse(assignmentDoc.data());
+		const question = assignment.question || '';
+		const prompt = assignment.prompt || '';
 
 		// Process with LLM orchestrator
 		// This handles: state initialization → dialogue stage → response generation
@@ -289,7 +336,8 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			conversationId,
 			user.uid,
 			userInputText,
-			topicContext
+			question,
+			prompt
 		);
 
 		// Capture fresh timestamp after LLM processing completes
@@ -320,14 +368,6 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		// Extract summary for response
 		const summary = extractConversationSummary(llmResult.updatedState);
 
-		// Handle audio blob if provided (async, non-blocking)
-		if (input.audio) {
-			console.log(
-				`[API] Audio blob received for turn ${userTurnId}: ${input.audio?.type}, size: ${input.audio?.size} bytes`
-			);
-			// TODO: Upload to Cloud Storage and queue transcription job
-		}
-
 		return jsonResponse(
 			{
 				conversationId,
@@ -337,7 +377,8 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 				conversationEnded: llmResult.ended,
 				stage: summary.stage,
 				stance: summary.currentStance,
-				principle: summary.currentPrinciple
+				principle: summary.currentPrinciple,
+				transcribedText // Return the transcription if audio was provided
 			},
 			HttpStatus.CREATED
 		);

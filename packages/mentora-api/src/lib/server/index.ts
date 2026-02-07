@@ -15,7 +15,7 @@ export * from './types.js';
 export * from './auth.js';
 
 // Validation schemas
-export * from './schemas.js';
+export * from './llm/schemas.js';
 
 // Routes
 export * from './routes/index.js';

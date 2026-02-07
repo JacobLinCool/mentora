@@ -14,8 +14,8 @@ import {
 	query,
 	where,
 	limit,
-	QueryConstraint,
-	orderBy
+	orderBy,
+	type QueryConstraint
 } from 'firebase/firestore';
 import { Conversations, type Conversation as ConversationDoc } from 'mentora-firebase';
 

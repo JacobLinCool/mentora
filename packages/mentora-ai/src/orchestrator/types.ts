@@ -6,9 +6,8 @@ import type {
     DialogueState,
     PrincipleVersion,
     StanceVersion,
-    SubState,
 } from "../builder/types.js";
-import type { PromptExecutor } from "../types.js";
+import type { PromptExecutor, TokenUsage } from "../types.js";
 
 /**
  * Result from processing a stage
@@ -20,7 +19,12 @@ export interface StageResult {
     newState: DialogueState;
     /** Whether the conversation has ended */
     ended: boolean;
+    /** Token usage for this turn (all LLM calls in this processing step) */
+    usage: TokenUsage;
 }
+
+// Re-export TokenUsage for convenience
+export type { TokenUsage };
 
 /**
  * Context passed to stage handlers
@@ -32,8 +36,8 @@ export interface StageContext {
     state: DialogueState;
     /** Student's input message */
     studentMessage: string;
-    /** Optional topic context */
-    topicContext: string;
+    /** Orchestrator configuration */
+    config: Required<OrchestratorConfig>;
 }
 
 /**
@@ -94,10 +98,4 @@ export const DEFAULT_CONFIG: Required<OrchestratorConfig> = {
 };
 
 // Re-export types from builder for convenience
-export type {
-    DialogueStage,
-    DialogueState,
-    PrincipleVersion,
-    StanceVersion,
-    SubState,
-};
+export type { DialogueStage, DialogueState, PrincipleVersion, StanceVersion };

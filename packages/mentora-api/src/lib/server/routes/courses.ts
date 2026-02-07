@@ -11,7 +11,7 @@ import {
 	type CourseMembership,
 	type Topic
 } from 'mentora-firebase';
-import { CreateCourseSchema, CopyCourseSchema, JoinCourseSchema } from '../schemas.js';
+import { CreateCourseSchema, CopyCourseSchema, JoinCourseSchema } from '../llm/schemas.js';
 import {
 	errorResponse,
 	HttpStatus,

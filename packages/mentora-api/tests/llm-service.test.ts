@@ -18,9 +18,9 @@ import {
 	processWithLLM,
 	extractConversationSummary,
 	getOrchestrator
-} from '../src/lib/server/llm-service.js';
+} from '../src/lib/server/llm/llm-service.js';
 import type { DialogueState } from 'mentora-ai';
-import { DialogueStage, SubState } from 'mentora-ai';
+import { DialogueStage } from 'mentora-ai';
 import {
 	setupTeacherClient,
 	setupStudentClient,
@@ -70,6 +70,7 @@ describe('LLM Service (Integration)', () => {
 			courseId: testCourseId,
 			topicId: null,
 			title: `LLM Test Assignment ${generateTestId()}`,
+			question: 'Should education prioritize individual or collective well-being?',
 			prompt: 'Test philosophical prompt for LLM dialogue',
 			mode: 'instant',
 			startAt: Date.now(),
@@ -119,29 +120,28 @@ describe('LLM Service (Integration)', () => {
 
 	describe('getOrchestrator()', () => {
 		// REMOVED: "should create a singleton orchestrator instance" - requires GOOGLE_GENAI_API_KEY
-		
-		it('should throw error if GOOGLE_GENAI_API_KEY is not configured', () => {
+
+		it('should throw error if GOOGLE_GENAI_MODEL is not configured', () => {
 			// Skip this test if API key is configured (it's expected in normal operation)
-			if (process.env.GOOGLE_GENAI_API_KEY) {
-				console.log('Skipping - GOOGLE_GENAI_API_KEY is configured');
+			if (process.env.GOOGLE_GENAI_MODEL) {
+				console.log('Skipping - GOOGLE_GENAI_MODEL is configured');
 				return;
 			}
 
 			expect(() => {
 				getOrchestrator();
-			}).toThrow(/GOOGLE_GENAI_API_KEY/);
+			}).toThrow(/GOOGLE_GENAI_MODEL/);
 		});
 	});
 
 	describe('loadDialogueState()', () => {
 		// REMOVED: "should return new initial state for first interaction" - requires GOOGLE_GENAI_API_KEY during init
-		
+
 		it('should load existing state from Firestore', async () => {
 			// First, save a state
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: DialogueStage.CASE_CHALLENGE,
-				subState: SubState.MAIN,
 				loopCount: 2,
 				stanceHistory: [
 					{
@@ -209,7 +209,6 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: DialogueStage.PRINCIPLE_REASONING,
-				subState: SubState.MAIN,
 				loopCount: 1,
 				stanceHistory: [],
 				currentStance: null,
@@ -236,7 +235,6 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: 'non-existent',
 				stage: DialogueStage.AWAITING_START,
-				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -259,7 +257,6 @@ describe('LLM Service (Integration)', () => {
 			const mockState: DialogueState = {
 				topic: testConversationId,
 				stage: DialogueStage.AWAITING_START,
-				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -281,7 +278,6 @@ describe('LLM Service (Integration)', () => {
 			const state: DialogueState = {
 				topic: 'test',
 				stage: DialogueStage.AWAITING_START,
-				subState: SubState.MAIN,
 				loopCount: 0,
 				stanceHistory: [],
 				currentStance: null,
@@ -321,7 +317,8 @@ describe('LLM Service (Integration)', () => {
 				testConversationId,
 				studentUserId,
 				'I believe education should focus on individual achievement',
-				'Should education prioritize individual or collective well-being?'
+				'Should education prioritize individual or collective well-being?',
+				'Test philosophical prompt for LLM dialogue'
 			);
 
 			expect(result).toBeDefined();
@@ -344,7 +341,8 @@ describe('LLM Service (Integration)', () => {
 				testConversationId,
 				studentUserId,
 				'That makes sense, but what about equity?',
-				'Should education prioritize individual or collective well-being?'
+				'Should education prioritize individual or collective well-being?',
+				'Test philosophical prompt for LLM dialogue'
 			);
 
 			expect(result).toBeDefined();
@@ -362,6 +360,7 @@ describe('LLM Service (Integration)', () => {
 					testConversationId,
 					teacherUserId,
 					'Unauthorized message',
+					'Test question',
 					'Test context'
 				)
 			).rejects.toThrow('Unauthorized');
@@ -387,6 +386,7 @@ describe('LLM Service (Integration)', () => {
 				newConversationId,
 				studentUserId,
 				'Test input',
+				'Test question',
 				'' // Empty context
 			);
 
