@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import * as readline from "readline";
+import * as readline from "node:readline";
 import type { DialogueState } from "../src/builder/types.js";
 import { GeminiPromptExecutor } from "../src/executor/gemini.js";
 import { MentoraOrchestrator } from "../src/orchestrator/orchestrator.js";
