@@ -214,6 +214,7 @@ describe('Multi-Account Scenarios', () => {
 				courseId: testCourseId,
 				topicId: testTopicId,
 				title: `Test Assignment ${generateTestId()}`,
+				question: null,
 				prompt: 'This is an integration test assignment. Please provide your thoughtful response.',
 				mode: 'instant',
 				startAt: Date.now() - 60000, // Started 1 minute ago

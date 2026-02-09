@@ -3,10 +3,14 @@
  */
 import {
     askingStanceBuilders,
-    type AskingStanceDecision,
+    type AskingStanceClassifier,
+    type AskingStanceResponse,
 } from "../../builder/stage1-asking-stance.js";
-import { caseChallengeBuilders } from "../../builder/stage2-case-challenge.js";
-import { DialogueStage, SubState } from "../../builder/types.js";
+import {
+    caseChallengeBuilders,
+    type CaseChallengeResponse,
+} from "../../builder/stage2-case-challenge.js";
+import { DialogueStage } from "../../builder/types.js";
 import { createStanceVersion, transitionTo } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
@@ -14,10 +18,9 @@ import type { StageContext, StageHandler, StageResult } from "../types.js";
  * Handler for Stage 1: Asking Stance
  *
  * Responsibilities:
- * - Generate initial stance question
  * - Analyze student responses for clear stance
- * - Clarify when responses are ambiguous
- * - Transition to Stage 2 when stance is confirmed
+ * - Re-ask when responses are ambiguous (TR_CLARIFY)
+ * - Transition to Stage 2 when stance is confirmed (TR_V1_ESTABLISHED)
  */
 export class AskingStanceHandler implements StageHandler {
     readonly stage = DialogueStage.ASKING_STANCE;
@@ -25,84 +28,94 @@ export class AskingStanceHandler implements StageHandler {
     async handle(context: StageContext): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
 
-        // Analyze student's response
-        const analyzerPrompt = await askingStanceBuilders.analyzer.build(
+        // Step 1: Classify user input using Classifier
+        const classifierPrompt = await askingStanceBuilders.classifier.build(
             state.conversationHistory,
             {
-                topic: state.topic,
-                studentMessage,
+                currentQuestion: state.topic,
+                userInput: studentMessage,
             },
         );
 
-        const decision = (await executor.execute(
-            analyzerPrompt,
-        )) as AskingStanceDecision;
+        const classification = (await executor.execute(
+            classifierPrompt,
+        )) as AskingStanceClassifier;
 
-        if (decision.action === "clarify") {
+        // Step 2: Route based on detected intent
+        if (classification.detected_intent === "TR_CLARIFY") {
             return this.handleClarify(context);
         }
 
-        return this.handleConfirmStance(context, decision);
+        return this.handleConfirmStance(context, classification);
     }
 
     /**
-     * Handle clarification when stance is unclear
+     * Handle clarification when stance is unclear (TR_CLARIFY)
+     * Uses the initial builder to re-ask the question
      */
     private async handleClarify(context: StageContext): Promise<StageResult> {
         const { executor, state } = context;
 
-        const clarifyPrompt = await askingStanceBuilders.clarify.build(
+        const clarifyPrompt = await askingStanceBuilders.initial.build(
             state.conversationHistory,
             {
                 topic: state.topic,
-                previousAttempts: "1",
             },
         );
 
-        const message = (await executor.execute(clarifyPrompt)) as string;
+        const response = (await executor.execute(
+            clarifyPrompt,
+        )) as AskingStanceResponse;
+
+        const message = `${response.response_message}\n\n${response.concise_question}`;
 
         return {
             message,
-            newState: transitionTo(
-                state,
-                DialogueStage.ASKING_STANCE,
-                SubState.CLARIFY,
-            ),
+            newState: transitionTo(state, DialogueStage.ASKING_STANCE),
             ended: false,
+            usage: executor.getTokenUsage(),
         };
     }
 
     /**
-     * Handle confirmed stance - create V1 and transition to Stage 2
+     * Handle confirmed stance - create V1 and transition to Stage 2 (TR_V1_ESTABLISHED)
      */
     private async handleConfirmStance(
         context: StageContext,
-        decision: AskingStanceDecision,
+        classification: AskingStanceClassifier,
     ): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
 
+        // Extract stance from classifier output
+        const extractedStance =
+            classification.extracted_data?.stance || studentMessage;
+        const extractedReason = classification.extracted_data?.reasoning || "";
+
         // Create initial stance (V1)
         const stance = createStanceVersion(
-            decision.stance || studentMessage,
-            decision.reason || "",
+            extractedStance,
+            extractedReason,
             1,
+            1.0, // Initial confidence assumed high if confirmed
         );
 
-        // Generate first case challenge
+        // Generate first case challenge (Stage 2 entry)
         const casePrompt = await caseChallengeBuilders.challenge.build(
             state.conversationHistory,
             {
-                topic: state.topic,
                 currentStance: stance.position,
-                currentReason: stance.reason,
-                loopCount: "0",
+                caseContent: "", // Will be generated by the model
             },
         );
 
-        const message = (await executor.execute(casePrompt)) as string;
+        const response = (await executor.execute(
+            casePrompt,
+        )) as CaseChallengeResponse;
+
+        const message = `${response.response_message}\n\n${response.concise_question}`;
 
         const newState = {
-            ...transitionTo(state, DialogueStage.CASE_CHALLENGE, SubState.MAIN),
+            ...transitionTo(state, DialogueStage.CASE_CHALLENGE),
             currentStance: stance,
             stanceHistory: [stance],
             loopCount: 0,
@@ -112,6 +125,7 @@ export class AskingStanceHandler implements StageHandler {
             message,
             newState,
             ended: false,
+            usage: executor.getTokenUsage(),
         };
     }
 }

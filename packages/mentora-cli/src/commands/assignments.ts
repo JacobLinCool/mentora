@@ -95,6 +95,7 @@ export function createAssignmentsCommand(
                     courseId: options.course,
                     topicId: options.topic || null,
                     title: options.title,
+                    question: options.prompt,
                     prompt: options.prompt,
                     mode: "instant",
                     startAt: parseTime(options.start) || Date.now(),

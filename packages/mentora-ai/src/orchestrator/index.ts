@@ -19,7 +19,6 @@ export type {
     StageHandlerRegistry,
     StageResult,
     StanceVersion,
-    SubState,
 } from "./types.js";
 
 // Registry

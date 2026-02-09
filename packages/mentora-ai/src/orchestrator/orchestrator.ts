@@ -92,12 +92,21 @@ export class MentoraOrchestrator {
     ): Promise<StageResult> {
         this.log("Starting conversation");
 
+        // Reset usage counter for this turn
+        this.executor.resetTokenUsage();
+
         const prompt = await askingStanceBuilders.initial.build([], {
             topic: state.topic,
-            topicContext,
+            topicDescription: topicContext,
         });
 
-        const message = (await this.executor.execute(prompt)) as string;
+        const response = await this.executor.execute(prompt);
+
+        // Format message from response (for structured output)
+        const message =
+            typeof response === "string"
+                ? response
+                : `${(response as { response_message: string; concise_question: string }).response_message}\n\n${(response as { response_message: string; concise_question: string }).concise_question}`;
 
         const newState = addToHistory(
             {
@@ -108,10 +117,14 @@ export class MentoraOrchestrator {
             message,
         );
 
+        // Get usage for this turn
+        const usage = this.executor.getTokenUsage();
+
         return {
             message,
             newState,
             ended: false,
+            usage,
         };
     }
 
@@ -121,9 +134,11 @@ export class MentoraOrchestrator {
     async processStudentInput(
         state: DialogueState,
         studentMessage: string,
-        topicContext: string = "",
     ): Promise<StageResult> {
         this.log(`Processing input for stage: ${state.stage}`);
+
+        // Reset usage counter for this turn
+        this.executor.resetTokenUsage();
 
         // Add student message to history
         const stateWithMessage = addToHistory(state, "user", studentMessage);
@@ -139,7 +154,7 @@ export class MentoraOrchestrator {
             executor: this.executor,
             state: stateWithMessage,
             studentMessage,
-            topicContext,
+            config: this.config,
         };
 
         const result = await handler.handle(context);

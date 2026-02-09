@@ -15,7 +15,7 @@ import {
 	setupStudentClient,
 	teardownAllClients,
 	generateTestId,
-	delay,
+	delay
 } from './emulator-setup.js';
 import type { MentoraClient } from '../src/lib/api/client.js';
 import type { Course } from '../src/lib/api/courses.js';
@@ -48,6 +48,7 @@ describe('addTurn Route Handler (Integration)', () => {
 			courseId: testCourseId,
 			topicId: null,
 			title: `addTurn Test Assignment ${generateTestId()}`,
+			question: null,
 			prompt: 'Test prompt',
 			mode: 'instant',
 			startAt: Date.now(),
@@ -96,7 +97,6 @@ describe('addTurn Route Handler (Integration)', () => {
 
 	describe('Authorization and Ownership', () => {
 		it('should reject turn from unauthorized user', async () => {
-
 			// Teacher tries to add turn to student's conversation
 			const result = await teacherClient.conversations.addTurn(
 				testConversationId,
@@ -149,7 +149,7 @@ describe('addTurn Route Handler (Integration)', () => {
 
 	describe('Turn Addition and Response', () => {
 		// REMOVED: "should accept first turn from authorized user" - requires LLM API key
-		
+
 		it('should accept subsequent turns', async () => {
 			if (!process.env.GOOGLE_GENAI_API_KEY) {
 				console.log('Skipping - GOOGLE_GENAI_API_KEY not configured');
@@ -294,7 +294,7 @@ describe('addTurn Route Handler (Integration)', () => {
 				expect(afterConv.success).toBe(true);
 
 				if (afterConv.success) {
-					const finalTurns = ((afterConv.data as Conversation).turns || []);
+					const finalTurns = (afterConv.data as Conversation).turns || [];
 					// Should have more turns now (user turn + AI response)
 					expect(finalTurns.length).toBeGreaterThan(initialTurnCount);
 
