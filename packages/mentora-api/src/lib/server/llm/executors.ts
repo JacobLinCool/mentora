@@ -30,23 +30,13 @@ let genaiInstance: GoogleGenAI | null = null;
 
 /**
  * Get or create the shared GoogleGenAI client
- *
- * @throws Error if GOOGLE_GENAI_API_KEY is not configured
  */
 function getGenAIClient(): GoogleGenAI {
 	if (genaiInstance) {
 		return genaiInstance;
 	}
 
-	const apiKey = process.env.GOOGLE_GENAI_API_KEY;
-	if (!apiKey) {
-		throw new Error(
-			'GOOGLE_GENAI_API_KEY environment variable not set. ' +
-				'Please configure it in your .env.local file.'
-		);
-	}
-
-	genaiInstance = new GoogleGenAI({ apiKey });
+	genaiInstance = new GoogleGenAI({});
 	return genaiInstance;
 }
 
@@ -54,22 +44,14 @@ function getGenAIClient(): GoogleGenAI {
  * Get or create the GeminiPromptExecutor singleton
  *
  * Used for structured dialogue prompts with JSON schema validation.
- *
- * @throws Error if GOOGLE_GENAI_API_KEY is not configured
  */
 export function getPromptExecutor(): PromptExecutor {
 	if (promptExecutorInstance) {
 		return promptExecutorInstance;
 	}
-	if (!process.env.GOOGLE_GENAI_MODEL) {
-		throw new Error(
-			'GOOGLE_GENAI_MODEL environment variable not set. ' +
-				'Please configure it in your .env.local file.'
-		);
-	}
 
 	const genai = getGenAIClient();
-	promptExecutorInstance = new GeminiPromptExecutor(genai, process.env.GOOGLE_GENAI_MODEL);
+	promptExecutorInstance = new GeminiPromptExecutor(genai, 'gemini-3-flash-preview');
 
 	return promptExecutorInstance;
 }
@@ -78,22 +60,14 @@ export function getPromptExecutor(): PromptExecutor {
  * Get or create the GeminiASRExecutor singleton
  *
  * Used for transcribing audio to text in traditional Chinese.
- *
- * @throws Error if GOOGLE_GENAI_API_KEY is not configured
  */
 export function getASRExecutor(): ASRExecutor {
 	if (asrExecutorInstance) {
 		return asrExecutorInstance;
 	}
-	if (!process.env.GOOGLE_GENAI_MODEL) {
-		throw new Error(
-			'GOOGLE_GENAI_MODEL environment variable not set. ' +
-				'Please configure it in your .env.local file.'
-		);
-	}
 
 	const genai = getGenAIClient();
-	asrExecutorInstance = new GeminiASRExecutor(genai, 'gemini-2.0-flash');
+	asrExecutorInstance = new GeminiASRExecutor(genai, 'gemini-2.5-flash');
 
 	return asrExecutorInstance;
 }
@@ -110,15 +84,9 @@ export function getContentExecutor(): ContentExecutor {
 	if (contentExecutorInstance) {
 		return contentExecutorInstance;
 	}
-	if (!process.env.GOOGLE_GENAI_MODEL) {
-		throw new Error(
-			'GOOGLE_GENAI_MODEL environment variable not set. ' +
-				'Please configure it in your .env.local file.'
-		);
-	}
 
 	const genai = getGenAIClient();
-	contentExecutorInstance = new GeminiContentExecutor(genai, process.env.GOOGLE_GENAI_MODEL);
+	contentExecutorInstance = new GeminiContentExecutor(genai, 'gemini-2.5-flash');
 
 	return contentExecutorInstance;
 }

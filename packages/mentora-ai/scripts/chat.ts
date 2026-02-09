@@ -15,8 +15,8 @@ if (!apiKey) {
     process.exit(1);
 }
 
-const genai = new GoogleGenAI({ apiKey });
-const model = process.env.TEST_MODEL || "gemini-2.5-flash";
+const genai = new GoogleGenAI({});
+const model = process.env.TEST_MODEL || "gemini-3-flash-preview";
 
 const executor = new GeminiPromptExecutor(genai, model);
 const orchestrator = new MentoraOrchestrator(executor, {

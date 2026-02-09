@@ -224,9 +224,6 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      genai:
-        specifier: ^0.0.18
-        version: 0.0.18
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.1)
@@ -290,9 +287,6 @@ importers:
       fires2rest:
         specifier: ^0.3.0
         version: 0.3.0
-      genai:
-        specifier: ^0.0.18
-        version: 0.0.18
       globals:
         specifier: ^16.5.0
         version: 16.5.0
@@ -2077,9 +2071,6 @@ packages:
   '@types/jsonwebtoken@9.0.10':
     resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
 
-  '@types/lodash@4.17.23':
-    resolution: {integrity: sha512-RDvF6wTulMPjrNdCoYRC8gNR880JNGT8uB+REUpC2Ns4pRqQJhGz90wh7rgdXDPpCczF3VGktDuFGVnz8zP7HA==}
-
   '@types/long@4.0.2':
     resolution: {integrity: sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA==}
 
@@ -3467,9 +3458,6 @@ packages:
   gcp-metadata@7.0.1:
     resolution: {integrity: sha512-UcO3kefx6dCcZkgcTGgVOTFb7b1LlQ02hY1omMjjrrBzkajRMCFgYOjs7J71WqnuG1k2b+9ppGL7FsOfhZMQKQ==}
     engines: {node: '>=18'}
-
-  genai@0.0.18:
-    resolution: {integrity: sha512-ukq6PeIqJdlZ21tzZidVVLkQJs8iuhz0G/l2a138qUCcgTpTI/yOMTQb+P6FAMusGxZGVFpIZbLJZOO7q2ayfw==}
 
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
@@ -7923,8 +7911,6 @@ snapshots:
       '@types/ms': 2.1.0
       '@types/node': 22.19.3
 
-  '@types/lodash@4.17.23': {}
-
   '@types/long@4.0.2':
     optional: true
 
@@ -9779,11 +9765,6 @@ snapshots:
       json-bigint: 1.0.0
     transitivePeerDependencies:
       - supports-color
-
-  genai@0.0.18:
-    dependencies:
-      '@types/lodash': 4.17.23
-      lodash: 4.17.21
 
   get-caller-file@2.0.5: {}
 
