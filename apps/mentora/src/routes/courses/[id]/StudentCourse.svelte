@@ -157,6 +157,7 @@
                             groups[topic.id].push({
                                 ...q,
                                 type: "questionnaire",
+                                question: "",
                                 prompt: "", // Dummy to satisfy interface
                                 mode: "instant",
                                 submissionState: sub?.state,

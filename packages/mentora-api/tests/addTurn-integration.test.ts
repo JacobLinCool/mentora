@@ -48,6 +48,7 @@ describe('addTurn Route Handler (Integration)', () => {
 			courseId: testCourseId,
 			topicId: null,
 			title: `addTurn Test Assignment ${generateTestId()}`,
+			question: null,
 			prompt: 'Test prompt',
 			mode: 'instant',
 			startAt: Date.now(),
