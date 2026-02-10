@@ -14,9 +14,11 @@ import {
 	GeminiPromptExecutor,
 	GeminiASRExecutor,
 	GeminiContentExecutor,
+	GeminiTTSExecutor,
 	type PromptExecutor,
 	type ASRExecutor,
-	type ContentExecutor
+	type ContentExecutor,
+	type TTSExecutor
 } from 'mentora-ai';
 
 /**
@@ -26,6 +28,7 @@ import {
 let promptExecutorInstance: PromptExecutor | null = null;
 let asrExecutorInstance: ASRExecutor | null = null;
 let contentExecutorInstance: ContentExecutor | null = null;
+let ttsExecutorInstance: TTSExecutor | null = null;
 let genaiInstance: GoogleGenAI | null = null;
 
 /**
@@ -92,6 +95,22 @@ export function getContentExecutor(): ContentExecutor {
 }
 
 /**
+ * Get or create the GeminiTTSExecutor singleton
+ *
+ * Used for synthesizing text to speech in traditional Chinese.
+ */
+export function getTTSExecutor(): TTSExecutor {
+	if (ttsExecutorInstance) {
+		return ttsExecutorInstance;
+	}
+
+	const genai = getGenAIClient();
+	ttsExecutorInstance = new GeminiTTSExecutor(genai, 'gemini-2.5-flash');
+
+	return ttsExecutorInstance;
+}
+
+/**
  * Reset all executor instances
  * Useful for testing or forcing re-initialization
  */
@@ -99,5 +118,6 @@ export function resetExecutors(): void {
 	promptExecutorInstance = null;
 	asrExecutorInstance = null;
 	contentExecutorInstance = null;
+	ttsExecutorInstance = null;
 	genaiInstance = null;
 }

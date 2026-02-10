@@ -159,20 +159,30 @@ export async function endConversation(
 /**
  * Add a turn to a conversation and trigger AI response
  *
- * Sends the user message to the backend which:
- * 1. Adds the user turn to the conversation
- * 2. Processes the message with LLM
- * 3. Adds the AI response turn
+ * Sends the user message (text or audio) to the backend which:
+ * 1. Transcribes audio if provided
+ * 2. Adds the user turn to the conversation
+ * 3. Processes the message with LLM
+ * 4. Synthesizes AI response to speech
+ * 5. Adds the AI response turn with text and audio
+ *
+ * @param audioBase64 - Base64 encoded audio (if sending audio instead of text)
+ * @param audioMimeType - MIME type of audio (default: 'audio/mp3')
  */
 export async function addTurn(
 	config: MentoraAPIConfig,
 	conversationId: string,
-	text: string,
-	type: 'idea' | 'followup'
-): Promise<APIResult<void>> {
+	options: { text: string } | { audioBase64: string; audioMimeType: string }
+): Promise<
+	APIResult<{
+		text: string;
+		audio: string; // Base64 encoded audio
+		audioMimeType: string;
+	}>
+> {
 	return callBackend(config, `/conversations/${conversationId}/turns`, {
 		method: 'POST',
-		body: JSON.stringify({ text, type })
+		body: JSON.stringify(options)
 	});
 }
 

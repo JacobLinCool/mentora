@@ -20,7 +20,7 @@ import {
 } from '../types.js';
 import { parseBody, requireAuth, requireParam } from './utils.js';
 import { processWithLLM, extractConversationSummary } from '../llm/llm-service.js';
-import { getASRExecutor } from '../llm/executors.js';
+import { getASRExecutor, getTTSExecutor } from '../llm/executors.js';
 import { randomUUID } from 'node:crypto';
 
 /**
@@ -162,48 +162,59 @@ async function endConversation(ctx: RouteContext): Promise<Response> {
 }
 
 /**
- * Helper to parse multipart form data
- * Returns { text?, audio? } depending on what was sent
+ * Helper to parse request body
+ * Returns either { text: string } or { audioBase64: string; audioMimeType: string }
  */
-async function parseMultipartForm(request: Request): Promise<{ text?: string; audio?: Blob }> {
+async function parseMultipartForm(
+	request: Request
+): Promise<{ text: string } | { audioBase64: string; audioMimeType: string }> {
 	const contentType = request.headers.get('content-type') || '';
 
-	// Handle JSON (for text input)
+	// Handle JSON (for text or base64 audio)
 	if (contentType.includes('application/json')) {
 		try {
 			const body = await request.json();
 			const text = body.text as string | undefined;
+			const audioBase64 = body.audioBase64 as string | undefined;
+			const audioMimeType = body.audioMimeType as string | undefined;
 
-			if (!text || text.trim().length === 0) {
-				throw new Error('Text input is required');
+			if (text !== undefined) {
+				if (text.trim().length === 0) {
+					throw new Error('Text input cannot be empty');
+				}
+				return { text: text.trim() };
 			}
 
-			return { text: text.trim() };
+			if (audioBase64 !== undefined && audioMimeType !== undefined) {
+				return { audioBase64, audioMimeType };
+			}
+
+			throw new Error('Either text or both audioBase64 and audioMimeType are required');
 		} catch (error) {
 			if (error instanceof Error) throw error;
 			throw new Error('Invalid JSON body');
 		}
 	}
 
-	// Handle multipart form data (for audio + optional text)
+	// Handle multipart form data (for audio)
 	if (contentType.includes('multipart/form-data')) {
 		try {
 			const formData = await request.formData();
 			const text = formData.get('text') as string | null;
 			const audio = formData.get('audio') as Blob | null;
 
-			if (!text && !audio) {
-				throw new Error('Either text or audio is required');
+			if (text && text.trim().length > 0) {
+				return { text: text.trim() };
 			}
 
-			if (text && text.trim().length === 0 && !audio) {
-				throw new Error('Text input cannot be empty');
+			if (audio) {
+				const arrayBuffer = await audio.arrayBuffer();
+				const audioBase64 = Buffer.from(arrayBuffer).toString('base64');
+				const audioMimeType = audio.type || 'audio/mp3';
+				return { audioBase64, audioMimeType };
 			}
 
-			return {
-				text: text ? text.trim() : undefined,
-				audio: audio || undefined
-			};
+			throw new Error('Either text or audio is required');
 		} catch (error) {
 			if (error instanceof Error) throw error;
 			throw new Error('Failed to parse form data');
@@ -263,25 +274,18 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 
 		// Prepare user input text
 		let userInputText: string;
-		let transcribedText: string | null = null;
 
-		if (input.audio) {
-			// Audio provided - transcribe it
+		if ('audioBase64' in input) {
+			// Audio provided (base64) - transcribe it
 			try {
 				const asrExecutor = getASRExecutor();
 				asrExecutor.resetTokenUsage();
 
-				// Convert Blob to base64
-				const arrayBuffer = await input.audio.arrayBuffer();
-				const base64Audio = Buffer.from(arrayBuffer).toString('base64');
-				const mimeType = input.audio.type || 'audio/mp3';
-
-				// Transcribe audio
-				transcribedText = await asrExecutor.transcribe(base64Audio, mimeType);
-				userInputText = transcribedText;
+				// Transcribe base64 audio
+				userInputText = await asrExecutor.transcribe(input.audioBase64, input.audioMimeType);
 
 				console.log(
-					`[API] Audio transcribed for turn ${userTurnId}: "${transcribedText.substring(0, 50)}..."`
+					`[API] Audio transcribed for turn ${userTurnId}: "${userInputText.substring(0, 50)}..."`
 				);
 
 				// Log token usage
@@ -295,15 +299,9 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 					ServerErrorCode.INTERNAL_ERROR
 				);
 			}
-		} else if (input.text) {
+		} else {
 			// Text provided directly
 			userInputText = input.text;
-		} else {
-			return errorResponse(
-				'Either text or audio is required',
-				HttpStatus.BAD_REQUEST,
-				ServerErrorCode.INVALID_INPUT
-			);
 		}
 
 		// Create user turn
@@ -340,11 +338,38 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			prompt
 		);
 
-		// Capture fresh timestamp after LLM processing completes
+		// Prepare AI turn ID before TTS
+		const aiTurnId = randomUUID();
+
+		// Synthesize AI response to speech
+		let aiAudioBase64: string;
+		const aiAudioMimeType = 'audio/mp3';
+		try {
+			const ttsExecutor = getTTSExecutor();
+			ttsExecutor.resetTokenUsage();
+
+			// Synthesize AI message to speech
+			aiAudioBase64 = await ttsExecutor.synthesize(llmResult.aiMessage);
+
+			console.log(`[API] AI message synthesized to speech for turn ${aiTurnId}`);
+
+			// Log token usage
+			const tokenUsage = ttsExecutor.getTokenUsage();
+			console.log(`[API] TTS token usage:`, tokenUsage);
+		} catch (error) {
+			console.error('[API] Error synthesizing speech:', error);
+			// TTS is required, return error
+			return errorResponse(
+				'Failed to synthesize speech. Please try again.',
+				HttpStatus.INTERNAL_SERVER_ERROR,
+				ServerErrorCode.INTERNAL_ERROR
+			);
+		}
+
+		// Capture fresh timestamp after LLM and TTS processing completes
 		const aiTurnCreatedAt = Date.now();
 
 		// Create AI turn from LLM response
-		const aiTurnId = randomUUID();
 		const aiTurn: Turn = {
 			id: aiTurnId,
 			type: 'followup',
@@ -370,15 +395,17 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 
 		return jsonResponse(
 			{
+				text: llmResult.aiMessage,
+				audio: aiAudioBase64,
+				audioMimeType: aiAudioMimeType,
+				// Additional metadata
 				conversationId,
 				userTurnId,
 				aiTurnId,
-				aiMessage: llmResult.aiMessage,
 				conversationEnded: llmResult.ended,
 				stage: summary.stage,
 				stance: summary.currentStance,
-				principle: summary.currentPrinciple,
-				transcribedText // Return the transcription if audio was provided
+				principle: summary.currentPrinciple
 			},
 			HttpStatus.CREATED
 		);
