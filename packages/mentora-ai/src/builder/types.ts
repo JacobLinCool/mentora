@@ -21,18 +21,6 @@ export enum DialogueStage {
 }
 
 /**
- * Sub-states within each stage
- */
-export enum SubState {
-    /** Main flow of the stage */
-    MAIN = "main",
-    /** Requesting clarification from student */
-    CLARIFY = "clarify",
-    /** Guiding student through stance/principle update */
-    SCAFFOLD = "scaffold",
-}
-
-/**
  * Represents a versioned stance in the dialogue
  */
 export interface StanceVersion {
@@ -44,6 +32,8 @@ export interface StanceVersion {
     reason: string;
     /** Timestamp when this stance was established */
     establishedAt: number;
+    /** Confidence score (0-1) */
+    confidence?: number;
 }
 
 /**
@@ -68,8 +58,6 @@ export interface DialogueState {
     topic: string;
     /** Current main stage */
     stage: DialogueStage;
-    /** Current sub-state within the stage */
-    subState: SubState;
     /** Number of iterations through the core loop */
     loopCount: number;
     /** History of stance versions */
@@ -86,55 +74,6 @@ export interface DialogueState {
     summary: string | null;
     /** Whether discussion parameters are satisfied for closure */
     discussionSatisfied: boolean;
-}
-
-/**
- * Actions that can be taken after analyzing student response
- */
-export enum DecisionAction {
-    // Stage 1 actions
-    CLARIFY_STANCE = "clarify_stance",
-    CONFIRM_STANCE = "confirm_stance",
-
-    // Stage 2 actions
-    CLARIFY_CASE_RESPONSE = "clarify_case_response",
-    SCAFFOLD_STANCE_UPDATE = "scaffold_stance_update",
-    CONTINUE_CASE_CHALLENGE = "continue_case_challenge",
-    ADVANCE_TO_PRINCIPLE = "advance_to_principle",
-
-    // Stage 3 actions
-    CLARIFY_PRINCIPLE = "clarify_principle",
-    SCAFFOLD_PRINCIPLE_UPDATE = "scaffold_principle_update",
-    LOOP_TO_STAGE2 = "loop_to_stage2",
-    ADVANCE_TO_CLOSURE = "advance_to_closure",
-
-    // Stage 4 actions
-    CLARIFY_SUMMARY = "clarify_summary",
-    CONFIRM_END = "confirm_end",
-
-    // Terminal actions
-    END_CONVERSATION = "end_conversation",
-    ABORT_CONVERSATION = "abort_conversation",
-}
-
-/**
- * Result from decision-making prompt
- */
-export interface DecisionResult {
-    /** The action to take */
-    action: DecisionAction;
-    /** Message to send to student */
-    message: string;
-    /** New or updated stance (if applicable) */
-    newStance: StanceVersion | null;
-    /** New or updated principle (if applicable) */
-    newPrinciple: PrincipleVersion | null;
-    /** Detected contradiction or issue (if applicable) */
-    contradiction: string | null;
-    /** Summary content (in closure stage) */
-    summary: string | null;
-    /** Reasoning for the decision */
-    reasoning: string;
 }
 
 /**

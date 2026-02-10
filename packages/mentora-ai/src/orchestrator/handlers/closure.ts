@@ -3,9 +3,10 @@
  */
 import {
     closureBuilders,
-    type ClosureDecision,
+    type ClosureClassifier,
+    type ClosureResponse,
 } from "../../builder/stage4-closure.js";
-import { DialogueStage, SubState } from "../../builder/types.js";
+import { DialogueStage } from "../../builder/types.js";
 import { transitionTo } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
@@ -13,7 +14,7 @@ import type { StageContext, StageHandler, StageResult } from "../types.js";
  * Handler for Stage 4: Closure
  *
  * Responsibilities:
- * - Present summary for confirmation
+ * - Analyze summary confirmation (TR_CONFIRM or TR_CLARIFY)
  * - Handle summary corrections
  * - Finalize and end conversation
  */
@@ -23,79 +24,86 @@ export class ClosureHandler implements StageHandler {
     async handle(context: StageContext): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
 
-        // Analyze student's response to summary
-        const analyzerPrompt = await closureBuilders.analyzer.build(
+        // Get the last model message (the summary that was presented)
+        const lastModelMessage =
+            state.conversationHistory
+                .slice()
+                .reverse()
+                .find((msg) => msg.role === "model")?.parts?.[0]?.text || "";
+
+        // Step 1: Classify user input using Classifier
+        const classifierPrompt = await closureBuilders.classifier.build(
             state.conversationHistory,
             {
-                topic: state.topic,
-                previousSummary: state.summary || "",
-                studentMessage,
+                generatedSummary: lastModelMessage,
+                userInput: studentMessage,
             },
         );
 
-        const decision = (await executor.execute(
-            analyzerPrompt,
-        )) as ClosureDecision;
+        const classification = (await executor.execute(
+            classifierPrompt,
+        )) as ClosureClassifier;
 
-        if (decision.action === "clarify") {
-            return this.handleClarify(context, decision);
+        // Step 2: Route based on detected intent
+        if (classification.detected_intent === "TR_CLARIFY") {
+            return this.handleClarify(context);
         }
 
-        return this.handleConfirmEnd(context);
+        return this.handleConfirm(context);
     }
 
     /**
-     * Handle clarification/correction of summary
+     * Handle clarification/correction of summary (TR_CLARIFY)
+     * Re-generates the summary with corrections
      */
-    private async handleClarify(
-        context: StageContext,
-        decision: ClosureDecision,
-    ): Promise<StageResult> {
-        const { executor, state, studentMessage } = context;
+    private async handleClarify(context: StageContext): Promise<StageResult> {
+        const { executor, state } = context;
 
-        const clarifyPrompt = await closureBuilders.clarify.build(
+        // Get stance evolution for corrected summary
+        const stanceV1 = state.stanceHistory[0]?.position || "";
+        const stanceFinal = state.currentStance?.position || "";
+        const keyReasoning = state.currentPrinciple?.statement || "";
+
+        const summaryPrompt = await closureBuilders.summary.build(
             state.conversationHistory,
             {
-                topic: state.topic,
-                previousSummary: state.summary || "",
-                studentCorrection: decision.correctionNeeded || studentMessage,
+                stanceV1,
+                stanceFinal,
+                keyReasoning,
             },
         );
 
-        const message = (await executor.execute(clarifyPrompt)) as string;
+        const response = (await executor.execute(
+            summaryPrompt,
+        )) as ClosureResponse;
+
+        const message = `${response.response_message}\n\n${response.concise_question}`;
 
         return {
             message,
             newState: {
-                ...transitionTo(state, DialogueStage.CLOSURE, SubState.CLARIFY),
-                summary: decision.correctedSummary || state.summary,
+                ...transitionTo(state, DialogueStage.CLOSURE),
+                summary: response.response_message,
             },
             ended: false,
+            usage: executor.getTokenUsage(),
         };
     }
 
     /**
-     * Handle confirmation and end conversation
+     * Handle confirmation and end conversation (TR_CONFIRM)
      */
-    private async handleConfirmEnd(
-        context: StageContext,
-    ): Promise<StageResult> {
+    private async handleConfirm(context: StageContext): Promise<StageResult> {
         const { executor, state } = context;
 
-        const finalPrompt = await closureBuilders.final.build(
-            state.conversationHistory,
-            {
-                topic: state.topic,
-                finalSummary: state.summary || "",
-            },
-        );
-
-        const message = (await executor.execute(finalPrompt)) as string;
+        // Final closing message
+        const message = "感謝您的參與！希望這次對話對您的思考有所幫助。";
 
         return {
             message,
-            newState: transitionTo(state, DialogueStage.ENDED, SubState.MAIN),
+            newState: transitionTo(state, DialogueStage.ENDED),
             ended: true,
+            usage: executor.getTokenUsage(),
         };
     }
 }

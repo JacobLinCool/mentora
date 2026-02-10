@@ -3,7 +3,7 @@
  */
 import type { Content } from "@google/genai";
 
-import { DialogueStage, SubState } from "../builder/types.js";
+import { DialogueStage } from "../builder/types.js";
 import type {
     DialogueState,
     PrincipleVersion,
@@ -17,7 +17,6 @@ export function createInitialState(topic: string): DialogueState {
     return {
         topic,
         stage: DialogueStage.AWAITING_START,
-        subState: SubState.MAIN,
         loopCount: 0,
         stanceHistory: [],
         currentStance: null,
@@ -36,12 +35,14 @@ export function createStanceVersion(
     position: string,
     reason: string,
     version: number,
+    confidence?: number,
 ): StanceVersion {
     return {
         version,
         position,
         reason,
         establishedAt: Date.now(),
+        confidence,
     };
 }
 
@@ -85,11 +86,13 @@ export function updateStance(
     state: DialogueState,
     position: string,
     reason: string,
+    confidence?: number,
 ): DialogueState {
     const newStance = createStanceVersion(
         position,
         reason,
         state.stanceHistory.length + 1,
+        confidence,
     );
     return {
         ...state,
@@ -124,12 +127,10 @@ export function updatePrinciple(
 export function transitionTo(
     state: DialogueState,
     stage: DialogueStage,
-    subState: SubState = SubState.MAIN,
 ): DialogueState {
     return {
         ...state,
         stage,
-        subState,
     };
 }
 

@@ -2,8 +2,14 @@
  * Conversation route handlers
  */
 
-import { Assignments, Conversations, Courses, type Conversation } from 'mentora-firebase';
-import { CreateConversationSchema } from '../schemas.js';
+import {
+	Assignments,
+	Conversations,
+	Courses,
+	type Conversation,
+	type Turn
+} from 'mentora-firebase';
+import { CreateConversationSchema } from '../llm/schemas.js';
 import {
 	errorResponse,
 	HttpStatus,
@@ -13,6 +19,9 @@ import {
 	type RouteDefinition
 } from '../types.js';
 import { parseBody, requireAuth, requireParam } from './utils.js';
+import { processWithLLM, extractConversationSummary } from '../llm/llm-service.js';
+import { getASRExecutor } from '../llm/executors.js';
+import { randomUUID } from 'node:crypto';
 
 /**
  * POST /api/conversations
@@ -153,12 +162,76 @@ async function endConversation(ctx: RouteContext): Promise<Response> {
 }
 
 /**
- * POST /api/conversations/:id/turns
- * Add a turn to a conversation and trigger AI response
+ * Helper to parse multipart form data
+ * Returns { text?, audio? } depending on what was sent
  */
-async function addTurn(ctx: RouteContext): Promise<Response> {
+async function parseMultipartForm(request: Request): Promise<{ text?: string; audio?: Blob }> {
+	const contentType = request.headers.get('content-type') || '';
+
+	// Handle JSON (for text input)
+	if (contentType.includes('application/json')) {
+		try {
+			const body = await request.json();
+			const text = body.text as string | undefined;
+
+			if (!text || text.trim().length === 0) {
+				throw new Error('Text input is required');
+			}
+
+			return { text: text.trim() };
+		} catch (error) {
+			if (error instanceof Error) throw error;
+			throw new Error('Invalid JSON body');
+		}
+	}
+
+	// Handle multipart form data (for audio + optional text)
+	if (contentType.includes('multipart/form-data')) {
+		try {
+			const formData = await request.formData();
+			const text = formData.get('text') as string | null;
+			const audio = formData.get('audio') as Blob | null;
+
+			if (!text && !audio) {
+				throw new Error('Either text or audio is required');
+			}
+
+			if (text && text.trim().length === 0 && !audio) {
+				throw new Error('Text input cannot be empty');
+			}
+
+			return {
+				text: text ? text.trim() : undefined,
+				audio: audio || undefined
+			};
+		} catch (error) {
+			if (error instanceof Error) throw error;
+			throw new Error('Failed to parse form data');
+		}
+	}
+
+	throw new Error('Content-Type must be application/json or multipart/form-data');
+}
+
+/**
+ * POST /api/conversations/:id/turns
+ * Add a turn to a conversation and trigger AI response via LLM
+ *
+ * Flow:
+ * 1. Parse and validate user input (text or audio placeholder)
+ * 2. Create user turn in conversation
+ * 3. Process with LLM orchestrator (calls mentora-ai)
+ * 4. Update conversation with AI response turn
+ * 5. Return updated conversation state
+ *
+ * Note: Audio transcription is deferred to future implementation
+ */
+async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
 	const conversationId = requireParam(ctx, 'id');
+
+	// Parse request body (text or audio)
+	const input = await parseMultipartForm(request);
 
 	// Get conversation
 	const conversationRef = ctx.firestore.doc(Conversations.docPath(conversationId));
@@ -184,17 +257,167 @@ async function addTurn(ctx: RouteContext): Promise<Response> {
 		);
 	}
 
-	// TODO: Integrate with LLM service
-	// For now, just acknowledge the turn was received
-	// The actual LLM integration would add turns to Firestore
+	try {
+		const now = Date.now();
+		const userTurnId = randomUUID();
 
-	const now = Date.now();
-	await conversationRef.update({
-		lastActionAt: now,
-		updatedAt: now
-	});
+		// Prepare user input text
+		let userInputText: string;
+		let transcribedText: string | null = null;
 
-	return jsonResponse({});
+		if (input.audio) {
+			// Audio provided - transcribe it
+			try {
+				const asrExecutor = getASRExecutor();
+				asrExecutor.resetTokenUsage();
+
+				// Convert Blob to base64
+				const arrayBuffer = await input.audio.arrayBuffer();
+				const base64Audio = Buffer.from(arrayBuffer).toString('base64');
+				const mimeType = input.audio.type || 'audio/mp3';
+
+				// Transcribe audio
+				transcribedText = await asrExecutor.transcribe(base64Audio, mimeType);
+				userInputText = transcribedText;
+
+				console.log(
+					`[API] Audio transcribed for turn ${userTurnId}: "${transcribedText.substring(0, 50)}..."`
+				);
+
+				// Log token usage
+				const tokenUsage = asrExecutor.getTokenUsage();
+				console.log(`[API] ASR token usage:`, tokenUsage);
+			} catch (error) {
+				console.error('[API] Error transcribing audio:', error);
+				return errorResponse(
+					'Failed to transcribe audio. Please try again or use text input.',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+		} else if (input.text) {
+			// Text provided directly
+			userInputText = input.text;
+		} else {
+			return errorResponse(
+				'Either text or audio is required',
+				HttpStatus.BAD_REQUEST,
+				ServerErrorCode.INVALID_INPUT
+			);
+		}
+
+		// Create user turn
+		const userTurn: Turn = {
+			id: userTurnId,
+			type: 'idea',
+			text: userInputText,
+			analysis: null,
+			pendingStartAt: null,
+			createdAt: now
+		};
+
+		// Get assignment for topic context
+		const assignmentDoc = await ctx.firestore
+			.doc(Assignments.docPath(conversation.assignmentId))
+			.get();
+
+		if (!assignmentDoc.exists) {
+			return errorResponse('Assignment not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
+		}
+
+		const assignment = Assignments.schema.parse(assignmentDoc.data());
+		const question = assignment.question || '';
+		const prompt = assignment.prompt || '';
+
+		// Process with LLM orchestrator
+		// This handles: state initialization → dialogue stage → response generation
+		const llmResult = await processWithLLM(
+			ctx.firestore,
+			conversationId,
+			user.uid,
+			userInputText,
+			question,
+			prompt
+		);
+
+		// Capture fresh timestamp after LLM processing completes
+		const aiTurnCreatedAt = Date.now();
+
+		// Create AI turn from LLM response
+		const aiTurnId = randomUUID();
+		const aiTurn: Turn = {
+			id: aiTurnId,
+			type: 'followup',
+			text: llmResult.aiMessage,
+			analysis: null, // TODO: Add stance analysis
+			pendingStartAt: null,
+			createdAt: aiTurnCreatedAt
+		};
+
+		// Update conversation with both turns
+		const updatedTurns = [...conversation.turns, userTurn, aiTurn];
+		const conversationState = llmResult.ended ? 'closed' : conversation.state;
+
+		await conversationRef.update({
+			turns: updatedTurns,
+			state: conversationState,
+			lastActionAt: now,
+			updatedAt: now
+		});
+
+		// Extract summary for response
+		const summary = extractConversationSummary(llmResult.updatedState);
+
+		return jsonResponse(
+			{
+				conversationId,
+				userTurnId,
+				aiTurnId,
+				aiMessage: llmResult.aiMessage,
+				conversationEnded: llmResult.ended,
+				stage: summary.stage,
+				stance: summary.currentStance,
+				principle: summary.currentPrinciple,
+				transcribedText // Return the transcription if audio was provided
+			},
+			HttpStatus.CREATED
+		);
+	} catch (error) {
+		// Re-throw Response errors from utility functions (auth, validation, etc.)
+		if (error instanceof Response) throw error;
+
+		// Error handling for LLM service issues
+		if (error instanceof Error) {
+			if (error.message.includes('GOOGLE_GENAI_API_KEY')) {
+				return errorResponse(
+					'LLM service not configured',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+			if (error.message.includes('API quota')) {
+				return errorResponse(
+					'LLM service rate limited. Please try again later.',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+			if (error.message.includes('deadline exceeded') || error.message.includes('timeout')) {
+				return errorResponse(
+					'LLM request timed out. Please try again.',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+		}
+
+		console.error('[API] Error processing turn:', error);
+		return errorResponse(
+			'Failed to process your input. Please try again.',
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			ServerErrorCode.INTERNAL_ERROR
+		);
+	}
 }
 
 /**

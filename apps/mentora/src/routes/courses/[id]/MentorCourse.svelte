@@ -15,13 +15,13 @@
     let activeTab = $state("dashboard"); // dashboard, topics, members, settings
     let courseTitle = $state("Loading...");
 
-    interface UIAnnouncement {
+    interface Announcement {
         id: string;
         title: string;
         createdDate: string;
         [key: string]: unknown;
     }
-    let announcements = $state<UIAnnouncement[]>([]);
+    let announcements = $state<Announcement[]>([]);
 
     async function loadCourseData() {
         if (courseId) {

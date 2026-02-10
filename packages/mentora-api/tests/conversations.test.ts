@@ -30,7 +30,8 @@ describe('Conversations Module (Integration)', () => {
 				courseId: testCourseId,
 				topicId: null,
 				title: `Test Assignment for Conversations ${generateTestId()}`,
-				prompt: 'Integration test prompt',
+				question: '什麼是正義？',
+				prompt: '正義是一個複雜的哲學概念... (integration test content)',
 				mode: 'instant',
 				startAt: Date.now(),
 				dueAt: null,
@@ -142,30 +143,6 @@ describe('Conversations Module (Integration)', () => {
 			if (result.success) {
 				expect(Array.isArray(result.data)).toBe(true);
 			}
-		});
-	});
-
-	describe('addTurn()', () => {
-		it('should add a turn to conversation', async () => {
-			if (!testConversationId) {
-				console.log('Skipping - no test conversation created');
-				return;
-			}
-
-			// This requires backend to be running - skip if not available
-			const result = await client.conversations.addTurn(
-				testConversationId,
-				'Test user message',
-				'idea'
-			);
-
-			// Backend may not be running in test environment
-			if (!result.success && result.error?.includes('fetch')) {
-				console.log('Skipping - backend not available');
-				return;
-			}
-
-			expect(result.success).toBe(true);
 		});
 	});
 

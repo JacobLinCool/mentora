@@ -11,7 +11,9 @@ import {
 	type RouteContext,
 	type RouteDefinition
 } from '../types.js';
-import { requireAuth } from './utils.js';
+import { requireAuth, parseBody } from './utils.js';
+import { GenerateContentSchema } from '../llm/schemas.js';
+import { getContentExecutor } from '../llm/executors.js';
 
 /**
  * GET /api/assignments?courseId=X[&available=true]
@@ -90,6 +92,50 @@ async function listAssignments(ctx: RouteContext, request: Request): Promise<Res
 }
 
 /**
+ * POST /api/assignments/generate-content
+ * Generate educational reference content from a question
+ *
+ * This endpoint helps teachers create detailed assignment prompts by:
+ * 1. Taking a simple question as input
+ * 2. Using AI to generate comprehensive reference content
+ * 3. Includes concept explanations, definitions, and context
+ * 4. Powered by Google Search for up-to-date information
+ *
+ * The generated content should be stored as the assignment's `prompt` field,
+ * while the original question goes into the `question` field.
+ */
+async function generateContent(ctx: RouteContext, request: Request): Promise<Response> {
+	requireAuth(ctx); // Must be authenticated to use this feature
+
+	const body = await parseBody(request, GenerateContentSchema);
+	const { question } = body;
+
+	try {
+		const contentExecutor = getContentExecutor();
+
+		// Reset token usage for this request
+		contentExecutor.resetTokenUsage();
+
+		// Generate detailed content from the question
+		const generatedContent = await contentExecutor.generateContent(question);
+
+		return jsonResponse(
+			{
+				content: generatedContent
+			},
+			HttpStatus.OK
+		);
+	} catch (error) {
+		console.error('[API] Error generating content:', error);
+		return errorResponse(
+			'Failed to generate content. Please try again.',
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			ServerErrorCode.INTERNAL_ERROR
+		);
+	}
+}
+
+/**
  * Export route definitions
  */
 export const assignmentRoutes: RouteDefinition[] = [
@@ -98,7 +144,13 @@ export const assignmentRoutes: RouteDefinition[] = [
 		pattern: '/assignments',
 		handler: listAssignments,
 		requireAuth: true
+	},
+	{
+		method: 'POST',
+		pattern: '/assignments/generate-content',
+		handler: generateContent,
+		requireAuth: true
 	}
 ];
 
-export { listAssignments };
+export { listAssignments, generateContent };

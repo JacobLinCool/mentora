@@ -3,7 +3,7 @@
  */
 
 import { Wallets, type LedgerEntry } from 'mentora-firebase';
-import { AddCreditsSchema } from '../schemas.js';
+import { AddCreditsSchema } from '../llm/schemas.js';
 import { HttpStatus, jsonResponse, type RouteContext, type RouteDefinition } from '../types.js';
 import { parseBody, requireAuth } from './utils.js';
 
