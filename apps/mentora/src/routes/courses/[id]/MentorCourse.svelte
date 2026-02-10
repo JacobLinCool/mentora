@@ -19,6 +19,7 @@
         id: string;
         title: string;
         createdDate: string;
+        [key: string]: unknown;
     }
     let announcements = $state<UIAnnouncement[]>([]);
 

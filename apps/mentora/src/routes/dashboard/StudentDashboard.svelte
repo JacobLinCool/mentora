@@ -77,23 +77,48 @@
 
                 for (const chunk of courseChunks) {
                     const chunkRes = await Promise.all(
-                        chunk.map((course) =>
-                            api.assignments
-                                .listAvailable(course.id)
-                                .then((res) =>
-                                    res.success
-                                        ? res.data.map((a) => ({
-                                              ...a,
-                                              course,
-                                          }))
-                                        : [],
-                                ),
-                        ),
+                        chunk.map(async (course) => {
+                            const [assignRes, questRes] = await Promise.all([
+                                api.assignments.listAvailable(course.id),
+                                api.questionnaires.listAvailable(course.id),
+                            ]);
+
+                            // Combine types for the array
+                            type DashboardItem = (
+                                | (import("$lib/api").Assignment & {
+                                      itemType: "assignment";
+                                  })
+                                | (import("$lib/api").Questionnaire & {
+                                      itemType: "questionnaire";
+                                  })
+                            ) & { course: import("$lib/api").Course };
+
+                            const items: DashboardItem[] = [];
+                            if (assignRes.success) {
+                                items.push(
+                                    ...assignRes.data.map((a) => ({
+                                        ...a,
+                                        course,
+                                        itemType: "assignment",
+                                    })),
+                                );
+                            }
+                            if (questRes.success) {
+                                items.push(
+                                    ...questRes.data.map((q) => ({
+                                        ...q,
+                                        course,
+                                        itemType: "questionnaire",
+                                    })),
+                                );
+                            }
+                            return items;
+                        }),
                     );
                     allAssignments.push(...chunkRes.flat());
                 }
 
-                // Filter assignments with due dates in the future
+                // Filter items with due dates in the future
                 const now = Date.now();
                 const upcoming = allAssignments
                     .filter((a) => a.dueAt && a.dueAt > now)
@@ -108,7 +133,7 @@
                     assignment: a.title,
                     assignmentId: a.id,
                     dueDate: new Date(a.dueAt!),
-                    type: "assignment",
+                    type: a.itemType ?? "assignment",
                 }));
 
                 deadlineDates = deadlines.map((d) => d.dueDate);

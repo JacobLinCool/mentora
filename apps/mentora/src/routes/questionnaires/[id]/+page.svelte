@@ -59,17 +59,11 @@
     async function loadData() {
         if (!assignmentId) return;
         try {
-            // Load questionnaire and assignment details (for courseId)
-            const [questionnaireRes, assignmentRes, myResponseRes] =
-                await Promise.all([
-                    api.questionnaires.get(assignmentId),
-                    api.assignments.get(assignmentId),
-                    api.questionnaireResponses.getMine(assignmentId),
-                ]);
-
-            if (assignmentRes.success) {
-                courseId = assignmentRes.data.courseId ?? null;
-            }
+            // Load questionnaire and submission details
+            const [questionnaireRes, myResponseRes] = await Promise.all([
+                api.questionnaires.get(assignmentId),
+                api.questionnaireResponses.getMine(assignmentId),
+            ]);
 
             const submissionRes = await api.submissions.getMine(assignmentId);
 

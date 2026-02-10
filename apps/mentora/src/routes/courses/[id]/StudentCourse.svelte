@@ -209,6 +209,11 @@
                                 .filter((a) => a.topicId === topic.id)
                                 .forEach((a) => addItem(a.id, "assignment"));
                         }
+                        if (questionnairesRes.success) {
+                            questionnairesRes.data
+                                .filter((q) => q.topicId === topic.id)
+                                .forEach((q) => addItem(q.id, "questionnaire"));
+                        }
                     }
                 });
             }
