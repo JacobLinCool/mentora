@@ -392,5 +392,11 @@
     "no_content": "無內容",
     "mentor_assignment_introduction": "問題介紹",
     "mentor_assignment_introduction_placeholder": "在此寫下問題介紹，供學生於一開始理解問題。或點選\"AI 生成\"。",
-    "mentor_assignment_ai_generate": "AI 生成"
+    "mentor_assignment_ai_generate": "AI 生成",
+    "pricing_title": "定價",
+    "pricing_coming_soon": "即將推出",
+    "pricing_description": "我們正在設計簡單的使用計費模式。敬請期待點數與按量付費方案的詳情。",
+    "roadmap_title": "路線圖",
+    "roadmap_coming_soon": "即將推出",
+    "roadmap_description": "我們正在規劃 Mentora 的未來方向。請稍後回來查看我們的計畫。"
 }

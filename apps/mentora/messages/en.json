@@ -391,5 +391,11 @@
     "no_content": "No content",
     "mentor_assignment_introduction": "Question Introduction",
     "mentor_assignment_introduction_placeholder": "Write the question introduction here for students to understand the question at the beginning. Or click \"AI Generate\".",
-    "mentor_assignment_ai_generate": "AI Generate"
+    "mentor_assignment_ai_generate": "AI Generate",
+    "pricing_title": "Pricing",
+    "pricing_coming_soon": "Coming Soon",
+    "pricing_description": "We're working on a simple, usage-based pricing model. Stay tuned for details on credits and pay-as-you-go plans.",
+    "roadmap_title": "Roadmap",
+    "roadmap_coming_soon": "Coming Soon",
+    "roadmap_description": "We're mapping out the future of Mentora. Check back soon to see what's planned."
 }
