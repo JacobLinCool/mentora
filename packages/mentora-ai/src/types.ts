@@ -105,3 +105,15 @@ export interface ContentExecutor extends TokenTracker {
      */
     generateContent(question: string): Promise<string>;
 }
+
+/**
+ * Executor interface for running TTS (Text-to-Speech) tasks
+ */
+export interface TTSExecutor extends TokenTracker {
+    /**
+     * Synthesize text to speech
+     * @param text - Text to synthesize
+     * @returns Base64 encoded audio string
+     */
+    synthesize(text: string): Promise<string>;
+}

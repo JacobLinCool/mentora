@@ -232,7 +232,7 @@ export async function getCourseRoster(
 	config: MentoraAPIConfig,
 	courseId: string,
 	options?: QueryOptions
-): Promise<APIResult<CourseMembership[]>> {
+): Promise<APIResult<(CourseMembership & { id: string })[]>> {
 	return tryCatch(async () => {
 		const constraints: QueryConstraint[] = [];
 
@@ -253,7 +253,10 @@ export async function getCourseRoster(
 		const q = query(collection(config.db, Courses.roster.collectionPath(courseId)), ...constraints);
 		const snapshot = await getDocs(q);
 
-		return snapshot.docs.map((doc) => Courses.roster.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Courses.roster.schema.parse(doc.data())
+		}));
 	});
 }
 
