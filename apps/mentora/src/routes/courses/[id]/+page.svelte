@@ -1,12 +1,12 @@
 <script lang="ts">
+    import { userProfile } from "$lib/temp.svelte";
     import MentorCourse from "./MentorCourse.svelte";
     import StudentCourse from "./StudentCourse.svelte";
     // import { api } from "$lib/api"; // Unused
 
     let props = $props();
 
-    // Default to Student view for now
-    const isMentor = false;
+    const isMentor = $derived(userProfile.isMentor);
 </script>
 
 {#if isMentor}
