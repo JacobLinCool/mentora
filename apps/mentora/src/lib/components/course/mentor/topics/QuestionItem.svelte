@@ -51,15 +51,38 @@
         onSave,
     }: Props = $props();
 
-    // Local Edit state
-    // We start in edit mode ONLY if explicitly requested AND we are not dragging.
-    // This prevents drag operations (which may recreate components) from triggering edit mode.
-    // Use untrack to prevent Svelte warning about prop usage in $state initialization.
-    let isEditing = $state(untrack(() => initialEditMode && !isDragging));
+    // ViewModel to encapsulate state and avoid "state_referenced_locally" warnings
+    class QuestionViewModel {
+        isEditing = $state(false);
+        type = $state<QuestionType>("single");
+        question = $state("");
+        options = $state<Option[]>([]);
 
-    let currentType = $state<QuestionType>(untrack(() => initialType));
-    let currentQuestion = $state(untrack(() => initialQuestion));
-    let currentOptions = $state<Option[]>(untrack(() => [...initialOptions]));
+        constructor(
+            initEdit: boolean,
+            initType: QuestionType,
+            initQuestion: string,
+            initOptions: Option[],
+        ) {
+            this.isEditing = initEdit;
+            this.type = initType;
+            this.question = initQuestion;
+            this.options = [...initOptions];
+        }
+
+        reset(t: QuestionType, q: string, o: Option[]) {
+            this.type = t;
+            this.question = q;
+            this.options = [...o];
+        }
+    }
+
+    const vm = new QuestionViewModel(
+        untrack(() => initialEditMode && !isDragging),
+        untrack(() => initialType),
+        untrack(() => initialQuestion),
+        untrack(() => initialOptions),
+    );
 
     const flipDurationMs = 200;
 
@@ -72,18 +95,11 @@
         { value: "text", label: m.mentor_assignment_question_type_text() },
     ];
 
-    let Icon = $derived(getTypeIcon(initialType));
-    let typeLabel = $derived(
-        typeOptions.find((o) => o.value === initialType)?.label,
-    );
-
     // Reset edit state when props change
     $effect(() => {
         // If we are NOT editing locally, sync with props
-        if (!isEditing) {
-            currentType = initialType;
-            currentQuestion = initialQuestion;
-            currentOptions = [...initialOptions];
+        if (!vm.isEditing) {
+            vm.reset(initialType, initialQuestion, initialOptions);
         }
     });
 
@@ -99,30 +115,27 @@
     }
 
     function addOption() {
-        currentOptions = [
-            ...currentOptions,
-            { id: crypto.randomUUID(), text: "" },
-        ];
+        vm.options = [...vm.options, { id: crypto.randomUUID(), text: "" }];
     }
 
     function removeOption(optionId: string) {
-        currentOptions = currentOptions.filter((o) => o.id !== optionId);
+        vm.options = vm.options.filter((o) => o.id !== optionId);
     }
 
     function handleSave() {
-        if (!currentQuestion.trim()) {
+        if (!vm.question.trim()) {
             return; // Or show error locally
         }
 
-        if (currentType !== "text") {
-            const validOptions = currentOptions.filter((o) => o.text.trim());
+        if (vm.type !== "text") {
+            const validOptions = vm.options.filter((o) => o.text.trim());
             if (validOptions.length === 0) {
                 return; // Need at least one option
             }
         }
 
         // Clean up dnd properties before saving
-        const cleanOptions = currentOptions.map((o) => {
+        const cleanOptions = vm.options.map((o) => {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { [SHADOW_ITEM_MARKER_PROPERTY_NAME]: _, ...rest } = o;
             return rest;
@@ -130,24 +143,24 @@
 
         // Pass initialEditMode: false to ensure subsequent re-renders (like drags) don't re-enter edit mode
         onSave?.({
-            type: currentType,
-            question: currentQuestion,
+            type: vm.type,
+            question: vm.question,
             options: cleanOptions,
             initialEditMode: false,
         });
-        isEditing = false;
+        vm.isEditing = false;
     }
 
     function toggleEdit() {
-        isEditing = true;
+        vm.isEditing = true;
     }
 
     function handleOptionDndConsider(e: CustomEvent<{ items: Option[] }>) {
-        currentOptions = e.detail.items;
+        vm.options = e.detail.items;
     }
 
     function handleOptionDndFinalize(e: CustomEvent<{ items: Option[] }>) {
-        currentOptions = e.detail.items;
+        vm.options = e.detail.items;
     }
 </script>
 
@@ -169,9 +182,9 @@
             <div class="mb-2 flex items-center gap-3">
                 <!-- Type Selector / Icon -->
                 <div class="w-32 flex-shrink-0">
-                    {#if isEditing}
+                    {#if vm.isEditing}
                         <select
-                            bind:value={currentType}
+                            bind:value={vm.type}
                             class="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:ring-1 focus:ring-gray-400 focus:outline-none"
                         >
                             {#each typeOptions as opt (opt.value)}
@@ -179,21 +192,26 @@
                             {/each}
                         </select>
                     {:else}
+                        {@const Icon = getTypeIcon(initialType)}
                         <div
                             class="flex items-center gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5 text-sm text-gray-600"
                         >
                             <Icon size={16} />
-                            <span class="truncate">{typeLabel}</span>
+                            <span class="truncate"
+                                >{typeOptions.find(
+                                    (o) => o.value === initialType,
+                                )?.label}</span
+                            >
                         </div>
                     {/if}
                 </div>
 
                 <!-- Question Text / Input -->
                 <div class="flex-1">
-                    {#if isEditing}
+                    {#if vm.isEditing}
                         <input
                             type="text"
-                            bind:value={currentQuestion}
+                            bind:value={vm.question}
                             placeholder={m.mentor_assignment_enter_question()}
                             class="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:ring-1 focus:ring-gray-400 focus:outline-none"
                         />
@@ -207,18 +225,18 @@
                 </div>
             </div>
 
-            {#if isEditing && !currentQuestion.trim()}
+            {#if vm.isEditing && !vm.question.trim()}
                 <p class="mt-1 ml-32 pl-2 text-xs text-red-500">
                     {m.mentor_assignment_error_question_required()}
                 </p>
             {/if}
 
             <!-- Options: Collapsible (Only visible in Edit Mode) -->
-            {#if isEditing && currentType !== "text"}
+            {#if vm.isEditing && vm.type !== "text"}
                 <div
                     class="options-list mt-3 ml-36 space-y-2"
                     use:dndzone={{
-                        items: currentOptions,
+                        items: vm.options,
                         flipDurationMs,
                         dragDisabled: false,
                         type: "option",
@@ -226,7 +244,7 @@
                     onconsider={handleOptionDndConsider}
                     onfinalize={handleOptionDndFinalize}
                 >
-                    {#each currentOptions as option, idx (option.id)}
+                    {#each vm.options as option, idx (option.id)}
                         <div
                             class="flex items-center gap-2"
                             class:opacity-50={option[
@@ -273,7 +291,7 @@
 
         <!-- Action buttons -->
         <div class="mt-1 flex items-center gap-1">
-            {#if isEditing}
+            {#if vm.isEditing}
                 <button
                     type="button"
                     class="cursor-pointer p-1.5 text-gray-500 hover:text-green-600"

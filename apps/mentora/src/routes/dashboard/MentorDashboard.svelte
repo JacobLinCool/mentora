@@ -1,6 +1,7 @@
 <script lang="ts">
     import { Plus } from "@lucide/svelte";
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
+    import { m } from "$lib/paraglide/messages";
 
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
@@ -20,13 +21,13 @@
 
     // Mock Usage Data (Pending Analytics API)
     const usageData = [
-        { day: "Mon", input: 1200, output: 800 },
-        { day: "Tue", input: 1500, output: 950 },
-        { day: "Wed", input: 800, output: 400 },
-        { day: "Thu", input: 2000, output: 1200 },
-        { day: "Fri", input: 1800, output: 1100 },
-        { day: "Sat", input: 600, output: 300 },
-        { day: "Sun", input: 400, output: 200 },
+        { day: m.mentor_dashboard_day_mon(), input: 1200, output: 800 },
+        { day: m.mentor_dashboard_day_tue(), input: 1500, output: 950 },
+        { day: m.mentor_dashboard_day_wed(), input: 800, output: 400 },
+        { day: m.mentor_dashboard_day_thu(), input: 2000, output: 1200 },
+        { day: m.mentor_dashboard_day_fri(), input: 1800, output: 1100 },
+        { day: m.mentor_dashboard_day_sat(), input: 600, output: 300 },
+        { day: m.mentor_dashboard_day_sun(), input: 400, output: 200 },
     ];
 
     async function loadCourses() {
@@ -88,7 +89,7 @@
 </script>
 
 <svelte:head>
-    <title>Mentor Dashboard - Mentora</title>
+    <title>{m.mentor_dashboard_title()} - Mentora</title>
 </svelte:head>
 
 <MentorLayout>
@@ -102,21 +103,23 @@
         <!-- Greeting -->
         <div class="mb-12">
             <h1 class="font-serif-tc text-4xl font-bold tracking-tight">
-                Hello, {userName}.
+                {m.mentor_dashboard_greeting({ name: userName })}
             </h1>
         </div>
 
         <!-- Usage Section -->
         <div class="mb-12">
-            <h2 class="mb-4 text-xl font-normal">Usage</h2>
+            <h2 class="mb-4 text-xl font-normal">
+                {m.mentor_dashboard_usage()}
+            </h2>
             <div class="rounded-xl bg-white p-6 shadow-sm">
                 <div class="mb-6 flex items-center justify-between">
                     <div>
                         <h3 class="text-lg font-medium text-gray-900">
-                            Weekly Token Spending
+                            {m.mentor_dashboard_weekly_token_spending()}
                         </h3>
                         <p class="text-sm text-gray-500">
-                            Input vs Output tokens over the last 7 days
+                            {m.mentor_dashboard_weekly_token_subtitle()}
                         </p>
                     </div>
                 </div>
@@ -129,19 +132,21 @@
         <!-- Courses Section -->
         <div>
             <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-xl font-normal">My Courses</h2>
+                <h2 class="text-xl font-normal">
+                    {m.mentor_dashboard_my_courses()}
+                </h2>
                 <div class="flex gap-4">
                     <button
                         class="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
                         onclick={() => (isCreateModalOpen = true)}
                     >
                         <Plus size={16} />
-                        Create
+                        {m.mentor_dashboard_create()}
                     </button>
                     <button
                         class="cursor-pointer rounded-full bg-white px-4 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
                     >
-                        Show Archived
+                        {m.mentor_dashboard_show_archived()}
                     </button>
                 </div>
             </div>
@@ -150,10 +155,18 @@
                 <table class="w-full text-left text-sm">
                     <thead>
                         <tr class="bg-[#F5F5F5] text-gray-600">
-                            <th class="px-6 py-4 font-medium">Name</th>
-                            <th class="px-6 py-4 font-medium">Tag</th>
-                            <th class="px-6 py-4 font-medium">Created Date</th>
-                            <th class="px-6 py-4 font-medium">Visibility</th>
+                            <th class="px-6 py-4 font-medium">
+                                {m.mentor_dashboard_table_name()}
+                            </th>
+                            <th class="px-6 py-4 font-medium">
+                                {m.mentor_dashboard_table_tag()}
+                            </th>
+                            <th class="px-6 py-4 font-medium">
+                                {m.mentor_dashboard_table_created_date()}
+                            </th>
+                            <th class="px-6 py-4 font-medium">
+                                {m.mentor_dashboard_table_visibility()}
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#F5F5F5]">
@@ -172,9 +185,13 @@
                                 <td class="px-6 py-4 text-gray-600"
                                     >{formatDate(course.createdAt)}</td
                                 >
-                                <td class="px-6 py-4 text-gray-600"
-                                    >{course.visibility}</td
-                                >
+                                <td class="px-6 py-4 text-gray-600">
+                                    {course.visibility === "public"
+                                        ? m.mentor_dashboard_visibility_public()
+                                        : course.visibility === "private"
+                                          ? m.mentor_dashboard_visibility_private()
+                                          : m.mentor_dashboard_visibility_non_public()}
+                                </td>
                             </tr>
                         {/each}
                     </tbody>

@@ -5,6 +5,7 @@
     import UpcomingDeadline from "$lib/components/dashboard/student/UpcomingDeadline.svelte";
     import ContinueConversation from "$lib/components/dashboard/student/ContinueConversation.svelte";
     import MyCourses from "$lib/components/dashboard/student/MyCourses.svelte";
+    import StudentNotifications from "$lib/components/dashboard/student/StudentNotifications.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
@@ -211,6 +212,7 @@
                         onDateSelect={handleDateSelect}
                     />
                 {/if}
+                <StudentNotifications />
             </div>
 
             <!-- Right column: Continue + Courses -->
