@@ -11,7 +11,7 @@
         description: string;
         time: string;
         read: boolean;
-        link?: string;
+        link?: "/courses";
     };
 
     // Mock data for student notifications
@@ -23,7 +23,7 @@
             description: "Your 'React Hooks' assignment has been graded: A",
             time: "2h ago",
             read: false,
-            link: "/assignments",
+            link: "/courses",
         },
         {
             id: 2,
@@ -41,7 +41,7 @@
             description: "'Final Project Proposal' is due tomorrow",
             time: "1d ago",
             read: true,
-            link: "/assignments",
+            link: "/courses",
         },
     ];
 
