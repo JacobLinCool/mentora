@@ -347,5 +347,11 @@
     "course_settings_copied": "已複製！",
     "mentor_dashboard_delete_title": "刪除公告",
     "mentor_dashboard_delete_confirm": "您確定要刪除此公告嗎？此動作無法復原。",
-    "no_content": "無內容"
+    "no_content": "無內容",
+    "pricing_title": "定價",
+    "pricing_coming_soon": "即將推出",
+    "pricing_description": "我們正在設計簡單的使用計費模式。敬請期待點數與按量付費方案的詳情。",
+    "roadmap_title": "路線圖",
+    "roadmap_coming_soon": "即將推出",
+    "roadmap_description": "我們正在規劃 Mentora 的未來方向。請稍後回來查看我們的計畫。"
 }
