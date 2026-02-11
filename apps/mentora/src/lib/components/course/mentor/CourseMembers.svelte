@@ -54,6 +54,15 @@
                         }
                     }
 
+                    const role: Member["role"] =
+                        r.role === "student" ||
+                        r.role === "auditor" ||
+                        r.role === "instructor" ||
+                        r.role === "ta" ||
+                        r.role === "owner"
+                            ? r.role
+                            : "student";
+
                     return {
                         id: r.userId || r.email, // Use userId or email as key if docId not available in return type (wait, getCourseRoster returns schema objects which might not have doc ID if schema doesn't include it?)
                         // getCourseRoster returns schema.parse(data). Does schema include ID?
@@ -82,7 +91,7 @@
                         joinedDate: r.joinedAt
                             ? new Date(r.joinedAt).toLocaleString()
                             : "-",
-                        role: r.role as any,
+                        role,
                     };
                 });
 

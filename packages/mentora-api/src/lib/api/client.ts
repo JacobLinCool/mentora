@@ -409,11 +409,13 @@ export class MentoraClient {
 		addTurn: (
 			conversationId: string,
 			text: string,
-			type: 'idea' | 'followup'
-		): Promise<APIResult<void>> =>
-			this.authReadyThen(() =>
-				ConversationsModule.addTurn(this._config, conversationId, text, type)
-			)
+			_type: 'idea' | 'followup'
+		): Promise<APIResult<void>> => {
+			void _type;
+			return this.authReadyThen(() =>
+				ConversationsModule.addTurn(this._config, conversationId, { text })
+			);
+		}
 	};
 
 	// ============ Wallets ============

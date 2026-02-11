@@ -9,7 +9,7 @@
         Check,
     } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
-    import { api } from "$lib/api";
+    import { api, type CourseDoc } from "$lib/api";
     import { onMount } from "svelte";
     import { page } from "$app/state";
 
@@ -74,7 +74,7 @@
         if (!courseId) return;
         loading = true;
         try {
-            const updates: any = {
+            const updates: Partial<Omit<CourseDoc, "ownerId" | "createdAt">> = {
                 title: courseName,
                 visibility,
             };

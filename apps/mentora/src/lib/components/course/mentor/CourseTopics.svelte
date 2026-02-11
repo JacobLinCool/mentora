@@ -1,7 +1,11 @@
 <script lang="ts">
     import { Plus } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
-    import { api } from "$lib/api";
+    import {
+        api,
+        type Assignment as ApiAssignment,
+        type Questionnaire as ApiQuestionnaire,
+    } from "$lib/api";
     import { onMount, onDestroy } from "svelte";
     import TopicCard from "./topics/TopicCard.svelte";
     import AssignmentFormModal from "./topics/AssignmentFormModal.svelte";
@@ -38,7 +42,6 @@
     let currentTopicId = $state<string | null>(null);
     let currentAssignment = $state<Assignment | undefined>(undefined);
     let topics = $state<Topic[]>([]);
-    let loading = $state(false);
 
     let pollInterval: ReturnType<typeof setInterval>;
 
@@ -53,7 +56,6 @@
 
     async function loadData() {
         if (!courseId) return;
-        loading = true;
         try {
             const [topicsRes, assignRes, questRes] = await Promise.all([
                 api.topics.listCourseTopics(courseId),
@@ -67,11 +69,11 @@
                 );
 
                 // Map items to topics
-                const assignmentsMap: Record<string, any> = {};
+                const assignmentsMap: Record<string, ApiAssignment> = {};
                 if (assignRes.success) {
                     assignRes.data.forEach((a) => (assignmentsMap[a.id] = a));
                 }
-                const questionnairesMap: Record<string, any> = {};
+                const questionnairesMap: Record<string, ApiQuestionnaire> = {};
                 if (questRes.success) {
                     questRes.data.forEach((q) => (questionnairesMap[q.id] = q));
                 }
@@ -160,8 +162,6 @@
             }
         } catch (e) {
             console.error("Failed to load topics", e);
-        } finally {
-            loading = false;
         }
     }
 
