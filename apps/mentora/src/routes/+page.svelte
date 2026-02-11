@@ -377,22 +377,20 @@
                                         >{m.landing_footer_methodology()}</a
                                     >
                                 </li>
-                                <!-- eslint-disable svelte/no-navigation-without-resolve -->
                                 <li>
                                     <a
-                                        href="/pricing"
+                                        href={resolve("/pricing")}
                                         class="transition-colors hover:text-white"
                                         >{m.landing_footer_pricing()}</a
                                     >
                                 </li>
                                 <li>
                                     <a
-                                        href="/roadmap"
+                                        href={resolve("/roadmap")}
                                         class="transition-colors hover:text-white"
                                         >{m.landing_footer_roadmap()}</a
                                     >
                                 </li>
-                                <!-- eslint-enable svelte/no-navigation-without-resolve -->
                             </ul>
                         </div>
 
