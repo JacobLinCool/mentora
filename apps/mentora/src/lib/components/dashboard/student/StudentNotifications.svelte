@@ -4,8 +4,18 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
 
+    type Notification = {
+        id: number;
+        type: "grade" | "system" | "alert";
+        title: string;
+        description: string;
+        time: string;
+        read: boolean;
+        link?: string;
+    };
+
     // Mock data for student notifications
-    const notifications = [
+    const notifications: Notification[] = [
         {
             id: 1,
             type: "grade",
@@ -74,12 +84,11 @@
     </div>
 
     <div class="space-y-4">
-        {#each notifications as notification}
+        {#each notifications as notification (notification.id)}
             <button
                 class="group flex w-full items-start gap-4 text-left transition-opacity hover:opacity-80"
                 onclick={() =>
-                    notification.link &&
-                    goto(resolve(notification.link as any))}
+                    notification.link && goto(resolve(notification.link))}
             >
                 <div
                     class={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 ${getIconColor(notification.type)}`}

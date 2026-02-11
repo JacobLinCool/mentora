@@ -8,8 +8,6 @@
         MessageSquare,
         UserPlus,
         AlertCircle,
-        ChevronRight,
-        Filter,
     } from "@lucide/svelte";
 
     // Mock data for notifications
@@ -111,7 +109,7 @@
                 </h2>
 
                 <div class="space-y-3">
-                    {#each notifications as notification}
+                    {#each notifications as notification (notification.id)}
                         <div
                             class="group relative overflow-hidden rounded-xl bg-white p-5 shadow-sm transition-colors hover:bg-[#F5F5F5]"
                         >

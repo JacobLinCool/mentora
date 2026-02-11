@@ -3,13 +3,13 @@
     import { m } from "$lib/paraglide/messages";
     import { setMentorMode } from "$lib/temp.svelte";
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
+    import { resolve } from "$app/paths";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
     import { tick } from "svelte";
     import {
         User,
         Mail,
         Calendar,
-        Settings,
         ArrowRight,
         Globe,
         Wallet,
@@ -175,7 +175,7 @@
                         {m.settings_sign_in_prompt()}
                     </p>
                     <a
-                        href="/auth"
+                        href={resolve("/auth")}
                         class="mt-6 inline-flex items-center gap-2 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
                     >
                         {m.settings_sign_in()}

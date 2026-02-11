@@ -17,12 +17,9 @@
         Pencil,
         X,
         Globe,
-        Settings,
     } from "@lucide/svelte";
     import { tick } from "svelte";
     import { slide } from "svelte/transition";
-
-    let { onSwitchMode } = $props();
 
     const user = $derived(api.currentUser);
     const profile = $derived(api.currentUserProfile);

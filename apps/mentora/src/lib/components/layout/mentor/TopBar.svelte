@@ -1,22 +1,28 @@
 <script lang="ts">
-    import { Bell, Settings, CircleUser } from "@lucide/svelte";
+    import { Bell, CircleUser } from "@lucide/svelte";
+    import { resolve } from "$app/paths";
+    import { m } from "$lib/paraglide/messages";
 </script>
 
 <div
-    class="flex items-center justify-between bg-[#494949] px-8 py-4 text-white"
+    class="sticky top-0 z-50 flex items-center justify-between bg-[#494949] px-8 py-4 text-white"
 >
-    <h1 class="font-serif-tc text-xl font-bold tracking-wide">Mentora</h1>
+    <a
+        href={resolve("/dashboard")}
+        class="font-serif-tc cursor-pointer text-xl font-bold tracking-wide"
+    >
+        {m.app_name()}
+    </a>
     <div class="flex items-center gap-4">
-        <button
+        <a
             class="cursor-pointer hover:text-gray-200"
-            aria-label="Notifications"><Bell size={20} /></button
+            aria-label={m.notifications()}
+            href={resolve("/notifications")}><Bell size={20} /></a
         >
-        <button class="cursor-pointer hover:text-gray-200" aria-label="Settings"
-            ><Settings size={20} /></button
-        >
-        <button
+        <a
             class="cursor-pointer hover:text-gray-200"
-            aria-label="User Profile"><CircleUser size={24} /></button
+            aria-label={m.user_profile()}
+            href={resolve("/settings")}><CircleUser size={24} /></a
         >
     </div>
 </div>
