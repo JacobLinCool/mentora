@@ -5,7 +5,7 @@
     let props = $props();
 
     // Default to Student view for now
-    const isMentor = false;
+    const isMentor = true;
 </script>
 
 {#if isMentor}

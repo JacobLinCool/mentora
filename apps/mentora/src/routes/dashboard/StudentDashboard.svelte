@@ -99,7 +99,7 @@
                                     ...assignRes.data.map((a) => ({
                                         ...a,
                                         course,
-                                        itemType: "assignment",
+                                        itemType: "assignment" as const,
                                     })),
                                 );
                             }
@@ -108,7 +108,7 @@
                                     ...questRes.data.map((q) => ({
                                         ...q,
                                         course,
-                                        itemType: "questionnaire",
+                                        itemType: "questionnaire" as const,
                                     })),
                                 );
                             }

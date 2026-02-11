@@ -11,7 +11,19 @@
         [key: string]: unknown;
     }
 
-    let { announcements = [] }: { announcements?: Announcement[] } = $props();
+    let {
+        announcements = [],
+        onSave,
+        onDelete,
+    }: {
+        announcements?: Announcement[];
+        onSave?: (
+            id: string | number | null,
+            title: string,
+            content: string,
+        ) => void;
+        onDelete?: (id: string | number) => void;
+    } = $props();
 
     let isModalOpen = $state(false);
     let isDeleteModalOpen = $state(false);
@@ -50,8 +62,7 @@
 
     function confirmDelete() {
         if (deletingId) {
-            console.log("Deleting:", deletingId);
-            // Implement delete logic here
+            onDelete?.(deletingId);
         }
         closeDeleteModal();
     }
@@ -62,13 +73,7 @@
     }
 
     function saveAnnouncement() {
-        // Here you would typically dispatch an event or call an API
-        console.log("Saving:", {
-            mode: modalMode,
-            id: editingId,
-            newTitle,
-            newContent,
-        });
+        onSave?.(editingId, newTitle, newContent);
         closeModal();
     }
 </script>

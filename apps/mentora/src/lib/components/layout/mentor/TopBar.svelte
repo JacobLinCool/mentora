@@ -9,14 +9,21 @@
     <div class="flex items-center gap-4">
         <button
             class="cursor-pointer hover:text-gray-200"
-            aria-label="Notifications"><Bell size={20} /></button
+            aria-label="Notifications"
+            onclick={() => alert("Notifications not implemented yet")}
+            ><Bell size={20} /></button
         >
-        <button class="cursor-pointer hover:text-gray-200" aria-label="Settings"
+        <button
+            class="cursor-pointer hover:text-gray-200"
+            aria-label="Settings"
+            onclick={() => alert("Settings not implemented yet")}
             ><Settings size={20} /></button
         >
         <button
             class="cursor-pointer hover:text-gray-200"
-            aria-label="User Profile"><CircleUser size={24} /></button
+            aria-label="User Profile"
+            onclick={() => alert("Profile not implemented yet")}
+            ><CircleUser size={24} /></button
         >
     </div>
 </div>

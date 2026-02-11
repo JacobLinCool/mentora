@@ -26,8 +26,7 @@
 
     async function handleSubmit() {
         if (!title.trim()) {
-            errorMessage = "Title is required";
-            return;
+            title = "New Course";
         }
 
         loading = true;
