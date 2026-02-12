@@ -1,6 +1,10 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { signOut } from "firebase/auth";
+    import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { api } from "$lib";
+    import { auth } from "$lib/firebase";
     import { setMentorMode } from "$lib/temp.svelte";
     import { m } from "$lib/paraglide/messages";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
@@ -17,6 +21,7 @@
         Pencil,
         X,
         Globe,
+        LogOut,
     } from "@lucide/svelte";
     import { tick } from "svelte";
     import { slide } from "svelte/transition";
@@ -33,6 +38,8 @@
     let displayNameError = $state<string | null>(null);
     let displayNameEditing = $state(false);
     let displayNameInput = $state<HTMLInputElement | null>(null);
+    let loggingOut = $state(false);
+    let logoutError = $state<string | null>(null);
 
     const displayNameCanSave = $derived(
         !displayNameSaving && displayNameDraft.trim().length > 0,
@@ -148,6 +155,22 @@
         if (event.key === "Escape") {
             event.preventDefault();
             cancelDisplayNameEdit();
+        }
+    }
+
+    async function handleLogout() {
+        if (loggingOut) return;
+
+        loggingOut = true;
+        logoutError = null;
+        try {
+            await signOut(auth);
+            await goto(resolve("/auth"), { invalidateAll: true });
+        } catch (e) {
+            logoutError =
+                e instanceof Error ? e.message : m.auth_sign_out_failed();
+        } finally {
+            loggingOut = false;
         }
     }
 </script>
@@ -462,6 +485,39 @@
                                 {m.settings_switch_to_mentor_action()}
                             </button>
                         </div>
+                    </div>
+
+                    <div
+                        class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md [animation-delay:150ms]"
+                    >
+                        <div
+                            class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                        >
+                            <div>
+                                <h2 class="mb-1 text-xl text-white">
+                                    {m.auth_sign_out()}
+                                </h2>
+                            </div>
+                            <CosmicButton
+                                variant="danger"
+                                onclick={handleLogout}
+                                disabled={loggingOut}
+                                className="min-w-[150px]"
+                            >
+                                {#if loggingOut}
+                                    <Loader2 class="h-4 w-4 animate-spin" />
+                                    <span>{m.auth_signing_out()}</span>
+                                {:else}
+                                    <LogOut class="h-4 w-4" />
+                                    <span>{m.auth_sign_out()}</span>
+                                {/if}
+                            </CosmicButton>
+                        </div>
+                        {#if logoutError}
+                            <p class="text-status-error mt-4 text-sm">
+                                {logoutError}
+                            </p>
+                        {/if}
                     </div>
 
                     <!-- Preferences Section -->
