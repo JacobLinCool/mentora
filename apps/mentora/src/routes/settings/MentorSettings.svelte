@@ -1,5 +1,8 @@
 <script lang="ts">
+    import { signOut } from "firebase/auth";
+    import { goto } from "$app/navigation";
     import { api } from "$lib";
+    import { auth } from "$lib/firebase";
     import { m } from "$lib/paraglide/messages";
     import { setMentorMode } from "$lib/temp.svelte";
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
@@ -15,6 +18,7 @@
         Wallet,
         CreditCard,
         Loader2,
+        LogOut,
     } from "@lucide/svelte";
     import { slide } from "svelte/transition";
 
@@ -30,6 +34,8 @@
     let displayNameError = $state<string | null>(null);
     let displayNameEditing = $state(false);
     let displayNameInput = $state<HTMLInputElement | null>(null);
+    let loggingOut = $state(false);
+    let logoutError = $state<string | null>(null);
 
     const displayNameCanSave = $derived(
         !displayNameSaving && displayNameDraft.trim().length > 0,
@@ -140,6 +146,22 @@
         if (event.key === "Escape") {
             event.preventDefault();
             cancelDisplayNameEdit();
+        }
+    }
+
+    async function handleLogout() {
+        if (loggingOut) return;
+
+        loggingOut = true;
+        logoutError = null;
+        try {
+            await signOut(auth);
+            await goto(resolve("/auth"), { invalidateAll: true });
+        } catch (e) {
+            logoutError =
+                e instanceof Error ? e.message : m.auth_sign_out_failed();
+        } finally {
+            loggingOut = false;
         }
     }
 </script>
@@ -446,6 +468,33 @@
                                             : "Switch to English"}
                                     </div>
                                 </button>
+
+                                <button
+                                    class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-red-100 bg-red-50/30 p-4 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                    onclick={handleLogout}
+                                    disabled={loggingOut}
+                                >
+                                    <div class="flex items-center gap-3">
+                                        <LogOut class="h-5 w-5 text-red-500" />
+                                        <span
+                                            class="text-sm font-medium text-red-600"
+                                        >
+                                            {loggingOut
+                                                ? m.auth_signing_out()
+                                                : m.auth_sign_out()}
+                                        </span>
+                                    </div>
+                                    <div
+                                        class="rounded-full bg-red-100 p-1 text-red-500"
+                                    >
+                                        <ArrowRight class="h-4 w-4" />
+                                    </div>
+                                </button>
+                                {#if logoutError}
+                                    <p class="text-xs text-red-500">
+                                        {logoutError}
+                                    </p>
+                                {/if}
                             </div>
                         </section>
                     </div>
