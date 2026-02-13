@@ -16,18 +16,19 @@ export const MENTORA_AI_TRANSCRIBE_MAX_BYTES =
         ? transcribeMaxBytes
         : DEFAULT_TRANSCRIBE_MAX_BYTES;
 
-const AUDIO_MIME_TO_FORMAT: Record<string, "mp3" | "wav"> = {
+const AUDIO_MIME_TO_FORMAT: Record<string, "mp3" | "wav" | "webm"> = {
     "audio/mpeg": "mp3",
     "audio/mp3": "mp3",
     "audio/wav": "wav",
     "audio/x-wav": "wav",
     "audio/wave": "wav",
     "audio/vnd.wave": "wav",
+    "audio/webm": "webm",
 };
 
 export function resolveTranscriptionAudioFormat(
     mimeType: string,
-): "mp3" | "wav" {
+): "mp3" | "wav" | "webm" {
     const normalizedMimeType =
         mimeType.toLowerCase().split(";")[0]?.trim() || "";
     const format = AUDIO_MIME_TO_FORMAT[normalizedMimeType];

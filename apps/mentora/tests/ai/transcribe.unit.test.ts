@@ -40,6 +40,10 @@ describe("transcribeAudio (unit)", () => {
             resolveTranscriptionAudioFormat("audio/mpeg; charset=utf-8"),
         ).toBe("mp3");
         expect(resolveTranscriptionAudioFormat("audio/wav")).toBe("wav");
+        expect(resolveTranscriptionAudioFormat("audio/webm")).toBe("webm");
+        expect(resolveTranscriptionAudioFormat("audio/webm;codecs=opus")).toBe(
+            "webm",
+        );
     });
 
     it("rejects unsupported MIME type before API call", async () => {
