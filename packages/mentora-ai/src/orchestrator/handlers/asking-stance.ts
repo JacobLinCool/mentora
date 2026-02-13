@@ -1,6 +1,7 @@
 /**
  * Stage 1: Asking Stance Handler
  */
+import { INITIAL_CONFIDENCE } from "../../builder/schemas.js";
 import {
     askingStanceBuilders,
     type AskingStanceClassifier,
@@ -97,7 +98,7 @@ export class AskingStanceHandler implements StageHandler {
             extractedStance,
             extractedReason,
             1,
-            1.0, // Initial confidence assumed high if confirmed
+            INITIAL_CONFIDENCE,
         );
 
         // Generate first case challenge (Stage 2 entry)

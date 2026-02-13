@@ -7,6 +7,7 @@ import {
     RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT,
     RESPONSE_GENERATOR_OUTPUT_FORMAT,
 } from "./prompts.js";
+import { confidenceScoreSchema, TRIGGER_DESCRIPTION } from "./schemas.js";
 import { buildContents } from "./utils.js";
 
 /**
@@ -16,8 +17,8 @@ export const ClosureClassifierSchema = z.object({
     thought_process: z.string().describe("簡短分析使用者的回答"),
     detected_intent: z
         .enum(["TR_CONFIRM", "TR_CLARIFY"])
-        .describe("對應狀態轉移表中的 Trigger ID"),
-    confidence_score: z.number().min(0).max(1).describe("信心分數 (0.0 - 1.0)"),
+        .describe(TRIGGER_DESCRIPTION),
+    confidence_score: confidenceScoreSchema,
     extracted_data: z
         .object({
             stance: z.string().optional().describe("Any final clarification"),
