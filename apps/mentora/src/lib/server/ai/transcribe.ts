@@ -16,6 +16,29 @@ export const MENTORA_AI_TRANSCRIBE_MAX_BYTES =
         ? transcribeMaxBytes
         : DEFAULT_TRANSCRIBE_MAX_BYTES;
 
+const AUDIO_MIME_TO_FORMAT: Record<string, "mp3" | "wav"> = {
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/wave": "wav",
+    "audio/vnd.wave": "wav",
+};
+
+export function resolveTranscriptionAudioFormat(
+    mimeType: string,
+): "mp3" | "wav" {
+    const normalizedMimeType =
+        mimeType.toLowerCase().split(";")[0]?.trim() || "";
+    const format = AUDIO_MIME_TO_FORMAT[normalizedMimeType];
+
+    if (!format) {
+        throw new Error(`Unsupported audio MIME type: ${mimeType}`);
+    }
+
+    return format;
+}
+
 const Result = z.object({
     transcription: z.string(),
 });
@@ -33,8 +56,7 @@ export async function transcribeAudio(
     }
 
     const base64Audio = audio.toString("base64");
-    const format =
-        mimeType.includes("mpeg") || mimeType.includes("mp3") ? "mp3" : "wav";
+    const format = resolveTranscriptionAudioFormat(mimeType);
 
     const response = await ai.google.chat.completions.create({
         model: MENTORA_AI_TRANSCRIBE_MODEL,

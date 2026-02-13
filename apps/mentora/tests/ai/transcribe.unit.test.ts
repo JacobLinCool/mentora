@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ai } from "../../src/lib/server/ai/shared";
 import {
     MENTORA_AI_TRANSCRIBE_MAX_BYTES,
+    resolveTranscriptionAudioFormat,
     transcribeAudio,
 } from "../../src/lib/server/ai/transcribe";
 
@@ -31,6 +32,23 @@ describe("transcribeAudio (unit)", () => {
         await expect(
             transcribeAudio(Buffer.from("audio"), "audio/wav", "en-US"),
         ).resolves.toBe("hello world");
+    });
+
+    it("maps supported MIME types to provider format", () => {
+        expect(resolveTranscriptionAudioFormat("audio/mpeg")).toBe("mp3");
+        expect(
+            resolveTranscriptionAudioFormat("audio/mpeg; charset=utf-8"),
+        ).toBe("mp3");
+        expect(resolveTranscriptionAudioFormat("audio/wav")).toBe("wav");
+    });
+
+    it("rejects unsupported MIME type before API call", async () => {
+        const createSpy = vi.spyOn(ai.google.chat.completions, "create");
+
+        await expect(
+            transcribeAudio(Buffer.from("audio"), "audio/ogg", "en-US"),
+        ).rejects.toThrow("Unsupported audio MIME type: audio/ogg");
+        expect(createSpy).not.toHaveBeenCalled();
     });
 
     it("accepts payload at the configured max size", async () => {
