@@ -71,7 +71,9 @@ export const GET: RequestHandler = async (event) => {
 
     await requireAuth(event);
 
-    // Generate Random Data
+    // Generate deterministic sample data for emulator testing.
+    // The hard-coded userId is intentional: sample data uses a fixed identity
+    // so test scenarios are reproducible regardless of which user triggers generation.
     const userId = "sample-instructor";
     const courseId = `course-${Date.now()}`;
     const now = Date.now();
