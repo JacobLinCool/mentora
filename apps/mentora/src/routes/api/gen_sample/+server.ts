@@ -310,7 +310,7 @@ export const GET: RequestHandler = async (event) => {
                 }
 
                 // Scenario: Advanced Task Questionnaire (Topic 2 pos 1+)
-                {
+                if (i === 2 && j >= 1) {
                     const sharedId = assignmentId;
                     const startAt = now - ONE_DAY;
                     const dueAt = now + (j + 5) * ONE_DAY;
@@ -339,6 +339,10 @@ export const GET: RequestHandler = async (event) => {
                     });
                     contents.push(sharedId);
                     contentTypes.push("questionnaire");
+                } else {
+                    throw new Error(
+                        `Unexpected scenario: topic=${i}, position=${j}`,
+                    );
                 }
             }
 
