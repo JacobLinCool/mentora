@@ -6,6 +6,9 @@ const MENTORA_AI_TRANSCRIBE_MODEL =
     env.MENTORA_AI_TRANSCRIBE_MODEL || "google-ai-studio/gemini-2.5-flash-lite";
 const MENTORA_AI_TRANSCRIBE_LANGUAGES =
     env.MENTORA_AI_TRANSCRIBE_LANGUAGES || "zh-TW,en-US";
+export const MENTORA_AI_TRANSCRIBE_MAX_BYTES = Number(
+    env.MENTORA_AI_TRANSCRIBE_MAX_BYTES || "1048576",
+);
 
 const Result = z.object({
     transcription: z.string(),
@@ -16,7 +19,14 @@ export async function transcribeAudio(
     mimeType: string,
     language = MENTORA_AI_TRANSCRIBE_LANGUAGES,
 ): Promise<string> {
-    const base64Audio = Buffer.from(data).toString("base64");
+    const audio = Buffer.from(data);
+    if (audio.byteLength > MENTORA_AI_TRANSCRIBE_MAX_BYTES) {
+        throw new Error(
+            `Audio payload exceeds max size of ${MENTORA_AI_TRANSCRIBE_MAX_BYTES} bytes`,
+        );
+    }
+
+    const base64Audio = audio.toString("base64");
     const format =
         mimeType.includes("mpeg") || mimeType.includes("mp3") ? "mp3" : "wav";
 

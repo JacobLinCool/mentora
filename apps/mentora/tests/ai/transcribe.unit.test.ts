@@ -1,7 +1,10 @@
 import { Buffer } from "node:buffer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ai } from "../../src/lib/server/ai/shared";
-import { transcribeAudio } from "../../src/lib/server/ai/transcribe";
+import {
+    MENTORA_AI_TRANSCRIBE_MAX_BYTES,
+    transcribeAudio,
+} from "../../src/lib/server/ai/transcribe";
 
 type TranscribeCompletionResponse = Awaited<
     ReturnType<typeof ai.google.chat.completions.create>
@@ -28,6 +31,38 @@ describe("transcribeAudio (unit)", () => {
         await expect(
             transcribeAudio(Buffer.from("audio"), "audio/wav", "en-US"),
         ).resolves.toBe("hello world");
+    });
+
+    it("accepts payload at the configured max size", async () => {
+        vi.spyOn(ai.google.chat.completions, "create").mockResolvedValue({
+            choices: [
+                {
+                    message: {
+                        content: JSON.stringify({
+                            transcription: "at-limit",
+                        }),
+                    },
+                },
+            ],
+        } as unknown as TranscribeCompletionResponse);
+
+        const atLimit = Buffer.alloc(MENTORA_AI_TRANSCRIBE_MAX_BYTES, 1);
+
+        await expect(
+            transcribeAudio(atLimit, "audio/wav", "en-US"),
+        ).resolves.toBe("at-limit");
+    });
+
+    it("rejects payload over the configured max size before API call", async () => {
+        const createSpy = vi.spyOn(ai.google.chat.completions, "create");
+
+        const overLimit = Buffer.alloc(MENTORA_AI_TRANSCRIBE_MAX_BYTES + 1, 1);
+        await expect(
+            transcribeAudio(overLimit, "audio/wav", "en-US"),
+        ).rejects.toThrow(
+            `Audio payload exceeds max size of ${MENTORA_AI_TRANSCRIBE_MAX_BYTES} bytes`,
+        );
+        expect(createSpy).not.toHaveBeenCalled();
     });
 
     it("throws a deterministic error on malformed JSON payload", async () => {
