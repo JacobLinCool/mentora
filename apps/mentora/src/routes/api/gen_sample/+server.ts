@@ -12,6 +12,54 @@ import {
 import type { RequestHandler } from "./$types";
 
 const isEmulator = PUBLIC_USE_FIREBASE_EMULATOR === "true";
+const ONE_DAY = 86400000;
+
+async function createSharedAssignmentQuestionnaire(opts: {
+    id: string;
+    courseId: string;
+    topicId: string;
+    orderInTopic: number;
+    title: string;
+    prompt: string;
+    questions: Array<{ question: Record<string, unknown>; required: boolean }>;
+    startAt: number;
+    dueAt: number | null;
+    userId: string;
+    now: number;
+}): Promise<void> {
+    const shared = {
+        id: opts.id,
+        courseId: opts.courseId,
+        topicId: opts.topicId,
+        startAt: opts.startAt,
+        dueAt: opts.dueAt,
+        allowLate: true,
+        allowResubmit: true,
+        createdBy: opts.userId,
+        createdAt: opts.now,
+        updatedAt: opts.now,
+    };
+
+    await firestore
+        .collection("assignments")
+        .doc(opts.id)
+        .set({
+            ...shared,
+            orderInTopic: opts.orderInTopic,
+            title: opts.title,
+            prompt: opts.prompt,
+            mode: "instant",
+        });
+
+    await firestore
+        .collection("questionnaires")
+        .doc(opts.id)
+        .set({
+            ...shared,
+            title: opts.title,
+            questions: opts.questions,
+        });
+}
 
 export const GET: RequestHandler = async (event) => {
     if (!isEmulator) {
@@ -65,336 +113,79 @@ export const GET: RequestHandler = async (event) => {
             for (let j = 0; j < assignmentsCount; j++) {
                 const assignmentId = `assign-${topicId}-${j}`;
 
-                // Determine deadlines
-                const ONE_DAY = 86400000;
-                const startAt = now - 5 * ONE_DAY;
-                let dueAt: number | null = null;
-                let typeName;
-                let promptContent;
-
-                if (i === 1 && j === 0) {
-                    // Questionnaire (Quiz-like)
-                    // Use Dual-Doc strategy logic for consistency
+                // Scenario: Questionnaire (Topic 1 pos 0, Topic 2 pos 0)
+                if ((i === 1 && j === 0) || (i === 2 && j === 0)) {
                     const sharedId = `quest-${topicId}-${j}`;
-                    const qTitle = "Logic Fundamentals (Questionnaire)";
-                    const qStartAt = now - 5 * ONE_DAY;
-                    const qDueAt = now - ONE_DAY;
+                    const qTitle =
+                        i === 1
+                            ? "Logic Fundamentals (Questionnaire)"
+                            : `Advanced Check ${j + 1}`;
+                    const qStartAt =
+                        i === 1 ? now - 5 * ONE_DAY : now - ONE_DAY;
+                    const qDueAt =
+                        i === 1 ? now - ONE_DAY : now + (j + 5) * ONE_DAY;
+                    const qQuestions =
+                        i === 1
+                            ? [
+                                  {
+                                      question: {
+                                          type: "single_answer_choice",
+                                          questionText:
+                                              "Which fallacy attacks the person rather than the argument?",
+                                          options: [
+                                              "Ad Hominem",
+                                              "Straw Man",
+                                              "Red Herring",
+                                              "False Dichotomy",
+                                          ],
+                                      },
+                                      required: true,
+                                  },
+                              ]
+                            : [
+                                  {
+                                      question: {
+                                          type: "single_answer_choice",
+                                          questionText: "Is this valid?",
+                                          options: ["Yes", "No"],
+                                      },
+                                      required: true,
+                                  },
+                              ];
 
-                    // 1. Assignment (for submission)
-                    const assignment = {
+                    await createSharedAssignmentQuestionnaire({
                         id: sharedId,
                         courseId,
                         topicId,
                         orderInTopic: j + 1,
                         title: qTitle,
-                        prompt: "Complete the quiz.",
-                        mode: "instant",
+                        prompt:
+                            i === 1
+                                ? "Complete the quiz."
+                                : "Complete the check.",
+                        questions: qQuestions,
                         startAt: qStartAt,
                         dueAt: qDueAt,
-                        allowLate: true,
-                        allowResubmit: true,
-                        createdBy: userId,
-                        createdAt: now,
-                        updatedAt: now,
-                    };
-                    await firestore
-                        .collection("assignments")
-                        .doc(sharedId)
-                        .set(assignment);
-
-                    // 2. Questionnaire (for content)
-                    const questionnaire = {
-                        id: sharedId,
-                        courseId,
-                        topicId,
-                        title: qTitle,
-                        questions: [
-                            {
-                                question: {
-                                    type: "single_answer_choice",
-                                    questionText:
-                                        "Which fallacy attacks the person rather than the argument?",
-                                    options: [
-                                        "Ad Hominem",
-                                        "Straw Man",
-                                        "Red Herring",
-                                        "False Dichotomy",
-                                    ],
-                                },
-                                required: true,
-                            },
-                        ],
-                        startAt: qStartAt,
-                        dueAt: qDueAt,
-                        allowLate: true,
-                        allowResubmit: true,
-                        createdBy: userId,
-                        createdAt: now,
-                        updatedAt: now,
-                    };
-
-                    await firestore
-                        .collection("questionnaires")
-                        .doc(sharedId)
-                        .set(questionnaire);
+                        userId,
+                        now,
+                    });
                     contents.push(sharedId);
                     contentTypes.push("questionnaire");
                     continue;
                 }
 
-                if (i === 2 && j === 0) {
-                    // Questionnaire in Topic 2
-                    const sharedId = `quest-${topicId}-${j}`;
-                    const qTitle = `Advanced Check ${j + 1}`;
-                    const qStartAt = now - ONE_DAY;
-                    const qDueAt = now + (j + 5) * ONE_DAY;
+                // Scenario: Conversation (Topic 1 pos 1)
+                if (i === 1 && j === 1) {
+                    const startAt = now - 5 * ONE_DAY;
+                    const dueAt = now + ONE_DAY;
 
-                    // 1. Assignment
                     const assignment = {
-                        id: sharedId,
+                        id: assignmentId,
                         courseId,
                         topicId,
                         orderInTopic: j + 1,
-                        title: qTitle,
-                        prompt: "Complete the check.",
-                        mode: "instant",
-                        startAt: qStartAt,
-                        dueAt: qDueAt,
-                        allowLate: true,
-                        allowResubmit: true,
-                        createdBy: userId,
-                        createdAt: now,
-                        updatedAt: now,
-                    };
-                    await firestore
-                        .collection("assignments")
-                        .doc(sharedId)
-                        .set(assignment);
-
-                    // 2. Questionnaire
-                    const questionnaire = {
-                        id: sharedId,
-                        courseId,
-                        topicId,
-                        title: qTitle,
-                        questions: [
-                            {
-                                question: {
-                                    type: "single_answer_choice",
-                                    questionText: "Is this valid?",
-                                    options: ["Yes", "No"],
-                                },
-                                required: true,
-                            },
-                        ],
-                        startAt: qStartAt,
-                        dueAt: qDueAt,
-                        allowLate: true,
-                        allowResubmit: true,
-                        createdBy: userId,
-                        createdAt: now,
-                        updatedAt: now,
-                    };
-
-                    await firestore
-                        .collection("questionnaires")
-                        .doc(sharedId)
-                        .set(questionnaire);
-                    contents.push(sharedId);
-                    contentTypes.push("questionnaire");
-                    continue;
-                }
-
-                // Assignments
-                if (i === 1) {
-                    if (j === 1) {
-                        // Due Soon (Active) - Conversation
-                        typeName = "AI Ethics Debate (Conversation)";
-                        dueAt = now + ONE_DAY;
-                        promptContent =
-                            "Engage in a debate about the ethics of artificial intelligence. Focus on the trolley problem adaptation.";
-                        // intendedSubtype = "conversation";
-
-                        // Create Assignment (Conversation)
-                        const assignment = {
-                            id: assignmentId,
-                            courseId: courseId,
-                            topicId: topicId,
-                            orderInTopic: j + 1,
-                            title: typeName,
-                            prompt: promptContent,
-                            mode: "instant",
-                            startAt,
-                            dueAt,
-                            allowLate: true,
-                            allowResubmit: true,
-                            createdBy: userId,
-                            createdAt: now,
-                            updatedAt: now,
-                        };
-
-                        await firestore
-                            .collection("assignments")
-                            .doc(assignmentId)
-                            .set(assignment);
-
-                        contents.push(assignmentId);
-                        contentTypes.push("assignment");
-                        assignmentsData.push(assignment);
-
-                        // Create Submission
-                        const submission: Submission = {
-                            userId: userId,
-                            state: "in_progress",
-                            startedAt: now - ONE_DAY,
-                            submittedAt: null,
-                            late: false,
-                            scoreCompletion: null,
-                            notes: null,
-                        };
-
-                        await firestore
-                            .collection("assignments")
-                            .doc(assignmentId)
-                            .collection("submissions")
-                            .doc(userId)
-                            .set(submission);
-
-                        // Create Conversation
-                        const conversationId = `conv-${assignmentId}-${userId}`;
-                        const conversation: Conversation = {
-                            assignmentId: assignmentId,
-                            userId: userId,
-                            state: "awaiting_followup", // Simulate mid-conversation
-                            lastActionAt: now,
-                            createdAt: now - ONE_DAY,
-                            updatedAt: now,
-                            turns: [
-                                {
-                                    id: "turn-1",
-                                    type: "topic",
-                                    text: "I want to discuss the trolley problem.",
-                                    createdAt: now - ONE_DAY,
-                                    analysis: null,
-                                    pendingStartAt: null,
-                                },
-                                {
-                                    id: "turn-2",
-                                    type: "idea",
-                                    text: "That is a classic ethical dilemma. Would you pull the lever?",
-                                    createdAt: now - ONE_DAY + 1000,
-                                    analysis: {
-                                        stance: "neutral",
-                                    },
-                                    pendingStartAt: null,
-                                },
-                            ],
-                        };
-
-                        await firestore
-                            .collection("conversations")
-                            .doc(conversationId)
-                            .set(conversation);
-                    } else {
-                        // No Deadline - Essay -> NOW QUESTIONNAIRE (Essay Type)
-                        // STRATEGY: Create BOTH Assignment and Questionnaire with SAME ID
-                        // This allows Submission (via Assignment) and Content (via Questionnaire)
-
-                        const sharedId = assignmentId; // Reuse the assignmentId generated above
-                        const qTitle = "Political Trends (Essay)";
-
-                        // 1. Create Assignment Doc (for Permissions & Submission)
-                        const assignment = {
-                            id: sharedId,
-                            courseId,
-                            topicId,
-                            orderInTopic: j + 1,
-                            title: qTitle,
-                            prompt: "Complete the essay in the questionnaire.",
-                            mode: "instant",
-                            startAt: now - ONE_DAY,
-                            dueAt: null,
-                            allowLate: true,
-                            allowResubmit: true,
-                            createdBy: userId,
-                            createdAt: now,
-                            updatedAt: now,
-                        };
-
-                        await firestore
-                            .collection("assignments")
-                            .doc(sharedId)
-                            .set(assignment);
-
-                        // 2. Create Questionnaire Doc (for Content)
-                        const questionnaire = {
-                            id: sharedId, // SAME ID
-                            courseId,
-                            topicId,
-                            title: qTitle,
-                            questions: [
-                                {
-                                    question: {
-                                        type: "short_answer", // Use short_answer for essay
-                                        questionText:
-                                            "Write a 500-word essay analyzing the impact of social media on political polarization. (Essay)",
-                                        placeholder: "Type your essay here...",
-                                        // Standard schema max is 5000. We stick to verification limits.
-                                        maxLength: 5000,
-                                    },
-                                    required: true,
-                                },
-                            ],
-                            startAt: now - ONE_DAY,
-                            dueAt: null,
-                            allowLate: true,
-                            allowResubmit: true,
-                            createdBy: userId,
-                            createdAt: now,
-                            updatedAt: now,
-                        };
-
-                        await firestore
-                            .collection("questionnaires")
-                            .doc(sharedId)
-                            .set(questionnaire);
-
-                        contents.push(sharedId);
-                        contentTypes.push("questionnaire");
-
-                        // 3. Create Submission (In Progress)
-                        // User can verify submission flow manually
-                        const submission: Submission = {
-                            userId: userId,
-                            state: "in_progress",
-                            startedAt: now - ONE_DAY,
-                            submittedAt: null,
-                            late: false,
-                            scoreCompletion: null,
-                            notes: null,
-                        };
-                        await firestore
-                            .collection("assignments")
-                            .doc(sharedId)
-                            .collection("submissions")
-                            .doc(userId)
-                            .set(submission);
-                    }
-                } else {
-                    // Future - Advanced Task -> Questionnaire (Same Dual Strategy)
-                    const sharedId = assignmentId;
-                    const qTitle = `Advanced Task ${j + 1}`;
-                    const startAt = now - ONE_DAY;
-                    const dueAt = now + (j + 5) * ONE_DAY;
-
-                    // 1. Assignment
-                    const assignment = {
-                        id: sharedId,
-                        courseId,
-                        topicId,
-                        orderInTopic: j + 1,
-                        title: qTitle,
-                        prompt: "Complete the questionnaire.",
+                        title: "AI Ethics Debate (Conversation)",
+                        prompt: "Engage in a debate about the ethics of artificial intelligence. Focus on the trolley problem adaptation.",
                         mode: "instant",
                         startAt,
                         dueAt,
@@ -404,17 +195,133 @@ export const GET: RequestHandler = async (event) => {
                         createdAt: now,
                         updatedAt: now,
                     };
+
                     await firestore
                         .collection("assignments")
-                        .doc(sharedId)
+                        .doc(assignmentId)
                         .set(assignment);
 
-                    // 2. Questionnaire
-                    const questionnaire = {
+                    contents.push(assignmentId);
+                    contentTypes.push("assignment");
+                    assignmentsData.push(assignment);
+
+                    const submission: Submission = {
+                        userId,
+                        state: "in_progress",
+                        startedAt: now - ONE_DAY,
+                        submittedAt: null,
+                        late: false,
+                        scoreCompletion: null,
+                        notes: null,
+                    };
+
+                    await firestore
+                        .collection("assignments")
+                        .doc(assignmentId)
+                        .collection("submissions")
+                        .doc(userId)
+                        .set(submission);
+
+                    const conversationId = `conv-${assignmentId}-${userId}`;
+                    const conversation: Conversation = {
+                        assignmentId,
+                        userId,
+                        state: "awaiting_followup",
+                        lastActionAt: now,
+                        createdAt: now - ONE_DAY,
+                        updatedAt: now,
+                        turns: [
+                            {
+                                id: "turn-1",
+                                type: "topic",
+                                text: "I want to discuss the trolley problem.",
+                                createdAt: now - ONE_DAY,
+                                analysis: null,
+                                pendingStartAt: null,
+                            },
+                            {
+                                id: "turn-2",
+                                type: "idea",
+                                text: "That is a classic ethical dilemma. Would you pull the lever?",
+                                createdAt: now - ONE_DAY + 1000,
+                                analysis: {
+                                    stance: "neutral",
+                                },
+                                pendingStartAt: null,
+                            },
+                        ],
+                    };
+
+                    await firestore
+                        .collection("conversations")
+                        .doc(conversationId)
+                        .set(conversation);
+                    continue;
+                }
+
+                // Scenario: Essay Questionnaire (Topic 1 pos 2)
+                if (i === 1 && j === 2) {
+                    const sharedId = assignmentId;
+
+                    await createSharedAssignmentQuestionnaire({
                         id: sharedId,
                         courseId,
                         topicId,
-                        title: qTitle,
+                        orderInTopic: j + 1,
+                        title: "Political Trends (Essay)",
+                        prompt: "Complete the essay in the questionnaire.",
+                        questions: [
+                            {
+                                question: {
+                                    type: "short_answer",
+                                    questionText:
+                                        "Write a 500-word essay analyzing the impact of social media on political polarization. (Essay)",
+                                    placeholder: "Type your essay here...",
+                                    maxLength: 5000,
+                                },
+                                required: true,
+                            },
+                        ],
+                        startAt: now - ONE_DAY,
+                        dueAt: null,
+                        userId,
+                        now,
+                    });
+
+                    contents.push(sharedId);
+                    contentTypes.push("questionnaire");
+
+                    const submission: Submission = {
+                        userId,
+                        state: "in_progress",
+                        startedAt: now - ONE_DAY,
+                        submittedAt: null,
+                        late: false,
+                        scoreCompletion: null,
+                        notes: null,
+                    };
+                    await firestore
+                        .collection("assignments")
+                        .doc(sharedId)
+                        .collection("submissions")
+                        .doc(userId)
+                        .set(submission);
+                    continue;
+                }
+
+                // Scenario: Advanced Task Questionnaire (Topic 2 pos 1+)
+                {
+                    const sharedId = assignmentId;
+                    const startAt = now - ONE_DAY;
+                    const dueAt = now + (j + 5) * ONE_DAY;
+
+                    await createSharedAssignmentQuestionnaire({
+                        id: sharedId,
+                        courseId,
+                        topicId,
+                        orderInTopic: j + 1,
+                        title: `Advanced Task ${j + 1}`,
+                        prompt: "Complete the questionnaire.",
                         questions: [
                             {
                                 question: {
@@ -427,17 +334,9 @@ export const GET: RequestHandler = async (event) => {
                         ],
                         startAt,
                         dueAt,
-                        allowLate: true,
-                        allowResubmit: true,
-                        createdBy: userId,
-                        createdAt: now,
-                        updatedAt: now,
-                    };
-
-                    await firestore
-                        .collection("questionnaires")
-                        .doc(sharedId)
-                        .set(questionnaire);
+                        userId,
+                        now,
+                    });
                     contents.push(sharedId);
                     contentTypes.push("questionnaire");
                 }
