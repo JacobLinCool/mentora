@@ -18,7 +18,7 @@ import {
 	type RouteContext,
 	type RouteDefinition
 } from '../types.js';
-import { parseBody, requireAuth, requireParam } from './utils.js';
+import { parseBody, requireAuth, requireDocument, requireParam } from './utils.js';
 import { processWithLLM, extractConversationSummary } from '../llm/llm-service.js';
 import { getASRExecutor, getTTSExecutor } from '../llm/executors.js';
 import { randomUUID } from 'node:crypto';
@@ -36,13 +36,12 @@ async function createConversation(ctx: RouteContext, request: Request): Promise<
 	const { assignmentId } = body;
 
 	// 1. Get Assignment
-	const assignmentDoc = await ctx.firestore.doc(Assignments.docPath(assignmentId)).get();
-
-	if (!assignmentDoc.exists) {
-		return errorResponse('Assignment not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
-	}
-
-	const assignment = Assignments.schema.parse(assignmentDoc.data());
+	const assignment = await requireDocument(
+		ctx,
+		Assignments.docPath(assignmentId),
+		Assignments.schema,
+		'Assignment'
+	);
 
 	// 2. Check if started
 	if (assignment.startAt > Date.now()) {
@@ -315,15 +314,12 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		};
 
 		// Get assignment for topic context
-		const assignmentDoc = await ctx.firestore
-			.doc(Assignments.docPath(conversation.assignmentId))
-			.get();
-
-		if (!assignmentDoc.exists) {
-			return errorResponse('Assignment not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
-		}
-
-		const assignment = Assignments.schema.parse(assignmentDoc.data());
+		const assignment = await requireDocument(
+			ctx,
+			Assignments.docPath(conversation.assignmentId),
+			Assignments.schema,
+			'Assignment'
+		);
 		const question = assignment.question || '';
 		const prompt = assignment.prompt || '';
 

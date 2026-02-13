@@ -87,6 +87,29 @@ export function requireParam(ctx: RouteContext, name: string): string {
 }
 
 /**
+ * Fetch a Firestore document, verify it exists, and parse with a Zod schema.
+ *
+ * @param ctx - Route context (needs firestore)
+ * @param docPath - Full Firestore document path
+ * @param schema - Zod schema to validate the document data
+ * @param entityName - Human-readable name for error messages (e.g. "Assignment")
+ * @returns Parsed document data
+ * @throws Response 404 if document does not exist
+ */
+export async function requireDocument<T>(
+	ctx: RouteContext,
+	docPath: string,
+	schema: ZodSchema<T>,
+	entityName: string = 'Document'
+): Promise<T> {
+	const doc = await ctx.firestore.doc(docPath).get();
+	if (!doc.exists) {
+		throw errorResponse(`${entityName} not found`, HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
+	}
+	return schema.parse(doc.data());
+}
+
+/**
  * Verify course exists and user has read access (public, owner, or active member).
  *
  * @param ctx - Route context (needs firestore)
@@ -102,12 +125,12 @@ export async function requireCourseAccess(
 	userId: string,
 	resource: string
 ): Promise<CourseDoc> {
-	const courseDoc = await ctx.firestore.doc(Courses.docPath(courseId)).get();
-	if (!courseDoc.exists) {
-		throw errorResponse('Course not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
-	}
-
-	const courseData = Courses.schema.parse(courseDoc.data());
+	const courseData = await requireDocument(
+		ctx,
+		Courses.docPath(courseId),
+		Courses.schema,
+		'Course'
+	);
 
 	let hasAccess = courseData.visibility === 'public';
 	if (!hasAccess && courseData.ownerId === userId) {

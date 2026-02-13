@@ -20,7 +20,7 @@ import {
 	type RouteContext,
 	type RouteDefinition
 } from '../types.js';
-import { parseBody, requireAuth, requireParam } from './utils.js';
+import { parseBody, requireAuth, requireDocument, requireParam } from './utils.js';
 
 /**
  * POST /api/courses
@@ -118,18 +118,12 @@ async function copyCourse(ctx: RouteContext, request: Request): Promise<Response
 	const { title, includeContent, includeRoster, isDemo } = body;
 
 	// Get Source Course
-	const sourceRef = ctx.firestore.doc(Courses.docPath(sourceCourseId));
-	const sourceDoc = await sourceRef.get();
-
-	if (!sourceDoc.exists) {
-		return errorResponse(
-			'Source course not found',
-			HttpStatus.NOT_FOUND,
-			ServerErrorCode.NOT_FOUND
-		);
-	}
-
-	const sourceCourse = Courses.schema.parse(sourceDoc.data());
+	const sourceCourse = await requireDocument(
+		ctx,
+		Courses.docPath(sourceCourseId),
+		Courses.schema,
+		'Source course'
+	);
 
 	// Permission Check (Must be owner or instructor)
 	if (sourceCourse.ownerId !== user.uid) {
