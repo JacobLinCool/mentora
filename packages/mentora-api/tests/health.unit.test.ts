@@ -5,7 +5,7 @@
  * and returns minimal liveness data without collection counts.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('jose', () => ({
 	createRemoteJWKSet: vi.fn(() => vi.fn()),
@@ -22,8 +22,14 @@ import { healthRoutes } from '../src/lib/server/routes/health.js';
 import { decodeJwt } from 'jose';
 
 describe('/health routes', () => {
+	const originalNodeEnv = process.env.NODE_ENV;
+
 	beforeEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	afterEach(() => {
+		process.env.NODE_ENV = originalNodeEnv;
 	});
 
 	function createHandler() {
