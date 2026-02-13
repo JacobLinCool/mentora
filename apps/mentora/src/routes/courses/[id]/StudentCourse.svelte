@@ -157,7 +157,7 @@
                             groups[topic.id].push({
                                 ...q,
                                 type: "questionnaire",
-                                question: "",
+                                question: null,
                                 prompt: "", // Dummy to satisfy interface
                                 mode: "instant",
                                 submissionState: sub?.state,
@@ -209,6 +209,11 @@
                             assignmentsRes.data
                                 .filter((a) => a.topicId === topic.id)
                                 .forEach((a) => addItem(a.id, "assignment"));
+                        }
+                        if (questionnairesRes.success) {
+                            questionnairesRes.data
+                                .filter((q) => q.topicId === topic.id)
+                                .forEach((q) => addItem(q.id, "questionnaire"));
                         }
                     }
                 });

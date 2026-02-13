@@ -110,7 +110,7 @@
                 <div class="w-full px-4 py-16 md:py-20">
                     <!-- Subtle Background Gradient -->
                     <div
-                        class="absolute top-1/2 left-1/2 z-0 h-[800px] w-[800px] -translate-x-1/2 -translate-y-1/2 bg-zinc-800/20 opacity-30 blur-[120px]"
+                        class="absolute top-1/2 left-1/2 z-0 h-200 w-200 -translate-x-1/2 -translate-y-1/2 bg-zinc-800/20 opacity-30 blur-[120px]"
                     ></div>
 
                     <div class="relative z-10 mx-auto max-w-4xl space-y-8">
@@ -139,7 +139,7 @@
                             <CosmicButton
                                 href="/auth"
                                 variant="primary"
-                                className="!bg-white/10 !text-white !border-none backdrop-blur-md min-w-[180px] justify-center"
+                                className="bg-white/10! text-white! border-none! backdrop-blur-md min-w-45 justify-center"
                             >
                                 {m.landing_cta_start()}
                             </CosmicButton>
@@ -275,7 +275,7 @@
                     <div class="grid gap-6 md:grid-cols-3">
                         <!-- Clarify -->
                         <GlassCard
-                            className="landing-card group hover:-translate-y-1 transition-transform duration-500 !bg-zinc-200/15 !border-white/10 hover:!border-white/25 p-6!"
+                            className="landing-card group hover:-translate-y-1 transition-transform duration-500 bg-zinc-200/15! border-white/10! hover:border-white/25! p-6!"
                         >
                             <div
                                 class="mb-3 flex items-center gap-3 text-zinc-300"
@@ -296,7 +296,7 @@
                         </GlassCard>
 
                         <GlassCard
-                            className="landing-card group hover:-translate-y-1 transition-transform duration-500 !bg-zinc-200/15 !border-white/10 hover:!border-white/25 p-6!"
+                            className="landing-card group hover:-translate-y-1 transition-transform duration-500 bg-zinc-200/15! border-white/10! hover:border-white/25! p-6!"
                         >
                             <div
                                 class="mb-3 flex items-center gap-3 text-zinc-300"
@@ -317,7 +317,7 @@
                         </GlassCard>
 
                         <GlassCard
-                            className="landing-card group hover:-translate-y-1 transition-transform duration-500 !bg-zinc-200/15 !border-white/10 hover:!border-white/25 p-6!"
+                            className="landing-card group hover:-translate-y-1 transition-transform duration-500 bg-zinc-200/15! border-white/10! hover:border-white/25! p-6!"
                         >
                             <div
                                 class="mb-3 flex items-center gap-3 text-zinc-300"

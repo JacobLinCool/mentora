@@ -9,45 +9,98 @@
         Check,
     } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
+    import { api, type CourseDoc } from "$lib/api";
+    import { onMount } from "svelte";
+    import { page } from "$app/state";
+
+    let { courseId = page.params.id } = $props();
 
     // Initial state for revert functionality
     let savedState = $state({
-        courseName: "Course01",
+        courseName: "",
         category: "",
-        visibility: "public" as "public" | "private",
-        thumbnail: "/course-placeholder.jpg",
+        visibility: "private" as "public" | "private" | "unlisted",
+        thumbnail: "",
+        code: "",
     });
 
-    let courseName = $state(savedState.courseName);
-    let category = $state(savedState.category);
-    let visibility = $state(savedState.visibility);
-    let password = $state("Ap3K9T");
-    let thumbnail = $state(savedState.thumbnail);
+    let courseName = $state("");
+    let category = $state("");
+    let visibility = $state<"public" | "private" | "unlisted">("private");
+    let code = $state("");
+    let thumbnail = $state("");
+
     let isUploading = $state(false);
     let isCopied = $state(false);
+    let loading = $state(false);
 
     // Derived state to check for unsaved changes
     let isDirty = $derived(
         courseName !== savedState.courseName ||
             category !== savedState.category ||
             visibility !== savedState.visibility ||
-            thumbnail !== savedState.thumbnail,
+            thumbnail !== savedState.thumbnail ||
+            code !== savedState.code,
     );
 
-    function handleSave() {
-        // Mock save API call
-        console.log("Saving settings...", {
-            courseName,
-            category,
-            visibility,
-            thumbnail,
-        });
+    onMount(() => {
+        loadData();
+    });
 
-        // Update initial state to reflect saved changes
-        savedState.courseName = courseName;
-        savedState.category = category;
-        savedState.visibility = visibility;
-        savedState.thumbnail = thumbnail;
+    async function loadData() {
+        if (!courseId) return;
+        loading = true;
+        try {
+            const res = await api.courses.get(courseId);
+            if (res.success) {
+                const c = res.data;
+                savedState = {
+                    courseName: c.title,
+                    category: "", // TODO: add category to schema
+                    visibility: c.visibility || "private",
+                    thumbnail: c.thumbnail?.url || "",
+                    code: c.code || "",
+                };
+                handleRevert();
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function handleSave() {
+        if (!courseId) return;
+        loading = true;
+        try {
+            const updates: Partial<Omit<CourseDoc, "ownerId" | "createdAt">> = {
+                title: courseName,
+                visibility,
+            };
+            // Only update code if changed, it might fail if duplicate
+            if (code !== savedState.code) updates.code = code;
+            // If schema supports category/thumbnail:
+            // updates.category = category;
+            // updates.thumbnailUrl = thumbnail;
+
+            const res = await api.courses.update(courseId, updates);
+
+            if (res.success) {
+                savedState.courseName = courseName;
+                savedState.category = category;
+                savedState.visibility = visibility;
+                savedState.thumbnail = thumbnail;
+                savedState.code = code;
+            } else {
+                alert("Failed to update: " + res.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error saving");
+        } finally {
+            loading = false;
+        }
     }
 
     function handleRevert() {
@@ -55,6 +108,7 @@
         category = savedState.category;
         visibility = savedState.visibility;
         thumbnail = savedState.thumbnail;
+        code = savedState.code;
     }
 
     let fileInput: HTMLInputElement;
@@ -85,13 +139,22 @@
         thumbnail = "";
     }
 
+    let password = $derived(code || "------");
+
     function handleResetPassword() {
-        // Generate random 6-char alphanumeric password
-        password = Math.random().toString(36).slice(-6).toUpperCase();
+        // Generate a random 6-character alphanumeric code
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let newCode = "";
+        for (let i = 0; i < 6; i++) {
+            newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        code = newCode;
     }
 
     function handleCopyLink() {
-        navigator.clipboard.writeText("https://mentora.app/join/c01");
+        const joinCode = code || courseId;
+        const origin = window.location.origin;
+        navigator.clipboard.writeText(`${origin}/join/${joinCode}`);
         isCopied = true;
         setTimeout(() => {
             isCopied = false;
@@ -264,7 +327,7 @@
                         <div
                             class="flex-1 truncate rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600"
                         >
-                            https://mentora.app/join/c01
+                            {window.location.origin}/join/{code || courseId}
                         </div>
                         <button
                             onclick={handleCopyLink}
@@ -326,10 +389,15 @@
             </button>
             <button
                 onclick={handleSave}
-                class="flex cursor-pointer items-center gap-2 rounded-lg bg-black px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-gray-800"
+                disabled={loading}
+                class="flex cursor-pointer items-center gap-2 rounded-lg bg-black px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-50"
             >
-                <Save size={14} />
-                {m.course_settings_save()}
+                {#if loading}
+                    Saving...
+                {:else}
+                    <Save size={14} />
+                    {m.course_settings_save()}
+                {/if}
             </button>
         </div>
     </div>

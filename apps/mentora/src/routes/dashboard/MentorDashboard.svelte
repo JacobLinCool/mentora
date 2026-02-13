@@ -7,12 +7,19 @@
     import { resolve } from "$app/paths";
     import CreateCourseModal from "$lib/components/course/CreateCourseModal.svelte";
     import UsageChart from "$lib/components/dashboard/mentor/UsageChart.svelte";
+    import { api, type Course } from "$lib/api";
 
-    // Mock user name
-    let userName = "Omuba";
     let isCreateModalOpen = $state(false);
 
-    // Mock Usage Data
+    // Initial State
+    let courses = $state<Course[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    let isLoadingCourses = $state(true);
+
+    // Current User Display Name
+    const userName = $derived(api.currentUserProfile?.displayName || "Mentor");
+
+    // Mock Usage Data (Pending Analytics API)
     const usageData = [
         { day: m.mentor_dashboard_day_mon(), input: 1200, output: 800 },
         { day: m.mentor_dashboard_day_tue(), input: 1500, output: 950 },
@@ -23,48 +30,61 @@
         { day: m.mentor_dashboard_day_sun(), input: 400, output: 200 },
     ];
 
-    // Mock courses data
-    interface Course {
-        id: number;
-        name: string;
-        tag: string;
-        createdDate: string;
-        visibility: "public" | "private" | "non_public";
+    async function loadCourses() {
+        isLoadingCourses = true;
+        const result = await api.courses.listMine();
+        if (result.success) {
+            courses = result.data;
+        } else {
+            console.error("Failed to load courses", result.error);
+        }
+        isLoadingCourses = false;
     }
 
-    let courses = $state<Course[]>([
-        {
-            id: 1,
-            name: "course 1",
-            tag: "Computer Science",
-            createdDate: "2026.01.14 23:59",
-            visibility: "public",
-        },
-        {
-            id: 2,
-            name: "course 2",
-            tag: "Society",
-            createdDate: "2026.01.14 23:59",
-            visibility: "private",
-        },
-        {
-            id: 3,
-            name: "course 3",
-            tag: "Critical Thinking",
-            createdDate: "2026.01.14 23:59",
-            visibility: "non_public",
-        },
-        {
-            id: 4,
-            name: "course 4",
-            tag: "",
-            createdDate: "2026.01.14 23:59",
-            visibility: "non_public",
-        },
-    ]);
+    $effect(() => {
+        if (api.isAuthenticated) {
+            loadCourses();
+        }
+    });
 
-    function handleCreateCourse(newCourse: Course) {
-        courses = [newCourse, ...courses];
+    async function handleCreateCourse(data: {
+        title: string;
+        code: string;
+        visibility: string;
+        description: string;
+    }) {
+        const result = await api.courses.create(
+            data.title,
+            data.code || undefined,
+            {
+                description: data.description,
+                visibility: data.visibility as
+                    | "public"
+                    | "private"
+                    | "unlisted",
+            },
+        );
+
+        if (result.success) {
+            // Reload courses or prepend locally
+            await loadCourses();
+            goto(resolve(`/courses/${result.data}`));
+        } else {
+            console.error("Failed to create course", result.error);
+            throw new Error(result.error || "Failed to create course");
+        }
+    }
+
+    function formatDate(timestamp: number) {
+        return new Date(timestamp)
+            .toLocaleDateString("zh-TW", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+            })
+            .replace(/\//g, ".");
     }
 </script>
 
@@ -157,13 +177,13 @@
                                     goto(resolve(`/courses/${course.id}`))}
                             >
                                 <td class="px-6 py-4 text-gray-900"
-                                    >{course.name}</td
+                                    >{course.title}</td
                                 >
                                 <td class="px-6 py-4 text-gray-600"
-                                    >{course.tag}</td
+                                    >{course.code || "General"}</td
                                 >
                                 <td class="px-6 py-4 text-gray-600"
-                                    >{course.createdDate}</td
+                                    >{formatDate(course.createdAt)}</td
                                 >
                                 <td class="px-6 py-4 text-gray-600">
                                     {course.visibility === "public"

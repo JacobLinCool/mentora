@@ -59,17 +59,11 @@
     async function loadData() {
         if (!assignmentId) return;
         try {
-            // Load questionnaire and assignment details (for courseId)
-            const [questionnaireRes, assignmentRes, myResponseRes] =
-                await Promise.all([
-                    api.questionnaires.get(assignmentId),
-                    api.assignments.get(assignmentId),
-                    api.questionnaireResponses.getMine(assignmentId),
-                ]);
-
-            if (assignmentRes.success) {
-                courseId = assignmentRes.data.courseId ?? null;
-            }
+            // Load questionnaire and submission details
+            const [questionnaireRes, myResponseRes] = await Promise.all([
+                api.questionnaires.get(assignmentId),
+                api.questionnaireResponses.getMine(assignmentId),
+            ]);
 
             const submissionRes = await api.submissions.getMine(assignmentId);
 
@@ -335,7 +329,7 @@
     {#if courseId}
         <div class="absolute top-6 left-6 z-50">
             <button
-                class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:translate-x-[-2px] hover:bg-white/15"
+                class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:-translate-x-0.5 hover:bg-white/15"
                 onclick={goBack}
                 aria-label="Back to course"
             >
