@@ -41,9 +41,12 @@ export async function verifyFirebaseIdToken(
 
 	let payload;
 
-	if (options?.skipSignatureVerification) {
+	const isProduction = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
+
+	if (options?.skipSignatureVerification && !isProduction) {
 		// For Firebase Auth Emulator which uses unsigned tokens
 		// Emulator tokens may have different issuer/audience format
+		console.warn('[auth] Emulator mode: JWT signature verification is skipped');
 		payload = decodeJwt(token);
 
 		// Just verify it has basic required fields
@@ -51,6 +54,11 @@ export async function verifyFirebaseIdToken(
 			throw new Error('Token missing user identifier');
 		}
 	} else {
+		if (options?.skipSignatureVerification && isProduction) {
+			console.warn(
+				'[auth] skipSignatureVerification requested but ignored in production environment'
+			);
+		}
 		const jwks = getJWKS();
 
 		const result: JWTVerifyResult = await jwtVerify(token, jwks, {
