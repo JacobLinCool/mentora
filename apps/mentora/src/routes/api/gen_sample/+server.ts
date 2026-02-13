@@ -1,3 +1,5 @@
+import { PUBLIC_USE_FIREBASE_EMULATOR } from "$env/static/public";
+import { requireAuth } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json } from "@sveltejs/kit";
 import {
@@ -9,19 +11,17 @@ import {
 } from "mentora-firebase";
 import type { RequestHandler } from "./$types";
 
-// Helper to create conversation derived type locally if not exported fully or just use 'any' for generation flexibility
-// But better to use type safety.
-// Checking exports... type Conversation is in mentora-firebase.
+const isEmulator = PUBLIC_USE_FIREBASE_EMULATOR === "true";
 
 export const GET: RequestHandler = async (event) => {
-    const { url } = event;
-    const allow = url.searchParams.get("allow");
-    if (allow !== "true") {
+    if (!isEmulator) {
         return json(
-            { error: "Not allowed. Please add ?allow=true" },
+            { error: "This endpoint is only available in emulator mode" },
             { status: 403 },
         );
     }
+
+    await requireAuth(event);
 
     // Generate Random Data
     const userId = "sample-instructor";

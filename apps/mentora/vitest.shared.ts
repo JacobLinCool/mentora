@@ -7,5 +7,13 @@ export const vitestEnvResolve: UserConfig["resolve"] = {
             find: "$env/dynamic/private",
             replacement: path.resolve(__dirname, "./tests/stub/env/private.ts"),
         },
+        {
+            find: "$env/static/public",
+            replacement: path.resolve(__dirname, "./tests/stub/env/public.ts"),
+        },
+        {
+            find: "$lib",
+            replacement: path.resolve(__dirname, "./src/lib"),
+        },
     ],
 };
