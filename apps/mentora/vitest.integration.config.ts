@@ -1,18 +1,8 @@
-import path from "node:path";
 import { defineConfig } from "vitest/config";
+import { vitestEnvResolve } from "./vitest.shared";
 
 export default defineConfig({
-    resolve: {
-        alias: [
-            {
-                find: "$env/dynamic/private",
-                replacement: path.resolve(
-                    __dirname,
-                    "./tests/stub/env/private.ts",
-                ),
-            },
-        ],
-    },
+    resolve: vitestEnvResolve,
     test: {
         include: ["tests/**/*.integration.test.ts"],
     },
