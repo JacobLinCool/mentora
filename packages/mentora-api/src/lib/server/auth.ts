@@ -69,11 +69,25 @@ export async function verifyFirebaseIdToken(
 		payload = result.payload;
 	}
 
+	// Validate required fields before constructing AuthContext
+	const uid = String(payload.user_id || payload.sub);
+	if (!uid || uid === 'undefined' || uid === 'null') {
+		throw new Error('Token missing valid user identifier');
+	}
+
+	if (typeof payload.email !== 'string' || !payload.email) {
+		throw new Error('Token missing email claim');
+	}
+
+	if (typeof payload.email_verified !== 'boolean') {
+		throw new Error('Token missing email_verified claim');
+	}
+
 	return {
-		uid: String(payload.user_id || payload.sub),
-		email: payload.email as string,
-		emailVerified: payload.email_verified as boolean,
-		name: payload.name as string | undefined
+		uid,
+		email: payload.email,
+		emailVerified: payload.email_verified,
+		name: typeof payload.name === 'string' ? payload.name : undefined
 	};
 }
 

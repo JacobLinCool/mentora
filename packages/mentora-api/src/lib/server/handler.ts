@@ -185,6 +185,9 @@ export class MentoraServerHandler {
 
 		// Authenticate if required
 		let user = null;
+		// useEmulator requests skipSignatureVerification for Firebase Auth Emulator tokens.
+		// auth.ts independently enforces full verification when NODE_ENV=production,
+		// so both flags must agree for emulator mode to actually take effect.
 		const authOptions = this.config.useEmulator ? { skipSignatureVerification: true } : undefined;
 
 		if (route.requireAuth !== false) {

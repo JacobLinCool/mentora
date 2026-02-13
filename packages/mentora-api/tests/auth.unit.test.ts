@@ -1,8 +1,9 @@
 /**
- * Unit tests for auth production guard
+ * Unit tests for auth production guard and payload validation
  *
  * Verifies that JWT signature verification cannot be skipped
- * when NODE_ENV=production, regardless of the useEmulator flag.
+ * when NODE_ENV=production, and that payload fields are validated
+ * before constructing AuthContext.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -101,6 +102,88 @@ describe('verifyFirebaseIdToken – production guard', () => {
 		vi.mocked(decodeJwt).mockReturnValue({
 			iss: 'test'
 			// Missing both sub and user_id
+		} as ReturnType<typeof decodeJwt>);
+
+		await expect(
+			verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID, {
+				skipSignatureVerification: true
+			})
+		).rejects.toThrow('Token missing user identifier');
+	});
+});
+
+describe('verifyFirebaseIdToken – payload validation', () => {
+	const originalNodeEnv = process.env.NODE_ENV;
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	afterEach(() => {
+		process.env.NODE_ENV = originalNodeEnv;
+	});
+
+	it('rejects token with missing email claim', async () => {
+		process.env.NODE_ENV = 'development';
+
+		vi.mocked(jwtVerify).mockResolvedValue({
+			payload: {
+				sub: 'uid-1',
+				email_verified: true,
+				user_id: 'uid-1'
+				// email is missing
+			},
+			protectedHeader: { alg: 'RS256' }
+		} as Awaited<ReturnType<typeof jwtVerify>>);
+
+		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
+			'Token missing email claim'
+		);
+	});
+
+	it('rejects token with missing email_verified claim', async () => {
+		process.env.NODE_ENV = 'development';
+
+		vi.mocked(jwtVerify).mockResolvedValue({
+			payload: {
+				sub: 'uid-2',
+				email: 'a@b.c',
+				user_id: 'uid-2'
+				// email_verified is missing
+			},
+			protectedHeader: { alg: 'RS256' }
+		} as Awaited<ReturnType<typeof jwtVerify>>);
+
+		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
+			'Token missing email_verified claim'
+		);
+	});
+
+	it('rejects token where uid resolves to "undefined"', async () => {
+		process.env.NODE_ENV = 'development';
+
+		vi.mocked(jwtVerify).mockResolvedValue({
+			payload: {
+				// Neither sub nor user_id present
+				email: 'a@b.c',
+				email_verified: true
+			},
+			protectedHeader: { alg: 'RS256' }
+		} as Awaited<ReturnType<typeof jwtVerify>>);
+
+		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
+			'Token missing valid user identifier'
+		);
+	});
+
+	it('rejects token with empty string uid', async () => {
+		process.env.NODE_ENV = 'development';
+
+		vi.mocked(decodeJwt).mockReturnValue({
+			sub: '',
+			user_id: '',
+			email: 'a@b.c',
+			email_verified: true
 		} as ReturnType<typeof decodeJwt>);
 
 		await expect(
