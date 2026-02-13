@@ -1,9 +1,9 @@
 /**
- * Unit tests for auth production guard and payload validation
+ * Unit tests for auth secure-by-default guard and payload validation
  *
- * Verifies that JWT signature verification cannot be skipped
- * when NODE_ENV=production, and that payload fields are validated
- * before constructing AuthContext.
+ * Verifies that JWT signature verification can only be skipped
+ * when NODE_ENV is explicitly 'development' or 'test', and that
+ * payload fields are validated before constructing AuthContext.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -111,7 +111,7 @@ describe('verifyFirebaseIdToken – production guard', () => {
 		).rejects.toThrow('Token missing valid user identifier');
 	});
 
-	it('logs warning when NODE_ENV is not set', async () => {
+	it('enforces signature verification when NODE_ENV is unset (secure-by-default)', async () => {
 		delete process.env.NODE_ENV;
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -125,10 +125,16 @@ describe('verifyFirebaseIdToken – production guard', () => {
 			protectedHeader: { alg: 'RS256' }
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
-		await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID);
+		const result = await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID, {
+			skipSignatureVerification: true
+		});
 
+		// Must use full verification – skip is ignored when NODE_ENV is unset
+		expect(jwtVerify).toHaveBeenCalled();
+		expect(decodeJwt).not.toHaveBeenCalled();
+		expect(result.uid).toBe('uid-env');
 		expect(warnSpy).toHaveBeenCalledWith(
-			'[auth] NODE_ENV is not set; defaulting to non-production mode'
+			'[auth] skipSignatureVerification requested but ignored (NODE_ENV=unset)'
 		);
 		warnSpy.mockRestore();
 	});

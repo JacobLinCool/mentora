@@ -41,21 +41,18 @@ async function verifyToken(
 	options?: { skipSignatureVerification?: boolean }
 ): Promise<JWTPayload> {
 	const nodeEnv = typeof process !== 'undefined' ? process.env?.NODE_ENV : undefined;
-	const isProduction = nodeEnv === 'production';
+	// Secure-by-default: only allow skipping verification in explicitly non-production environments
+	const allowSkipVerification = nodeEnv === 'development' || nodeEnv === 'test';
 
-	if (!nodeEnv) {
-		console.warn('[auth] NODE_ENV is not set; defaulting to non-production mode');
-	}
-
-	if (options?.skipSignatureVerification && !isProduction) {
+	if (options?.skipSignatureVerification && allowSkipVerification) {
 		// For Firebase Auth Emulator which uses unsigned tokens
 		console.warn('[auth] Emulator mode: JWT signature verification is skipped');
 		return decodeJwt(token);
 	}
 
-	if (options?.skipSignatureVerification && isProduction) {
+	if (options?.skipSignatureVerification && !allowSkipVerification) {
 		console.warn(
-			'[auth] skipSignatureVerification requested but ignored in production environment'
+			`[auth] skipSignatureVerification requested but ignored (NODE_ENV=${nodeEnv ?? 'unset'})`
 		);
 	}
 
