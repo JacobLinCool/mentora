@@ -1,6 +1,6 @@
 import { env } from "$env/dynamic/private";
 import { Buffer } from "node:buffer";
-import { ai, z, zodResponseFormat } from "./shared";
+import { ai, parseStructuredOutput, z, zodResponseFormat } from "./shared";
 
 const MENTORA_AI_TRANSCRIBE_MODEL =
     env.MENTORA_AI_TRANSCRIBE_MODEL || "google-ai-studio/gemini-2.5-flash-lite";
@@ -44,18 +44,19 @@ export async function transcribeAudio(
     });
 
     const message = response.choices[0]?.message;
-    if (message.refusal) {
+    if (message?.refusal) {
         throw new Error(`Transcription refused: ${message.refusal}`);
     }
 
-    if (!message.content) {
+    if (!message?.content) {
         throw new Error("No transcription content received");
     }
 
-    const parsed = Result.safeParse(JSON.parse(message.content));
-    if (!parsed.success) {
-        throw new Error("Failed to parse transcription result");
-    }
+    const parsed = parseStructuredOutput(
+        message.content,
+        Result,
+        "transcription",
+    );
 
-    return parsed.data.transcription;
+    return parsed.transcription;
 }
