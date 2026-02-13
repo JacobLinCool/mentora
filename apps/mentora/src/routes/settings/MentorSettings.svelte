@@ -1,14 +1,10 @@
 <script lang="ts">
-    import { signOut } from "firebase/auth";
-    import { goto } from "$app/navigation";
-    import { api } from "$lib";
-    import { auth } from "$lib/firebase";
     import { m } from "$lib/paraglide/messages";
     import { setMentorMode } from "$lib/temp.svelte";
+    import { createSettingsState, formatDate } from "$lib/settings.svelte";
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
     import { resolve } from "$app/paths";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
-    import { tick } from "svelte";
     import {
         User,
         Mail,
@@ -22,148 +18,7 @@
     } from "@lucide/svelte";
     import { slide } from "svelte/transition";
 
-    const user = $derived(api.currentUser);
-    const profile = $derived(api.currentUserProfile);
-
-    const displayNameInitial = $derived(
-        (profile?.displayName ?? user?.displayName ?? "").trim(),
-    );
-    let displayNameDraft = $state("");
-    let displayNameDirty = $state(false);
-    let displayNameSaving = $state(false);
-    let displayNameError = $state<string | null>(null);
-    let displayNameEditing = $state(false);
-    let displayNameInput = $state<HTMLInputElement | null>(null);
-    let loggingOut = $state(false);
-    let logoutError = $state<string | null>(null);
-
-    const displayNameCanSave = $derived(
-        !displayNameSaving && displayNameDraft.trim().length > 0,
-    );
-
-    $effect(() => {
-        if (!displayNameDirty && !displayNameSaving && !displayNameEditing) {
-            displayNameDraft = displayNameInitial;
-            displayNameError = null;
-        }
-    });
-
-    $effect(() => {
-        if (displayNameEditing) {
-            tick().then(() => {
-                displayNameInput?.focus();
-                displayNameInput?.select();
-            });
-        }
-    });
-
-    // Wallet state
-    let wallet = $state<{ balanceCredits: number } | null>(null);
-    let walletLoading = $state(true);
-    let walletError = $state<string | null>(null);
-
-    $effect(() => {
-        if (user) {
-            loadWallet();
-        } else {
-            wallet = null;
-            walletLoading = false;
-        }
-    });
-
-    async function loadWallet() {
-        walletLoading = true;
-        walletError = null;
-        try {
-            const result = await api.wallets.getMine();
-            if (result.success) {
-                wallet = result.data;
-            } else {
-                walletError = result.error;
-            }
-        } catch (e) {
-            walletError =
-                e instanceof Error ? e.message : "Failed to load wallet";
-        } finally {
-            walletLoading = false;
-        }
-    }
-
-    function formatDate(timestamp: number | undefined) {
-        if (!timestamp) return m.unknown();
-        return new Date(timestamp).toLocaleDateString(getLocale(), {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
-    }
-
-    async function saveDisplayName() {
-        if (!displayNameCanSave) return;
-
-        if (displayNameDraft.trim() === displayNameInitial) {
-            cancelDisplayNameEdit();
-            return;
-        }
-
-        displayNameSaving = true;
-        displayNameError = null;
-
-        const result = await api.users.updateMyProfile({
-            displayName: displayNameDraft.trim(),
-        });
-
-        if (!result.success) {
-            displayNameError = result.error;
-            displayNameSaving = false;
-            return;
-        }
-
-        displayNameEditing = false;
-        displayNameDirty = false;
-        displayNameSaving = false;
-    }
-
-    function startDisplayNameEdit() {
-        displayNameDraft = displayNameInitial;
-        displayNameDirty = false;
-        displayNameError = null;
-        displayNameEditing = true;
-    }
-
-    function cancelDisplayNameEdit() {
-        displayNameEditing = false;
-        displayNameDirty = false;
-        displayNameDraft = displayNameInitial;
-        displayNameError = null;
-    }
-
-    function handleDisplayNameKeydown(event: KeyboardEvent) {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            saveDisplayName();
-        }
-        if (event.key === "Escape") {
-            event.preventDefault();
-            cancelDisplayNameEdit();
-        }
-    }
-
-    async function handleLogout() {
-        if (loggingOut) return;
-
-        loggingOut = true;
-        logoutError = null;
-        try {
-            await signOut(auth);
-            await goto(resolve("/auth"), { invalidateAll: true });
-        } catch (e) {
-            logoutError =
-                e instanceof Error ? e.message : m.auth_sign_out_failed();
-        } finally {
-            loggingOut = false;
-        }
-    }
+    const s = createSettingsState();
 </script>
 
 <svelte:head>
@@ -182,7 +37,7 @@
             <!-- Buttons moved to Preferences card -->
         </div>
 
-        {#if !user}
+        {#if !s.user}
             <div class="rounded-xl bg-white p-8 shadow-sm">
                 <div
                     class="mx-auto flex max-w-md flex-col items-center text-center"
@@ -217,9 +72,9 @@
                             class="mb-6 flex items-center justify-between border-b border-gray-100 pb-4"
                         >
                             <div class="flex items-center gap-4">
-                                {#if user.photoURL}
+                                {#if s.user.photoURL}
                                     <img
-                                        src={user.photoURL}
+                                        src={s.user.photoURL}
                                         alt="Profile"
                                         class="h-16 w-16 rounded-full object-cover shadow-sm"
                                     />
@@ -227,7 +82,11 @@
                                     <div
                                         class="flex h-16 w-16 items-center justify-center rounded-full bg-[#F5F5F5] text-xl font-semibold text-gray-700"
                                     >
-                                        {(user.displayName || user.email || "U")
+                                        {(
+                                            s.user.displayName ||
+                                            s.user.email ||
+                                            "U"
+                                        )
                                             .charAt(0)
                                             .toUpperCase()}
                                     </div>
@@ -236,18 +95,18 @@
                                     <h3
                                         class="text-lg font-medium text-gray-900"
                                     >
-                                        {profile?.displayName ||
-                                            user.displayName ||
+                                        {s.profile?.displayName ||
+                                            s.user.displayName ||
                                             m.settings_not_set()}
                                     </h3>
                                     <p class="text-sm text-gray-500">
-                                        {user.email}
+                                        {s.user.email}
                                     </p>
                                 </div>
                             </div>
                             <button
                                 class="cursor-pointer text-sm font-medium text-gray-500 transition-colors hover:text-black"
-                                onclick={startDisplayNameEdit}
+                                onclick={s.startDisplayNameEdit}
                                 aria-label={m.edit()}
                             >
                                 {m.edit()}
@@ -261,7 +120,7 @@
                                 >
                                     {m.settings_display_name()}
                                 </div>
-                                {#if displayNameEditing}
+                                {#if s.displayNameEditing}
                                     <div class="mt-2 space-y-3">
                                         <div
                                             class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2"
@@ -272,35 +131,32 @@
                                             <input
                                                 class="w-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
                                                 placeholder={m.settings_display_name()}
-                                                bind:value={displayNameDraft}
-                                                bind:this={displayNameInput}
-                                                oninput={() => {
-                                                    displayNameDirty = true;
-                                                    displayNameError = null;
-                                                }}
-                                                onkeydown={handleDisplayNameKeydown}
+                                                bind:value={s.displayNameDraft}
+                                                bind:this={s.displayNameInput}
+                                                oninput={s.onDisplayNameInput}
+                                                onkeydown={s.handleDisplayNameKeydown}
                                             />
                                         </div>
                                         <div class="flex items-center gap-3">
                                             <button
                                                 class="cursor-pointer rounded-full bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-800"
-                                                onclick={saveDisplayName}
-                                                disabled={!displayNameCanSave}
+                                                onclick={s.saveDisplayName}
+                                                disabled={!s.displayNameCanSave}
                                             >
-                                                {displayNameSaving
+                                                {s.displayNameSaving
                                                     ? m.saving()
                                                     : m.save()}
                                             </button>
                                             <button
                                                 class="cursor-pointer rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 transition hover:border-gray-300 hover:text-black"
-                                                onclick={cancelDisplayNameEdit}
+                                                onclick={s.cancelDisplayNameEdit}
                                             >
                                                 {m.cancel()}
                                             </button>
                                         </div>
-                                        {#if displayNameError}
+                                        {#if s.displayNameError}
                                             <p class="text-xs text-red-500">
-                                                {displayNameError}
+                                                {s.displayNameError}
                                             </p>
                                         {/if}
                                     </div>
@@ -310,8 +166,8 @@
                                     >
                                         <User class="h-4 w-4 text-gray-400" />
                                         <span>
-                                            {profile?.displayName ||
-                                                user.displayName ||
+                                            {s.profile?.displayName ||
+                                                s.user.displayName ||
                                                 m.settings_not_set()}
                                         </span>
                                     </div>
@@ -327,10 +183,11 @@
                                     class="mt-1 flex items-center gap-2 text-sm text-gray-900"
                                 >
                                     <Mail class="h-4 w-4 text-gray-400" />
-                                    <span class="break-all">{user.email}</span>
+                                    <span class="break-all">{s.user.email}</span
+                                    >
                                 </div>
                             </div>
-                            {#if profile?.createdAt}
+                            {#if s.profile?.createdAt}
                                 <div>
                                     <div
                                         class="text-xs font-medium tracking-wider text-gray-400 uppercase"
@@ -345,7 +202,7 @@
                                         />
                                         <span
                                             >{formatDate(
-                                                profile.createdAt,
+                                                s.profile.createdAt,
                                             )}</span
                                         >
                                     </div>
@@ -368,21 +225,21 @@
                             <Wallet class="h-8 w-8 text-gray-400" />
                         </div>
 
-                        {#if walletLoading}
+                        {#if s.walletLoading}
                             <div class="flex items-center justify-center py-8">
                                 <Loader2
                                     class="h-8 w-8 animate-spin text-gray-400"
                                 />
                             </div>
-                        {:else if walletError}
+                        {:else if s.walletError}
                             <div class="py-6 text-center">
                                 <p class="font-light text-gray-500">
-                                    {walletError === "Not authenticated"
+                                    {s.walletError === "Not authenticated"
                                         ? m.settings_sign_in_to_view()
-                                        : walletError}
+                                        : s.walletError}
                                 </p>
                             </div>
-                        {:else if wallet}
+                        {:else if s.wallet}
                             <div
                                 transition:slide
                                 class="flex items-center gap-4"
@@ -404,7 +261,7 @@
                                         <div
                                             class="font-serif-tc text-3xl text-gray-900"
                                         >
-                                            {wallet.balanceCredits.toLocaleString()}
+                                            {s.wallet.balanceCredits.toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
@@ -471,15 +328,15 @@
 
                                 <button
                                     class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-red-100 bg-red-50/30 p-4 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                    onclick={handleLogout}
-                                    disabled={loggingOut}
+                                    onclick={s.handleLogout}
+                                    disabled={s.loggingOut}
                                 >
                                     <div class="flex items-center gap-3">
                                         <LogOut class="h-5 w-5 text-red-500" />
                                         <span
                                             class="text-sm font-medium text-red-600"
                                         >
-                                            {loggingOut
+                                            {s.loggingOut
                                                 ? m.auth_signing_out()
                                                 : m.auth_sign_out()}
                                         </span>
@@ -490,9 +347,9 @@
                                         <ArrowRight class="h-4 w-4" />
                                     </div>
                                 </button>
-                                {#if logoutError}
+                                {#if s.logoutError}
                                     <p class="text-xs text-red-500">
-                                        {logoutError}
+                                        {s.logoutError}
                                     </p>
                                 {/if}
                             </div>

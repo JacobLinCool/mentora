@@ -1,13 +1,10 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { signOut } from "firebase/auth";
-    import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
-    import { api } from "$lib";
-    import { auth } from "$lib/firebase";
-    import { setMentorMode } from "$lib/temp.svelte";
     import { m } from "$lib/paraglide/messages";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
+    import { setMentorMode } from "$lib/temp.svelte";
+    import { createSettingsState, formatDate } from "$lib/settings.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import {
@@ -23,156 +20,13 @@
         Globe,
         LogOut,
     } from "@lucide/svelte";
-    import { tick } from "svelte";
     import { slide } from "svelte/transition";
 
-    const user = $derived(api.currentUser);
-    const profile = $derived(api.currentUserProfile);
-
-    const displayNameInitial = $derived(
-        (profile?.displayName ?? user?.displayName ?? "").trim(),
-    );
-    let displayNameDraft = $state("");
-    let displayNameDirty = $state(false);
-    let displayNameSaving = $state(false);
-    let displayNameError = $state<string | null>(null);
-    let displayNameEditing = $state(false);
-    let displayNameInput = $state<HTMLInputElement | null>(null);
-    let loggingOut = $state(false);
-    let logoutError = $state<string | null>(null);
-
-    const displayNameCanSave = $derived(
-        !displayNameSaving && displayNameDraft.trim().length > 0,
-    );
+    const s = createSettingsState();
 
     onMount(() => {
         document.documentElement.classList.add("dark");
     });
-
-    // Wallet state
-    let wallet = $state<{ balanceCredits: number } | null>(null);
-    let walletLoading = $state(true);
-    let walletError = $state<string | null>(null);
-
-    $effect(() => {
-        if (user) {
-            loadWallet();
-        } else {
-            wallet = null;
-            walletLoading = false;
-        }
-    });
-
-    $effect(() => {
-        if (!displayNameDirty && !displayNameSaving && !displayNameEditing) {
-            displayNameDraft = displayNameInitial;
-            displayNameError = null;
-        }
-    });
-
-    $effect(() => {
-        if (displayNameEditing) {
-            tick().then(() => {
-                displayNameInput?.focus();
-                displayNameInput?.select();
-            });
-        }
-    });
-
-    async function loadWallet() {
-        walletLoading = true;
-        walletError = null;
-        try {
-            const result = await api.wallets.getMine();
-            if (result.success) {
-                wallet = result.data;
-            } else {
-                walletError = result.error;
-            }
-        } catch (e) {
-            walletError =
-                e instanceof Error ? e.message : "Failed to load wallet";
-        } finally {
-            walletLoading = false;
-        }
-    }
-
-    function formatDate(timestamp: number | undefined) {
-        if (!timestamp) return "Unknown";
-        return new Date(timestamp).toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
-    }
-
-    async function saveDisplayName() {
-        if (!displayNameCanSave) return;
-
-        // If no change, just exit edit mode
-        if (displayNameDraft.trim() === displayNameInitial) {
-            cancelDisplayNameEdit();
-            return;
-        }
-
-        displayNameSaving = true;
-        displayNameError = null;
-
-        const result = await api.users.updateMyProfile({
-            displayName: displayNameDraft.trim(),
-        });
-
-        if (!result.success) {
-            displayNameError = result.error;
-            displayNameSaving = false;
-            return;
-        }
-
-        displayNameEditing = false;
-        displayNameDirty = false;
-        displayNameSaving = false;
-    }
-
-    function startDisplayNameEdit() {
-        displayNameDraft = displayNameInitial;
-        displayNameDirty = false;
-        displayNameError = null;
-        displayNameEditing = true;
-    }
-
-    function cancelDisplayNameEdit() {
-        displayNameEditing = false;
-        displayNameDirty = false;
-        displayNameDraft = displayNameInitial;
-        displayNameError = null;
-    }
-
-    function handleDisplayNameKeydown(event: KeyboardEvent) {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            saveDisplayName();
-        }
-        if (event.key === "Escape") {
-            event.preventDefault();
-            cancelDisplayNameEdit();
-        }
-    }
-
-    async function handleLogout() {
-        if (loggingOut) return;
-
-        loggingOut = true;
-        logoutError = null;
-        try {
-            await signOut(auth);
-            await goto(resolve("/auth"), { invalidateAll: true });
-        } catch (e) {
-            logoutError =
-                e instanceof Error ? e.message : m.auth_sign_out_failed();
-        } finally {
-            loggingOut = false;
-        }
-    }
 </script>
 
 <div
@@ -202,7 +56,7 @@
                 </div>
             </div>
 
-            {#if !user}
+            {#if !s.user}
                 <div
                     class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 text-center backdrop-blur-md"
                 >
@@ -240,9 +94,9 @@
                         <div class="flex items-start gap-3">
                             <!-- Profile Photo -->
                             <div class="shrink-0">
-                                {#if user.photoURL}
+                                {#if s.user.photoURL}
                                     <img
-                                        src={user.photoURL}
+                                        src={s.user.photoURL}
                                         alt="Profile"
                                         class="border-brand-gold/30 h-16 w-16 rounded-full border-2 object-cover"
                                     />
@@ -250,7 +104,11 @@
                                     <div
                                         class="from-brand-gold to-brand-silver flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br font-serif text-2xl text-black"
                                     >
-                                        {(user.displayName || user.email || "U")
+                                        {(
+                                            s.user.displayName ||
+                                            s.user.email ||
+                                            "U"
+                                        )
                                             .charAt(0)
                                             .toUpperCase()}
                                     </div>
@@ -265,7 +123,7 @@
                                     >
                                         {m.settings_display_name()}
                                     </div>
-                                    {#if displayNameEditing}
+                                    {#if s.displayNameEditing}
                                         <div
                                             class="flex flex-wrap items-center gap-3"
                                         >
@@ -279,23 +137,22 @@
                                                     class="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
                                                     placeholder={m.settings_display_name()}
                                                     bind:value={
-                                                        displayNameDraft
+                                                        s.displayNameDraft
                                                     }
-                                                    bind:this={displayNameInput}
-                                                    oninput={() => {
-                                                        displayNameDirty = true;
-                                                        displayNameError = null;
-                                                    }}
-                                                    onkeydown={handleDisplayNameKeydown}
+                                                    bind:this={
+                                                        s.displayNameInput
+                                                    }
+                                                    oninput={s.onDisplayNameInput}
+                                                    onkeydown={s.handleDisplayNameKeydown}
                                                 />
                                             </div>
                                             <CosmicButton
                                                 variant="primary"
-                                                onclick={saveDisplayName}
-                                                disabled={!displayNameCanSave}
+                                                onclick={s.saveDisplayName}
+                                                disabled={!s.displayNameCanSave}
                                                 className="px-5 py-3"
                                             >
-                                                {#if displayNameSaving}
+                                                {#if s.displayNameSaving}
                                                     <Loader2
                                                         class="h-4 w-4 animate-spin"
                                                     />
@@ -306,7 +163,7 @@
                                             </CosmicButton>
                                             <CosmicButton
                                                 variant="secondary"
-                                                onclick={cancelDisplayNameEdit}
+                                                onclick={s.cancelDisplayNameEdit}
                                                 className="px-4 py-3"
                                             >
                                                 <X class="h-4 w-4" />
@@ -325,23 +182,23 @@
                                                     class="truncate"
                                                     style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
                                                 >
-                                                    {profile?.displayName ||
-                                                        user.displayName ||
+                                                    {s.profile?.displayName ||
+                                                        s.user.displayName ||
                                                         m.settings_not_set()}
                                                 </span>
                                             </div>
                                             <button
                                                 class="text-text-secondary flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 transition hover:border-white/30 hover:text-white"
-                                                onclick={startDisplayNameEdit}
+                                                onclick={s.startDisplayNameEdit}
                                                 aria-label="Edit display name"
                                             >
                                                 <Pencil class="h-3 w-3" />
                                             </button>
                                         </div>
                                     {/if}
-                                    {#if displayNameError}
+                                    {#if s.displayNameError}
                                         <p class="text-status-error text-xs">
-                                            {displayNameError}
+                                            {s.displayNameError}
                                         </p>
                                     {/if}
                                 </div>
@@ -361,12 +218,12 @@
                                         <span
                                             class="break-all"
                                             style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
-                                            >{user.email}</span
+                                            >{s.user.email}</span
                                         >
                                     </div>
                                 </div>
 
-                                {#if profile?.createdAt}
+                                {#if s.profile?.createdAt}
                                     <div>
                                         <div
                                             class="text-text-secondary mb-1 text-xs font-medium tracking-wider uppercase"
@@ -382,7 +239,7 @@
                                             <span
                                                 style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
                                                 >{formatDate(
-                                                    profile.createdAt,
+                                                    s.profile.createdAt,
                                                 )}</span
                                             >
                                         </div>
@@ -412,21 +269,21 @@
                             />
                         </div>
 
-                        {#if walletLoading}
+                        {#if s.walletLoading}
                             <div class="flex items-center justify-center py-8">
                                 <Loader2
                                     class="text-brand-gold h-8 w-8 animate-spin"
                                 />
                             </div>
-                        {:else if walletError}
+                        {:else if s.walletError}
                             <div class="py-6 text-center">
                                 <p class="text-text-secondary font-light">
-                                    {walletError === "Not authenticated"
+                                    {s.walletError === "Not authenticated"
                                         ? m.settings_sign_in_to_view()
-                                        : walletError}
+                                        : s.walletError}
                                 </p>
                             </div>
-                        {:else if wallet}
+                        {:else if s.wallet}
                             <div
                                 transition:slide
                                 class="flex items-center gap-4"
@@ -448,7 +305,7 @@
                                         <div
                                             class="font-serif text-3xl text-white"
                                         >
-                                            {wallet.balanceCredits.toLocaleString()}
+                                            {s.wallet.balanceCredits.toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
@@ -500,11 +357,11 @@
                             </div>
                             <CosmicButton
                                 variant="danger"
-                                onclick={handleLogout}
-                                disabled={loggingOut}
+                                onclick={s.handleLogout}
+                                disabled={s.loggingOut}
                                 className="min-w-[150px]"
                             >
-                                {#if loggingOut}
+                                {#if s.loggingOut}
                                     <Loader2 class="h-4 w-4 animate-spin" />
                                     <span>{m.auth_signing_out()}</span>
                                 {:else}
@@ -513,9 +370,9 @@
                                 {/if}
                             </CosmicButton>
                         </div>
-                        {#if logoutError}
+                        {#if s.logoutError}
                             <p class="text-status-error mt-4 text-sm">
-                                {logoutError}
+                                {s.logoutError}
                             </p>
                         {/if}
                     </div>
