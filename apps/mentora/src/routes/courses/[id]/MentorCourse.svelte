@@ -154,9 +154,9 @@
             onSave={handleSaveAnnouncement}
             onDelete={handleDeleteAnnouncement}
         />
-    {:else if activeTab === "topics"}
+    {:else if activeTab === "topics" && courseId}
         <CourseTopics {courseId} />
-    {:else if activeTab === "members"}
+    {:else if activeTab === "members" && courseId}
         <CourseMembers {courseId} />
     {:else if activeTab === "settings"}
         <CourseSettings />

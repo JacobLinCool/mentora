@@ -58,9 +58,9 @@
         if (!courseId) return;
         try {
             const [topicsRes, assignRes, questRes] = await Promise.all([
-                api.topics.listCourseTopics(courseId),
-                api.assignments.listCourseAssignments(courseId),
-                api.questionnaires.listCourseQuestionnaires(courseId),
+                api.topics.listForCourse(courseId),
+                api.assignments.listForCourse(courseId),
+                api.questionnaires.listForCourse(courseId),
             ]);
 
             if (topicsRes.success) {
@@ -270,7 +270,7 @@
                     const res = await api.questionnaires.create({
                         courseId,
                         topicId: currentTopicId,
-                        title: assignmentData.title,
+                        title: assignmentData.title || "New Questionnaire",
                         questions: [], // Empty for now, as form might not provide questions structure yet
                         startAt: startAt,
                         dueAt: dueAt,
@@ -282,8 +282,9 @@
                     const res = await api.assignments.create({
                         courseId,
                         topicId: currentTopicId,
-                        title: assignmentData.title,
-                        prompt: assignmentData.description || "",
+                        title: assignmentData.title || "New Assignment",
+                        question: null,
+                        prompt: "",
                         mode: "instant",
                         startAt: startAt,
                         dueAt: dueAt,
@@ -325,7 +326,6 @@
                     } else {
                         await api.assignments.update(currentAssignment.id, {
                             title: assignmentData.title,
-                            prompt: assignmentData.description,
                             dueAt,
                             startAt,
                         });
@@ -430,7 +430,9 @@
                 title={topic.title}
                 description={topic.description}
                 assignments={topic.assignments}
-                isDragging={topic[SHADOW_ITEM_MARKER_PROPERTY_NAME] ?? false}
+                isDragging={((topic as unknown as Record<string, unknown>)[
+                    SHADOW_ITEM_MARKER_PROPERTY_NAME
+                ] as boolean) ?? false}
                 onDelete={() => deleteTopic(topic.id)}
                 onSave={(title, description) =>
                     updateTopic(topic.id, title, description)}

@@ -56,9 +56,9 @@
                 const c = res.data;
                 savedState = {
                     courseName: c.title,
-                    category: c.category || "", // Check if category exists in schema
+                    category: "", // TODO: add category to schema
                     visibility: c.visibility || "private",
-                    thumbnail: c.thumbnailUrl || "",
+                    thumbnail: c.thumbnail?.url || "",
                     code: c.code || "",
                 };
                 handleRevert();
@@ -139,9 +139,17 @@
         thumbnail = "";
     }
 
-    // Password logic likely N/A for this app or needs separate API?
-    // Removing generic password handler unless confirming course has password field.
-    // Keeping UI clean.
+    let password = $derived(code || "------");
+
+    function handleResetPassword() {
+        // Generate a random 6-character alphanumeric code
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let newCode = "";
+        for (let i = 0; i < 6; i++) {
+            newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        code = newCode;
+    }
 
     function handleCopyLink() {
         const joinCode = code || courseId;

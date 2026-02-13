@@ -27,7 +27,7 @@
         if (!courseId) return;
         loading = true;
         try {
-            const res = await api.courses.getCourseRoster(courseId);
+            const res = await api.courses.getRoster(courseId);
             if (res.success) {
                 // We need to fetch user profiles to get names
                 // For "invited" members (no userId), use email as name
@@ -40,7 +40,7 @@
 
                     if (r.userId) {
                         try {
-                            const profileRes = await api.users.getUserProfile(
+                            const profileRes = await api.users.getProfile(
                                 r.userId,
                             );
                             if (

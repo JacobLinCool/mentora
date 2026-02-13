@@ -410,7 +410,13 @@ export class MentoraClient {
 			conversationId: string,
 			text: string,
 			_type: 'idea' | 'followup'
-		): Promise<APIResult<void>> => {
+		): Promise<
+			APIResult<{
+				text: string;
+				audio: string;
+				audioMimeType: string;
+			}>
+		> => {
 			void _type;
 			return this.authReadyThen(() =>
 				ConversationsModule.addTurn(this._config, conversationId, { text })
