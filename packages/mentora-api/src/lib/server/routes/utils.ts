@@ -3,6 +3,7 @@
  */
 
 import { ZodError, type ZodSchema } from 'zod';
+import { Courses, type CourseDoc } from 'mentora-firebase';
 import {
 	errorResponse,
 	HttpStatus,
@@ -83,4 +84,50 @@ export function requireParam(ctx: RouteContext, name: string): string {
 		);
 	}
 	return value;
+}
+
+/**
+ * Verify course exists and user has read access (public, owner, or active member).
+ *
+ * @param ctx - Route context (needs firestore)
+ * @param courseId - Course document ID
+ * @param userId - Authenticated user's UID
+ * @param resource - Resource label for error message (e.g. "topics")
+ * @returns Parsed CourseDoc
+ * @throws Response 404 if course not found, 403 if access denied
+ */
+export async function requireCourseAccess(
+	ctx: RouteContext,
+	courseId: string,
+	userId: string,
+	resource: string
+): Promise<CourseDoc> {
+	const courseDoc = await ctx.firestore.doc(Courses.docPath(courseId)).get();
+	if (!courseDoc.exists) {
+		throw errorResponse('Course not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
+	}
+
+	const courseData = Courses.schema.parse(courseDoc.data());
+
+	let hasAccess = courseData.visibility === 'public';
+	if (!hasAccess && courseData.ownerId === userId) {
+		hasAccess = true;
+	}
+	if (!hasAccess) {
+		const memberDoc = await ctx.firestore.doc(Courses.roster.docPath(courseId, userId)).get();
+		if (memberDoc.exists) {
+			const memberData = Courses.roster.schema.parse(memberDoc.data());
+			hasAccess = memberData.status === 'active';
+		}
+	}
+
+	if (!hasAccess) {
+		throw errorResponse(
+			`Not authorized to view course ${resource}`,
+			HttpStatus.FORBIDDEN,
+			ServerErrorCode.PERMISSION_DENIED
+		);
+	}
+
+	return courseData;
 }
