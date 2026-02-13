@@ -11,6 +11,7 @@ import {
     type PrincipleReasoningResponse,
 } from "../../builder/stage3-principle-reasoning.js";
 import { DialogueStage } from "../../builder/types.js";
+import { formatStageResponse } from "../format.js";
 import { formatStanceHistory, transitionTo, updateStance } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
@@ -85,7 +86,7 @@ export class CaseChallengeHandler implements StageHandler {
             clarifyPrompt,
         )) as CaseChallengeResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,
@@ -118,7 +119,7 @@ export class CaseChallengeHandler implements StageHandler {
             scaffoldPrompt,
         )) as CaseChallengeResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         // Update stance if new stance was extracted
         let newState = transitionTo(state, DialogueStage.CASE_CHALLENGE);
@@ -163,7 +164,7 @@ export class CaseChallengeHandler implements StageHandler {
             principlePrompt,
         )) as PrincipleReasoningResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,

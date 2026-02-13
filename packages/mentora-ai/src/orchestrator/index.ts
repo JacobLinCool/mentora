@@ -24,6 +24,10 @@ export type {
 // Registry
 export { DefaultStageHandlerRegistry } from "./registry.js";
 
+// Response formatting
+export { formatStageResponse } from "./format.js";
+export type { StageResponseFields } from "./format.js";
+
 // State utilities
 export {
     addToHistory,

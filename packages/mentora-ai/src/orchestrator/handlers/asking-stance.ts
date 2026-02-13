@@ -11,6 +11,7 @@ import {
     type CaseChallengeResponse,
 } from "../../builder/stage2-case-challenge.js";
 import { DialogueStage } from "../../builder/types.js";
+import { formatStageResponse } from "../format.js";
 import { createStanceVersion, transitionTo } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
@@ -67,7 +68,7 @@ export class AskingStanceHandler implements StageHandler {
             clarifyPrompt,
         )) as AskingStanceResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,
@@ -112,7 +113,7 @@ export class AskingStanceHandler implements StageHandler {
             casePrompt,
         )) as CaseChallengeResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         const newState = {
             ...transitionTo(state, DialogueStage.CASE_CHALLENGE),

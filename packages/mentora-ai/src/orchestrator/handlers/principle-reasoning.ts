@@ -15,6 +15,7 @@ import {
     type ClosureResponse,
 } from "../../builder/stage4-closure.js";
 import { DialogueStage } from "../../builder/types.js";
+import { formatStageResponse } from "../format.js";
 import {
     formatStanceHistory,
     transitionTo,
@@ -87,7 +88,7 @@ export class PrincipleReasoningHandler implements StageHandler {
             clarifyPrompt,
         )) as PrincipleReasoningResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,
@@ -118,7 +119,7 @@ export class PrincipleReasoningHandler implements StageHandler {
             scaffoldPrompt,
         )) as PrincipleReasoningResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,
@@ -166,7 +167,7 @@ export class PrincipleReasoningHandler implements StageHandler {
             casePrompt,
         )) as CaseChallengeResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,
@@ -219,7 +220,7 @@ export class PrincipleReasoningHandler implements StageHandler {
             closurePrompt,
         )) as ClosureResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,
