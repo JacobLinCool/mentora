@@ -108,7 +108,29 @@ describe('verifyFirebaseIdToken – production guard', () => {
 			verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID, {
 				skipSignatureVerification: true
 			})
-		).rejects.toThrow('Token missing user identifier');
+		).rejects.toThrow('Token missing valid user identifier');
+	});
+
+	it('logs warning when NODE_ENV is not set', async () => {
+		delete process.env.NODE_ENV;
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		vi.mocked(jwtVerify).mockResolvedValue({
+			payload: {
+				sub: 'uid-env',
+				email: 'a@b.c',
+				email_verified: true,
+				user_id: 'uid-env'
+			},
+			protectedHeader: { alg: 'RS256' }
+		} as Awaited<ReturnType<typeof jwtVerify>>);
+
+		await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID);
+
+		expect(warnSpy).toHaveBeenCalledWith(
+			'[auth] NODE_ENV is not set; defaulting to non-production mode'
+		);
+		warnSpy.mockRestore();
 	});
 });
 
@@ -190,6 +212,42 @@ describe('verifyFirebaseIdToken – payload validation', () => {
 			verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID, {
 				skipSignatureVerification: true
 			})
-		).rejects.toThrow('Token missing user identifier');
+		).rejects.toThrow('Token missing valid user identifier');
+	});
+
+	it('rejects token with empty string email', async () => {
+		process.env.NODE_ENV = 'development';
+
+		vi.mocked(jwtVerify).mockResolvedValue({
+			payload: {
+				sub: 'uid-empty-email',
+				email: '',
+				email_verified: true,
+				user_id: 'uid-empty-email'
+			},
+			protectedHeader: { alg: 'RS256' }
+		} as Awaited<ReturnType<typeof jwtVerify>>);
+
+		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
+			'Token missing email claim'
+		);
+	});
+
+	it('accepts token with email_verified set to false', async () => {
+		process.env.NODE_ENV = 'development';
+
+		vi.mocked(jwtVerify).mockResolvedValue({
+			payload: {
+				sub: 'uid-unverified',
+				email: 'unverified@b.c',
+				email_verified: false,
+				user_id: 'uid-unverified'
+			},
+			protectedHeader: { alg: 'RS256' }
+		} as Awaited<ReturnType<typeof jwtVerify>>);
+
+		const result = await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID);
+		expect(result.emailVerified).toBe(false);
+		expect(result.uid).toBe('uid-unverified');
 	});
 });

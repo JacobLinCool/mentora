@@ -3,7 +3,13 @@
  * Framework-agnostic - uses jose library for JWT verification
  */
 
-import { createRemoteJWKSet, jwtVerify, decodeJwt, type JWTVerifyResult } from 'jose';
+import {
+	createRemoteJWKSet,
+	jwtVerify,
+	decodeJwt,
+	type JWTPayload,
+	type JWTVerifyResult
+} from 'jose';
 import type { AuthContext } from './types.js';
 
 /**
@@ -24,54 +30,52 @@ function getJWKS(): ReturnType<typeof createRemoteJWKSet> {
 }
 
 /**
- * Verify a Firebase ID token and extract user context
+ * Verify JWT signature or decode in emulator mode.
  *
- * @param token - The Firebase ID token from Authorization header
- * @param projectId - Firebase project ID for audience/issuer validation
- * @param options - Additional options
- * @returns AuthContext with user information
- * @throws Error if token is invalid or expired
+ * Handles the cryptographic verification layer only; payload field
+ * validation is performed separately by {@link validateAuthPayload}.
  */
-export async function verifyFirebaseIdToken(
+async function verifyToken(
 	token: string,
 	projectId: string,
 	options?: { skipSignatureVerification?: boolean }
-): Promise<AuthContext> {
-	const issuer = `https://securetoken.google.com/${projectId}`;
+): Promise<JWTPayload> {
+	const nodeEnv = typeof process !== 'undefined' ? process.env?.NODE_ENV : undefined;
+	const isProduction = nodeEnv === 'production';
 
-	let payload;
-
-	const isProduction = typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
+	if (!nodeEnv) {
+		console.warn('[auth] NODE_ENV is not set; defaulting to non-production mode');
+	}
 
 	if (options?.skipSignatureVerification && !isProduction) {
 		// For Firebase Auth Emulator which uses unsigned tokens
-		// Emulator tokens may have different issuer/audience format
 		console.warn('[auth] Emulator mode: JWT signature verification is skipped');
-		payload = decodeJwt(token);
-
-		// Just verify it has basic required fields
-		if (!payload.sub && !payload.user_id) {
-			throw new Error('Token missing user identifier');
-		}
-	} else {
-		if (options?.skipSignatureVerification && isProduction) {
-			console.warn(
-				'[auth] skipSignatureVerification requested but ignored in production environment'
-			);
-		}
-		const jwks = getJWKS();
-
-		const result: JWTVerifyResult = await jwtVerify(token, jwks, {
-			issuer,
-			audience: projectId
-		});
-
-		payload = result.payload;
+		return decodeJwt(token);
 	}
 
-	// Validate required fields before constructing AuthContext
-	const uid = String(payload.user_id || payload.sub);
-	if (!uid || uid === 'undefined' || uid === 'null') {
+	if (options?.skipSignatureVerification && isProduction) {
+		console.warn(
+			'[auth] skipSignatureVerification requested but ignored in production environment'
+		);
+	}
+
+	const issuer = `https://securetoken.google.com/${projectId}`;
+	const jwks = getJWKS();
+	const result: JWTVerifyResult = await jwtVerify(token, jwks, { issuer, audience: projectId });
+	return result.payload;
+}
+
+/**
+ * Validate required JWT payload fields and construct AuthContext.
+ *
+ * Centralises all field checks so that both emulator and production
+ * paths go through identical validation logic.
+ */
+function validateAuthPayload(payload: JWTPayload): AuthContext {
+	const rawUid = payload.user_id ?? payload.sub;
+	const uid = typeof rawUid === 'string' ? rawUid : '';
+
+	if (!uid) {
 		throw new Error('Token missing valid user identifier');
 	}
 
@@ -89,6 +93,24 @@ export async function verifyFirebaseIdToken(
 		emailVerified: payload.email_verified,
 		name: typeof payload.name === 'string' ? payload.name : undefined
 	};
+}
+
+/**
+ * Verify a Firebase ID token and extract user context
+ *
+ * @param token - The Firebase ID token from Authorization header
+ * @param projectId - Firebase project ID for audience/issuer validation
+ * @param options - Additional options
+ * @returns AuthContext with user information
+ * @throws Error if token is invalid or expired
+ */
+export async function verifyFirebaseIdToken(
+	token: string,
+	projectId: string,
+	options?: { skipSignatureVerification?: boolean }
+): Promise<AuthContext> {
+	const payload = await verifyToken(token, projectId, options);
+	return validateAuthPayload(payload);
 }
 
 /**
