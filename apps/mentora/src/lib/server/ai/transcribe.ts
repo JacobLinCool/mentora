@@ -6,9 +6,15 @@ const MENTORA_AI_TRANSCRIBE_MODEL =
     env.MENTORA_AI_TRANSCRIBE_MODEL || "google-ai-studio/gemini-2.5-flash-lite";
 const MENTORA_AI_TRANSCRIBE_LANGUAGES =
     env.MENTORA_AI_TRANSCRIBE_LANGUAGES || "zh-TW,en-US";
-export const MENTORA_AI_TRANSCRIBE_MAX_BYTES = Number(
-    env.MENTORA_AI_TRANSCRIBE_MAX_BYTES || "1048576",
+const DEFAULT_TRANSCRIBE_MAX_BYTES = 1048576;
+const transcribeMaxBytes = Number.parseInt(
+    env.MENTORA_AI_TRANSCRIBE_MAX_BYTES || `${DEFAULT_TRANSCRIBE_MAX_BYTES}`,
+    10,
 );
+export const MENTORA_AI_TRANSCRIBE_MAX_BYTES =
+    Number.isFinite(transcribeMaxBytes) && transcribeMaxBytes > 0
+        ? transcribeMaxBytes
+        : DEFAULT_TRANSCRIBE_MAX_BYTES;
 
 const Result = z.object({
     transcription: z.string(),
