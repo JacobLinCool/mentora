@@ -66,6 +66,9 @@ const zSliderAnswerQuestion = z
         maxValue: z.number().describe("Maximum value of the slider."),
         step: z.number().positive().describe("Step value for the slider."),
     })
+    .refine((data) => data.maxValue >= data.minValue, {
+        message: "maxValue must be greater than or equal to minValue",
+    })
     .describe("Slider answer question.");
 
 const zQuestion = z.object({

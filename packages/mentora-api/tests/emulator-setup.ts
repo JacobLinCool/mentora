@@ -16,8 +16,15 @@ import {
 	type Auth,
 	type User
 } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+import {
+	getFirestore,
+	connectFirestoreEmulator,
+	type Firestore,
+	type Unsubscribe
+} from 'firebase/firestore';
+import { Firestore as ServerFirestore } from 'fires2rest';
 import { MentoraClient } from '../src/lib/api/client.js';
+import { Questionnaires, Wallets, type LedgerEntry } from 'mentora-firebase';
 
 // Emulator configuration
 const FIRESTORE_HOST = '127.0.0.1';
@@ -270,18 +277,282 @@ export function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export interface AssertEventuallyOptions<T> {
+	timeoutMs?: number;
+	intervalMs?: number;
+	predicate?: (value: T) => boolean;
+	message?: string;
+}
+
+/**
+ * Retry an assertion-style operation until it succeeds or times out.
+ */
+export async function assertEventually<T>(
+	fn: () => Promise<T>,
+	options?: AssertEventuallyOptions<T>
+): Promise<T> {
+	const timeoutMs = options?.timeoutMs ?? 8_000;
+	const intervalMs = options?.intervalMs ?? 100;
+	const predicate = options?.predicate ?? (() => true);
+	const deadline = Date.now() + timeoutMs;
+
+	let lastError: unknown = null;
+	let lastValue: T | null = null;
+
+	while (Date.now() < deadline) {
+		try {
+			const value = await fn();
+			lastValue = value;
+			if (predicate(value)) {
+				return value;
+			}
+			lastError = new Error('Predicate returned false');
+		} catch (error) {
+			lastError = error;
+		}
+
+		await delay(intervalMs);
+	}
+
+	if (lastError instanceof Error) {
+		throw new Error(options?.message ?? `assertEventually timed out: ${lastError.message}`);
+	}
+
+	throw new Error(
+		options?.message ??
+			`assertEventually timed out${lastValue === null ? '' : ` (last value: ${JSON.stringify(lastValue)})`}`
+	);
+}
+
+export interface WaitForSnapshotOptions {
+	timeoutMs?: number;
+}
+
+/**
+ * Convert callback-based subscriptions into a one-shot promise.
+ */
+export function waitForSnapshot<T>(
+	subscribe: (
+		onValue: (value: T) => void,
+		onError: (error: unknown) => void
+	) => Unsubscribe | (() => void),
+	options?: WaitForSnapshotOptions
+): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timeoutMs = options?.timeoutMs ?? 8_000;
+		let settled = false;
+		let unsubscribe: Unsubscribe | (() => void) | null = null;
+
+		const timer = setTimeout(() => {
+			if (!settled) {
+				settled = true;
+				try {
+					unsubscribe?.();
+				} finally {
+					reject(new Error(`waitForSnapshot timed out after ${timeoutMs}ms`));
+				}
+			}
+		}, timeoutMs);
+
+		const finish = (fn: () => void) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			try {
+				unsubscribe?.();
+			} finally {
+				fn();
+			}
+		};
+
+		unsubscribe = subscribe(
+			(value) => finish(() => resolve(value)),
+			(error) => finish(() => reject(error))
+		);
+	});
+}
+
+export interface CourseFixtureOptions {
+	visibility?: 'public' | 'unlisted' | 'private';
+	joinStudent?: boolean;
+}
+
+export interface CourseFixtureResult {
+	courseId: string;
+	courseCode: string;
+	studentJoined: boolean;
+}
+
+/**
+ * Create a course fixture and optionally enroll the student client.
+ */
+export async function createCourseFixture(
+	teacher: MentoraClient,
+	student?: MentoraClient,
+	options?: CourseFixtureOptions
+): Promise<CourseFixtureResult> {
+	const courseCode = `FX${Date.now().toString(36).toUpperCase().slice(-8)}`;
+	const createResult = await teacher.courses.create(
+		`Fixture Course ${generateTestId()}`,
+		courseCode,
+		{
+			visibility: options?.visibility ?? 'private'
+		}
+	);
+	if (!createResult.success) {
+		throw new Error(`Failed to create course fixture: ${createResult.error}`);
+	}
+
+	let studentJoined = false;
+	if (student && options?.joinStudent !== false) {
+		const joinResult = await student.courses.joinByCode(courseCode);
+		if (!joinResult.success) {
+			throw new Error(`Failed to join course fixture: ${joinResult.error}`);
+		}
+		studentJoined = true;
+	}
+
+	return {
+		courseId: createResult.data,
+		courseCode,
+		studentJoined
+	};
+}
+
+export interface QuestionnaireFixtureOptions {
+	topicId?: string | null;
+	title?: string;
+	startAt?: number;
+	allowLate?: boolean;
+	allowResubmit?: boolean;
+}
+
+/**
+ * Create a questionnaire fixture with schema-valid default questions.
+ */
+export async function createQuestionnaireFixture(
+	teacher: MentoraClient,
+	courseId: string,
+	options?: QuestionnaireFixtureOptions
+): Promise<{ questionnaireId: string }> {
+	const createResult = await teacher.questionnaires.create({
+		courseId,
+		topicId: options?.topicId ?? null,
+		title: options?.title ?? `Fixture Questionnaire ${generateTestId()}`,
+		questions: [
+			{
+				question: {
+					type: 'single_answer_choice',
+					questionText: 'How confident are you in this topic?',
+					options: ['Low', 'Medium', 'High']
+				},
+				required: true
+			},
+			{
+				question: {
+					type: 'short_answer',
+					questionText: 'What is your main learning goal?'
+				},
+				required: false
+			}
+		],
+		startAt: options?.startAt ?? Date.now() - 1_000,
+		dueAt: null,
+		allowLate: options?.allowLate ?? true,
+		allowResubmit: options?.allowResubmit ?? true
+	});
+
+	if (!createResult.success) {
+		throw new Error(`Failed to create questionnaire fixture: ${createResult.error}`);
+	}
+
+	return { questionnaireId: createResult.data };
+}
+
+export interface HostLedgerSeed {
+	id?: string;
+	type?: LedgerEntry['type'];
+	amountCredits: number;
+	idempotencyKey?: string | null;
+	paymentRef?: string | null;
+	createdBy?: string | null;
+	createdAt?: number;
+}
+
+/**
+ * Seed a host wallet and optional ledger entries via server-side emulator access.
+ */
+export async function seedHostWalletWithLedger(
+	courseId: string,
+	entries: HostLedgerSeed[] = []
+): Promise<{ walletId: string }> {
+	const firestore = ServerFirestore.useEmulator();
+	const walletId = `wallet_host_${courseId}`;
+	const now = Date.now();
+
+	await firestore.doc(Wallets.docPath(walletId)).set({
+		ownerType: 'host',
+		ownerId: courseId,
+		balanceCredits: entries.reduce((sum, entry) => sum + entry.amountCredits, 0),
+		createdAt: now,
+		updatedAt: now
+	});
+
+	for (const [index, entry] of entries.entries()) {
+		const entryId = entry.id ?? `entry_${index + 1}`;
+		const createdAt = entry.createdAt ?? now + index;
+		await firestore.doc(Wallets.entries.docPath(walletId, entryId)).set({
+			type: entry.type ?? 'grant',
+			amountCredits: entry.amountCredits,
+			idempotencyKey: entry.idempotencyKey ?? null,
+			scope: {
+				courseId,
+				topicId: null,
+				assignmentId: null,
+				conversationId: null
+			},
+			provider: {
+				name: entry.paymentRef ? 'stripe' : 'manual',
+				ref: entry.paymentRef ?? null
+			},
+			metadata: null,
+			createdBy: entry.createdBy ?? null,
+			createdAt
+		});
+	}
+
+	return { walletId };
+}
+
 /**
  * Clear Firestore data via emulator REST API
  * Call this in beforeEach/afterEach to reset state
  */
 export async function clearFirestoreEmulator(): Promise<void> {
-	const response = await fetch(
-		`http://${FIRESTORE_HOST}:${FIRESTORE_PORT}/emulator/v1/projects/demo-no-project/databases/(default)/documents`,
-		{ method: 'DELETE' }
-	);
-	if (!response.ok) {
-		console.warn('Failed to clear Firestore emulator:', response.statusText);
+	const endpoint = `http://${FIRESTORE_HOST}:${FIRESTORE_PORT}/emulator/v1/projects/demo-no-project/databases/(default)/documents`;
+	const deadline = Date.now() + 20_000;
+	let lastStatus: number | null = null;
+	let lastStatusText = '';
+
+	while (Date.now() < deadline) {
+		const response = await fetch(endpoint, { method: 'DELETE' });
+		if (response.ok) {
+			return;
+		}
+
+		lastStatus = response.status;
+		lastStatusText = response.statusText;
+		// Emulator returns 409 while a previous flush is still in progress.
+		if (response.status !== 409) {
+			break;
+		}
+
+		await delay(250);
 	}
+
+	console.warn(
+		`Failed to clear Firestore emulator: ${lastStatus ?? 'unknown'} ${lastStatusText}`.trim()
+	);
 }
 
 // ============ Dynamic Multi-User Support ============

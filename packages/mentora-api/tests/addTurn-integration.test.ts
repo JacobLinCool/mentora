@@ -150,12 +150,7 @@ describe('addTurn Route Handler (Integration)', () => {
 	describe('Turn Addition and Response', () => {
 		// REMOVED: "should accept first turn from authorized user" - requires LLM API key
 
-		it('should accept subsequent turns', async () => {
-			if (!process.env.GOOGLE_GENAI_API_KEY) {
-				console.log('Skipping - GOOGLE_GENAI_API_KEY not configured');
-				return;
-			}
-
+		it.skipIf(!process.env.GOOGLE_GENAI_API_KEY)('should accept subsequent turns', async () => {
 			// First turn already added in previous test
 			// Add second turn
 			const result = await studentClient.conversations.addTurn(
@@ -191,165 +186,87 @@ describe('addTurn Route Handler (Integration)', () => {
 		});
 	});
 
-	describe('LLM Integration', () => {
-		it('should handle LLM service quota exceeded error', async () => {
-			// This is harder to simulate without actually hitting quota
-			// In CI/local, this test documents the expected behavior
-			console.log('Quota exceeded scenario should return rate limit error');
-			expect(true).toBe(true);
-		});
-
-		it('should handle LLM service timeout', async () => {
-			// Similar to quota test - documents expected behavior
-			console.log('Timeout scenario should return timeout error after reasonable wait');
-			expect(true).toBe(true);
-		});
-	});
-
 	describe('Conversation State', () => {
-		it('should transition conversation state based on dialogue progress', async () => {
-			if (!process.env.GOOGLE_GENAI_API_KEY) {
-				console.log('Skipping - GOOGLE_GENAI_API_KEY not configured');
-				return;
-			}
+		it.skipIf(!process.env.GOOGLE_GENAI_API_KEY)(
+			'should transition conversation state based on dialogue progress',
+			async () => {
+				// Create a fresh conversation to test state transitions
+				const newConvResult = await studentClient.conversations.create(testAssignmentId);
+				if (!newConvResult.success) return;
+				const newConversationId = newConvResult.data.id;
 
-			// Create a fresh conversation to test state transitions
-			const newConvResult = await studentClient.conversations.create(testAssignmentId);
-			if (!newConvResult.success) return;
-			const newConversationId = newConvResult.data.id;
-
-			// Get initial state
-			const initialConv = await studentClient.conversations.get(newConversationId);
-			expect(initialConv.success).toBe(true);
-			if (initialConv.success) {
-				// Should start in awaiting_idea or similar state
-				expect((initialConv.data as Conversation).state).toBeDefined();
-			}
-
-			// Add a turn
-			const addTurnResult = await studentClient.conversations.addTurn(
-				newConversationId,
-				'Test stance for state transition',
-				'idea'
-			);
-
-			if (addTurnResult.success) {
-				// Get updated state
-				await delay(300);
-				const updatedConv = await studentClient.conversations.get(newConversationId);
-				expect(updatedConv.success).toBe(true);
-				if (updatedConv.success) {
-					// State should have changed
-					expect((updatedConv.data as Conversation).state).toBeDefined();
+				// Get initial state
+				const initialConv = await studentClient.conversations.get(newConversationId);
+				expect(initialConv.success).toBe(true);
+				if (initialConv.success) {
+					// Should start in awaiting_idea or similar state
+					expect((initialConv.data as Conversation).state).toBeDefined();
 				}
-			}
 
-			// Cleanup
-			await studentClient.conversations.end(newConversationId);
-		});
+				// Add a turn
+				const addTurnResult = await studentClient.conversations.addTurn(
+					newConversationId,
+					'Test stance for state transition',
+					'idea'
+				);
 
-		it('should persist turns in conversation history', async () => {
-			if (!process.env.GOOGLE_GENAI_API_KEY) {
-				console.log('Skipping - GOOGLE_GENAI_API_KEY not configured');
-				return;
-			}
-
-			// Create a fresh conversation
-			const newConvResult = await studentClient.conversations.create(testAssignmentId);
-			if (!newConvResult.success) return;
-			const newConversationId = newConvResult.data.id;
-
-			// Get initial turns
-			const beforeConv = await studentClient.conversations.get(newConversationId);
-			const initialTurnCount = beforeConv.success
-				? ((beforeConv.data as Conversation).turns || []).length
-				: 0;
-
-			// Add a turn
-			const addTurnResult = await studentClient.conversations.addTurn(
-				newConversationId,
-				'Message to persist',
-				'idea'
-			);
-
-			if (addTurnResult.success) {
-				// Get updated turns
-				await delay(300);
-				const afterConv = await studentClient.conversations.get(newConversationId);
-				expect(afterConv.success).toBe(true);
-
-				if (afterConv.success) {
-					const finalTurns = (afterConv.data as Conversation).turns || [];
-					// Should have more turns now (user turn + AI response)
-					expect(finalTurns.length).toBeGreaterThan(initialTurnCount);
-
-					// Last turn(s) should include our message
-					const messageFound = finalTurns.some((t) => t.text?.includes('Message to persist'));
-					expect(messageFound).toBe(true);
+				if (addTurnResult.success) {
+					// Get updated state
+					await delay(300);
+					const updatedConv = await studentClient.conversations.get(newConversationId);
+					expect(updatedConv.success).toBe(true);
+					if (updatedConv.success) {
+						// State should have changed
+						expect((updatedConv.data as Conversation).state).toBeDefined();
+					}
 				}
+
+				// Cleanup
+				await studentClient.conversations.end(newConversationId);
 			}
+		);
 
-			// Cleanup
-			await studentClient.conversations.end(newConversationId);
-		});
-	});
-});
+		it.skipIf(!process.env.GOOGLE_GENAI_API_KEY)(
+			'should persist turns in conversation history',
+			async () => {
+				// Create a fresh conversation
+				const newConvResult = await studentClient.conversations.create(testAssignmentId);
+				if (!newConvResult.success) return;
+				const newConversationId = newConvResult.data.id;
 
-describe('Error Handling and Edge Cases', () => {
-	it('should document API key missing error behavior', () => {
-		// When GOOGLE_GENAI_API_KEY is not set:
-		// - llm-service.ts::getOrchestrator() throws
-		// - addTurn route catches and returns 500 with "LLM service not configured"
-		// - Client receives: { success: false, error: "LLM service not configured" }
-		const errorMessage = 'LLM service not configured';
-		expect(errorMessage).toContain('configured');
-	});
+				// Get initial turns
+				const beforeConv = await studentClient.conversations.get(newConversationId);
+				const initialTurnCount = beforeConv.success
+					? ((beforeConv.data as Conversation).turns || []).length
+					: 0;
 
-	it('should document quota exceeded error behavior', () => {
-		// When API quota is exceeded:
-		// - MentoraOrchestrator receives 429 or quota error from Gemini
-		// - Error message includes "API quota"
-		// - addTurn route catches and returns 500 with "rate limited"
-		// - Client receives: { success: false, error: "rate limited. Please try again later." }
-		const errorMessage = 'API service rate limited. Please try again later.';
-		expect(errorMessage).toContain('rate limited');
-	});
+				// Add a turn
+				const addTurnResult = await studentClient.conversations.addTurn(
+					newConversationId,
+					'Message to persist',
+					'idea'
+				);
 
-	it('should document timeout error behavior', () => {
-		// When LLM request times out:
-		// - MentoraOrchestrator request exceeds deadline
-		// - Error message includes "deadline exceeded" or "timeout"
-		// - addTurn route catches and returns 500
-		// - Client receives: { success: false, error: "LLM request timed out. Please try again." }
-		const errorMessage = 'LLM request timed out. Please try again.';
-		expect(errorMessage).toContain('timed out');
-	});
+				if (addTurnResult.success) {
+					// Get updated turns
+					await delay(300);
+					const afterConv = await studentClient.conversations.get(newConversationId);
+					expect(afterConv.success).toBe(true);
 
-	it('should document conversation not found error', () => {
-		// When conversation ID doesn't exist:
-		// - loadDialogueState fails with "Conversation not found"
-		// - addTurn route catches and returns 404
-		// - Client receives: { success: false, error: "Conversation not found" }
-		const errorMessage = 'Conversation not found';
-		expect(errorMessage).toContain('not found');
-	});
+					if (afterConv.success) {
+						const finalTurns = (afterConv.data as Conversation).turns || [];
+						// Should have more turns now (user turn + AI response)
+						expect(finalTurns.length).toBeGreaterThan(initialTurnCount);
 
-	it('should document authorization error', () => {
-		// When user doesn't own conversation:
-		// - loadDialogueState checks conversation.userId !== userId
-		// - Throws "Unauthorized"
-		// - addTurn route catches and returns 403
-		// - Client receives: { success: false, error: "Not authorized" }
-		const errorMessage = 'Not authorized';
-		expect(errorMessage).toContain('authorized');
-	});
+						// Last turn(s) should include our message
+						const messageFound = finalTurns.some((t) => t.text?.includes('Message to persist'));
+						expect(messageFound).toBe(true);
+					}
+				}
 
-	it('should document closed conversation error', () => {
-		// When conversation is already closed:
-		// - addTurn checks conversation.state === 'closed'
-		// - Returns 400 with "Conversation is closed"
-		// - Client receives: { success: false, error: "Conversation is closed" }
-		const errorMessage = 'Conversation is closed';
-		expect(errorMessage).toContain('closed');
+				// Cleanup
+				await studentClient.conversations.end(newConversationId);
+			}
+		);
 	});
 });

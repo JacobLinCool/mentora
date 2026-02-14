@@ -125,6 +125,7 @@ export const zTurn = z
         tokenUsage: zTokenUsageBreakdown
             .nullable()
             .optional()
+            .default(null)
             .describe(
                 "Optional token usage captured while processing this turn.",
             ),
@@ -166,6 +167,7 @@ export const zConversation = z
         tokenUsage: zConversationTokenUsage
             .nullable()
             .optional()
+            .default(null)
             .describe(
                 "Aggregated token usage across all turns in this conversation.",
             ),

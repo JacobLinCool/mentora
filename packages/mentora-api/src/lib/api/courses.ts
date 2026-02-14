@@ -277,7 +277,8 @@ export async function inviteMember(
 			email: normalizedEmail,
 			role,
 			status: 'invited',
-			joinedAt: null
+			joinedAt: null,
+			invitedAt: Date.now()
 		};
 
 		await setDoc(memberRef, membership);
@@ -455,9 +456,11 @@ export async function updateMember(
 			throw new Error('Member not found');
 		}
 
-		// Check if trying to modify owner
+		// Check if trying to modify owner (compare userId against course ownerId)
 		const memberData = memberDoc.data();
-		if (memberData?.role === 'owner') {
+		const courseRef = doc(config.db, Courses.docPath(courseId));
+		const courseSnap = await getDoc(courseRef);
+		if (courseSnap.exists() && memberData?.userId === courseSnap.data()?.ownerId) {
 			throw new Error('Cannot modify course owner');
 		}
 
@@ -491,9 +494,11 @@ export async function removeMember(
 			throw new Error('Member not found');
 		}
 
-		// Check if trying to remove owner
+		// Check if trying to remove owner (compare userId against course ownerId)
 		const memberData = memberDoc.data();
-		if (memberData?.role === 'owner') {
+		const courseRef = doc(config.db, Courses.docPath(courseId));
+		const courseSnap = await getDoc(courseRef);
+		if (courseSnap.exists() && memberData?.userId === courseSnap.data()?.ownerId) {
 			throw new Error('Cannot remove course owner');
 		}
 

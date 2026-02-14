@@ -129,14 +129,11 @@ describe('Courses Module (Integration)', () => {
 
 	describe('getCourse()', () => {
 		it('should get course by ID', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await teacherClient.courses.get(testCourseId);
+			const result = await teacherClient.courses.get(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -148,12 +145,9 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should return complete course data structure', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.get(testCourseId);
+			const result = await teacherClient.courses.get(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -279,13 +273,10 @@ describe('Courses Module (Integration)', () => {
 
 	describe('updateCourse()', () => {
 		it('should update course title', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const newTitle = `Updated Course Title ${Date.now()}`;
-			const result = await teacherClient.courses.update(testCourseId, {
+			const result = await teacherClient.courses.update(testCourseId!, {
 				title: newTitle
 			});
 
@@ -296,13 +287,10 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should update course description', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const newDescription = `Updated description ${Date.now()}`;
-			const result = await teacherClient.courses.update(testCourseId, {
+			const result = await teacherClient.courses.update(testCourseId!, {
 				description: newDescription
 			});
 
@@ -313,12 +301,9 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should update course visibility', async () => {
-			if (!testCourseId2) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId2, 'testCourseId2 should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.update(testCourseId2, {
+			const result = await teacherClient.courses.update(testCourseId2!, {
 				visibility: 'public'
 			});
 
@@ -329,12 +314,9 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should update theme', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.update(testCourseId, {
+			const result = await teacherClient.courses.update(testCourseId!, {
 				theme: 'dark'
 			});
 
@@ -342,15 +324,12 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should preserve ownerId and createdAt on update', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const original = await teacherClient.courses.get(testCourseId);
+			const original = await teacherClient.courses.get(testCourseId!);
 			if (!original.success) return;
 
-			const result = await teacherClient.courses.update(testCourseId, {
+			const result = await teacherClient.courses.update(testCourseId!, {
 				title: `Updated ${Date.now()}`
 			});
 
@@ -364,12 +343,9 @@ describe('Courses Module (Integration)', () => {
 
 	describe('getCourseRoster()', () => {
 		it('should get course roster with owner', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.getRoster(testCourseId);
+			const result = await teacherClient.courses.getRoster(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -381,12 +357,9 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should include user information in roster', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.getRoster(testCourseId);
+			const result = await teacherClient.courses.getRoster(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success && result.data.length > 0) {
@@ -399,13 +372,10 @@ describe('Courses Module (Integration)', () => {
 
 	describe('inviteMember()', () => {
 		it('should invite a member as student', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const testEmail = `student-invite-${Date.now()}@example.com`;
-			const result = await teacherClient.courses.inviteMember(testCourseId, testEmail, 'student');
+			const result = await teacherClient.courses.inviteMember(testCourseId!, testEmail, 'student');
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -414,13 +384,10 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should invite a member as TA', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const testEmail = `ta-invite-${Date.now()}@example.com`;
-			const result = await teacherClient.courses.inviteMember(testCourseId, testEmail, 'ta');
+			const result = await teacherClient.courses.inviteMember(testCourseId!, testEmail, 'ta');
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -429,48 +396,39 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should invite a member as auditor', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const testEmail = `auditor-invite-${Date.now()}@example.com`;
-			const result = await teacherClient.courses.inviteMember(testCourseId, testEmail, 'auditor');
+			const result = await teacherClient.courses.inviteMember(testCourseId!, testEmail, 'auditor');
 
 			expect(result.success).toBe(true);
 		});
 
 		it('should fail to invite same email twice', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const testEmail = `duplicate-invite-${Date.now()}@example.com`;
 
 			// First invite
-			const result1 = await teacherClient.courses.inviteMember(testCourseId, testEmail, 'student');
+			const result1 = await teacherClient.courses.inviteMember(testCourseId!, testEmail, 'student');
 			expect(result1.success).toBe(true);
 
 			// Second invite with same email
-			const result2 = await teacherClient.courses.inviteMember(testCourseId, testEmail);
+			const result2 = await teacherClient.courses.inviteMember(testCourseId!, testEmail);
 			expect(result2.success).toBe(false);
 		});
 
 		it('should normalize email addresses', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const testEmail = `UPPERCASE-${Date.now()}@EXAMPLE.COM`;
-			const result = await teacherClient.courses.inviteMember(testCourseId, testEmail);
+			const result = await teacherClient.courses.inviteMember(testCourseId!, testEmail);
 
 			expect(result.success).toBe(true);
 
 			// Try inviting lowercase version - should fail as duplicate
 			const result2 = await teacherClient.courses.inviteMember(
-				testCourseId,
+				testCourseId!,
 				testEmail.toLowerCase()
 			);
 			expect(result2.success).toBe(false);
@@ -479,13 +437,10 @@ describe('Courses Module (Integration)', () => {
 
 	describe('updateMember()', () => {
 		it('should update member role to TA', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			// Get roster
-			const rosterResult = await teacherClient.courses.getRoster(testCourseId);
+			const rosterResult = await teacherClient.courses.getRoster(testCourseId!);
 			if (!rosterResult.success || rosterResult.data.length === 0) {
 				console.log('Skipping - no roster members');
 				return;
@@ -498,7 +453,7 @@ describe('Courses Module (Integration)', () => {
 				return;
 			}
 
-			const result = await teacherClient.courses.updateMember(testCourseId, student.userId, {
+			const result = await teacherClient.courses.updateMember(testCourseId!, student.userId, {
 				role: 'ta'
 			});
 
@@ -509,12 +464,9 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should update member status', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const rosterResult = await teacherClient.courses.getRoster(testCourseId);
+			const rosterResult = await teacherClient.courses.getRoster(testCourseId!);
 			if (!rosterResult.success || rosterResult.data.length === 0) {
 				console.log('Skipping - no roster members');
 				return;
@@ -526,7 +478,7 @@ describe('Courses Module (Integration)', () => {
 				return;
 			}
 
-			const result = await teacherClient.courses.updateMember(testCourseId, member.userId, {
+			const result = await teacherClient.courses.updateMember(testCourseId!, member.userId, {
 				status: 'active'
 			});
 
@@ -536,15 +488,12 @@ describe('Courses Module (Integration)', () => {
 
 	describe('removeMember()', () => {
 		it('should remove member from course', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			// Invite someone first
 			const testEmail = `remove-test-${Date.now()}@example.com`;
 			const inviteResult = await teacherClient.courses.inviteMember(
-				testCourseId,
+				testCourseId!,
 				testEmail,
 				'student'
 			);
@@ -556,7 +505,7 @@ describe('Courses Module (Integration)', () => {
 			const memberId = inviteResult.data;
 
 			// Remove them
-			const result = await teacherClient.courses.removeMember(testCourseId, memberId);
+			const result = await teacherClient.courses.removeMember(testCourseId!, memberId);
 
 			expect(result.success).toBe(true);
 		});
@@ -564,13 +513,11 @@ describe('Courses Module (Integration)', () => {
 
 	describe('joinByCode()', () => {
 		it('should join course by valid code', async () => {
-			if (!testCourseId || !testCourseCode) {
-				console.log('Skipping - no test course/code');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
+			expect(testCourseCode, 'testCourseCode should be set by prior test').toBeTruthy();
 
 			// Student joins by code
-			const result = await studentClient.courses.joinByCode(testCourseCode);
+			const result = await studentClient.courses.joinByCode(testCourseCode!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -591,17 +538,15 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should handle already member case', async () => {
-			if (!testCourseId || !testCourseCode) {
-				console.log('Skipping - no test course/code');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
+			expect(testCourseCode, 'testCourseCode should be set by prior test').toBeTruthy();
 
 			// Try to join twice
-			const result1 = await studentClient.courses.joinByCode(testCourseCode);
+			const result1 = await studentClient.courses.joinByCode(testCourseCode!);
 			expect(result1.success).toBe(true);
 
 			// Second attempt should indicate already member
-			const result2 = await studentClient.courses.joinByCode(testCourseCode);
+			const result2 = await studentClient.courses.joinByCode(testCourseCode!);
 			expect(result2.success).toBe(true);
 			if (result2.success) {
 				const isAlreadyMember =
@@ -613,13 +558,10 @@ describe('Courses Module (Integration)', () => {
 
 	describe('createAnnouncement()', () => {
 		it('should create announcement in course', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const content = `Test announcement ${Date.now()}`;
-			const result = await teacherClient.courses.createAnnouncement(testCourseId, content);
+			const result = await teacherClient.courses.createAnnouncement(testCourseId!, content);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -630,17 +572,14 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should add multiple announcements', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const result1 = await teacherClient.courses.createAnnouncement(
-				testCourseId,
+				testCourseId!,
 				'Announcement 1'
 			);
 			const result2 = await teacherClient.courses.createAnnouncement(
-				testCourseId,
+				testCourseId!,
 				'Announcement 2'
 			);
 
@@ -649,7 +588,7 @@ describe('Courses Module (Integration)', () => {
 
 			// Verify both appear in course
 			await delay(300);
-			const courseResult = await teacherClient.courses.get(testCourseId);
+			const courseResult = await teacherClient.courses.get(testCourseId!);
 			if (courseResult.success && courseResult.data.announcements) {
 				expect(courseResult.data.announcements.length).toBeGreaterThanOrEqual(2);
 			}
@@ -658,12 +597,9 @@ describe('Courses Module (Integration)', () => {
 
 	describe('copyCourse()', () => {
 		it('should copy course with content', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.copy(testCourseId, {
+			const result = await teacherClient.courses.copy(testCourseId!, {
 				title: `Copied Course ${Date.now()}`,
 				includeContent: true,
 				includeRoster: false
@@ -679,12 +615,9 @@ describe('Courses Module (Integration)', () => {
 		});
 
 		it('should copy course without content', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.copy(testCourseId, {
+			const result = await teacherClient.courses.copy(testCourseId!, {
 				title: `Copied Empty ${Date.now()}`,
 				includeContent: false,
 				includeRoster: false
@@ -701,18 +634,15 @@ describe('Courses Module (Integration)', () => {
 
 	describe('deleteCourse()', () => {
 		it('should delete course', async () => {
-			if (!testCourseId2) {
-				console.log('Skipping - no test course to delete');
-				return;
-			}
+			expect(testCourseId2, 'testCourseId2 should be set by prior test').toBeTruthy();
 
-			const result = await teacherClient.courses.delete(testCourseId2);
+			const result = await teacherClient.courses.delete(testCourseId2!);
 
 			expect(result.success).toBe(true);
 
 			// Verify it's deleted
 			await delay(300);
-			const getResult = await teacherClient.courses.get(testCourseId2);
+			const getResult = await teacherClient.courses.get(testCourseId2!);
 			expect(getResult.success).toBe(false);
 
 			testCourseId2 = null;

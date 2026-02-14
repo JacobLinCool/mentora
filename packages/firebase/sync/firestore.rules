@@ -112,7 +112,8 @@ service cloud.firestore {
              data.email is string && data.email.size() <= 320 &&
              data.role in ["student", "auditor", "ta", "instructor"] &&
              data.status in ["invited", "active", "removed"] &&
-             (data.joinedAt == null || data.joinedAt is number);
+             (data.joinedAt == null || data.joinedAt is number) &&
+             (!('invitedAt' in data) || data.invitedAt == null || data.invitedAt is number);
     }
 
     function isValidAssignment(data) {
@@ -327,7 +328,8 @@ service cloud.firestore {
              data.responses is list && data.responses.size() >= 1 && data.responses.size() <= 100 &&
              isValidQuestionnaireResponseItem(data.responses[0]) &&
              (data.responses.size() == 1 || isValidQuestionnaireResponseItem(data.responses[data.responses.size() - 1])) &&
-             data.submittedAt is number;
+             data.submittedAt is number &&
+             (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is number);
     }
 
     function assignmentDoc(assignmentId) {
@@ -399,8 +401,16 @@ service cloud.firestore {
     /* ---------- Wallets / Ledger (read-only to clients) ---------- */
     match /wallets/{walletId} {
       allow get, list: if isSignedIn() && (
-        (resource.data.ownerId == request.auth.uid) &&
-        (resource.data.ownerType in ["user", "host"])
+        targetNotExists() ||
+        (
+          resource.data.ownerType == "user" &&
+          resource.data.ownerId == request.auth.uid
+        ) ||
+        (
+          resource.data.ownerType == "host" &&
+          resource.data.ownerId is string &&
+          canEditCourseResource(resource.data.ownerId)
+        )
       );
 
       // Wallet creation/updates are server-side only.
@@ -408,7 +418,18 @@ service cloud.firestore {
 
       match /entries/{entryId} {
         allow get, list: if isSignedIn() && (
-          get(/databases/$(database)/documents/wallets/$(walletId)).data.ownerId == request.auth.uid
+          exists(/databases/$(database)/documents/wallets/$(walletId)) &&
+          (
+            (
+              get(/databases/$(database)/documents/wallets/$(walletId)).data.ownerType == "user" &&
+              get(/databases/$(database)/documents/wallets/$(walletId)).data.ownerId == request.auth.uid
+            ) ||
+            (
+              get(/databases/$(database)/documents/wallets/$(walletId)).data.ownerType == "host" &&
+              get(/databases/$(database)/documents/wallets/$(walletId)).data.ownerId is string &&
+              canEditCourseResource(get(/databases/$(database)/documents/wallets/$(walletId)).data.ownerId)
+            )
+          )
         );
         // Ledger writes are server-side only.
         allow create, update, delete: if false;

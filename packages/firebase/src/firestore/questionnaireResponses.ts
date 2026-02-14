@@ -84,6 +84,13 @@ export const zQuestionnaireResponse = z
         submittedAt: zFirebaseTimestamp.describe(
             "Timestamp when the response was submitted.",
         ),
+        updatedAt: zFirebaseTimestamp
+            .nullable()
+            .optional()
+            .default(null)
+            .describe(
+                "Timestamp of the last response update, or null if never updated.",
+            ),
     })
     .describe(
         "Questionnaire response document stored at questionnaireResponses/{responseId}.",

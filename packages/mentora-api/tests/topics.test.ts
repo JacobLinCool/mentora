@@ -25,6 +25,8 @@ describe('Topics Module (Integration)', () => {
 		if (courseResult.success) {
 			testCourseId = courseResult.data;
 		}
+
+		expect(testCourseId, 'testCourseId should be created in beforeAll').toBeTruthy();
 	});
 
 	afterAll(async () => {
@@ -49,19 +51,17 @@ describe('Topics Module (Integration)', () => {
 
 	describe('createTopic()', () => {
 		it('should create a new topic', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by setup').toBeTruthy();
 
 			const result = await client.topics.create({
-				courseId: testCourseId,
+				courseId: testCourseId!,
 				title: `Test Topic ${generateTestId()}`,
 				description: 'Integration test topic',
 				order: null,
 				contents: [],
 				contentTypes: []
 			});
+			expect(result.success).toBe(true);
 			if (result.success) {
 				testTopicId = result.data;
 				expect(testTopicId).toBeDefined();
@@ -71,14 +71,11 @@ describe('Topics Module (Integration)', () => {
 
 	describe('getTopic()', () => {
 		it('should get topic by ID', async () => {
-			if (!testTopicId) {
-				console.log('Skipping - no test topic created');
-				return;
-			}
+			expect(testTopicId, 'testTopicId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await client.topics.get(testTopicId);
+			const result = await client.topics.get(testTopicId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -99,12 +96,9 @@ describe('Topics Module (Integration)', () => {
 
 	describe('listCourseTopics()', () => {
 		it('should list topics for a course', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
-			const result = await client.topics.listForCourse(testCourseId);
+			const result = await client.topics.listForCourse(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -119,13 +113,10 @@ describe('Topics Module (Integration)', () => {
 
 	describe('updateTopic()', () => {
 		it('should update topic', async () => {
-			if (!testTopicId) {
-				console.log('Skipping - no test topic created');
-				return;
-			}
+			expect(testTopicId, 'testTopicId should be set by prior test').toBeTruthy();
 
 			const newTitle = `Updated Topic ${Date.now()}`;
-			const result = await client.topics.update(testTopicId, {
+			const result = await client.topics.update(testTopicId!, {
 				title: newTitle
 			});
 
@@ -135,12 +126,9 @@ describe('Topics Module (Integration)', () => {
 
 	describe('deleteTopic()', () => {
 		it('should delete topic', async () => {
-			if (!testTopicId) {
-				console.log('Skipping - no test topic created');
-				return;
-			}
+			expect(testTopicId, 'testTopicId should be set by prior test').toBeTruthy();
 
-			const result = await client.topics.delete(testTopicId);
+			const result = await client.topics.delete(testTopicId!);
 
 			expect(result.success).toBe(true);
 			testTopicId = null;

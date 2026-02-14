@@ -44,6 +44,9 @@ describe('Conversations Module (Integration)', () => {
 		}
 
 		await delay(500);
+
+		expect(testCourseId, 'testCourseId should be created in beforeAll').toBeTruthy();
+		expect(testAssignmentId, 'testAssignmentId should be created in beforeAll').toBeTruthy();
 	});
 
 	afterAll(async () => {
@@ -76,12 +79,9 @@ describe('Conversations Module (Integration)', () => {
 
 	describe('createConversation()', () => {
 		it('should create a new conversation', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test/setup').toBeTruthy();
 
-			const result = await client.conversations.create(testAssignmentId);
+			const result = await client.conversations.create(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -93,14 +93,11 @@ describe('Conversations Module (Integration)', () => {
 
 	describe('getConversation()', () => {
 		it('should get conversation by ID', async () => {
-			if (!testConversationId) {
-				console.log('Skipping - no test conversation created');
-				return;
-			}
+			expect(testConversationId, 'testConversationId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await client.conversations.get(testConversationId);
+			const result = await client.conversations.get(testConversationId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -121,12 +118,10 @@ describe('Conversations Module (Integration)', () => {
 
 	describe('getAssignmentConversation()', () => {
 		it('should get conversation for assignment', async () => {
-			if (!testAssignmentId || !testConversationId) {
-				console.log('Skipping - no test assignment/conversation created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test/setup').toBeTruthy();
+			expect(testConversationId, 'testConversationId should be set by prior test').toBeTruthy();
 
-			const result = await client.conversations.getForAssignment(testAssignmentId);
+			const result = await client.conversations.getForAssignment(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -148,12 +143,9 @@ describe('Conversations Module (Integration)', () => {
 
 	describe('endConversation()', () => {
 		it('should end conversation', async () => {
-			if (!testConversationId) {
-				console.log('Skipping - no test conversation created');
-				return;
-			}
+			expect(testConversationId, 'testConversationId should be set by prior test').toBeTruthy();
 
-			const result = await client.conversations.end(testConversationId);
+			const result = await client.conversations.end(testConversationId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {

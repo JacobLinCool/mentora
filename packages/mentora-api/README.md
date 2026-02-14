@@ -25,3 +25,13 @@ To build the library:
 ```sh
 pnpm build
 ```
+
+## API docs (TypeDoc)
+
+Generate API documentation:
+
+```sh
+pnpm --filter mentora-api run docs:api
+```
+
+The generated docs will be written to `packages/mentora-api/docs/typedoc`.

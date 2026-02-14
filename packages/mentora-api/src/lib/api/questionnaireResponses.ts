@@ -13,7 +13,11 @@ import {
 	updateDoc,
 	where
 } from 'firebase/firestore';
-import { QuestionnaireResponses, type QuestionnaireResponse } from 'mentora-firebase';
+import {
+	QuestionnaireResponses,
+	Questionnaires,
+	type QuestionnaireResponse
+} from 'mentora-firebase';
 import {
 	failure,
 	tryCatch,
@@ -54,9 +58,19 @@ export async function listQuestionnaireResponses(
 	options?: QueryOptions
 ): Promise<APIResult<QuestionnaireResponse[]>> {
 	return tryCatch(async () => {
-		const collectionRef = collection(config.db, QuestionnaireResponses.collectionPath());
+		const questionnaireRef = doc(config.db, Questionnaires.docPath(questionnaireId));
+		const questionnaireSnapshot = await getDoc(questionnaireRef);
+		if (!questionnaireSnapshot.exists()) {
+			throw new Error('Questionnaire not found');
+		}
+		const questionnaire = Questionnaires.schema.parse(questionnaireSnapshot.data());
 
-		let q = query(collectionRef, where('questionnaireId', '==', questionnaireId));
+		const collectionRef = collection(config.db, QuestionnaireResponses.collectionPath());
+		let q = query(
+			collectionRef,
+			where('questionnaireId', '==', questionnaireId),
+			where('courseId', '==', questionnaire.courseId ?? null)
+		);
 
 		if (options?.limit) {
 			q = query(q, limit(options.limit));
@@ -175,7 +189,8 @@ export async function updateMyQuestionnaireResponse(
 
 		await updateDoc(docRef, {
 			responses,
-			submittedAt: Date.now()
+			submittedAt: Date.now(),
+			updatedAt: Date.now()
 		});
 
 		// Return updated response

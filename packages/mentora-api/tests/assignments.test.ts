@@ -43,6 +43,9 @@ describe('Assignments Module (Integration)', () => {
 		}
 
 		await delay(500);
+
+		expect(testCourseId, 'testCourseId should be created in beforeAll').toBeTruthy();
+		expect(testTopicId, 'testTopicId should be created in beforeAll').toBeTruthy();
 	});
 
 	afterAll(async () => {
@@ -78,13 +81,10 @@ describe('Assignments Module (Integration)', () => {
 
 	describe('createAssignment()', () => {
 		it('should create a new assignment without topic', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
 			const result = await client.assignments.create({
-				courseId: testCourseId,
+				courseId: testCourseId!,
 				topicId: null,
 				title: `Test Assignment ${generateTestId()}`,
 				question: null,
@@ -105,14 +105,12 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should create assignment with topic', async () => {
-			if (!testCourseId || !testTopicId) {
-				console.log('Skipping - no test course or topic');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
+			expect(testTopicId, 'testTopicId should be set by prior test/setup').toBeTruthy();
 
 			const result = await client.assignments.create({
-				courseId: testCourseId,
-				topicId: testTopicId,
+				courseId: testCourseId!,
+				topicId: testTopicId!,
 				title: `Test Assignment with Topic ${generateTestId()}`,
 				question: null,
 				prompt: 'Assignment within a topic',
@@ -131,15 +129,12 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should create assignment with future due date', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
 			const futureDate = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days from now
 
 			const result = await client.assignments.create({
-				courseId: testCourseId,
+				courseId: testCourseId!,
 				topicId: null,
 				title: `Assignment with due date ${generateTestId()}`,
 				question: null,
@@ -163,13 +158,10 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should create assignment with instant mode', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
 			const result = await client.assignments.create({
-				courseId: testCourseId,
+				courseId: testCourseId!,
 				topicId: null,
 				title: `Assignment instant mode ${generateTestId()}`,
 				question: null,
@@ -191,14 +183,11 @@ describe('Assignments Module (Integration)', () => {
 
 	describe('getAssignment()', () => {
 		it('should get assignment by ID', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await client.assignments.get(testAssignmentId);
+			const result = await client.assignments.get(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -209,12 +198,9 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should return complete assignment data structure', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const result = await client.assignments.get(testAssignmentId);
+			const result = await client.assignments.get(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -245,12 +231,9 @@ describe('Assignments Module (Integration)', () => {
 
 	describe('listCourseAssignments()', () => {
 		it('should list all assignments for a course', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
-			const result = await client.assignments.listForCourse(testCourseId);
+			const result = await client.assignments.listForCourse(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -261,12 +244,9 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should list assignments with limit', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
-			const result = await client.assignments.listForCourse(testCourseId, { limit: 2 });
+			const result = await client.assignments.listForCourse(testCourseId!, { limit: 2 });
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -275,12 +255,9 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should include assignments with topics', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
-			const result = await client.assignments.listForCourse(testCourseId);
+			const result = await client.assignments.listForCourse(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success && testTopicId) {
@@ -292,12 +269,9 @@ describe('Assignments Module (Integration)', () => {
 
 	describe('listAvailableAssignments()', () => {
 		it('should list available assignments (started and not ended)', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
-			const result = await client.assignments.listAvailable(testCourseId);
+			const result = await client.assignments.listAvailable(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -310,12 +284,9 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should apply limit to available assignments', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
-			const result = await client.assignments.listAvailable(testCourseId, { limit: 1 });
+			const result = await client.assignments.listAvailable(testCourseId!, { limit: 1 });
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -326,13 +297,10 @@ describe('Assignments Module (Integration)', () => {
 
 	describe('updateAssignment()', () => {
 		it('should update assignment title', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			const newTitle = `Updated Assignment ${Date.now()}`;
-			const result = await client.assignments.update(testAssignmentId, {
+			const result = await client.assignments.update(testAssignmentId!, {
 				title: newTitle
 			});
 
@@ -344,13 +312,10 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should update assignment prompt', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			const newPrompt = `Updated prompt ${Date.now()}`;
-			const result = await client.assignments.update(testAssignmentId, {
+			const result = await client.assignments.update(testAssignmentId!, {
 				prompt: newPrompt
 			});
 
@@ -361,12 +326,9 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should update assignment settings', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const result = await client.assignments.update(testAssignmentId, {
+			const result = await client.assignments.update(testAssignmentId!, {
 				allowLate: true,
 				allowResubmit: false
 			});
@@ -379,13 +341,10 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should update due date', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			const newDueDate = Date.now() + 24 * 60 * 60 * 1000; // Tomorrow
-			const result = await client.assignments.update(testAssignmentId, {
+			const result = await client.assignments.update(testAssignmentId!, {
 				dueAt: newDueDate
 			});
 
@@ -396,18 +355,13 @@ describe('Assignments Module (Integration)', () => {
 		});
 
 		it('should preserve createdBy and createdAt on update', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const originalAssignment = await client.assignments.get(testAssignmentId);
-			if (!originalAssignment.success) {
-				console.log('Skipping - could not get original assignment');
-				return;
-			}
+			const originalAssignment = await client.assignments.get(testAssignmentId!);
+			expect(originalAssignment.success, 'should be able to get original assignment').toBe(true);
+			if (!originalAssignment.success) return;
 
-			const result = await client.assignments.update(testAssignmentId, {
+			const result = await client.assignments.update(testAssignmentId!, {
 				title: `Updated again ${Date.now()}`
 			});
 
@@ -421,42 +375,35 @@ describe('Assignments Module (Integration)', () => {
 
 	describe('deleteAssignment()', () => {
 		it('should delete assignment', async () => {
-			if (!testAssignmentId2) {
-				console.log('Skipping - no test assignment to delete');
-				return;
-			}
+			expect(testAssignmentId2, 'testAssignmentId2 should be set by prior test').toBeTruthy();
 
-			const result = await client.assignments.delete(testAssignmentId2);
+			const result = await client.assignments.delete(testAssignmentId2!);
 
 			expect(result.success).toBe(true);
 
 			// Verify it's deleted
 			await delay(300);
-			const getResult = await client.assignments.get(testAssignmentId2);
+			const getResult = await client.assignments.get(testAssignmentId2!);
 			expect(getResult.success).toBe(false);
 
 			testAssignmentId2 = null;
 		});
 
-		it('should fail to delete non-existent assignment', async () => {
+		it('should fail deleting non-existent assignment (security rules reject)', async () => {
 			const result = await client.assignments.delete('non-existent-assignment-id-12345');
 
-			// May succeed or fail depending on Firestore rules
-			// Just verify it returns a result
-			expect(result.success !== undefined).toBe(true);
+			// Firestore security rules reject delete on non-existent documents
+			expect(result.success).toBe(false);
 		});
 	});
 
 	describe('Assignment Lifecycle', () => {
 		it('should handle complete assignment lifecycle', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no test course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test/setup').toBeTruthy();
 
 			// 1. Create assignment
 			const createResult = await client.assignments.create({
-				courseId: testCourseId,
+				courseId: testCourseId!,
 				topicId: null,
 				title: `Lifecycle Assignment ${generateTestId()}`,
 				question: null,
@@ -485,7 +432,7 @@ describe('Assignments Module (Integration)', () => {
 			expect(updateResult.success).toBe(true);
 
 			// 4. List and verify it appears
-			const listResult = await client.assignments.listForCourse(testCourseId);
+			const listResult = await client.assignments.listForCourse(testCourseId!);
 			expect(listResult.success).toBe(true);
 
 			// 5. Delete assignment
