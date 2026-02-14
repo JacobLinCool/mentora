@@ -185,6 +185,9 @@ export class MentoraServerHandler {
 
 		// Authenticate if required
 		let user = null;
+		// useEmulator requests skipSignatureVerification for Firebase Auth Emulator tokens.
+		// auth.ts independently enforces full verification when NODE_ENV=production,
+		// so both flags must agree for emulator mode to actually take effect.
 		const authOptions = this.config.useEmulator ? { skipSignatureVerification: true } : undefined;
 
 		if (route.requireAuth !== false) {
@@ -225,10 +228,10 @@ export class MentoraServerHandler {
 				return error;
 			}
 
-			// Handle known error types
+			// Handle known error types — redact sensitive details from client response
 			if (error instanceof Error) {
 				return errorResponse(
-					error.message,
+					sanitizeErrorMessage(error.message),
 					HttpStatus.INTERNAL_SERVER_ERROR,
 					ServerErrorCode.INTERNAL_ERROR
 				);
@@ -241,6 +244,33 @@ export class MentoraServerHandler {
 			);
 		}
 	}
+}
+
+/**
+ * Patterns that indicate sensitive information in error messages.
+ * Matches are replaced with a generic message to prevent data leakage.
+ */
+const SENSITIVE_PATTERNS = [
+	/\b[A-Za-z0-9_-]{20,}\b/g, // Long tokens / API keys
+	/\/(?:Users|home|var|tmp|etc)\/.+/g, // Filesystem paths
+	/(?:quota|rate.?limit|exceeded|billing)/i, // Quota / billing details
+	/(?:GOOGLE|GEMINI|OPENAI|FIREBASE|GCP)_[A-Z_]+/g // Environment variable names
+];
+
+/**
+ * Redact sensitive details from an error message before sending to the client.
+ * Full details remain in the server-side console.error log.
+ */
+function sanitizeErrorMessage(message: string): string {
+	let sanitized = message;
+	for (const pattern of SENSITIVE_PATTERNS) {
+		sanitized = sanitized.replace(pattern, '[redacted]');
+	}
+	// If the message was substantially redacted, return a generic message
+	if (sanitized.includes('[redacted]')) {
+		return 'An internal error occurred. Please try again later.';
+	}
+	return sanitized;
 }
 
 /**

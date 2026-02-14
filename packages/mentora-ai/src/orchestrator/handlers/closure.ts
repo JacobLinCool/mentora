@@ -7,6 +7,7 @@ import {
     type ClosureResponse,
 } from "../../builder/stage4-closure.js";
 import { DialogueStage } from "../../builder/types.js";
+import { formatStageResponse } from "../format.js";
 import { transitionTo } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
 
@@ -77,7 +78,7 @@ export class ClosureHandler implements StageHandler {
             summaryPrompt,
         )) as ClosureResponse;
 
-        const message = `${response.response_message}\n\n${response.concise_question}`;
+        const message = formatStageResponse(response);
 
         return {
             message,

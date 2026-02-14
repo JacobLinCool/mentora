@@ -83,13 +83,20 @@ export interface APIResponse<T = unknown> {
 	code?: ServerErrorCode;
 }
 
+/** Security headers applied to every API response. */
+const SECURITY_HEADERS: Record<string, string> = {
+	'Content-Type': 'application/json',
+	'X-Content-Type-Options': 'nosniff',
+	'X-Frame-Options': 'DENY'
+};
+
 /**
  * Create a successful JSON response
  */
 export function jsonResponse<T>(data: T, status = 200): Response {
 	return new Response(JSON.stringify(data), {
 		status,
-		headers: { 'Content-Type': 'application/json' }
+		headers: SECURITY_HEADERS
 	});
 }
 
@@ -104,7 +111,7 @@ export function errorResponse(message: string, status = 400, code?: ServerErrorC
 	};
 	return new Response(JSON.stringify(body), {
 		status,
-		headers: { 'Content-Type': 'application/json' }
+		headers: SECURITY_HEADERS
 	});
 }
 

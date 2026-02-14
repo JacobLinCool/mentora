@@ -2,7 +2,7 @@
  * Questionnaire route handlers
  */
 
-import { Courses, Questionnaires, type Questionnaire } from 'mentora-firebase';
+import { Questionnaires, type Questionnaire } from 'mentora-firebase';
 import {
 	errorResponse,
 	HttpStatus,
@@ -11,7 +11,7 @@ import {
 	type RouteContext,
 	type RouteDefinition
 } from '../types.js';
-import { requireAuth } from './utils.js';
+import { requireAuth, requireCourseAccess } from './utils.js';
 
 /**
  * GET /api/questionnaires?courseId=X[&available=true]
@@ -32,34 +32,7 @@ async function listQuestionnaires(ctx: RouteContext, request: Request): Promise<
 		);
 	}
 
-	// Check if course exists
-	const courseDoc = await ctx.firestore.doc(Courses.docPath(courseId)).get();
-	if (!courseDoc.exists) {
-		return errorResponse('Course not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
-	}
-
-	const courseData = Courses.schema.parse(courseDoc.data());
-
-	// Check if user has access (owner, member, or public course)
-	let hasAccess = courseData.visibility === 'public';
-	if (!hasAccess && courseData.ownerId === user.uid) {
-		hasAccess = true;
-	}
-	if (!hasAccess) {
-		const memberDoc = await ctx.firestore.doc(Courses.roster.docPath(courseId, user.uid)).get();
-		if (memberDoc.exists) {
-			const memberData = Courses.roster.schema.parse(memberDoc.data());
-			hasAccess = memberData.status === 'active';
-		}
-	}
-
-	if (!hasAccess) {
-		return errorResponse(
-			'Not authorized to view course questionnaires',
-			HttpStatus.FORBIDDEN,
-			ServerErrorCode.PERMISSION_DENIED
-		);
-	}
+	await requireCourseAccess(ctx, courseId, user.uid, 'questionnaires');
 
 	// Query questionnaires
 	let query = ctx.firestore

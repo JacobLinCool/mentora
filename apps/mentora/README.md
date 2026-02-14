@@ -36,3 +36,17 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Testing
+
+Default tests are deterministic and exclude live-network AI integration tests:
+
+```sh
+pnpm test
+```
+
+AI integration tests are opt-in and run separately:
+
+```sh
+pnpm test:integration
+```

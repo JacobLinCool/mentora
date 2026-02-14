@@ -7,6 +7,7 @@
 import { askingStanceBuilders } from "../builder/stage1-asking-stance.js";
 import { DialogueStage } from "../builder/types.js";
 import type { PromptExecutor } from "../types.js";
+import { formatStageResponse, type StageResponseFields } from "./format.js";
 import {
     AskingStanceHandler,
     CaseChallengeHandler,
@@ -106,7 +107,7 @@ export class MentoraOrchestrator {
         const message =
             typeof response === "string"
                 ? response
-                : `${(response as { response_message: string; concise_question: string }).response_message}\n\n${(response as { response_message: string; concise_question: string }).concise_question}`;
+                : formatStageResponse(response as StageResponseFields);
 
         const newState = addToHistory(
             {

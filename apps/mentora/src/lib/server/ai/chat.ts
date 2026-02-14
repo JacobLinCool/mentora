@@ -1,6 +1,6 @@
 import { env } from "$env/dynamic/private";
 import type { OpenAI } from "openai";
-import { ai, z, zodResponseFormat } from "./shared";
+import { ai, parseStructuredOutput, z, zodResponseFormat } from "./shared";
 
 const MENTORA_AI_CHAT_MODEL = env.MENTORA_AI_CHAT_MODEL || "openai/gpt-5-nano";
 
@@ -18,18 +18,13 @@ export async function chat<T>(
     });
 
     const message = response.choices[0]?.message;
-    if (message.refusal) {
+    if (message?.refusal) {
         throw new Error(`Chat completion refused: ${message.refusal}`);
     }
 
-    if (!message.content) {
+    if (!message?.content) {
         throw new Error("No chat content received");
     }
 
-    const parsed = format.safeParse(JSON.parse(message.content));
-    if (!parsed.success) {
-        throw new Error("Failed to parse chat completion result");
-    }
-
-    return parsed.data;
+    return parseStructuredOutput(message.content, format, "chat completion");
 }

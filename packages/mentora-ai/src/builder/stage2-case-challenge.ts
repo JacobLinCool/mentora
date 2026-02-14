@@ -7,6 +7,7 @@ import {
     RESPONSE_GENERATOR_BASE_SYSTEM_PROMPT,
     RESPONSE_GENERATOR_OUTPUT_FORMAT,
 } from "./prompts.js";
+import { confidenceScoreSchema, TRIGGER_DESCRIPTION } from "./schemas.js";
 import { buildContents } from "./utils.js";
 
 /**
@@ -18,8 +19,8 @@ export const CaseChallengeClassifierSchema = z.object({
         .describe("簡短分析使用者的回答邏輯、清晰度以及是否與先前立場矛盾"),
     detected_intent: z
         .enum(["TR_CLARIFY", "TR_SCAFFOLD", "TR_CASE_COMPLETED"])
-        .describe("對應狀態轉移表中的 Trigger ID"),
-    confidence_score: z.number().min(0).max(1).describe("信心分數 (0.0 - 1.0)"),
+        .describe(TRIGGER_DESCRIPTION),
+    confidence_score: confidenceScoreSchema,
     extracted_data: z
         .object({
             stance: z

@@ -6,6 +6,7 @@
     import { api } from "$lib";
     import type { Course } from "$lib/api";
     import {
+        A,
         Button,
         Card,
         Input,
@@ -159,6 +160,9 @@
                         <p class="py-4 text-center text-gray-600">
                             {m.courses_empty()}
                         </p>
+                        <p class="mt-2 text-sm text-gray-500">
+                            {m.courses_empty_owned_hint()}
+                        </p>
                     </Card>
                 {:else}
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -195,6 +199,12 @@
                         <p class="py-4 text-center text-gray-600">
                             {m.courses_empty()}
                         </p>
+                        <p class="mt-2 text-sm text-gray-500">
+                            {m.courses_empty_enrolled_hint()}
+                        </p>
+                        <A href={resolve("/explore")} class="mt-3 inline-block">
+                            {m.courses_empty_enrolled_cta()}
+                        </A>
                     </Card>
                 {:else}
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
