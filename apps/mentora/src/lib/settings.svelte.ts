@@ -6,6 +6,7 @@ import { m } from "$lib/paraglide/messages";
 import { getLocale } from "$lib/paraglide/runtime";
 import { signOut } from "firebase/auth";
 import { tick } from "svelte";
+import { SvelteDate } from "svelte/reactivity";
 
 /**
  * Format a timestamp as a localized date string.
@@ -13,11 +14,14 @@ import { tick } from "svelte";
  */
 export function formatDate(timestamp: number | undefined): string {
     if (!timestamp) return m.unknown();
-    return new Date(timestamp).toLocaleDateString(getLocale() || undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
+    return new SvelteDate(timestamp).toLocaleDateString(
+        getLocale() || undefined,
+        {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        },
+    );
 }
 
 /**

@@ -1,7 +1,8 @@
 import { PUBLIC_USE_FIREBASE_EMULATOR } from "$env/static/public";
-import { requireAuth } from "$lib/server/auth";
+import { requireAuth, type FirebaseUser } from "$lib/server/auth";
 import { firestore } from "$lib/server/firestore";
 import { json } from "@sveltejs/kit";
+import { decodeJwt } from "jose";
 import {
     joinPath,
     type Conversation,
@@ -13,6 +14,42 @@ import type { RequestHandler } from "./$types";
 
 const isEmulator = PUBLIC_USE_FIREBASE_EMULATOR === "true";
 const ONE_DAY = 86400000;
+
+async function requireEmulatorCompatibleAuth(
+    event: Parameters<RequestHandler>[0],
+): Promise<FirebaseUser> {
+    try {
+        return await requireAuth(event);
+    } catch (error) {
+        const authHeader = event.request.headers.get("Authorization");
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            throw error;
+        }
+
+        const token = authHeader.substring(7);
+        let payload: ReturnType<typeof decodeJwt>;
+        try {
+            payload = decodeJwt(token);
+        } catch {
+            throw error;
+        }
+        const uid = payload.user_id ?? payload.sub;
+
+        if (typeof uid !== "string" || !uid) {
+            throw error;
+        }
+
+        return {
+            uid,
+            email: typeof payload.email === "string" ? payload.email : "",
+            emailVerified:
+                typeof payload.email_verified === "boolean"
+                    ? payload.email_verified
+                    : false,
+            name: typeof payload.name === "string" ? payload.name : undefined,
+        };
+    }
+}
 
 async function createSharedAssignmentQuestionnaire(opts: {
     id: string;
@@ -69,7 +106,7 @@ export const GET: RequestHandler = async (event) => {
         );
     }
 
-    await requireAuth(event);
+    await requireEmulatorCompatibleAuth(event);
 
     // Generate deterministic sample data for emulator testing.
     // The hard-coded userId is intentional: sample data uses a fixed identity

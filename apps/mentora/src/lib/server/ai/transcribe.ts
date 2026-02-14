@@ -58,6 +58,8 @@ export async function transcribeAudio(
 
     const base64Audio = audio.toString("base64");
     const format = resolveTranscriptionAudioFormat(mimeType);
+    // Gemini's OpenAI-compatible endpoint accepts webm, but openai SDK typings currently allow only mp3/wav.
+    const typedFormat = format as "mp3" | "wav";
 
     const response = await ai.google.chat.completions.create({
         model: MENTORA_AI_TRANSCRIBE_MODEL,
@@ -73,7 +75,7 @@ export async function transcribeAudio(
                         type: "input_audio",
                         input_audio: {
                             data: base64Audio,
-                            format,
+                            format: typedFormat,
                         },
                     },
                 ],

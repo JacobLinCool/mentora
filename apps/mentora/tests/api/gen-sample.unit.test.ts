@@ -27,6 +27,14 @@ vi.mock("$lib/server/firestore", () => ({
 }));
 
 describe("/api/gen_sample endpoint", () => {
+    function createUnsignedToken(payload: Record<string, unknown>): string {
+        const header = Buffer.from(
+            JSON.stringify({ alg: "none", typ: "JWT" }),
+        ).toString("base64url");
+        const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+        return `${header}.${body}.`;
+    }
+
     beforeEach(() => {
         vi.restoreAllMocks();
         envMock.PUBLIC_USE_FIREBASE_EMULATOR = "false";
@@ -40,7 +48,7 @@ describe("/api/gen_sample endpoint", () => {
     async function loadHandler() {
         // Dynamic import so vi.mock takes effect per-test
         vi.resetModules();
-        const mod = await import("../../src/routes/api/gen_sample/+server.ts");
+        const mod = await import("../../src/routes/api/gen_sample/+server");
         return mod.GET;
     }
 
@@ -84,6 +92,34 @@ describe("/api/gen_sample endpoint", () => {
         const response = await handler(makeEvent() as never);
         expect(response.status).toBe(200);
 
+        const body = await response.json();
+        expect(body.success).toBe(true);
+    });
+
+    it("accepts unsigned emulator JWT when strict verification fails", async () => {
+        envMock.PUBLIC_USE_FIREBASE_EMULATOR = "true";
+        requireAuthMock.mockRejectedValue(
+            new Error("Invalid or expired token"),
+        );
+        const handler = await loadHandler();
+
+        const emulatorToken = createUnsignedToken({
+            sub: "emu-user",
+            user_id: "emu-user",
+            email: "emu@example.com",
+            email_verified: true,
+        });
+        const response = await handler(
+            makeEvent({
+                request: new Request("http://localhost/api/gen_sample", {
+                    headers: {
+                        Authorization: `Bearer ${emulatorToken}`,
+                    },
+                }),
+            }) as never,
+        );
+
+        expect(response.status).toBe(200);
         const body = await response.json();
         expect(body.success).toBe(true);
     });

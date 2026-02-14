@@ -63,7 +63,8 @@ describe('verifyFirebaseIdToken – production guard', () => {
 				email_verified: true,
 				user_id: 'prod-uid'
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		const result = await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID, {
@@ -86,7 +87,8 @@ describe('verifyFirebaseIdToken – production guard', () => {
 				email_verified: true,
 				user_id: 'verified-uid'
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		const result = await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID);
@@ -122,7 +124,8 @@ describe('verifyFirebaseIdToken – production guard', () => {
 				email_verified: true,
 				user_id: 'uid-env'
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		const result = await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID, {
@@ -161,7 +164,8 @@ describe('verifyFirebaseIdToken – payload validation', () => {
 				user_id: 'uid-1'
 				// email is missing
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
@@ -179,7 +183,8 @@ describe('verifyFirebaseIdToken – payload validation', () => {
 				user_id: 'uid-2'
 				// email_verified is missing
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
@@ -196,7 +201,8 @@ describe('verifyFirebaseIdToken – payload validation', () => {
 				email: 'a@b.c',
 				email_verified: true
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
@@ -231,7 +237,8 @@ describe('verifyFirebaseIdToken – payload validation', () => {
 				email_verified: true,
 				user_id: 'uid-empty-email'
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		await expect(verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID)).rejects.toThrow(
@@ -249,7 +256,8 @@ describe('verifyFirebaseIdToken – payload validation', () => {
 				email_verified: false,
 				user_id: 'uid-unverified'
 			},
-			protectedHeader: { alg: 'RS256' }
+			protectedHeader: { alg: 'RS256' },
+			key: new Uint8Array()
 		} as Awaited<ReturnType<typeof jwtVerify>>);
 
 		const result = await verifyFirebaseIdToken(FAKE_TOKEN, PROJECT_ID);
