@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { CircleMinus, CirclePlus, X } from "@lucide/svelte";
+    import { CircleMinus, CirclePlus, Loader2, X } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
     import Table from "$lib/components/ui/Table.svelte";
     import { api } from "$lib/api";
@@ -7,41 +7,53 @@
 
     let { courseId }: { courseId: string } = $props();
 
-    // UI Data Structure
+    type MemberRole = "student" | "auditor" | "instructor" | "ta";
     type Member = {
-        id: string; // doc ID
+        id: string;
         name: string;
         email: string;
         joinedDate: string;
-        role: "student" | "auditor" | "instructor" | "ta" | "owner";
+        role: MemberRole;
+        status: "active" | "invited";
     };
 
     let members = $state<Member[]>([]);
     let loading = $state(false);
+    let mutatingMemberId = $state<string | null>(null);
+    let error = $state<string | null>(null);
 
     onMount(() => {
-        loadMembers();
+        void loadMembers();
     });
 
     async function loadMembers() {
         if (!courseId) return;
+
         loading = true;
+        error = null;
+
         try {
             const res = await api.courses.getRoster(courseId);
-            if (res.success) {
-                // We need to fetch user profiles to get names
-                // For "invited" members (no userId), use email as name
-                const roster = res.data.filter(
-                    (m) => m.status === "active" || m.status === "invited",
-                );
+            if (!res.success) {
+                error = res.error;
+                return;
+            }
 
-                const memberPromises = roster.map(async (r) => {
-                    let name = r.email.split("@")[0]; // Fallback
+            const roster = res.data.filter(
+                (member) =>
+                    (member.status === "active" ||
+                        member.status === "invited") &&
+                    member.id,
+            );
 
-                    if (r.userId) {
+            const mapped = await Promise.all(
+                roster.map(async (member) => {
+                    let name = member.email.split("@")[0];
+
+                    if (member.userId) {
                         try {
                             const profileRes = await api.users.getProfile(
-                                r.userId,
+                                member.userId,
                             );
                             if (
                                 profileRes.success &&
@@ -50,75 +62,111 @@
                                 name = profileRes.data.displayName;
                             }
                         } catch {
-                            // ignore
+                            // Keep fallback name if profile lookup fails.
                         }
                     }
 
-                    const role: Member["role"] =
-                        r.role === "student" ||
-                        r.role === "auditor" ||
-                        r.role === "instructor" ||
-                        r.role === "ta" ||
-                        r.role === "owner"
-                            ? r.role
+                    const role =
+                        member.role === "student" ||
+                        member.role === "auditor" ||
+                        member.role === "instructor" ||
+                        member.role === "ta"
+                            ? member.role
                             : "student";
 
                     return {
-                        id: r.userId || r.email, // Use userId or email as key if docId not available in return type (wait, getCourseRoster returns schema objects which might not have doc ID if schema doesn't include it?)
-                        // getCourseRoster returns schema.parse(data). Does schema include ID?
-                        // Looking at mentora-firebase schema... it typically doesn't include document ID field mixed in unless explicitly added.
-                        // However, api.courses.ts implementation: snapshot.docs.map(doc => Courses.roster.schema.parse(doc.data()))
-                        // It DOES NOT map doc.id.
-                        // I might need to rely on email/userId as unique key for now (usually email is unique in roster).
-                        // Refatoring to iterate: we need doc IDs to update.
-                        // But wait! api.courses.updateMember takes memberId. unique doc ID.
-                        // I NEED the memberId (roster doc ID).
-                        // The current API implementation of `getCourseRoster` seems to DROP the doc ID?
-                        // Let me check mentora-api/.../courses.ts again carefully.
-                        // line 108: return snapshot.docs.map((doc) => Courses.roster.schema.parse(doc.data()));
-                        // YES. It drops the ID. This is a BUG/Limitation in backend API wrapper.
-                        // I cannot fix backend files.
-                        // So I cannot call updateMember correctly without memberId.
-                        // BUT, maybe I can find memberId by query? `updateMember` implementation takes memberId.
-                        // Oh, `inviteMember` returns memberId.
-                        // `getCourseRoster` is insufficient for management.
-                        // Workaround: I can't really do management without IDs.
-                        // I will assume for now I cannot fully implement toggle/remove without fixing backend.
-                        // But I must not change backend.
-                        // I will implement read-only for now and add a TODO log.
-                        name: name,
-                        email: r.email,
-                        joinedDate: r.joinedAt
-                            ? new Date(r.joinedAt).toLocaleString()
+                        id: member.id,
+                        name,
+                        email: member.email,
+                        joinedDate: member.joinedAt
+                            ? new Date(member.joinedAt).toLocaleString()
                             : "-",
                         role,
-                    };
-                });
+                        status: member.status,
+                    } as Member;
+                }),
+            );
 
-                members = await Promise.all(memberPromises);
-            }
+            members = mapped;
         } catch (e) {
-            console.error(e);
+            error = e instanceof Error ? e.message : "Failed to load members";
         } finally {
             loading = false;
         }
     }
 
-    async function toggleRole(member: Member) {
-        console.log("Toggle role for", member);
-        // Limitation: We don't have the roster Doc ID (memberId) because getCourseRoster doesn't return it.
-        // We cannot call api.courses.updateMember(courseId, memberId, ...) reliably.
-        alert("Feature unavailable: API does not return Member ID.");
+    function canToggleRole(member: Member): boolean {
+        return member.role === "student" || member.role === "auditor";
     }
 
-    async function removeMember(id: string) {
-        console.log("Remove member", id);
-        // Same limitation
-        alert("Feature unavailable: API does not return Member ID.");
+    function canRemoveMember(member: Member): boolean {
+        return member.role === "student" || member.role === "auditor";
+    }
+
+    async function toggleRole(member: Member) {
+        if (!courseId || !canToggleRole(member)) return;
+
+        mutatingMemberId = member.id;
+        error = null;
+
+        try {
+            const nextRole = member.role === "student" ? "auditor" : "student";
+            const result = await api.courses.updateMember(courseId, member.id, {
+                role: nextRole,
+            });
+
+            if (!result.success) {
+                error = result.error;
+                return;
+            }
+
+            await loadMembers();
+        } catch (e) {
+            error = e instanceof Error ? e.message : "Failed to update member";
+        } finally {
+            mutatingMemberId = null;
+        }
+    }
+
+    async function removeMember(member: Member) {
+        if (!courseId || !canRemoveMember(member)) return;
+
+        if (!confirm(m.course_members_remove())) return;
+
+        mutatingMemberId = member.id;
+        error = null;
+
+        try {
+            const result = await api.courses.removeMember(courseId, member.id);
+            if (!result.success) {
+                error = result.error;
+                return;
+            }
+
+            await loadMembers();
+        } catch (e) {
+            error = e instanceof Error ? e.message : "Failed to remove member";
+        } finally {
+            mutatingMemberId = null;
+        }
+    }
+
+    function roleLabel(role: MemberRole): string {
+        if (role === "student") return m.course_members_role_student();
+        if (role === "auditor") return m.course_members_role_auditor();
+        if (role === "instructor") return "Instructor";
+        return "TA";
     }
 </script>
 
-<!-- Members Table -->
+{#if error}
+    <div
+        class="mb-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600"
+    >
+        {error}
+    </div>
+{/if}
+
 {#if loading}
     <div class="p-8 text-center text-gray-500">Loading...</div>
 {:else}
@@ -155,41 +203,44 @@
 
 {#snippet renderCell(item: Member, key: string)}
     {#if key === "role"}
-        <div class="font-medium text-gray-600">
-            {item.role === "student"
-                ? m.course_members_role_student()
-                : m.course_members_role_auditor()}
-        </div>
+        <div class="font-medium text-gray-600">{roleLabel(item.role)}</div>
+    {:else if key === "name"}
+        <div class="text-gray-600">{item.name}</div>
+    {:else if key === "email"}
+        <div class="text-gray-600">{item.email}</div>
     {:else}
-        <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
-        <div class="text-gray-600">{(item as any)[key]}</div>
+        <div class="text-gray-600">{item.joinedDate}</div>
     {/if}
 {/snippet}
 
 {#snippet renderActions(member: Member)}
-    {#if member.role === "student"}
+    {#if canToggleRole(member)}
         <button
-            class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
+            class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             onclick={() => toggleRole(member)}
+            disabled={mutatingMemberId === member.id}
         >
-            <CircleMinus size={16} class="fill-gray-600 text-white" />
-            {m.course_members_change_to_auditor()}
-        </button>
-    {:else}
-        <button
-            class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-            onclick={() => toggleRole(member)}
-        >
-            <CirclePlus size={16} class="fill-gray-600 text-white" />
-            {m.course_members_change_to_student()}
+            {#if mutatingMemberId === member.id}
+                <Loader2 size={14} class="animate-spin" />
+            {:else if member.role === "student"}
+                <CircleMinus size={16} class="fill-gray-600 text-white" />
+            {:else}
+                <CirclePlus size={16} class="fill-gray-600 text-white" />
+            {/if}
+            {member.role === "student"
+                ? m.course_members_change_to_auditor()
+                : m.course_members_change_to_student()}
         </button>
     {/if}
 
-    <button
-        class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-        onclick={() => removeMember(member.id)}
-    >
-        <X size={16} class="text-gray-600" />
-        {m.course_members_remove()}
-    </button>
+    {#if canRemoveMember(member)}
+        <button
+            class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onclick={() => removeMember(member)}
+            disabled={mutatingMemberId === member.id}
+        >
+            <X size={16} class="text-gray-600" />
+            {m.course_members_remove()}
+        </button>
+    {/if}
 {/snippet}

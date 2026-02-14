@@ -58,6 +58,33 @@ describe('Types Module', () => {
 			}
 		});
 
+		it('should extract readable error from JSON string payload', () => {
+			const result = failure(
+				'{"success":false,"error":"Invalid course code format","code":"INVALID_INPUT"}'
+			);
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error).toBe('Invalid course code format');
+				expect(result.code).toBe(APIErrorCode.INVALID_INPUT);
+			}
+		});
+
+		it('should extract nested message from object payload', () => {
+			const result = failure({
+				error: {
+					message: 'Permission denied',
+					status: 'PERMISSION_DENIED'
+				}
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error).toBe('Permission denied');
+				expect(result.code).toBe(APIErrorCode.PERMISSION_DENIED);
+			}
+		});
+
 		it('should include error code when provided', () => {
 			const result = failure('Not found', APIErrorCode.NOT_FOUND);
 

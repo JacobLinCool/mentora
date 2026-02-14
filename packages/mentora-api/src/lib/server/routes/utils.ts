@@ -110,12 +110,13 @@ export async function requireDocument<T>(
 }
 
 /**
- * Verify course exists and user has read access (public, owner, or active member).
+ * Verify course exists and user has read access (owner/member by default).
  *
  * @param ctx - Route context (needs firestore)
  * @param courseId - Course document ID
  * @param userId - Authenticated user's UID
  * @param resource - Resource label for error message (e.g. "topics")
+ * @param options - Access modifiers (e.g. allowPublic)
  * @returns Parsed CourseDoc
  * @throws Response 404 if course not found, 403 if access denied
  */
@@ -123,7 +124,10 @@ export async function requireCourseAccess(
 	ctx: RouteContext,
 	courseId: string,
 	userId: string,
-	resource: string
+	resource: string,
+	options?: {
+		allowPublic?: boolean;
+	}
 ): Promise<CourseDoc> {
 	const courseData = await requireDocument(
 		ctx,
@@ -132,7 +136,7 @@ export async function requireCourseAccess(
 		'Course'
 	);
 
-	let hasAccess = courseData.visibility === 'public';
+	let hasAccess = options?.allowPublic === true && courseData.visibility === 'public';
 	if (!hasAccess && courseData.ownerId === userId) {
 		hasAccess = true;
 	}

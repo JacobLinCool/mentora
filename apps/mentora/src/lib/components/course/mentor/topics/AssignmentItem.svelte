@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { m } from "$lib/paraglide/messages";
     import {
         GripVertical,
         ClipboardList,
@@ -77,6 +78,7 @@
                     type="button"
                     class="cursor-pointer p-1 text-gray-400 hover:text-gray-600"
                     onclick={onEdit}
+                    aria-label={m.edit()}
                 >
                     <Pencil size={16} />
                 </button>
@@ -84,6 +86,7 @@
                     type="button"
                     class="cursor-pointer p-1 text-gray-400 hover:text-red-500"
                     onclick={onDelete}
+                    aria-label={m.delete()}
                 >
                     <Trash2 size={16} />
                 </button>

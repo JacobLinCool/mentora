@@ -164,11 +164,6 @@ describe('addTurn Route Handler (Integration)', () => {
 				'followup'
 			);
 
-			if (!result.success && result.error?.includes('fetch')) {
-				console.log('Skipping - backend not available');
-				return;
-			}
-
 			expect(result.success).toBe(true);
 		});
 
@@ -238,11 +233,6 @@ describe('addTurn Route Handler (Integration)', () => {
 				'idea'
 			);
 
-			if (!addTurnResult.success && addTurnResult.error?.includes('fetch')) {
-				console.log('Skipping - backend not available');
-				return;
-			}
-
 			if (addTurnResult.success) {
 				// Get updated state
 				await delay(300);
@@ -281,11 +271,6 @@ describe('addTurn Route Handler (Integration)', () => {
 				'Message to persist',
 				'idea'
 			);
-
-			if (!addTurnResult.success && addTurnResult.error?.includes('fetch')) {
-				console.log('Skipping - backend not available');
-				return;
-			}
 
 			if (addTurnResult.success) {
 				// Get updated turns

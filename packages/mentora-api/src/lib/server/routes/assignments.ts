@@ -13,7 +13,8 @@ import {
 } from '../types.js';
 import { requireAuth, requireCourseAccess, parseBody } from './utils.js';
 import { GenerateContentSchema } from '../llm/schemas.js';
-import { getContentExecutor } from '../llm/executors.js';
+import { EXECUTOR_MODEL, getContentExecutor } from '../llm/executors.js';
+import { TOKEN_USAGE_FEATURES, createTokenUsageReport } from '../llm/token-usage.js';
 
 /**
  * GET /api/assignments?courseId=X[&available=true]
@@ -91,10 +92,23 @@ async function generateContent(ctx: RouteContext, request: Request): Promise<Res
 
 		// Generate detailed content from the question
 		const generatedContent = await contentExecutor.generateContent(question);
+		const tokenUsage = createTokenUsageReport([
+			{
+				feature: TOKEN_USAGE_FEATURES.ASSIGNMENT_CONTENT_GENERATION,
+				usage: contentExecutor.getTokenUsage()
+			}
+		]);
 
 		return jsonResponse(
 			{
-				content: generatedContent
+				content: generatedContent,
+				tokenUsage: {
+					byFeature: tokenUsage.byFeature,
+					totals: tokenUsage.totals,
+					models: {
+						[TOKEN_USAGE_FEATURES.ASSIGNMENT_CONTENT_GENERATION]: EXECUTOR_MODEL.CONTENT
+					}
+				}
 			},
 			HttpStatus.OK
 		);

@@ -8,11 +8,12 @@
  * accessing dialogue state. Pass userId to ensure authorization checks are enforced.
  */
 
-import { MentoraOrchestrator, type DialogueState } from 'mentora-ai';
+import { MentoraOrchestrator, type DialogueState, type StageResult } from 'mentora-ai';
 import { DialogueStage } from 'mentora-ai';
 import type { Firestore } from 'fires2rest';
 import { Conversations, joinPath } from 'mentora-firebase';
 import { getPromptExecutor } from './executors.js';
+import { normalizeTokenUsage, sumTokenUsageTotals, type TokenUsageTotals } from './token-usage.js';
 
 /**
  * Singleton orchestrator instance
@@ -196,6 +197,7 @@ export async function processWithLLM(
 	aiMessage: string;
 	updatedState: DialogueState;
 	ended: boolean;
+	tokenUsage: TokenUsageTotals;
 }> {
 	// Step 1: Load current state from Firestore (includes ownership validation FIRST)
 	const currentState = await loadDialogueState(firestore, conversationId, userId);
@@ -207,7 +209,8 @@ export async function processWithLLM(
 	// The orchestrator marks new states with stage === 'awaiting_start'
 	const isFirstInteraction = currentState.stage === 'awaiting_start';
 
-	let result;
+	let result: StageResult;
+	let usage = normalizeTokenUsage(null);
 
 	if (isFirstInteraction) {
 		// First interaction: initialize the dialogue, then process student's first message
@@ -223,10 +226,14 @@ export async function processWithLLM(
 		// Step 3b: Immediately process the student's first message
 		console.log(`[MentoraLLM] Processing student's first message`);
 		result = await orchestrator.processStudentInput(initResult.newState, studentMessage);
+
+		// First interaction uses two LLM calls. Both must be included in token accounting.
+		usage = sumTokenUsageTotals(initResult.usage, result.usage);
 	} else {
 		// Subsequent interactions: process the student's input
 		console.log(`[MentoraLLM] Processing student input at stage: ${currentState.stage}`);
 		result = await orchestrator.processStudentInput(currentState, studentMessage);
+		usage = normalizeTokenUsage(result.usage);
 	}
 
 	// Step 4: Save updated state to Firestore (includes ownership validation)
@@ -236,7 +243,8 @@ export async function processWithLLM(
 	return {
 		aiMessage: result.message,
 		updatedState: result.newState,
-		ended: result.ended || orchestrator.isEnded(result.newState)
+		ended: result.ended || orchestrator.isEnded(result.newState),
+		tokenUsage: usage
 	};
 }
 

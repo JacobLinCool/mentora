@@ -77,11 +77,9 @@ export const JoinCourseSchema = z.object({
 // ============ Wallets ============
 
 export const AddCreditsSchema = z.object({
-	action: z.literal('addCredits').optional(),
 	amount: z.number().positive('Amount must be positive'),
-	paymentMethodId: z.string().optional(),
-	idempotencyKey: z.string().optional(),
-	currency: z.string().optional()
+	idempotencyKey: z.string().min(1, 'idempotencyKey is required'),
+	paymentRef: z.string().min(1).max(256).nullable().optional().default(null)
 });
 
 // ============ Type exports ============

@@ -10,6 +10,10 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api, type Conversation } from "$lib/api";
+    import {
+        resolveConversationStage,
+        TOTAL_CONVERSATION_STAGES,
+    } from "$lib/features/conversation/stage";
 
     const conversationId = $derived(page.params.id);
     const convState = api.createState<Conversation>();
@@ -55,25 +59,27 @@
     let isRecording = $state(false);
 
     // Data derived
-    const stageMap: Record<string, number> = {
-        awaiting_idea: 1,
-        adding_counterpoint: 2,
-        awaiting_followup: 3,
-        adding_final_summary: 4,
-        closed: 5,
-    };
-    let currentStage = $derived(
-        conversation?.state ? (stageMap[conversation.state as string] ?? 1) : 1,
-    );
-    let totalStages = $derived(5);
+    let currentStage = $derived(resolveConversationStage(conversation?.state));
+    let totalStages = $derived(TOTAL_CONVERSATION_STAGES);
 
     let currentQuestion = $state("");
     let keywords = $state<string[]>([]);
 
     let messageInput = $state("");
     let sending = $state(false);
+    let sendError = $state<string | null>(null);
 
-    let lastProcessedTurnId = $state<string | null>(null);
+    let lastRenderedTurnId = $state<string | null>(null);
+
+    function getLatestAiTurn(turns: NonNullable<Conversation["turns"]>) {
+        for (let i = turns.length - 1; i >= 0; i--) {
+            // Turns are appended as user -> AI pairs. Odd indexes are AI turns.
+            if (i % 2 === 1) {
+                return turns[i];
+            }
+        }
+        return null;
+    }
 
     function goBack() {
         if (courseId) {
@@ -85,42 +91,28 @@
 
     $effect(() => {
         const turns = conversation?.turns || [];
-        const lastTurn = turns.at(-1);
+        const latestAiTurn = getLatestAiTurn(turns);
 
-        if (lastTurn && lastTurn.id !== lastProcessedTurnId) {
-            // Heuristic: If type is 'idea' or 'followup', it is likely user.
-            const isUser =
-                lastTurn.type === "idea" || lastTurn.type === "followup";
-
-            if (!isUser) {
-                // New assistant message
-                const content = lastTurn.text;
-
-                currentQuestion = content;
-
-                lastProcessedTurnId = lastTurn.id;
-
-                // Trigger UI flow
-                phase = "responding";
-                typingPhase = "question";
-            } else {
-                // User message
-                lastProcessedTurnId = lastTurn.id;
-                // Stay in ready or show thinking?
+        if (!latestAiTurn) {
+            if (turns.length === 0) {
+                currentQuestion = "";
+                lastRenderedTurnId = null;
             }
-        } else if (turns.length > 0 && lastProcessedTurnId === null) {
-            // First load initialization
-            const last = turns.at(-1);
-            if (last) {
-                lastProcessedTurnId = last.id;
-                const isUser = last.type === "idea" || last.type === "followup";
+            return;
+        }
 
-                if (!isUser) {
-                    currentQuestion = last.text;
-                    // Don't re-type on load, just show
-                    phase = "ready";
-                }
-            }
+        if (lastRenderedTurnId === null) {
+            lastRenderedTurnId = latestAiTurn.id;
+            currentQuestion = latestAiTurn.text;
+            phase = "ready";
+            return;
+        }
+
+        if (latestAiTurn.id !== lastRenderedTurnId) {
+            currentQuestion = latestAiTurn.text;
+            lastRenderedTurnId = latestAiTurn.id;
+            phase = "responding";
+            typingPhase = "question";
         }
     });
 
@@ -140,29 +132,39 @@
         showKeywords = !showKeywords;
     }
 
+    async function blobToBase64(blob: Blob): Promise<string> {
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode(...chunk);
+        }
+        return btoa(binary);
+    }
+
     async function handleRecordingComplete(blob: Blob) {
-        // Placeholder for audio processing
-        // In the future, this will:
-        // 1. Upload the blob to cloud storage
-        // 2. Call the transcription API (or send directly to LLM)
-        // 3. Add the user's turn with audioId
+        if (!conversationId) return;
 
-        console.log("Audio recorded:", blob.size, "bytes");
-
-        // Simulate sending state for UI feedback
         sending = true;
-
-        // Simulate processing delay
-        setTimeout(async () => {
-            // For now, we can't really do anything without the backend support
-            // So we just reset the state.
-            // Ideally, we would simulate a user message saying "[Audio Message]"
-            // if we wanted to test the flow.
-
-            // await api.conversations.addTurn(conversationId, "[Audio Message Placeholder]", "idea");
-
+        sendError = null;
+        try {
+            const audioBase64 = await blobToBase64(blob);
+            const res = await api.conversations.addTurn(conversationId, {
+                audioBase64,
+                audioMimeType: blob.type || "audio/webm",
+            });
+            if (!res.success) {
+                console.error("Failed to add audio turn:", res.error);
+                sendError = m.conversation_voice_send_failed();
+            }
+        } catch (e) {
+            console.error("Error sending audio turn:", e);
+            sendError = m.conversation_voice_send_error();
+        } finally {
             sending = false;
-        }, 1500);
+        }
     }
 
     function handleShowTextInput() {
@@ -170,16 +172,14 @@
     }
 
     async function handleSendMessage() {
-        if (!messageInput.trim() || !conversationId) return;
+        const text = messageInput.trim();
+        if (!text || !conversationId) return;
 
         sending = true;
+        sendError = null;
 
         try {
-            const res = await api.conversations.addTurn(
-                conversationId,
-                messageInput,
-                "idea",
-            );
+            const res = await api.conversations.addTurn(conversationId, text);
             if (!res.success) {
                 console.error("Failed to add turn:", res.error);
                 let msg = String(res.error);
@@ -190,14 +190,16 @@
                 ) {
                     msg = (res.error as { message: string }).message;
                 }
-                alert("Failed to send message: " + (msg || "Unknown error"));
+                sendError = m.conversation_send_failed_with_reason({
+                    reason: msg || m.unknown(),
+                });
             } else {
                 messageInput = "";
                 showTextInput = false;
             }
         } catch (e) {
             console.error("Error sending message:", e);
-            alert("Error sending message. Check console for details.");
+            sendError = m.conversation_send_error();
         } finally {
             sending = false;
         }
@@ -213,7 +215,7 @@
         {#if courseId}
             <div class="absolute top-6 left-6 z-50">
                 <button
-                    class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:translate-x-[-2px] hover:bg-white/15"
+                    class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:-translate-x-0.5 hover:bg-white/15"
                     onclick={goBack}
                     aria-label="Back to course"
                 >
@@ -229,7 +231,7 @@
         {#if !conversation}
             <div class="flex h-full items-center justify-center">
                 <div class="animate-pulse text-white/50">
-                    Loading conversation...
+                    {m.conversation_loading()}
                 </div>
             </div>
         {:else if phase === "responding"}
@@ -285,6 +287,7 @@
                                 class="send-btn"
                                 onclick={handleSendMessage}
                                 disabled={sending || !messageInput.trim()}
+                                aria-label={m.conversation_send()}
                             >
                                 <Send class="send-icon" />
                             </button>
@@ -305,6 +308,11 @@
 
                 <!-- Stage indicator -->
                 <div class="stage-section">
+                    {#if sendError}
+                        <p class="mb-2 text-center text-sm text-amber-300">
+                            {sendError}
+                        </p>
+                    {/if}
                     <StageIndicator {currentStage} {totalStages} />
                 </div>
             </div>

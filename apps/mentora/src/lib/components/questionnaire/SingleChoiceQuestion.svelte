@@ -17,7 +17,7 @@
     <h2 class="question-text">{question}</h2>
 
     <div class="options">
-        {#each options as option (option)}
+        {#each options as option, index (option + "|" + index)}
             <button
                 class="option-card"
                 class:selected={value === option}

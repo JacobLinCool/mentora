@@ -8,6 +8,8 @@
     import { onMount } from "svelte";
     import { api } from "$lib";
     import type { Course } from "$lib/api";
+    import { formatMentoraDateTime } from "$lib/features/datetime/format";
+    import { startVisibilityPolling } from "$lib/features/polling/visibility";
 
     // Props
     const courseId = $derived(page.params.id);
@@ -66,24 +68,17 @@
     function formatDate(
         ts: number | Date | { toDate: () => Date } | null | undefined,
     ) {
-        if (!ts) return "-";
-        const d =
-            typeof ts === "number"
-                ? new Date(ts)
-                : !(ts instanceof Date) && "toDate" in ts
-                  ? ts.toDate()
-                  : new Date(ts as Date | number | string);
-        return (
-            d.toLocaleDateString() +
-            " " +
-            d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        );
+        return formatMentoraDateTime(ts);
     }
 
     onMount(() => {
-        loadCourseData();
-        const interval = setInterval(loadCourseData, 5000);
-        return () => clearInterval(interval);
+        const stopPolling = startVisibilityPolling(() => loadCourseData(), {
+            intervalMs: 5000,
+            runImmediately: true,
+            onError: (error) =>
+                console.error("Failed to refresh course", error),
+        });
+        return () => stopPolling();
     });
 
     function handleTabChange(tab: string) {

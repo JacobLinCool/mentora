@@ -1,10 +1,14 @@
 <script lang="ts">
+    import { api } from "$lib";
     import { m } from "$lib/paraglide/messages";
-    import { setMentorMode } from "$lib/temp.svelte";
     import { createSettingsState, formatDate } from "$lib/settings.svelte";
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
     import { resolve } from "$app/paths";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
+    import {
+        getNextLocale,
+        switchActiveMode,
+    } from "$lib/features/settings/actions";
     import {
         User,
         Mail,
@@ -19,6 +23,22 @@
     import { slide } from "svelte/transition";
 
     const s = createSettingsState();
+    let switchingMode = $state(false);
+
+    async function handleSwitchToStudent() {
+        if (switchingMode) return;
+        switchingMode = true;
+        try {
+            const result = await switchActiveMode(api, "student");
+            if (!result.success) {
+                console.error("Failed to switch mode:", result.error);
+            }
+        } catch (error) {
+            console.error("Failed to switch mode:", error);
+        } finally {
+            switchingMode = false;
+        }
+    }
 </script>
 
 <svelte:head>
@@ -284,7 +304,8 @@
                             <div class="space-y-4">
                                 <button
                                     class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-gray-100 p-4 transition hover:border-gray-300 hover:bg-gray-50"
-                                    onclick={() => setMentorMode(false)}
+                                    onclick={handleSwitchToStudent}
+                                    disabled={switchingMode}
                                 >
                                     <span
                                         class="text-sm font-medium text-gray-900"
@@ -301,10 +322,7 @@
                                 <button
                                     class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-gray-100 p-4 transition hover:border-gray-300 hover:bg-gray-50"
                                     onclick={() => {
-                                        const current = getLocale();
-                                        const next =
-                                            current === "en" ? "zh-tw" : "en";
-                                        setLocale(next);
+                                        setLocale(getNextLocale(getLocale()));
                                     }}
                                 >
                                     <div class="flex items-center gap-3">

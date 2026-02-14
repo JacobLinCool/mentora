@@ -7,9 +7,18 @@
         Button,
         Textarea,
     } from "flowbite-svelte";
-    import { api } from "$lib/api";
 
-    let { open = $bindable(false), onCreate } = $props();
+    type CreateCoursePayload = {
+        title: string;
+        code: string;
+        visibility: "public" | "unlisted" | "private";
+        description: string;
+    };
+
+    let { open = $bindable(false), onCreate } = $props<{
+        open?: boolean;
+        onCreate?: (payload: CreateCoursePayload) => Promise<void> | void;
+    }>();
 
     let title = $state("");
     let code = $state("");
@@ -29,31 +38,28 @@
             title = "New Course";
         }
 
+        if (!onCreate) {
+            errorMessage = "Missing create handler.";
+            return;
+        }
+
         loading = true;
         errorMessage = "";
 
         try {
-            const result = await api.courses.create(title, code || undefined, {
+            await onCreate({
+                title: title.trim(),
+                code: code.trim(),
+                description: description || "",
                 visibility,
-                description: description || null,
             });
 
-            if (result.success) {
-                const courseId = result.data;
-                // Fetch full course details to update UI
-                const courseRes = await api.courses.get(courseId);
-                if (courseRes.success && onCreate) {
-                    onCreate(courseRes.data);
-                }
-                open = false;
-                // Reset form
-                title = "";
-                code = "";
-                description = "";
-                visibility = "private";
-            } else {
-                errorMessage = result.error;
-            }
+            open = false;
+            // Reset form
+            title = "";
+            code = "";
+            description = "";
+            visibility = "private";
         } catch (e) {
             errorMessage =
                 e instanceof Error ? e.message : "Failed to create course";

@@ -1,4 +1,5 @@
 import type { RulesTestEnvironment } from "@firebase/rules-unit-testing";
+import type { Firestore } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
     assertFails,
@@ -40,6 +41,26 @@ function createResponseData(overrides: Record<string, unknown> = {}) {
         submittedAt: Date.now(),
         ...overrides,
     };
+}
+
+async function seedStandaloneQuestionnaire(
+    firestore: Firestore,
+    questionnaireId = "questionnaire123",
+) {
+    await firestore.collection("questionnaires").doc(questionnaireId).set({
+        id: questionnaireId,
+        courseId: null,
+        topicId: null,
+        title: "Standalone Questionnaire",
+        questions: [],
+        startAt: Date.now(),
+        dueAt: null,
+        allowLate: false,
+        allowResubmit: false,
+        createdBy: "system",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+    });
 }
 
 describe("QuestionnaireResponses Security Rules", () => {
@@ -384,6 +405,10 @@ describe("QuestionnaireResponses Security Rules", () => {
             const studentId = "student456";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                await seedStandaloneQuestionnaire(context.firestore());
+            });
+
             await assertSucceeds(
                 db
                     .collection("questionnaireResponses")
@@ -402,6 +427,10 @@ describe("QuestionnaireResponses Security Rules", () => {
             const otherStudentId = "student789";
             const db = testEnv.authenticatedContext(studentId).firestore();
 
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                await seedStandaloneQuestionnaire(context.firestore());
+            });
+
             await assertFails(
                 db
                     .collection("questionnaireResponses")
@@ -418,6 +447,10 @@ describe("QuestionnaireResponses Security Rules", () => {
             const responseId = "response123";
             const db = testEnv.unauthenticatedContext().firestore();
 
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                await seedStandaloneQuestionnaire(context.firestore());
+            });
+
             await assertFails(
                 db
                     .collection("questionnaireResponses")
@@ -430,6 +463,10 @@ describe("QuestionnaireResponses Security Rules", () => {
             const responseId = "response123";
             const studentId = "student456";
             const db = testEnv.authenticatedContext(studentId).firestore();
+
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                await seedStandaloneQuestionnaire(context.firestore());
+            });
 
             await assertFails(
                 db
@@ -452,8 +489,9 @@ describe("QuestionnaireResponses Security Rules", () => {
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
-                await context
-                    .firestore()
+                const fs = context.firestore();
+                await seedStandaloneQuestionnaire(fs);
+                await fs
                     .collection("questionnaireResponses")
                     .doc(responseId)
                     .set(
@@ -489,8 +527,9 @@ describe("QuestionnaireResponses Security Rules", () => {
             const db = testEnv.authenticatedContext(otherStudentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
-                await context
-                    .firestore()
+                const fs = context.firestore();
+                await seedStandaloneQuestionnaire(fs);
+                await fs
                     .collection("questionnaireResponses")
                     .doc(responseId)
                     .set(
@@ -524,8 +563,9 @@ describe("QuestionnaireResponses Security Rules", () => {
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
-                await context
-                    .firestore()
+                const fs = context.firestore();
+                await seedStandaloneQuestionnaire(fs);
+                await fs
                     .collection("questionnaireResponses")
                     .doc(responseId)
                     .set(
@@ -550,8 +590,9 @@ describe("QuestionnaireResponses Security Rules", () => {
             const db = testEnv.authenticatedContext(studentId).firestore();
 
             await testEnv.withSecurityRulesDisabled(async (context) => {
-                await context
-                    .firestore()
+                const fs = context.firestore();
+                await seedStandaloneQuestionnaire(fs);
+                await fs
                     .collection("questionnaireResponses")
                     .doc(responseId)
                     .set(

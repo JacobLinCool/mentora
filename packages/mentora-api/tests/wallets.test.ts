@@ -101,7 +101,10 @@ describe('Wallets Module (Integration)', () => {
 
 	describe('addCredits()', () => {
 		it('should call backend to add credits', async () => {
-			const result = await client.wallets.addCredits(100, 'usd');
+			const result = await client.wallets.addCredits({
+				amount: 100,
+				idempotencyKey: `test_${Date.now()}`
+			});
 
 			// Backend may not be running in test environment
 			if (!result.success && result.error?.includes('fetch')) {
@@ -112,6 +115,7 @@ describe('Wallets Module (Integration)', () => {
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.id).toBeDefined();
+				expect(typeof result.data.idempotent).toBe('boolean');
 			}
 		});
 	});

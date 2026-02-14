@@ -6,8 +6,8 @@
 
     let { currentStage, totalStages }: Props = $props();
 
-    // Generate array for stages
-    let stages = $derived(Array.from({ length: totalStages }, (_, i) => i));
+    // `currentStage` is 1-based. Keep stage rendering 1-based to avoid off-by-one UI.
+    let stages = $derived(Array.from({ length: totalStages }, (_, i) => i + 1));
 </script>
 
 <div class="stage-indicator">

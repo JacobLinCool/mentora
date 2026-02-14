@@ -6,17 +6,22 @@
         browserLocalPersistence,
     } from "firebase/auth";
     import { auth } from "$lib/firebase";
-    import { m } from "$lib/paraglide/messages.js";
+    import { m } from "$lib/paraglide/messages";
     import { Button, Card, Alert } from "flowbite-svelte";
     import { LoaderCircle, LogIn } from "@lucide/svelte";
     import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
+    import { page } from "$app/state";
 
     let error = $state<string | null>(null);
     let loading = $state(false);
 
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
+    const redirectTo = $derived.by(() => {
+        const next = page.url.searchParams.get("next");
+        if (!next || !next.startsWith("/")) return "/";
+        return next;
+    });
 
     async function ensurePersistence() {
         try {
@@ -33,7 +38,8 @@
         try {
             await signInWithPopup(auth, provider);
 
-            await goto(resolve("/"), { invalidateAll: true });
+            // eslint-disable-next-line svelte/no-navigation-without-resolve
+            await goto(redirectTo, { invalidateAll: true });
         } catch (e: unknown) {
             error = (e as Error)?.message ?? m.auth_sign_in_failed();
         } finally {

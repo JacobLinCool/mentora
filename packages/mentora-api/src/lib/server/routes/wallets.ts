@@ -4,8 +4,35 @@
 
 import { Wallets, type LedgerEntry } from 'mentora-firebase';
 import { AddCreditsSchema } from '../llm/schemas.js';
-import { HttpStatus, jsonResponse, type RouteContext, type RouteDefinition } from '../types.js';
+import {
+	errorResponse,
+	HttpStatus,
+	jsonResponse,
+	ServerErrorCode,
+	type RouteContext,
+	type RouteDefinition
+} from '../types.js';
 import { parseBody, requireAuth } from './utils.js';
+import { createHash } from 'node:crypto';
+
+function idempotencyEntryId(idempotencyKey: string): string {
+	return `idemp_${createHash('sha256').update(idempotencyKey).digest('hex')}`;
+}
+
+async function verifyTopupPayment(params: {
+	amount: number;
+	paymentRef: string | null;
+	userId: string;
+}): Promise<boolean> {
+	if (!Number.isFinite(params.amount) || params.amount <= 0) {
+		return false;
+	}
+	if (params.paymentRef != null && params.paymentRef.trim().length === 0) {
+		return false;
+	}
+	// Placeholder for payment-provider verification integration.
+	return true;
+}
 
 /**
  * POST /api/wallets
@@ -19,11 +46,27 @@ import { parseBody, requireAuth } from './utils.js';
 async function addCredits(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
 	const body = await parseBody(request, AddCreditsSchema);
-	const { amount, paymentMethodId, idempotencyKey } = body;
+	const { amount, paymentRef, idempotencyKey } = body;
+
+	const paymentVerified = await verifyTopupPayment({
+		amount,
+		paymentRef,
+		userId: user.uid
+	});
+	if (!paymentVerified) {
+		return errorResponse(
+			'Payment verification failed',
+			HttpStatus.BAD_REQUEST,
+			ServerErrorCode.INVALID_INPUT
+		);
+	}
 
 	// Use deterministic wallet ID based on user UID
 	const walletId = `wallet_${user.uid}`;
 	const walletRef = ctx.firestore.doc(Wallets.docPath(walletId));
+	const entryRef = ctx.firestore
+		.collection(Wallets.entries.collectionPath(walletId))
+		.doc(idempotencyEntryId(idempotencyKey));
 
 	// Run transaction for atomic read-modify-write
 	const result = await ctx.firestore.runTransaction(async (transaction) => {
@@ -48,33 +91,22 @@ async function addCredits(ctx: RouteContext, request: Request): Promise<Response
 		}
 
 		// 2. Check idempotency within transaction
-		if (idempotencyKey) {
-			const entriesCollection = ctx.firestore.collection(Wallets.entries.collectionPath(walletId));
-			const existingEntries = await entriesCollection
-				.where('idempotencyKey', '==', idempotencyKey)
-				.limit(1)
-				.get();
-
-			if (!existingEntries.empty) {
-				const entryData = existingEntries.docs[0].data();
-				const entry = Wallets.entries.schema.parse(entryData);
-				return {
-					isIdempotent: true,
-					message: 'Credit already applied (idempotent)',
-					entry,
-					newBalance: currentBalance
-				};
-			}
+		const existingEntryDoc = await transaction.get(entryRef);
+		if (existingEntryDoc.exists) {
+			return {
+				isIdempotent: true,
+				id: entryRef.id,
+				newBalance: currentBalance
+			};
 		}
 
 		// 3. Create ledger entry
-		const entryRef = ctx.firestore.collection(Wallets.entries.collectionPath(walletId)).doc();
 		const entryId = entryRef.id;
 
 		const entry: LedgerEntry = {
 			type: 'topup',
 			amountCredits: amount,
-			idempotencyKey: idempotencyKey || null,
+			idempotencyKey,
 			scope: {
 				courseId: null,
 				topicId: null,
@@ -82,8 +114,8 @@ async function addCredits(ctx: RouteContext, request: Request): Promise<Response
 				conversationId: null
 			},
 			provider: {
-				name: paymentMethodId ? 'stripe' : 'manual',
-				ref: paymentMethodId || null
+				name: paymentRef ? 'payment' : 'manual',
+				ref: paymentRef ?? null
 			},
 			metadata: null,
 			createdBy: user.uid,
@@ -113,13 +145,16 @@ async function addCredits(ctx: RouteContext, request: Request): Promise<Response
 	// Return appropriate response
 	if (result.isIdempotent) {
 		return jsonResponse({
-			message: result.message,
-			entry: result.entry,
+			id: result.id,
+			idempotent: true,
 			newBalance: result.newBalance
 		});
 	}
 
-	return jsonResponse({ id: result.id }, HttpStatus.CREATED);
+	return jsonResponse(
+		{ id: result.id, idempotent: false, newBalance: result.newBalance },
+		HttpStatus.CREATED
+	);
 }
 
 /**

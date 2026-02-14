@@ -41,6 +41,12 @@ export interface CourseWalletResult {
 	};
 }
 
+export interface AddCreditsInput {
+	amount: number;
+	idempotencyKey: string;
+	paymentRef?: string | null;
+}
+
 /**
  * Get a wallet by ID (must be owner)
  */
@@ -197,15 +203,14 @@ export async function getCourseWallet(
  */
 export async function addCredits(
 	config: MentoraAPIConfig,
-	amount: number,
-	currency: string = 'usd'
-): Promise<APIResult<{ id: string }>> {
-	return callBackend<{ id: string }>(config, '/wallets', {
+	input: AddCreditsInput
+): Promise<APIResult<{ id: string; idempotent: boolean; newBalance: number }>> {
+	return callBackend<{ id: string; idempotent: boolean; newBalance: number }>(config, '/wallets', {
 		method: 'POST',
 		body: JSON.stringify({
-			action: 'addCredits',
-			amount,
-			currency
+			amount: input.amount,
+			idempotencyKey: input.idempotencyKey,
+			paymentRef: input.paymentRef ?? null
 		})
 	});
 }

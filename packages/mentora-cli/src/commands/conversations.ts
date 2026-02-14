@@ -21,22 +21,20 @@ export function createConversationsCommand(
             const client = await getClient();
             const result = await client.conversations.listMine({
                 limit: options.limit,
-                where: options.assignment
-                    ? [
-                          {
-                              field: "assignmentId",
-                              op: "==",
-                              value: options.assignment,
-                          },
-                      ]
-                    : undefined,
             });
 
             if (result.success) {
-                if (result.data.length === 0) {
+                const conversations = options.assignment
+                    ? result.data.filter(
+                          (conversation) =>
+                              conversation.assignmentId === options.assignment,
+                      )
+                    : result.data;
+
+                if (conversations.length === 0) {
                     info("No conversations found.");
                 } else {
-                    outputData(result.data);
+                    outputData(conversations);
                 }
             } else {
                 error(result.error);

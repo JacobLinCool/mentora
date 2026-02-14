@@ -67,6 +67,7 @@ export async function updateMyProfile(
 			// Create new profile with all required fields
 			await setDoc(docRef, {
 				uid: currentUser.uid,
+				activeMode: profile.activeMode || 'student',
 				displayName:
 					profile.displayName ||
 					currentUser.displayName ||

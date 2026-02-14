@@ -39,5 +39,19 @@ describe('Backend Module (Integration)', () => {
 			const result = await callBackend<unknown>(config, '/health');
 			expect(result.success).toBe(true);
 		});
+
+		it('should allow calling public endpoint without auth when enabled', async () => {
+			const unauthConfig: MentoraAPIConfig = {
+				...config,
+				getCurrentUser: () => null
+			};
+			const result = await callBackend<unknown>(
+				unauthConfig,
+				'/health',
+				{},
+				{ allowUnauthenticated: true }
+			);
+			expect(result.success).toBe(true);
+		});
 	});
 });

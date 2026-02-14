@@ -31,7 +31,7 @@ async function listTopics(ctx: RouteContext, request: Request): Promise<Response
 		);
 	}
 
-	await requireCourseAccess(ctx, courseId, user.uid, 'topics');
+	await requireCourseAccess(ctx, courseId, user.uid, 'topics', { allowPublic: true });
 
 	// Query topics
 	let query = ctx.firestore

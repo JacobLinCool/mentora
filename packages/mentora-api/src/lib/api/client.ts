@@ -21,9 +21,16 @@ import * as QuestionnairesModule from './questionnaires.js';
 import * as QuestionnaireResponsesModule from './questionnaireResponses.js';
 import * as SubmissionsModule from './submissions.js';
 import * as TopicsModule from './topics.js';
-import type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
+import type {
+	APIResult,
+	ListOptions,
+	MentoraAPIConfig,
+	QueryOptions,
+	TokenUsageBreakdown
+} from './types.js';
 import * as UsersModule from './users.js';
 import * as WalletsModule from './wallets.js';
+import type { CallBackendOptions } from './backend.js';
 import { callBackend } from './backend.js';
 
 export type {
@@ -42,7 +49,14 @@ export type Course = CoursesModule.Course;
 export type Conversation = ConversationsModule.Conversation;
 export type Wallet = WalletsModule.Wallet;
 export type LedgerEntry = WalletsModule.LedgerEntry;
-export type { APIResult, MentoraAPIConfig, QueryOptions } from './types.js';
+export type {
+	APIResult,
+	ListOptions,
+	MentoraAPIConfig,
+	QueryOptions,
+	TokenUsageBreakdown,
+	TokenUsageTotals
+} from './types.js';
 export { APIErrorCode } from './types.js';
 export type { WhereFilterOp } from 'firebase/firestore';
 
@@ -152,7 +166,10 @@ export class MentoraClient {
 			options?: CoursesModule.CreateCourseOptions
 		): Promise<APIResult<string>> =>
 			this.authReadyThen(() => CoursesModule.createCourse(this._config, title, code, options)),
-		getRoster: (courseId: string, options?: QueryOptions): Promise<APIResult<CourseMembership[]>> =>
+		getRoster: (
+			courseId: string,
+			options?: QueryOptions
+		): Promise<APIResult<(CourseMembership & { id: string })[]>> =>
 			this.authReadyThen(() => CoursesModule.getCourseRoster(this._config, courseId, options)),
 		inviteMember: (
 			courseId: string,
@@ -210,7 +227,7 @@ export class MentoraClient {
 	topics = {
 		get: (topicId: string): Promise<APIResult<Topic>> =>
 			this.authReadyThen(() => TopicsModule.getTopic(this._config, topicId)),
-		listForCourse: (courseId: string, options?: QueryOptions): Promise<APIResult<Topic[]>> =>
+		listForCourse: (courseId: string, options?: ListOptions): Promise<APIResult<Topic[]>> =>
 			this.authReadyThen(() => TopicsModule.listCourseTopics(this._config, courseId, options)),
 		create: (
 			topic: Omit<Topic, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
@@ -229,11 +246,11 @@ export class MentoraClient {
 	assignments = {
 		get: (assignmentId: string): Promise<APIResult<Assignment>> =>
 			this.authReadyThen(() => AssignmentsModule.getAssignment(this._config, assignmentId)),
-		listForCourse: (courseId: string, options?: QueryOptions): Promise<APIResult<Assignment[]>> =>
+		listForCourse: (courseId: string, options?: ListOptions): Promise<APIResult<Assignment[]>> =>
 			this.authReadyThen(() =>
 				AssignmentsModule.listCourseAssignments(this._config, courseId, options)
 			),
-		listAvailable: (courseId: string, options?: QueryOptions): Promise<APIResult<Assignment[]>> =>
+		listAvailable: (courseId: string, options?: ListOptions): Promise<APIResult<Assignment[]>> =>
 			this.authReadyThen(() =>
 				AssignmentsModule.listAvailableAssignments(this._config, courseId, options)
 			),
@@ -250,8 +267,14 @@ export class MentoraClient {
 			),
 		delete: (assignmentId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => AssignmentsModule.deleteAssignment(this._config, assignmentId)),
-		generateContent: (question: string): Promise<APIResult<{ content: string }>> =>
-			this.authReadyThen(() => AssignmentsModule.generateContent(this._config, question))
+		generateContent: (
+			question: string
+		): Promise<
+			APIResult<{
+				content: string;
+				tokenUsage: TokenUsageBreakdown;
+			}>
+		> => this.authReadyThen(() => AssignmentsModule.generateContent(this._config, question))
 	};
 
 	// ============ Questionnaires ============
@@ -260,17 +283,11 @@ export class MentoraClient {
 			this.authReadyThen(() =>
 				QuestionnairesModule.getQuestionnaire(this._config, questionnaireId)
 			),
-		listForCourse: (
-			courseId: string,
-			options?: QueryOptions
-		): Promise<APIResult<Questionnaire[]>> =>
+		listForCourse: (courseId: string, options?: ListOptions): Promise<APIResult<Questionnaire[]>> =>
 			this.authReadyThen(() =>
 				QuestionnairesModule.listCourseQuestionnaires(this._config, courseId, options)
 			),
-		listAvailable: (
-			courseId: string,
-			options?: QueryOptions
-		): Promise<APIResult<Questionnaire[]>> =>
+		listAvailable: (courseId: string, options?: ListOptions): Promise<APIResult<Questionnaire[]>> =>
 			this.authReadyThen(() =>
 				QuestionnairesModule.listAvailableQuestionnaires(this._config, courseId, options)
 			),
@@ -400,26 +417,41 @@ export class MentoraClient {
 			this.authReadyThen(() =>
 				ConversationsModule.getAssignmentConversation(this._config, assignmentId, userId)
 			),
-		listMine: (options?: QueryOptions): Promise<APIResult<ConversationsModule.Conversation[]>> =>
+		listMine: (options?: ListOptions): Promise<APIResult<ConversationsModule.Conversation[]>> =>
 			this.authReadyThen(() => ConversationsModule.listMyConversations(this._config, options)),
-		create: (assignmentId: string): Promise<APIResult<{ id: string }>> =>
+		create: (
+			assignmentId: string
+		): Promise<APIResult<{ id: string; created: boolean; reopened: boolean }>> =>
 			this.authReadyThen(() => ConversationsModule.createConversation(this._config, assignmentId)),
 		end: (conversationId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => ConversationsModule.endConversation(this._config, conversationId)),
 		addTurn: (
 			conversationId: string,
-			text: string,
-			_type: 'idea' | 'followup'
+			input:
+				| string
+				| { text: string }
+				| { audioBase64: string; audioMimeType: string }
+				| { audio: Blob; text?: string },
+			type?: 'idea' | 'followup'
 		): Promise<
 			APIResult<{
 				text: string;
 				audio: string;
 				audioMimeType: string;
+				tokenUsage: TokenUsageBreakdown;
 			}>
 		> => {
-			void _type;
+			void type;
+			const payload =
+				typeof input === 'string'
+					? { text: input }
+					: 'audio' in input
+						? input
+						: 'text' in input
+							? { text: input.text }
+							: input;
 			return this.authReadyThen(() =>
-				ConversationsModule.addTurn(this._config, conversationId, { text })
+				ConversationsModule.addTurn(this._config, conversationId, payload)
 			);
 		}
 	};
@@ -435,13 +467,19 @@ export class MentoraClient {
 			options?: QueryOptions
 		): Promise<APIResult<WalletsModule.LedgerEntry[]>> =>
 			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options)),
-		addCredits: (amount: number, currency?: string): Promise<APIResult<{ id: string }>> =>
-			this.authReadyThen(() => WalletsModule.addCredits(this._config, amount, currency))
+		addCredits: (
+			input: WalletsModule.AddCreditsInput
+		): Promise<APIResult<{ id: string; idempotent: boolean; newBalance: number }>> =>
+			this.authReadyThen(() => WalletsModule.addCredits(this._config, input))
 	};
 
 	// ============ Backend ============
 	backend = {
-		call: <T>(endpoint: string, options: RequestInit = {}): Promise<APIResult<T>> =>
-			this.authReadyThen(() => callBackend<T>(this._config, endpoint, options))
+		call: <T>(
+			endpoint: string,
+			options: RequestInit = {},
+			callOptions?: CallBackendOptions
+		): Promise<APIResult<T>> =>
+			this.authReadyThen(() => callBackend<T>(this._config, endpoint, options, callOptions))
 	};
 }

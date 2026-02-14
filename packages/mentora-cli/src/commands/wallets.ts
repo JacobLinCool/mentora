@@ -61,13 +61,21 @@ export function createWalletsCommand(
         .description("Add credits to my wallet")
         .argument("<amount>", "Amount of credits to add")
         .option("--idempotency-key <key>", "Idempotency key for deduplication")
+        .option("--payment-ref <ref>", "Optional payment provider reference")
         .action(
-            async (amount: string, options: { idempotencyKey?: string }) => {
+            async (
+                amount: string,
+                options: { idempotencyKey?: string; paymentRef?: string },
+            ) => {
                 const client = await getClient();
-                // TODO: Backend-only endpoint - consider adding to API client
-                const result = await client.wallets.addCredits(
-                    parseFloat(amount),
-                );
+                const idempotencyKey =
+                    options.idempotencyKey ??
+                    `cli_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+                const result = await client.wallets.addCredits({
+                    amount: parseFloat(amount),
+                    idempotencyKey,
+                    paymentRef: options.paymentRef ?? null,
+                });
                 if (result.success) {
                     success("Credits added successfully.");
                     // The backend returns { id } for the transaction

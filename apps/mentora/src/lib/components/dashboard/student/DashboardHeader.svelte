@@ -1,6 +1,11 @@
-<script>
+<script lang="ts">
     import { m } from "$lib/paraglide/messages";
-    let { userName = "user01" } = $props();
+
+    interface Props {
+        userName?: string;
+    }
+
+    let { userName = "user01" }: Props = $props();
 
     // Get current date
     const now = new Date();

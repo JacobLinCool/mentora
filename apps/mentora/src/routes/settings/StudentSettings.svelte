@@ -1,9 +1,13 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { api } from "$lib";
     import { m } from "$lib/paraglide/messages";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
-    import { setMentorMode } from "$lib/temp.svelte";
     import { createSettingsState, formatDate } from "$lib/settings.svelte";
+    import {
+        getNextLocale,
+        switchActiveMode,
+    } from "$lib/features/settings/actions";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import {
@@ -22,14 +26,30 @@
     import { slide } from "svelte/transition";
 
     const s = createSettingsState();
+    let switchingMode = $state(false);
 
     onMount(() => {
         document.documentElement.classList.add("dark");
     });
+
+    async function handleSwitchToMentor() {
+        if (switchingMode) return;
+        switchingMode = true;
+        try {
+            const result = await switchActiveMode(api, "mentor");
+            if (!result.success) {
+                console.error("Failed to switch mode:", result.error);
+            }
+        } catch (error) {
+            console.error("Failed to switch mode:", error);
+        } finally {
+            switchingMode = false;
+        }
+    }
 </script>
 
 <div
-    class="selection:bg-brand-gold min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-[#404040] to-[#858585] pb-24 font-sans text-white selection:text-white"
+    class="selection:bg-brand-gold min-h-screen w-full overflow-x-hidden bg-linear-to-br from-[#404040] to-[#858585] pb-24 font-sans text-white selection:text-white"
 >
     <main class="relative z-10 w-full">
         <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
@@ -42,9 +62,7 @@
                     <button
                         class="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 transition hover:border-white/30 hover:text-white"
                         onclick={() => {
-                            const current = getLocale();
-                            const next = current === "en" ? "zh-tw" : "en";
-                            setLocale(next);
+                            setLocale(getNextLocale(getLocale()));
                         }}
                     >
                         <Globe class="h-3.5 w-3.5" />
@@ -127,7 +145,7 @@
                                             class="flex flex-wrap items-center gap-3"
                                         >
                                             <div
-                                                class="focus-within:border-brand-gold/60 flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-white"
+                                                class="focus-within:border-brand-gold/60 flex min-w-55 flex-1 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-white"
                                             >
                                                 <User
                                                     class="text-text-secondary h-4 w-4 shrink-0"
@@ -336,7 +354,8 @@
                             </div>
                             <button
                                 class="inline-flex items-center justify-center rounded-full bg-[#F5F5F5] px-5 py-2 text-sm font-semibold text-black transition"
-                                onclick={() => setMentorMode(true)}
+                                onclick={handleSwitchToMentor}
+                                disabled={switchingMode}
                             >
                                 {m.settings_switch_to_mentor_action()}
                             </button>
@@ -358,7 +377,7 @@
                                 variant="danger"
                                 onclick={s.handleLogout}
                                 disabled={s.loggingOut}
-                                className="min-w-[150px]"
+                                className="min-w-37.5"
                             >
                                 {#if s.loggingOut}
                                     <Loader2 class="h-4 w-4 animate-spin" />

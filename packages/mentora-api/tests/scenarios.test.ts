@@ -474,12 +474,6 @@ describe('Multi-Account Scenarios', () => {
 
 			const result = await student.conversations.end(testConversationId);
 
-			// Backend may not be running in test environment
-			if (!result.success && result.error?.includes('fetch')) {
-				console.log('Skipping - backend not available');
-				return;
-			}
-
 			expect(result.success).toBe(true);
 			if (result.success) {
 				testConversationId = null;

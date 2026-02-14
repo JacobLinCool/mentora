@@ -19,9 +19,10 @@
 
     import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
 
-    let ownedCourses = $state<Course[]>([]);
+    const ownedCoursesState = api.createState<Course[]>();
+    const ownedCourses = $derived(ownedCoursesState.value ?? []);
     let enrolledCourses = $state<Course[]>([]);
-    let loading = $state(true);
+    let enrolledLoading = $state(true);
     let error = $state<string | null>(null);
     let joinCode = $state("");
     let joining = $state(false);
@@ -34,20 +35,14 @@
     let creating = $state(false);
     let createError = $state<string | null>(null);
 
-    async function loadCourses() {
-        loading = true;
+    const loading = $derived(ownedCoursesState.loading || enrolledLoading);
+    const displayError = $derived(ownedCoursesState.error || error);
+
+    async function loadEnrolledCourses() {
+        enrolledLoading = true;
         error = null;
 
-        const [ownedResult, enrolledResult] = await Promise.all([
-            api.courses.listMine(),
-            api.courses.listEnrolled(),
-        ]);
-
-        if (ownedResult.success) {
-            ownedCourses = ownedResult.data;
-        } else {
-            error = ownedResult.error;
-        }
+        const enrolledResult = await api.courses.listEnrolled();
 
         if (enrolledResult.success) {
             enrolledCourses = enrolledResult.data;
@@ -55,7 +50,7 @@
             error = enrolledResult.error;
         }
 
-        loading = false;
+        enrolledLoading = false;
     }
 
     async function handleJoinCourse() {
@@ -68,7 +63,7 @@
 
         if (result.success) {
             joinCode = "";
-            await loadCourses();
+            await loadEnrolledCourses();
         } else {
             joinError = result.error;
         }
@@ -91,9 +86,7 @@
             createTitle = "";
             createCode = "";
             showCreateModal = false;
-            await loadCourses();
             // Navigate to the new course
-
             goto(resolve(`/courses/${result.data}`));
         } else {
             createError = result.error;
@@ -102,8 +95,20 @@
         creating = false;
     }
 
+    $effect(() => {
+        if (api.isAuthenticated) {
+            api.coursesSubscribe.listMine(ownedCoursesState);
+            return () => {
+                ownedCoursesState.cleanup();
+            };
+        }
+        ownedCoursesState.set([]);
+        ownedCoursesState.setError(null);
+        ownedCoursesState.setLoading(false);
+    });
+
     onMount(() => {
-        loadCourses();
+        loadEnrolledCourses();
     });
 </script>
 
@@ -149,8 +154,8 @@
                 <Spinner size="12" />
                 <p class="mt-4 text-gray-600">{m.courses_loading()}</p>
             </div>
-        {:else if error}
-            <Alert color="red">{m.courses_error()}: {error}</Alert>
+        {:else if displayError}
+            <Alert color="red">{m.courses_error()}: {displayError}</Alert>
         {:else}
             <!-- Owned Courses -->
             <div class="mb-8">

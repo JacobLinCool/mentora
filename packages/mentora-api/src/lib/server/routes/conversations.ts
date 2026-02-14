@@ -3,10 +3,17 @@
  */
 
 import {
+	AssignmentSubmissions,
 	Assignments,
 	Conversations,
 	Courses,
+	joinPath,
+	type Assignment,
 	type Conversation,
+	type ConversationTokenUsage,
+	type Submission,
+	type TokenUsageBreakdown,
+	type TokenUsageTotals,
 	type Turn
 } from 'mentora-firebase';
 import { CreateConversationSchema } from '../llm/schemas.js';
@@ -20,8 +27,157 @@ import {
 } from '../types.js';
 import { parseBody, requireAuth, requireDocument, requireParam } from './utils.js';
 import { processWithLLM, extractConversationSummary } from '../llm/llm-service.js';
-import { getASRExecutor, getTTSExecutor } from '../llm/executors.js';
+import { EXECUTOR_MODEL, getASRExecutor, getTTSExecutor } from '../llm/executors.js';
+import {
+	TOKEN_USAGE_FEATURES,
+	createTokenUsageReport,
+	mergeTokenUsageReports,
+	type TokenUsageReport
+} from '../llm/token-usage.js';
 import { randomUUID } from 'node:crypto';
+
+async function ensureSubmissionInProgress(
+	ctx: RouteContext,
+	assignment: Assignment,
+	userId: string
+): Promise<void> {
+	const submissionRef = ctx.firestore.doc(AssignmentSubmissions.docPath(assignment.id, userId));
+	const existingDoc = await submissionRef.get();
+
+	if (existingDoc.exists) {
+		const existing = AssignmentSubmissions.schema.parse(existingDoc.data());
+		if (existing.state === 'in_progress') {
+			return;
+		}
+
+		const restarted: Submission = {
+			...existing,
+			userId,
+			state: 'in_progress',
+			submittedAt: null,
+			late: false,
+			scoreCompletion: null,
+			notes: null
+		};
+
+		await submissionRef.set(AssignmentSubmissions.schema.parse(restarted));
+		return;
+	}
+
+	const submission: Submission = {
+		userId,
+		state: 'in_progress',
+		startedAt: Date.now(),
+		submittedAt: null,
+		late: false,
+		scoreCompletion: null,
+		notes: null
+	};
+
+	await submissionRef.set(AssignmentSubmissions.schema.parse(submission));
+}
+
+function ensureSubmissionWindow(assignment: Assignment, submittedAt: number): void {
+	if (assignment.dueAt != null && submittedAt > assignment.dueAt && !assignment.allowLate) {
+		throw errorResponse(
+			'Assignment due date has passed',
+			HttpStatus.FORBIDDEN,
+			ServerErrorCode.PERMISSION_DENIED
+		);
+	}
+}
+
+async function submitSubmission(
+	ctx: RouteContext,
+	assignment: Assignment,
+	userId: string
+): Promise<void> {
+	const submissionRef = ctx.firestore.doc(AssignmentSubmissions.docPath(assignment.id, userId));
+	const existingDoc = await submissionRef.get();
+	const submittedAt = Date.now();
+	ensureSubmissionWindow(assignment, submittedAt);
+	const isLate = assignment.dueAt != null && submittedAt > assignment.dueAt;
+
+	let startedAt = submittedAt;
+	let scoreCompletion: number | null = null;
+	let notes: string | null = null;
+
+	if (existingDoc.exists) {
+		const existing = AssignmentSubmissions.schema.parse(existingDoc.data());
+		startedAt = existing.startedAt;
+		scoreCompletion = existing.scoreCompletion ?? null;
+		notes = existing.notes ?? null;
+	}
+
+	const submitted: Submission = {
+		userId,
+		state: 'submitted',
+		startedAt,
+		submittedAt,
+		late: isLate,
+		scoreCompletion,
+		notes
+	};
+
+	await submissionRef.set(AssignmentSubmissions.schema.parse(submitted));
+}
+
+function hasTokenUsage(usage: TokenUsageTotals): boolean {
+	return usage.totalTokenCount > 0 || usage.inputTokenCount > 0 || usage.outputTokenCount > 0;
+}
+
+function toTurnTokenUsage(report: TokenUsageReport): TokenUsageBreakdown | null {
+	if (!hasTokenUsage(report.totals)) {
+		return null;
+	}
+
+	return {
+		byFeature: report.byFeature,
+		totals: report.totals
+	};
+}
+
+function toConversationTokenUsage(
+	existing: ConversationTokenUsage | null | undefined,
+	requestUsage: TokenUsageReport,
+	updatedAt: number
+): ConversationTokenUsage | null {
+	const mergedUsage = mergeTokenUsageReports(
+		existing
+			? {
+					byFeature: existing.byFeature ?? {},
+					totals: existing.totals
+				}
+			: null,
+		requestUsage
+	);
+
+	if (!hasTokenUsage(mergedUsage.totals)) {
+		return null;
+	}
+
+	return {
+		byFeature: mergedUsage.byFeature,
+		totals: mergedUsage.totals,
+		updatedAt
+	};
+}
+
+function getTokenUsageModels(report: TokenUsageReport): Record<string, string> {
+	const models: Record<string, string> = {};
+
+	if (report.byFeature[TOKEN_USAGE_FEATURES.CONVERSATION_ASR]) {
+		models[TOKEN_USAGE_FEATURES.CONVERSATION_ASR] = EXECUTOR_MODEL.ASR;
+	}
+	if (report.byFeature[TOKEN_USAGE_FEATURES.CONVERSATION_LLM]) {
+		models[TOKEN_USAGE_FEATURES.CONVERSATION_LLM] = EXECUTOR_MODEL.PROMPT;
+	}
+	if (report.byFeature[TOKEN_USAGE_FEATURES.CONVERSATION_TTS]) {
+		models[TOKEN_USAGE_FEATURES.CONVERSATION_TTS] = EXECUTOR_MODEL.TTS;
+	}
+
+	return models;
+}
 
 /**
  * POST /api/conversations
@@ -51,6 +207,8 @@ async function createConversation(ctx: RouteContext, request: Request): Promise<
 			ServerErrorCode.PERMISSION_DENIED
 		);
 	}
+
+	ensureSubmissionWindow(assignment, Date.now());
 
 	// 3. Check enrollment
 	if (assignment.courseId) {
@@ -85,15 +243,38 @@ async function createConversation(ctx: RouteContext, request: Request): Promise<
 
 	if (existingDoc.exists) {
 		const data = Conversations.schema.parse(existingDoc.data());
-		if (data.state !== 'closed' || assignment.allowResubmit) {
-			return jsonResponse({ id: conversationId });
-		} else {
+		if (data.state !== 'closed') {
+			await ensureSubmissionInProgress(ctx, assignment, user.uid);
+			return jsonResponse({ id: conversationId, created: false, reopened: false });
+		}
+
+		if (!assignment.allowResubmit) {
 			return errorResponse(
 				'Conversation completed and resubmission not allowed',
 				HttpStatus.CONFLICT,
 				ServerErrorCode.ALREADY_EXISTS
 			);
 		}
+
+		// Reopen the same conversation for resubmission.
+		const now = Date.now();
+		await conversationRef.update({
+			state: 'awaiting_idea',
+			lastActionAt: now,
+			updatedAt: now
+		});
+
+		// Reset dialogue state to prevent stale closed-session carry-over.
+		try {
+			await ctx.firestore
+				.doc(joinPath('conversations', conversationId, 'metadata', 'state'))
+				.delete();
+		} catch {
+			// Missing metadata doc is expected on some conversations.
+		}
+
+		await ensureSubmissionInProgress(ctx, assignment, user.uid);
+		return jsonResponse({ id: conversationId, created: false, reopened: true });
 	}
 
 	// 6. Create new conversation with deterministic ID
@@ -106,13 +287,15 @@ async function createConversation(ctx: RouteContext, request: Request): Promise<
 		lastActionAt: now,
 		createdAt: now,
 		updatedAt: now,
-		turns: []
+		turns: [],
+		tokenUsage: null
 	};
 
 	const validated = Conversations.schema.parse(conversation);
 	await conversationRef.set(validated);
+	await ensureSubmissionInProgress(ctx, assignment, user.uid);
 
-	return jsonResponse({ id: conversationId }, HttpStatus.CREATED);
+	return jsonResponse({ id: conversationId, created: true, reopened: false }, HttpStatus.CREATED);
 }
 
 /**
@@ -138,6 +321,13 @@ async function endConversation(ctx: RouteContext): Promise<Response> {
 		return errorResponse('Not authorized', HttpStatus.FORBIDDEN, ServerErrorCode.PERMISSION_DENIED);
 	}
 
+	const assignment = await requireDocument(
+		ctx,
+		Assignments.docPath(conversation.assignmentId),
+		Assignments.schema,
+		'Assignment'
+	);
+
 	// Check state
 	if (conversation.state === 'closed') {
 		return errorResponse(
@@ -147,15 +337,15 @@ async function endConversation(ctx: RouteContext): Promise<Response> {
 		);
 	}
 
-	// Update conversation state
+	// Submit assignment and then close conversation
+	await submitSubmission(ctx, assignment, user.uid);
+
 	const now = Date.now();
 	await conversationRef.update({
 		state: 'closed',
 		lastActionAt: now,
 		updatedAt: now
 	});
-
-	// TODO: Create/update submission when submissions are integrated
 
 	return jsonResponse({});
 }
@@ -233,8 +423,6 @@ async function parseMultipartForm(
  * 3. Process with LLM orchestrator (calls mentora-ai)
  * 4. Update conversation with AI response turn
  * 5. Return updated conversation state
- *
- * Note: Audio transcription is deferred to future implementation
  */
 async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
@@ -270,6 +458,9 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	try {
 		const now = Date.now();
 		const userTurnId = randomUUID();
+		let asrUsageReport = createTokenUsageReport([]);
+		let llmUsageReport = createTokenUsageReport([]);
+		let ttsUsageReport = createTokenUsageReport([]);
 
 		// Prepare user input text
 		let userInputText: string;
@@ -287,9 +478,13 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 					`[API] Audio transcribed for turn ${userTurnId}: "${userInputText.substring(0, 50)}..."`
 				);
 
-				// Log token usage
-				const tokenUsage = asrExecutor.getTokenUsage();
-				console.log(`[API] ASR token usage:`, tokenUsage);
+				asrUsageReport = createTokenUsageReport([
+					{
+						feature: TOKEN_USAGE_FEATURES.CONVERSATION_ASR,
+						usage: asrExecutor.getTokenUsage()
+					}
+				]);
+				console.log(`[API] ASR token usage:`, asrUsageReport.totals);
 			} catch (error) {
 				console.error('[API] Error transcribing audio:', error);
 				return errorResponse(
@@ -310,6 +505,7 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			text: userInputText,
 			analysis: null,
 			pendingStartAt: null,
+			tokenUsage: null,
 			createdAt: now
 		};
 
@@ -320,6 +516,7 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			Assignments.schema,
 			'Assignment'
 		);
+		ensureSubmissionWindow(assignment, Date.now());
 		const question = assignment.question || '';
 		const prompt = assignment.prompt || '';
 
@@ -333,6 +530,13 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			question,
 			prompt
 		);
+		llmUsageReport = createTokenUsageReport([
+			{
+				feature: TOKEN_USAGE_FEATURES.CONVERSATION_LLM,
+				usage: llmResult.tokenUsage
+			}
+		]);
+		console.log(`[API] LLM token usage:`, llmUsageReport.totals);
 
 		// Prepare AI turn ID before TTS
 		const aiTurnId = randomUUID();
@@ -349,9 +553,13 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 
 			console.log(`[API] AI message synthesized to speech for turn ${aiTurnId}`);
 
-			// Log token usage
-			const tokenUsage = ttsExecutor.getTokenUsage();
-			console.log(`[API] TTS token usage:`, tokenUsage);
+			ttsUsageReport = createTokenUsageReport([
+				{
+					feature: TOKEN_USAGE_FEATURES.CONVERSATION_TTS,
+					usage: ttsExecutor.getTokenUsage()
+				}
+			]);
+			console.log(`[API] TTS token usage:`, ttsUsageReport.totals);
 		} catch (error) {
 			console.error('[API] Error synthesizing speech:', error);
 			// TTS is required, return error
@@ -363,7 +571,11 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 		}
 
 		// Capture fresh timestamp after LLM and TTS processing completes
-		const aiTurnCreatedAt = Date.now();
+		const finalNow = Date.now();
+		const aiTurnUsageReport = mergeTokenUsageReports(llmUsageReport, ttsUsageReport);
+		const requestUsageReport = mergeTokenUsageReports(asrUsageReport, aiTurnUsageReport);
+		const userTurnTokenUsage = toTurnTokenUsage(asrUsageReport);
+		const aiTurnTokenUsage = toTurnTokenUsage(aiTurnUsageReport);
 
 		// Create AI turn from LLM response
 		const aiTurn: Turn = {
@@ -372,19 +584,64 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 			text: llmResult.aiMessage,
 			analysis: null, // TODO: Add stance analysis
 			pendingStartAt: null,
-			createdAt: aiTurnCreatedAt
+			tokenUsage: aiTurnTokenUsage,
+			createdAt: finalNow
 		};
 
 		// Update conversation with both turns
-		const updatedTurns = [...conversation.turns, userTurn, aiTurn];
-		const conversationState = llmResult.ended ? 'closed' : conversation.state;
+		const updatedTurns = [
+			{
+				...userTurn,
+				tokenUsage: userTurnTokenUsage
+			},
+			aiTurn
+		];
 
-		await conversationRef.update({
-			turns: updatedTurns,
-			state: conversationState,
-			lastActionAt: now,
-			updatedAt: now
+		await ctx.firestore.runTransaction(async (transaction) => {
+			const latestConversationDoc = await transaction.get(conversationRef);
+			if (!latestConversationDoc.exists) {
+				throw errorResponse(
+					'Conversation not found',
+					HttpStatus.NOT_FOUND,
+					ServerErrorCode.NOT_FOUND
+				);
+			}
+
+			const latestConversation = Conversations.schema.parse(latestConversationDoc.data());
+			if (latestConversation.userId !== user.uid) {
+				throw errorResponse(
+					'Not authorized',
+					HttpStatus.FORBIDDEN,
+					ServerErrorCode.PERMISSION_DENIED
+				);
+			}
+			if (latestConversation.state === 'closed') {
+				throw errorResponse(
+					'Conversation is closed',
+					HttpStatus.BAD_REQUEST,
+					ServerErrorCode.INVALID_INPUT
+				);
+			}
+
+			const conversationState = llmResult.ended ? 'closed' : latestConversation.state;
+			const conversationTokenUsage = toConversationTokenUsage(
+				latestConversation.tokenUsage,
+				requestUsageReport,
+				finalNow
+			);
+
+			transaction.update(conversationRef, {
+				turns: [...latestConversation.turns, ...updatedTurns],
+				state: conversationState,
+				lastActionAt: finalNow,
+				updatedAt: finalNow,
+				tokenUsage: conversationTokenUsage
+			});
 		});
+
+		if (llmResult.ended) {
+			await submitSubmission(ctx, assignment, user.uid);
+		}
 
 		// Extract summary for response
 		const summary = extractConversationSummary(llmResult.updatedState);
@@ -401,7 +658,12 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 				conversationEnded: llmResult.ended,
 				stage: summary.stage,
 				stance: summary.currentStance,
-				principle: summary.currentPrinciple
+				principle: summary.currentPrinciple,
+				tokenUsage: {
+					byFeature: requestUsageReport.byFeature,
+					totals: requestUsageReport.totals,
+					models: getTokenUsageModels(requestUsageReport)
+				}
 			},
 			HttpStatus.CREATED
 		);

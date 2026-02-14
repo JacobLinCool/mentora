@@ -5,10 +5,12 @@
 import {
 	Assignments,
 	Courses,
+	Questionnaires,
 	Topics,
 	type Assignment,
 	type CourseDoc,
 	type CourseMembership,
+	type Questionnaire,
 	type Topic
 } from 'mentora-firebase';
 import { CreateCourseSchema, CopyCourseSchema, JoinCourseSchema } from '../llm/schemas.js';
@@ -21,6 +23,8 @@ import {
 	type RouteDefinition
 } from '../types.js';
 import { parseBody, requireAuth, requireDocument, requireParam } from './utils.js';
+
+const COURSE_CODE_LOCKS_COLLECTION = '_courseCodeLocks';
 
 /**
  * POST /api/courses
@@ -45,16 +49,25 @@ async function createCourse(ctx: RouteContext, request: Request): Promise<Respon
 		);
 	}
 
-	// Use transaction to atomically check uniqueness and create course
-	const result = await ctx.firestore.runTransaction(async (transaction) => {
-		// Check if code already exists
-		const existingCourse = await ctx.firestore
-			.collection(Courses.collectionPath())
-			.where('code', '==', courseCode)
-			.limit(1)
-			.get();
+	// Fast path duplicate check for legacy courses that may not have lock docs.
+	const existingCourse = await ctx.firestore
+		.collection(Courses.collectionPath())
+		.where('code', '==', courseCode)
+		.limit(1)
+		.get();
+	if (!existingCourse.empty) {
+		return errorResponse(
+			'Course code already exists',
+			HttpStatus.CONFLICT,
+			ServerErrorCode.ALREADY_EXISTS
+		);
+	}
 
-		if (!existingCourse.empty) {
+	// Use transaction to atomically lock code and create course.
+	const result = await ctx.firestore.runTransaction(async (transaction) => {
+		const lockRef = ctx.firestore.collection(COURSE_CODE_LOCKS_COLLECTION).doc(courseCode);
+		const lockDoc = await transaction.get(lockRef);
+		if (lockDoc.exists) {
 			return { error: 'duplicate' };
 		}
 
@@ -80,6 +93,12 @@ async function createCourse(ctx: RouteContext, request: Request): Promise<Respon
 
 		const validated = Courses.schema.parse(course);
 		transaction.set(courseRef, validated);
+		transaction.set(lockRef, {
+			code: courseCode,
+			courseId,
+			createdAt: now,
+			ownerId: user.uid
+		});
 
 		// Add owner as first member with 'instructor' role
 		const membershipRef = ctx.firestore.doc(Courses.roster.docPath(courseId, user.uid));
@@ -109,7 +128,7 @@ async function createCourse(ctx: RouteContext, request: Request): Promise<Respon
 
 /**
  * POST /api/courses/:id/copy
- * Deep copy a course with topics and assignments
+ * Deep copy a course with topics, assignments, and questionnaires
  */
 async function copyCourse(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
@@ -130,10 +149,15 @@ async function copyCourse(ctx: RouteContext, request: Request): Promise<Response
 		const memberDoc = await ctx.firestore
 			.doc(Courses.roster.docPath(sourceCourseId, user.uid))
 			.get();
-		if (
-			!memberDoc.exists ||
-			!['instructor'].includes(Courses.roster.schema.parse(memberDoc.data()).role)
-		) {
+		if (!memberDoc.exists) {
+			return errorResponse(
+				'Not authorized to copy this course',
+				HttpStatus.FORBIDDEN,
+				ServerErrorCode.PERMISSION_DENIED
+			);
+		}
+		const membership = Courses.roster.schema.parse(memberDoc.data());
+		if (membership.status !== 'active' || membership.role !== 'instructor') {
 			return errorResponse(
 				'Not authorized to copy this course',
 				HttpStatus.FORBIDDEN,
@@ -188,7 +212,7 @@ async function copyCourse(ctx: RouteContext, request: Request): Promise<Response
 
 			for (const doc of rosterQuery.docs) {
 				const member = Courses.roster.schema.parse(doc.data());
-				if (member.userId === user.uid) continue;
+				if (member.userId === user.uid || member.status !== 'active') continue;
 
 				const newMemberRef = ctx.firestore.doc(Courses.roster.docPath(newCourseId, doc.id));
 				const newMember: CourseMembership = {
@@ -204,28 +228,87 @@ async function copyCourse(ctx: RouteContext, request: Request): Promise<Response
 		}
 	}
 
-	// Copy Content (Topics & Assignments)
+	// Copy Content (Topics, Assignments, Questionnaires)
 	if (includeContent) {
 		const topicIdMap = new Map<string, string>();
+		const assignmentIdMap = new Map<string, string>();
+		const questionnaireIdMap = new Map<string, string>();
 		const writePromises: Promise<unknown>[] = [];
 
-		// Copy Topics
-		const topicsSnapshot = await ctx.firestore
-			.collection(Topics.collectionPath())
-			.where('courseId', '==', sourceCourseId)
-			.get();
+		const [topicsSnapshot, assignmentsSnapshot, questionnairesSnapshot] = await Promise.all([
+			ctx.firestore
+				.collection(Topics.collectionPath())
+				.where('courseId', '==', sourceCourseId)
+				.get(),
+			ctx.firestore
+				.collection(Assignments.collectionPath())
+				.where('courseId', '==', sourceCourseId)
+				.get(),
+			ctx.firestore
+				.collection(Questionnaires.collectionPath())
+				.where('courseId', '==', sourceCourseId)
+				.get()
+		]);
 
+		// Allocate new IDs first so cross-reference mapping is deterministic.
 		for (const topicDoc of topicsSnapshot.docs) {
 			const oldTopic = Topics.schema.parse(topicDoc.data());
 			const newTopicRef = ctx.firestore.collection(Topics.collectionPath()).doc();
-			const newTopicId = newTopicRef.id;
+			topicIdMap.set(oldTopic.id, newTopicRef.id);
+		}
 
-			topicIdMap.set(oldTopic.id, newTopicId);
+		for (const assignmentDoc of assignmentsSnapshot.docs) {
+			const oldAssignment = Assignments.schema.parse(assignmentDoc.data());
+			const newAssignmentRef = ctx.firestore.collection(Assignments.collectionPath()).doc();
+			assignmentIdMap.set(oldAssignment.id, newAssignmentRef.id);
+		}
+
+		for (const questionnaireDoc of questionnairesSnapshot.docs) {
+			const oldQuestionnaire = Questionnaires.schema.parse(questionnaireDoc.data());
+			const newQuestionnaireRef = ctx.firestore.collection(Questionnaires.collectionPath()).doc();
+			questionnaireIdMap.set(oldQuestionnaire.id, newQuestionnaireRef.id);
+		}
+
+		// Copy Topics
+		for (const topicDoc of topicsSnapshot.docs) {
+			const oldTopic = Topics.schema.parse(topicDoc.data());
+			const newTopicId = topicIdMap.get(oldTopic.id);
+			if (!newTopicId) {
+				continue;
+			}
+			const newTopicRef = ctx.firestore.doc(Topics.docPath(newTopicId));
+
+			const remappedContents: string[] = [];
+			const remappedContentTypes: Topic['contentTypes'] = [];
+			for (let i = 0; i < oldTopic.contents.length; i++) {
+				const contentId = oldTopic.contents[i];
+				const contentType = oldTopic.contentTypes[i];
+				if (!contentId || !contentType) {
+					continue;
+				}
+				if (contentType === 'assignment') {
+					const mappedId = assignmentIdMap.get(contentId);
+					if (mappedId) {
+						remappedContents.push(mappedId);
+						remappedContentTypes.push(contentType);
+					}
+					continue;
+				}
+				if (contentType === 'questionnaire') {
+					const mappedId = questionnaireIdMap.get(contentId);
+					if (mappedId) {
+						remappedContents.push(mappedId);
+						remappedContentTypes.push(contentType);
+					}
+				}
+			}
 
 			const newTopic: Topic = {
 				...oldTopic,
 				id: newTopicId,
 				courseId: newCourseId,
+				contents: remappedContents,
+				contentTypes: remappedContentTypes,
 				createdBy: user.uid,
 				createdAt: now,
 				updatedAt: now
@@ -235,15 +318,14 @@ async function copyCourse(ctx: RouteContext, request: Request): Promise<Response
 		}
 
 		// Copy Assignments
-		const assignmentsSnapshot = await ctx.firestore
-			.collection(Assignments.collectionPath())
-			.where('courseId', '==', sourceCourseId)
-			.get();
 
 		for (const assignmentDoc of assignmentsSnapshot.docs) {
 			const oldAssignment = Assignments.schema.parse(assignmentDoc.data());
-			const newAssignmentRef = ctx.firestore.collection(Assignments.collectionPath()).doc();
-			const newAssignmentId = newAssignmentRef.id;
+			const newAssignmentId = assignmentIdMap.get(oldAssignment.id);
+			if (!newAssignmentId) {
+				continue;
+			}
+			const newAssignmentRef = ctx.firestore.doc(Assignments.docPath(newAssignmentId));
 
 			const newTopicId = oldAssignment.topicId
 				? topicIdMap.get(oldAssignment.topicId) || null
@@ -260,6 +342,31 @@ async function copyCourse(ctx: RouteContext, request: Request): Promise<Response
 			};
 
 			writePromises.push(newAssignmentRef.set(Assignments.schema.parse(newAssignment)));
+		}
+
+		// Copy Questionnaires
+		for (const questionnaireDoc of questionnairesSnapshot.docs) {
+			const oldQuestionnaire = Questionnaires.schema.parse(questionnaireDoc.data());
+			const newQuestionnaireId = questionnaireIdMap.get(oldQuestionnaire.id);
+			if (!newQuestionnaireId) {
+				continue;
+			}
+			const newQuestionnaireRef = ctx.firestore.doc(Questionnaires.docPath(newQuestionnaireId));
+			const newTopicId = oldQuestionnaire.topicId
+				? topicIdMap.get(oldQuestionnaire.topicId) || null
+				: null;
+
+			const newQuestionnaire: Questionnaire = {
+				...oldQuestionnaire,
+				id: newQuestionnaireId,
+				courseId: newCourseId,
+				topicId: newTopicId,
+				createdBy: user.uid,
+				createdAt: now,
+				updatedAt: now
+			};
+
+			writePromises.push(newQuestionnaireRef.set(Questionnaires.schema.parse(newQuestionnaire)));
 		}
 
 		await Promise.all(writePromises);

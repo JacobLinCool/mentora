@@ -1,31 +1,51 @@
 <script lang="ts">
     import { Plus } from "@lucide/svelte";
-    import * as m from "$lib/paraglide/messages.js";
+    import * as m from "$lib/paraglide/messages";
     import {
         api,
         type Assignment as ApiAssignment,
         type Questionnaire as ApiQuestionnaire,
     } from "$lib/api";
-    import { onMount, onDestroy } from "svelte";
+    import { onMount } from "svelte";
     import TopicCard from "./topics/TopicCard.svelte";
     import AssignmentFormModal from "./topics/AssignmentFormModal.svelte";
+    import PopupModal from "$lib/components/ui/PopupModal.svelte";
+    import { Button } from "flowbite-svelte";
     import {
         dndzone,
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
     } from "svelte-dnd-action";
+    import { startVisibilityPolling } from "$lib/features/polling/visibility";
+    import {
+        mapMentorQuestionsFromApi,
+        mapMentorQuestionsToApi,
+    } from "$lib/features/questionnaires/mapper";
 
     let { courseId }: { courseId: string } = $props();
     const flipDurationMs = 300;
 
-    // Types matching backend + UI needs
+    interface FormOption {
+        id: string;
+        text: string;
+    }
+
+    interface FormQuestion {
+        id: string;
+        type: "single" | "multiple" | "text";
+        question: string;
+        options: FormOption[];
+    }
+
     interface Assignment {
         id: string;
         title: string;
         type: "dialogue" | "questionnaire";
         dueAt?: string;
         startAt?: string;
-        // ... other props
         topicId?: string;
+        introduction?: string;
+        prompt?: string;
+        questions?: FormQuestion[];
     }
 
     interface Topic {
@@ -36,26 +56,45 @@
         order?: number;
     }
 
-    // UI State
     let showAssignmentModal = $state(false);
     let assignmentModalMode = $state<"create" | "edit">("create");
     let currentTopicId = $state<string | null>(null);
     let currentAssignment = $state<Assignment | undefined>(undefined);
     let topics = $state<Topic[]>([]);
 
-    let pollInterval: ReturnType<typeof setInterval>;
+    let stopPolling: (() => void) | null = null;
+    let errorMessage = $state<string | null>(null);
+    let showDeleteModal = $state(false);
+    let pendingDelete = $state<{
+        type: "topic" | "assignment";
+        topicId: string;
+        assignmentId?: string;
+    } | null>(null);
 
     onMount(() => {
-        loadData();
-        pollInterval = setInterval(loadData, 5000);
+        stopPolling = startVisibilityPolling(() => loadData(), {
+            intervalMs: 5000,
+            runImmediately: true,
+            onError: (error) =>
+                console.error("Failed to refresh topics", error),
+        });
+
+        return () => {
+            stopPolling?.();
+            stopPolling = null;
+        };
     });
 
-    onDestroy(() => {
-        if (pollInterval) clearInterval(pollInterval);
-    });
+    function toIso(timestamp: number | null | undefined): string | undefined {
+        return timestamp
+            ? new Date(timestamp).toISOString().slice(0, 16)
+            : undefined;
+    }
 
     async function loadData() {
         if (!courseId) return;
+
+        errorMessage = null;
         try {
             const [topicsRes, assignRes, questRes] = await Promise.all([
                 api.topics.listForCourse(courseId),
@@ -63,105 +102,81 @@
                 api.questionnaires.listForCourse(courseId),
             ]);
 
-            if (topicsRes.success) {
-                const loadedTopics = topicsRes.data.sort(
-                    (a, b) => (a.order || 0) - (b.order || 0),
-                );
+            if (!topicsRes.success || !assignRes.success || !questRes.success) {
+                return;
+            }
 
-                // Map items to topics
-                const assignmentsMap: Record<string, ApiAssignment> = {};
-                if (assignRes.success) {
-                    assignRes.data.forEach((a) => (assignmentsMap[a.id] = a));
-                }
-                const questionnairesMap: Record<string, ApiQuestionnaire> = {};
-                if (questRes.success) {
-                    questRes.data.forEach((q) => (questionnairesMap[q.id] = q));
-                }
+            const assignmentsMap: Record<string, ApiAssignment> = {};
+            assignRes.data.forEach((assignment) => {
+                assignmentsMap[assignment.id] = assignment;
+            });
 
-                topics = loadedTopics.map((t) => {
+            const questionnairesMap: Record<string, ApiQuestionnaire> = {};
+            questRes.data.forEach((questionnaire) => {
+                questionnairesMap[questionnaire.id] = questionnaire;
+            });
+
+            topics = topicsRes.data
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((topic) => {
                     const items: Assignment[] = [];
-                    // Use topic.contents (ID list) to maintain order
-                    if (t.contents && t.contents.length > 0) {
-                        t.contents.forEach((id, idx) => {
-                            const type = t.contentTypes?.[idx] || "assignment";
-                            let item;
-                            let uiType: "dialogue" | "questionnaire" =
-                                "dialogue";
+
+                    if (topic.contents && topic.contentTypes) {
+                        topic.contents.forEach((id, index) => {
+                            const type = topic.contentTypes?.[index];
+                            if (!type) {
+                                return;
+                            }
 
                             if (type === "questionnaire") {
-                                item = questionnairesMap[id];
-                                uiType = "questionnaire";
-                            } else {
-                                item = assignmentsMap[id];
-                                uiType = "dialogue";
-                            }
+                                const questionnaire = questionnairesMap[id];
+                                if (!questionnaire) {
+                                    return;
+                                }
 
-                            if (item) {
                                 items.push({
-                                    id: item.id,
-                                    title: item.title,
-                                    type: uiType,
-                                    dueAt: item.dueAt
-                                        ? new Date(item.dueAt).toISOString()
-                                        : undefined,
-                                    startAt: item.startAt
-                                        ? new Date(item.startAt).toISOString()
-                                        : undefined,
-                                    topicId: t.id,
-                                });
-                            }
-                        });
-                    }
-
-                    // Fallback for items not in contents array but have topicId (legacy/robustness)
-                    if (assignRes.success) {
-                        assignRes.data.forEach((a) => {
-                            if (
-                                a.topicId === t.id &&
-                                !items.find((i) => i.id === a.id)
-                            ) {
-                                items.push({
-                                    id: a.id,
-                                    title: a.title,
-                                    type: "dialogue",
-                                    dueAt: a.dueAt
-                                        ? new Date(a.dueAt).toISOString()
-                                        : undefined,
-                                    topicId: t.id,
-                                });
-                            }
-                        });
-                    }
-                    if (questRes.success) {
-                        questRes.data.forEach((q) => {
-                            if (
-                                q.topicId === t.id &&
-                                !items.find((i) => i.id === q.id)
-                            ) {
-                                items.push({
-                                    id: q.id,
-                                    title: q.title,
+                                    id: questionnaire.id,
+                                    title: questionnaire.title,
                                     type: "questionnaire",
-                                    dueAt: q.dueAt
-                                        ? new Date(q.dueAt).toISOString()
-                                        : undefined,
-                                    topicId: t.id,
+                                    dueAt: toIso(questionnaire.dueAt),
+                                    startAt: toIso(questionnaire.startAt),
+                                    topicId: topic.id,
+                                    questions: mapMentorQuestionsFromApi(
+                                        questionnaire.questions,
+                                    ),
                                 });
+                                return;
                             }
+
+                            const assignment = assignmentsMap[id];
+                            if (!assignment) {
+                                return;
+                            }
+
+                            items.push({
+                                id: assignment.id,
+                                title: assignment.title,
+                                type: "dialogue",
+                                dueAt: toIso(assignment.dueAt),
+                                startAt: toIso(assignment.startAt),
+                                topicId: topic.id,
+                                introduction: assignment.question ?? "",
+                                prompt: assignment.prompt,
+                            });
                         });
                     }
 
                     return {
-                        id: t.id,
-                        title: t.title,
-                        description: t.description || "",
+                        id: topic.id,
+                        title: topic.title,
+                        description: topic.description || "",
                         assignments: items,
-                        order: t.order || 0,
+                        order: topic.order || 0,
                     };
                 });
-            }
         } catch (e) {
             console.error("Failed to load topics", e);
+            errorMessage = m.mentor_topic_load_failed();
         }
     }
 
@@ -171,29 +186,15 @@
 
     async function handleTopicDndFinalize(e: CustomEvent<{ items: Topic[] }>) {
         topics = e.detail.items;
-        // Save order
-        // Doing sequential updates is slow, but simpler for now.
-        // Ideally we'd have a batch update endpoint.
-        for (let i = 0; i < topics.length; i++) {
-            if (topics[i].order !== i) {
-                await api.topics.update(topics[i].id, { order: i });
-            }
+
+        for (let index = 0; index < topics.length; index++) {
+            if (topics[index].order === index) continue;
+            await api.topics.update(topics[index].id, { order: index });
         }
     }
 
     async function addTopic() {
         if (!courseId) return;
-        const tempId = crypto.randomUUID();
-        const newTopic = {
-            id: tempId, // specific only for local optimistic update
-            title: "New Topic",
-            description: "",
-            assignments: [],
-            order: topics.length,
-        };
-
-        // Optimistic
-        topics = [...topics, newTopic];
 
         const res = await api.topics.create({
             courseId,
@@ -205,8 +206,7 @@
         });
 
         if (res.success) {
-            // Reload to get real ID
-            loadData();
+            await loadData();
         }
     }
 
@@ -215,19 +215,15 @@
         title: string,
         description: string,
     ) {
-        // Optimistic
-        topics = topics.map((t) =>
-            t.id === topicId ? { ...t, title, description } : t,
+        topics = topics.map((topic) =>
+            topic.id === topicId ? { ...topic, title, description } : topic,
         );
         await api.topics.update(topicId, { title, description });
     }
 
-    async function deleteTopic(topicId: string) {
-        if (!confirm("Are you sure you want to delete this topic?")) return;
-
-        // Optimistic
-        topics = topics.filter((t) => t.id !== topicId);
-        await api.topics.delete(topicId);
+    function askDeleteTopic(topicId: string) {
+        pendingDelete = { type: "topic", topicId };
+        showDeleteModal = true;
     }
 
     function openAddAssignmentModal(topicId: string) {
@@ -237,133 +233,165 @@
         showAssignmentModal = true;
     }
 
-    function openEditAssignmentModal(topicId: string, assignment: Assignment) {
+    async function openEditAssignmentModal(
+        topicId: string,
+        assignment: Assignment,
+    ) {
         currentTopicId = topicId;
-        currentAssignment = assignment;
         assignmentModalMode = "edit";
+
+        if (assignment.type === "questionnaire") {
+            const questionnaireResult = await api.questionnaires.get(
+                assignment.id,
+            );
+            if (questionnaireResult.success) {
+                currentAssignment = {
+                    ...assignment,
+                    title: questionnaireResult.data.title,
+                    startAt: toIso(questionnaireResult.data.startAt),
+                    dueAt: toIso(questionnaireResult.data.dueAt),
+                    questions: mapMentorQuestionsFromApi(
+                        questionnaireResult.data.questions,
+                    ),
+                };
+            } else {
+                currentAssignment = assignment;
+            }
+        } else {
+            const assignmentResult = await api.assignments.get(assignment.id);
+            if (assignmentResult.success) {
+                currentAssignment = {
+                    ...assignment,
+                    title: assignmentResult.data.title,
+                    introduction: assignmentResult.data.question ?? "",
+                    prompt: assignmentResult.data.prompt,
+                    startAt: toIso(assignmentResult.data.startAt),
+                    dueAt: toIso(assignmentResult.data.dueAt),
+                };
+            } else {
+                currentAssignment = assignment;
+            }
+        }
+
         showAssignmentModal = true;
     }
 
     async function handleSaveAssignment(
         assignmentData: Partial<Assignment> & { type: string },
     ) {
-        // assignmentData comes from the form. Need to map to API payload.
         if (!currentTopicId || !courseId) return;
 
-        const timestamp = Date.now();
+        const now = Date.now();
         const dueAt = assignmentData.dueAt
             ? new Date(assignmentData.dueAt).getTime()
             : null;
         const startAt = assignmentData.startAt
             ? new Date(assignmentData.startAt).getTime()
-            : timestamp;
+            : now;
 
         try {
             if (assignmentModalMode === "create") {
-                let newItemId: string | null = null;
                 const type =
                     assignmentData.type === "questionnaire"
                         ? "questionnaire"
                         : "assignment";
 
+                let newItemId: string | null = null;
+
                 if (type === "questionnaire") {
-                    const res = await api.questionnaires.create({
+                    const questions = mapMentorQuestionsToApi(
+                        assignmentData.questions,
+                    );
+                    const createResult = await api.questionnaires.create({
                         courseId,
                         topicId: currentTopicId,
                         title: assignmentData.title || "New Questionnaire",
-                        questions: [], // Empty for now, as form might not provide questions structure yet
-                        startAt: startAt,
-                        dueAt: dueAt,
+                        questions,
+                        startAt,
+                        dueAt,
                         allowLate: true,
                         allowResubmit: true,
                     });
-                    if (res.success) newItemId = res.data;
+                    if (createResult.success) newItemId = createResult.data;
                 } else {
-                    const res = await api.assignments.create({
+                    const createResult = await api.assignments.create({
                         courseId,
                         topicId: currentTopicId,
                         title: assignmentData.title || "New Assignment",
-                        question: null,
-                        prompt: "",
+                        question: assignmentData.introduction?.trim() || null,
+                        prompt: assignmentData.prompt?.trim() || "",
                         mode: "instant",
-                        startAt: startAt,
-                        dueAt: dueAt,
+                        startAt,
+                        dueAt,
                         allowLate: true,
                         allowResubmit: true,
                     });
-                    if (res.success) newItemId = res.data;
+                    if (createResult.success) newItemId = createResult.data;
                 }
 
                 if (newItemId) {
-                    // Update Topic Contents
-                    const topic = topics.find((t) => t.id === currentTopicId);
-                    if (topic) {
-                        // We need the raw topic data to know implicit contents...
-                        // But we can just fetch the topic fresh to be safe
-                        const topicRes = await api.topics.get(currentTopicId);
-                        if (topicRes.success) {
-                            const t = topicRes.data;
-                            await api.topics.update(currentTopicId, {
-                                contents: [...(t.contents || []), newItemId],
-                                contentTypes: [...(t.contentTypes || []), type],
-                            });
-                        }
+                    const topicResult = await api.topics.get(currentTopicId);
+                    if (topicResult.success) {
+                        const topic = topicResult.data;
+                        await api.topics.update(currentTopicId, {
+                            contents: [...(topic.contents || []), newItemId],
+                            contentTypes: [...(topic.contentTypes || []), type],
+                        });
                     }
                 }
-            } else {
-                // Edit
-                if (currentAssignment) {
-                    const type =
-                        currentAssignment.type === "questionnaire"
-                            ? "questionnaire"
-                            : "assignment";
-                    if (type === "questionnaire") {
-                        await api.questionnaires.update(currentAssignment.id, {
-                            title: assignmentData.title,
-                            dueAt,
-                            startAt,
-                        });
-                    } else {
-                        await api.assignments.update(currentAssignment.id, {
-                            title: assignmentData.title,
-                            dueAt,
-                            startAt,
-                        });
-                    }
+            } else if (currentAssignment) {
+                if (currentAssignment.type === "questionnaire") {
+                    await api.questionnaires.update(currentAssignment.id, {
+                        title: assignmentData.title,
+                        dueAt,
+                        startAt,
+                        questions: mapMentorQuestionsToApi(
+                            assignmentData.questions,
+                        ),
+                    });
+                } else {
+                    await api.assignments.update(currentAssignment.id, {
+                        title: assignmentData.title,
+                        dueAt,
+                        startAt,
+                        question: assignmentData.introduction?.trim() || null,
+                        prompt: assignmentData.prompt?.trim() || "",
+                    });
                 }
             }
+
             showAssignmentModal = false;
-            loadData();
+            await loadData();
         } catch (e) {
             console.error(e);
-            alert("Error saving assignment");
+            errorMessage = m.mentor_assignment_save_failed();
         }
     }
 
+    function askDeleteAssignment(topicId: string, assignmentId: string) {
+        pendingDelete = { type: "assignment", topicId, assignmentId };
+        showDeleteModal = true;
+    }
+
     async function deleteAssignment(topicId: string, assignmentId: string) {
-        if (!confirm("Are you sure you want to delete this assignment?"))
-            return;
-
-        // Locate assignment to know type
-        // Simplified: try delete both? Or cleaner: look at UI Data
-        const topic = topics.find((t) => t.id === topicId);
+        const topic = topics.find((entry) => entry.id === topicId);
         const assignment = topic?.assignments.find(
-            (a) => a.id === assignmentId,
+            (entry) => entry.id === assignmentId,
         );
-
         if (!assignment) return;
 
         try {
-            // 1. Remove from Topic contents
-            const topicRes = await api.topics.get(topicId);
-            if (topicRes.success) {
-                const t = topicRes.data;
-                const idx = (t.contents || []).indexOf(assignmentId);
-                if (idx !== -1) {
-                    const newContents = [...(t.contents || [])];
-                    const newTypes = [...(t.contentTypes || [])];
-                    newContents.splice(idx, 1);
-                    newTypes.splice(idx, 1);
+            const topicResult = await api.topics.get(topicId);
+            if (topicResult.success) {
+                const topicDoc = topicResult.data;
+                const assignmentIndex = (topicDoc.contents || []).indexOf(
+                    assignmentId,
+                );
+                if (assignmentIndex !== -1) {
+                    const newContents = [...(topicDoc.contents || [])];
+                    const newTypes = [...(topicDoc.contentTypes || [])];
+                    newContents.splice(assignmentIndex, 1);
+                    newTypes.splice(assignmentIndex, 1);
                     await api.topics.update(topicId, {
                         contents: newContents,
                         contentTypes: newTypes,
@@ -371,37 +399,63 @@
                 }
             }
 
-            // 2. Delete actual doc
             if (assignment.type === "questionnaire") {
                 await api.questionnaires.delete(assignmentId);
             } else {
                 await api.assignments.delete(assignmentId);
             }
 
-            loadData();
+            await loadData();
         } catch (e) {
             console.error(e);
+            errorMessage = m.mentor_assignment_delete_failed();
         }
     }
 
-    function handleAssignmentsReorder(
+    async function confirmDelete() {
+        const target = pendingDelete;
+        if (!target) return;
+
+        try {
+            if (target.type === "topic") {
+                topics = topics.filter((topic) => topic.id !== target.topicId);
+                await api.topics.delete(target.topicId);
+                await loadData();
+                pendingDelete = null;
+                showDeleteModal = false;
+                return;
+            }
+
+            await deleteAssignment(target.topicId, target.assignmentId || "");
+            pendingDelete = null;
+            showDeleteModal = false;
+        } catch (e) {
+            console.error(e);
+            errorMessage = m.mentor_assignment_delete_failed();
+        }
+    }
+
+    async function handleAssignmentsReorder(
         topicId: string,
         newAssignments: Assignment[],
     ) {
-        // UI Update
-        topics = topics.map((topic) => {
-            if (topic.id !== topicId) return topic;
-            return { ...topic, assignments: newAssignments };
-        });
-
-        // Sync to backend
-        // Extract IDs and Types
-        const contents = newAssignments.map((a) => a.id);
-        const contentTypes = newAssignments.map((a) =>
-            a.type === "questionnaire" ? "questionnaire" : "assignment",
+        topics = topics.map((topic) =>
+            topic.id === topicId
+                ? {
+                      ...topic,
+                      assignments: newAssignments,
+                  }
+                : topic,
         );
 
-        api.topics.update(topicId, {
+        const contents = newAssignments.map((assignment) => assignment.id);
+        const contentTypes = newAssignments.map((assignment) =>
+            assignment.type === "questionnaire"
+                ? "questionnaire"
+                : "assignment",
+        );
+
+        await api.topics.update(topicId, {
             contents,
             contentTypes,
         });
@@ -409,9 +463,6 @@
 </script>
 
 <div class="topics-container">
-    <!-- Header -->
-
-    <!-- Topics list with drag-and-drop -->
     <div
         class="topics-list outline-none"
         use:dndzone={{
@@ -433,14 +484,14 @@
                 isDragging={((topic as unknown as Record<string, unknown>)[
                     SHADOW_ITEM_MARKER_PROPERTY_NAME
                 ] as boolean) ?? false}
-                onDelete={() => deleteTopic(topic.id)}
+                onDelete={() => askDeleteTopic(topic.id)}
                 onSave={(title, description) =>
                     updateTopic(topic.id, title, description)}
                 onAddAssignment={() => openAddAssignmentModal(topic.id)}
                 onEditAssignment={(assignment) =>
                     openEditAssignmentModal(topic.id, assignment)}
                 onDeleteAssignment={(assignmentId) =>
-                    deleteAssignment(topic.id, assignmentId)}
+                    askDeleteAssignment(topic.id, assignmentId)}
                 onAssignmentsReorder={(newAssignments) =>
                     handleAssignmentsReorder(topic.id, newAssignments)}
             />
@@ -459,7 +510,6 @@
     </div>
 </div>
 
-<!-- Assignment Form Modal -->
 <AssignmentFormModal
     bind:open={showAssignmentModal}
     mode={assignmentModalMode}
@@ -467,6 +517,33 @@
     onSave={handleSaveAssignment}
     onCancel={() => (showAssignmentModal = false)}
 />
+
+<PopupModal bind:open={showDeleteModal} title={m.delete()}>
+    <p class="text-sm text-gray-700">
+        {pendingDelete?.type === "topic"
+            ? m.mentor_topic_delete_confirm()
+            : m.mentor_assignment_delete_confirm()}
+    </p>
+
+    {#snippet footer()}
+        <div class="flex justify-end gap-2">
+            <Button
+                color="light"
+                onclick={() => {
+                    pendingDelete = null;
+                    showDeleteModal = false;
+                }}
+            >
+                {m.cancel()}
+            </Button>
+            <Button color="red" onclick={confirmDelete}>{m.delete()}</Button>
+        </div>
+    {/snippet}
+</PopupModal>
+
+{#if errorMessage}
+    <p class="mt-4 text-sm text-red-500">{errorMessage}</p>
+{/if}
 
 <style>
     .topics-container {

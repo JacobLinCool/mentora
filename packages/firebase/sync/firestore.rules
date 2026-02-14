@@ -8,14 +8,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Membership checks (active users should have roster doc id == uid)
-    function isCourseMember(courseId) {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/courses/$(courseId)/roster/$(request.auth.uid));
-    }
-
+    // Membership checks require active roster status.
     function membershipDoc(courseId) {
       return get(/databases/$(database)/documents/courses/$(courseId)/roster/$(request.auth.uid));
+    }
+
+    function isCourseMember(courseId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/courses/$(courseId)/roster/$(request.auth.uid)) &&
+             membershipDoc(courseId).data.status == "active";
     }
 
     function hasRole(courseId, role) {
@@ -58,10 +59,27 @@ service cloud.firestore {
 
     function isValidUserProfile(data) {
       return data.uid is string && data.uid.size() <= 128 &&
+             (!('activeMode' in data) || data.activeMode in ["mentor", "student"]) &&
              data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
              data.email is string && data.email.size() <= 320 &&
              (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 2048)) &&
              data.createdAt is number && data.updatedAt is number;
+    }
+
+    function isValidCourseAnnouncement(item) {
+      return item is map &&
+             'id' in item && item.id is string && item.id.size() >= 1 && item.id.size() <= 256 &&
+             'content' in item && item.content is string && item.content.size() <= 2000 &&
+             'createdAt' in item && item.createdAt is number &&
+             'updatedAt' in item && item.updatedAt is number;
+    }
+
+    function isValidCourseAnnouncements(items) {
+      return items is list &&
+             items.size() <= 200 &&
+             (items.size() == 0 ||
+               (isValidCourseAnnouncement(items[0]) &&
+                (items.size() == 1 || isValidCourseAnnouncement(items[items.size() - 1]))));
     }
 
     function isValidCourseDoc(data) {
@@ -85,6 +103,7 @@ service cloud.firestore {
                 (!('maxTurnsPerConversation' in data.demoPolicy) || data.demoPolicy.maxTurnsPerConversation == null || (data.demoPolicy.maxTurnsPerConversation is number && data.demoPolicy.maxTurnsPerConversation > 0))
                )
              ) &&
+             (!('announcements' in data) || isValidCourseAnnouncements(data.announcements)) &&
              data.createdAt is number && data.updatedAt is number;
     }
 
@@ -118,6 +137,16 @@ service cloud.firestore {
              data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
              (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 2000)) &&
              (!('order' in data) || data.order == null || (data.order is number)) &&
+             data.contents is list && data.contents.size() <= 200 &&
+             (data.contents.size() == 0 ||
+               ((data.contents[0] is string && data.contents[0].size() >= 1 && data.contents[0].size() <= 500) &&
+                (data.contents.size() == 1 ||
+                  (data.contents[data.contents.size() - 1] is string &&
+                   data.contents[data.contents.size() - 1].size() >= 1 &&
+                   data.contents[data.contents.size() - 1].size() <= 500)))) &&
+             data.contentTypes is list &&
+             data.contentTypes.size() == data.contents.size() &&
+             data.contentTypes.hasOnly(["assignment", "questionnaire"]) &&
              data.createdBy is string && data.createdBy.size() <= 128 &&
              data.createdAt is number && data.updatedAt is number;
     }
@@ -132,13 +161,102 @@ service cloud.firestore {
              (data.notes == null || (data.notes is string && data.notes.size() <= 10000));
     }
 
+    function isValidTokenUsageTotals(data) {
+      return data is map &&
+             (!('cachedContentTokenCount' in data) || (data.cachedContentTokenCount is number && data.cachedContentTokenCount >= 0)) &&
+             (!('promptTokenCount' in data) || (data.promptTokenCount is number && data.promptTokenCount >= 0)) &&
+             (!('toolUsePromptTokenCount' in data) || (data.toolUsePromptTokenCount is number && data.toolUsePromptTokenCount >= 0)) &&
+             (!('thoughtsTokenCount' in data) || (data.thoughtsTokenCount is number && data.thoughtsTokenCount >= 0)) &&
+             (!('candidatesTokenCount' in data) || (data.candidatesTokenCount is number && data.candidatesTokenCount >= 0)) &&
+             (!('inputTokenCount' in data) || (data.inputTokenCount is number && data.inputTokenCount >= 0)) &&
+             (!('outputTokenCount' in data) || (data.outputTokenCount is number && data.outputTokenCount >= 0)) &&
+             (!('totalTokenCount' in data) || (data.totalTokenCount is number && data.totalTokenCount >= 0));
+    }
+
+    function isValidTokenUsageBreakdown(data) {
+      return data is map &&
+             (!('byFeature' in data) || data.byFeature is map) &&
+             'totals' in data &&
+             isValidTokenUsageTotals(data.totals);
+    }
+
+    function isValidConversationTurn(turn) {
+      return turn is map &&
+             'id' in turn && turn.id is string && turn.id.size() <= 128 &&
+             'type' in turn && turn.type is string && turn.type.size() >= 1 && turn.type.size() <= 128 &&
+             'text' in turn && turn.text is string && turn.text.size() >= 1 && turn.text.size() <= 20000 &&
+             (!('analysis' in turn) ||
+               turn.analysis == null ||
+               (turn.analysis is map &&
+                (!('stance' in turn.analysis) ||
+                  (turn.analysis.stance is string && turn.analysis.stance.size() >= 1 && turn.analysis.stance.size() <= 32)))) &&
+             (!('pendingStartAt' in turn) || turn.pendingStartAt == null || turn.pendingStartAt is number) &&
+             (!('tokenUsage' in turn) || turn.tokenUsage == null || isValidTokenUsageBreakdown(turn.tokenUsage)) &&
+             'createdAt' in turn && turn.createdAt is number;
+    }
+
+    function isValidConversationTokenUsage(data) {
+      return data is map &&
+             (!('byFeature' in data) || data.byFeature is map) &&
+             'totals' in data &&
+             isValidTokenUsageTotals(data.totals) &&
+             'updatedAt' in data &&
+             data.updatedAt is number;
+    }
+
     function isValidConversation(data) {
       return data.assignmentId is string && data.assignmentId.size() <= 128 &&
              data.userId is string && data.userId.size() <= 128 &&
              data.state in ["awaiting_idea", "adding_counterpoint", "awaiting_followup", "adding_final_summary", "closed"] &&
              data.lastActionAt is number &&
              data.createdAt is number && data.updatedAt is number &&
-             data.turns is list && data.turns.size() <= 1000;
+             data.turns is list && data.turns.size() <= 1000 &&
+             (data.turns.size() == 0 ||
+               (isValidConversationTurn(data.turns[0]) &&
+                (data.turns.size() == 1 || isValidConversationTurn(data.turns[data.turns.size() - 1])))) &&
+             (!('tokenUsage' in data) || data.tokenUsage == null || isValidConversationTokenUsage(data.tokenUsage));
+    }
+
+    function isValidQuestionOptions(options) {
+      return options is list &&
+             options.size() >= 1 &&
+             options.size() <= 100 &&
+             (options[0] is string && options[0].size() >= 1 && options[0].size() <= 500) &&
+             (options.size() == 1 ||
+               (options[options.size() - 1] is string &&
+                options[options.size() - 1].size() >= 1 &&
+                options[options.size() - 1].size() <= 500));
+    }
+
+    function isValidQuestionDefinition(question) {
+      return question is map &&
+             'type' in question &&
+             question.type in ["single_answer_choice", "multiple_answer_choice", "short_answer", "slider_answer"] &&
+             'questionText' in question &&
+             question.questionText is string &&
+             question.questionText.size() >= 1 &&
+             question.questionText.size() <= 5000 &&
+             (
+               ((question.type == "single_answer_choice" || question.type == "multiple_answer_choice") &&
+                'options' in question &&
+                isValidQuestionOptions(question.options)) ||
+               (question.type == "short_answer") ||
+               (question.type == "slider_answer" &&
+                'minLabel' in question && question.minLabel is string && question.minLabel.size() >= 1 && question.minLabel.size() <= 100 &&
+                'maxLabel' in question && question.maxLabel is string && question.maxLabel.size() >= 1 && question.maxLabel.size() <= 100 &&
+                'minValue' in question && question.minValue is number &&
+                'maxValue' in question && question.maxValue is number &&
+                question.maxValue >= question.minValue &&
+                'step' in question && question.step is number && question.step > 0)
+             );
+    }
+
+    function isValidQuestionnaireQuestion(item) {
+      return item is map &&
+             'question' in item &&
+             isValidQuestionDefinition(item.question) &&
+             'required' in item &&
+             item.required is bool;
     }
 
     function isValidQuestionnaire(data) {
@@ -147,6 +265,8 @@ service cloud.firestore {
              (!('topicId' in data) || data.topicId == null || (data.topicId is string && data.topicId.size() <= 128)) &&
              data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
              data.questions is list && data.questions.size() >= 1 && data.questions.size() <= 100 &&
+             isValidQuestionnaireQuestion(data.questions[0]) &&
+             (data.questions.size() == 1 || isValidQuestionnaireQuestion(data.questions[data.questions.size() - 1])) &&
              data.startAt is number &&
              (data.dueAt == null || data.dueAt is number) &&
              data.allowLate is bool &&
@@ -155,33 +275,47 @@ service cloud.firestore {
              data.createdAt is number && data.updatedAt is number;
     }
 
-    // Validate scalar answer values (string, number, or bool with size limits)
-    function isValidScalarAnswer(value) {
-      return (value is string && value.size() <= 10000) ||
-             value is number ||
-             value is bool;
+    function isValidStringAnswerList(value, maxLength) {
+      return value is list &&
+             value.size() >= 1 &&
+             value.size() <= 100 &&
+             (value[0] is string && value[0].size() >= 1 && value[0].size() <= maxLength) &&
+             (value.size() == 1 ||
+               (value[value.size() - 1] is string &&
+                value[value.size() - 1].size() >= 1 &&
+                value[value.size() - 1].size() <= maxLength));
     }
 
-
-
-    // Validate answer response (scalar or list of scalars)
-    function isValidAnswerResponse(value) {
-      return isValidScalarAnswer(value) ||
-             (value is list && value.size() <= 100);
+    function isValidTypedAnswer(answer) {
+      return answer is map &&
+             'type' in answer &&
+             answer.type in ["single_answer_choice", "multiple_answer_choice", "short_answer", "slider_answer"] &&
+             'response' in answer &&
+             (
+               (answer.type == "single_answer_choice" &&
+                answer.response is string &&
+                answer.response.size() >= 1 &&
+                answer.response.size() <= 500) ||
+               (answer.type == "multiple_answer_choice" &&
+                isValidStringAnswerList(answer.response, 500)) ||
+               (answer.type == "short_answer" &&
+                answer.response is string &&
+                answer.response.size() >= 1 &&
+                answer.response.size() <= 5000) ||
+               (answer.type == "slider_answer" &&
+                answer.response is number)
+             );
     }
 
     // Validate a single questionnaire response item
     function isValidQuestionnaireResponseItem(item) {
-      return ('questionIndex' in item) &&
+      return item is map &&
+             ('questionIndex' in item) &&
              (item.questionIndex is number) &&
              item.questionIndex >= 0 &&
              item.questionIndex <= 1000 &&
              ('answer' in item) &&
-             (item.answer is map) &&
-             ('type' in item.answer) &&
-             (item.answer.type is string && item.answer.type.size() >= 1 && item.answer.type.size() <= 64) &&
-             ('response' in item.answer) &&
-             isValidAnswerResponse(item.answer.response);
+             isValidTypedAnswer(item.answer);
     }
 
 
@@ -191,6 +325,8 @@ service cloud.firestore {
              data.userId is string && data.userId.size() <= 128 &&
              (data.courseId == null || (data.courseId is string && data.courseId.size() <= 128)) &&
              data.responses is list && data.responses.size() >= 1 && data.responses.size() <= 100 &&
+             isValidQuestionnaireResponseItem(data.responses[0]) &&
+             (data.responses.size() == 1 || isValidQuestionnaireResponseItem(data.responses[data.responses.size() - 1])) &&
              data.submittedAt is number;
     }
 
@@ -549,13 +685,12 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
         isValidQuestionnaireResponse(request.resource.data) &&
+        exists(/databases/$(database)/documents/questionnaires/$(request.resource.data.questionnaireId)) &&
         (
           // Either both are null (standalone) or courseId must match questionnaire's courseId
           (request.resource.data.courseId == null &&
-           (!exists(/databases/$(database)/documents/questionnaires/$(request.resource.data.questionnaireId)) ||
-            questionnaireDoc(request.resource.data.questionnaireId).data.courseId == null)) ||
+           questionnaireDoc(request.resource.data.questionnaireId).data.courseId == null) ||
           (request.resource.data.courseId != null &&
-           exists(/databases/$(database)/documents/questionnaires/$(request.resource.data.questionnaireId)) &&
            request.resource.data.courseId == questionnaireDoc(request.resource.data.questionnaireId).data.courseId)
         );
 
@@ -566,6 +701,8 @@ service cloud.firestore {
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.questionnaireId == resource.data.questionnaireId &&
         request.resource.data.courseId == resource.data.courseId &&
+        exists(/databases/$(database)/documents/questionnaires/$(resource.data.questionnaireId)) &&
+        request.resource.data.courseId == questionnaireDoc(resource.data.questionnaireId).data.courseId &&
         isValidQuestionnaireResponse(request.resource.data);
 
       // DELETE:

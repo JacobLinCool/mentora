@@ -692,16 +692,16 @@ export const apiModules: APIModule[] = [
 				name: 'create',
 				signature: 'conversations.create(assignmentId)',
 				summary: 'Create conversation',
-				description: 'Create a new conversation for an assignment (or return existing)',
+				description: 'Create a conversation for an assignment (new, existing, or reopened)',
 				accessType: 'delegated',
 				requiresAuth: true,
 				params: [
 					{ name: 'assignmentId', type: 'string', required: true, description: 'Assignment ID' }
 				],
-				returns: 'Promise<APIResult<{ id, state, isExisting }>>',
+				returns: 'Promise<APIResult<{ id: string; created: boolean; reopened: boolean }>>',
 				example: {
 					call: 'await client.conversations.create("assignment_123")',
-					response: { id: 'conv_456', state: 'awaiting_idea', isExisting: false }
+					response: { id: 'conv_456', created: true, reopened: false }
 				}
 			},
 			{
@@ -718,10 +718,11 @@ export const apiModules: APIModule[] = [
 			},
 			{
 				name: 'addTurn',
-				signature: 'conversations.addTurn(conversationId, text, type)',
+				signature:
+					'conversations.addTurn(conversationId, string | { text } | { audioBase64, audioMimeType } | { audio, text? })',
 				summary: 'Send message to AI',
 				description:
-					'Add a user message turn and trigger AI response processing. Subscribe to conversation changes to get updates.',
+					'Add a user message turn and trigger AI response processing. Accepts plain text, base64 audio, or multipart audio payload.',
 				accessType: 'delegated',
 				requiresAuth: true,
 				params: [
@@ -731,13 +732,21 @@ export const apiModules: APIModule[] = [
 						required: true,
 						description: 'Conversation ID'
 					},
-					{ name: 'text', type: 'string', required: true, description: 'User message text' },
-					{ name: 'type', type: "'idea' | 'followup'", required: true, description: 'Turn type' }
+					{
+						name: 'input',
+						type: 'string | { text: string } | { audioBase64: string; audioMimeType: string } | { audio: Blob; text?: string }',
+						required: true,
+						description: 'User message text or audio payload'
+					}
 				],
-				returns: 'Promise<APIResult<void>>',
+				returns: 'Promise<APIResult<{ text, audio, audioMimeType }>>',
 				example: {
-					call: 'await client.conversations.addTurn("conv_123", "I believe...", "idea")',
-					response: { success: true }
+					call: 'await client.conversations.addTurn("conv_123", { text: "I believe..." })',
+					response: {
+						text: 'Can you explain your reasoning in more detail?',
+						audio: '<base64>',
+						audioMimeType: 'audio/mp3'
+					}
 				}
 			}
 		]
@@ -783,25 +792,23 @@ export const apiModules: APIModule[] = [
 			},
 			{
 				name: 'addCredits',
-				signature: 'wallets.addCredits(amount, currency?)',
+				signature: 'wallets.addCredits({ amount, idempotencyKey, paymentRef? })',
 				summary: 'Add credits to wallet',
 				description: 'Add credits to the current user wallet',
 				accessType: 'delegated',
 				requiresAuth: true,
 				params: [
-					{ name: 'amount', type: 'number', required: true, description: 'Amount to add' },
 					{
-						name: 'currency',
-						type: 'string',
-						required: false,
-						description: 'Currency code',
-						default: 'usd'
+						name: 'input',
+						type: '{ amount: number; idempotencyKey: string; paymentRef?: string | null }',
+						required: true,
+						description: 'Top-up payload with required idempotency key'
 					}
 				],
-				returns: 'Promise<APIResult<AddCreditsResult>>',
+				returns: 'Promise<APIResult<{ id: string; idempotent: boolean; newBalance: number }>>',
 				example: {
-					call: 'await client.wallets.addCredits(100)',
-					response: { message: 'Credits added successfully', newBalance: 150 }
+					call: 'await client.wallets.addCredits({ amount: 100, idempotencyKey: "topup_123" })',
+					response: { id: 'idemp_abc', idempotent: false, newBalance: 150 }
 				}
 			}
 		]
