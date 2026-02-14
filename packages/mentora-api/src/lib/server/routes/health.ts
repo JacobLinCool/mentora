@@ -2,18 +2,21 @@
  * Health check route handlers
  */
 
-import { Courses } from 'mentora-firebase';
 import { jsonResponse, type RouteContext, type RouteDefinition } from '../types.js';
+import { createServiceContainer } from '../application/container.js';
 
 /**
  * GET /api/health
  * Simple health check
  */
-async function rootHealth(): Promise<Response> {
+async function rootHealth(ctx: RouteContext): Promise<Response> {
+	const { healthService } = createServiceContainer(ctx);
+	const data = healthService.rootHealth();
+
 	return jsonResponse({
 		success: true,
 		data: {
-			status: 'ok'
+			status: data.status
 		}
 	});
 }
@@ -23,8 +26,8 @@ async function rootHealth(): Promise<Response> {
  * Firestore connectivity check (requires authentication, no collection counts)
  */
 async function firestoreHealth(ctx: RouteContext): Promise<Response> {
-	// Verify Firestore is reachable with a lightweight operation
-	await ctx.firestore.collection(Courses.collectionPath()).count();
+	const { healthService } = createServiceContainer(ctx);
+	await healthService.firestoreHealth();
 
 	return jsonResponse({
 		success: true,

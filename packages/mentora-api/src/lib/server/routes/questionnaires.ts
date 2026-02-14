@@ -2,7 +2,6 @@
  * Questionnaire route handlers
  */
 
-import { Questionnaires, type Questionnaire } from 'mentora-firebase';
 import {
 	errorResponse,
 	HttpStatus,
@@ -11,7 +10,8 @@ import {
 	type RouteContext,
 	type RouteDefinition
 } from '../types.js';
-import { requireAuth, requireCourseAccess } from './utils.js';
+import { createServiceContainer } from '../application/container.js';
+import { requireAuth } from './utils.js';
 
 /**
  * GET /api/questionnaires?courseId=X[&available=true]
@@ -32,32 +32,14 @@ async function listQuestionnaires(ctx: RouteContext, request: Request): Promise<
 		);
 	}
 
-	await requireCourseAccess(ctx, courseId, user.uid, 'questionnaires');
-
-	// Query questionnaires
-	let query = ctx.firestore
-		.collection(Questionnaires.collectionPath())
-		.where('courseId', '==', courseId);
-
-	// If available=true, filter by startAt <= now
-	if (available) {
-		const now = Date.now();
-		query = query.where('startAt', '<=', now);
-	}
-
-	query = query.orderBy('startAt', 'desc');
-
-	if (limitParam) {
-		const limit = parseInt(limitParam, 10);
-		if (!isNaN(limit) && limit > 0) {
-			query = query.limit(limit);
-		}
-	}
-
-	const snapshot = await query.get();
-	const questionnaires: Questionnaire[] = snapshot.docs.map((doc) =>
-		Questionnaires.schema.parse(doc.data())
-	);
+	const { catalogService } = createServiceContainer(ctx);
+	const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
+	const questionnaires = await catalogService.listQuestionnaires({
+		courseId,
+		userId: user.uid,
+		available,
+		limit: Number.isFinite(limit) && (limit ?? 0) > 0 ? limit : undefined
+	});
 
 	return jsonResponse(questionnaires);
 }

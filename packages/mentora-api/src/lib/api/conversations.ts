@@ -22,6 +22,7 @@ import { Conversations, type Conversation as ConversationDoc } from 'mentora-fir
 export type Conversation = ConversationDoc & { id: string };
 
 import { callBackend } from './backend.js';
+import type { CreateConversationResult } from '../contracts/api.js';
 import type { ReactiveState } from './state.svelte';
 import {
 	failure,
@@ -129,7 +130,7 @@ export async function getAssignmentConversation(
 export async function createConversation(
 	config: MentoraAPIConfig,
 	assignmentId: string
-): Promise<APIResult<{ id: string; created: boolean; reopened: boolean }>> {
+): Promise<APIResult<CreateConversationResult>> {
 	return callBackend(config, '/conversations', {
 		method: 'POST',
 		body: JSON.stringify({ assignmentId })

@@ -19,6 +19,13 @@ export type {
 	TokenUsageBreakdown,
 	TokenUsageTotals
 } from './api/types.js';
+export type {
+	AddCreditsInput,
+	AddCreditsResult,
+	CreateConversationResult,
+	DelegatedListOptions,
+	JoinCourseResult
+} from './contracts/api.js';
 export { success, failure, tryCatch, APIErrorCode } from './api/types.js';
 export type { WhereFilterOp } from 'firebase/firestore';
 export type {

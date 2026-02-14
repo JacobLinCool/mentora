@@ -2,20 +2,20 @@
  * Topic route handlers
  */
 
-import { Topics, type Topic } from 'mentora-firebase';
 import {
-	errorResponse,
 	HttpStatus,
-	jsonResponse,
 	ServerErrorCode,
+	errorResponse,
+	jsonResponse,
 	type RouteContext,
 	type RouteDefinition
 } from '../types.js';
-import { requireAuth, requireCourseAccess } from './utils.js';
+import { createServiceContainer } from '../application/container.js';
+import { requireAuth } from './utils.js';
 
 /**
  * GET /api/topics?courseId=X
- * List topics for a course (validates membership server-side)
+ * List topics for a course
  */
 async function listTopics(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
@@ -31,24 +31,13 @@ async function listTopics(ctx: RouteContext, request: Request): Promise<Response
 		);
 	}
 
-	await requireCourseAccess(ctx, courseId, user.uid, 'topics', { allowPublic: true });
-
-	// Query topics
-	let query = ctx.firestore
-		.collection(Topics.collectionPath())
-		.where('courseId', '==', courseId)
-		.orderBy('order', 'asc');
-
-	if (limitParam) {
-		const limit = parseInt(limitParam, 10);
-		if (!isNaN(limit) && limit > 0) {
-			query = query.limit(limit);
-		}
-	}
-
-	const snapshot = await query.get();
-	const topics: Topic[] = snapshot.docs.map((doc) => Topics.schema.parse(doc.data()));
-
+	const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
+	const { catalogService } = createServiceContainer(ctx);
+	const topics = await catalogService.listTopics({
+		courseId,
+		userId: user.uid,
+		limit: Number.isFinite(limit) && (limit ?? 0) > 0 ? limit : undefined
+	});
 	return jsonResponse(topics);
 }
 

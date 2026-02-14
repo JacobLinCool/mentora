@@ -3,6 +3,7 @@
  */
 import type { Auth, User } from 'firebase/auth';
 import type { Firestore, WhereFilterOp } from 'firebase/firestore';
+import type { DelegatedListOptions } from '../contracts/api.js';
 import type {
 	TokenUsageBreakdown as FirebaseTokenUsageBreakdown,
 	TokenUsageTotals as FirebaseTokenUsageTotals
@@ -35,12 +36,7 @@ export type TokenUsageBreakdown = FirebaseTokenUsageBreakdown & {
 	models?: Record<string, string>;
 };
 
-/**
- * Options supported by delegated backend list endpoints.
- */
-export interface ListOptions {
-	limit?: number;
-}
+export type ListOptions = DelegatedListOptions;
 
 /**
  * Query options for list operations

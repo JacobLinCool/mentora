@@ -28,6 +28,8 @@ import {
 	type MentoraAPIConfig,
 	type QueryOptions
 } from './types.js';
+import type { AddCreditsInput, AddCreditsResult } from '../contracts/api.js';
+export type { AddCreditsInput, AddCreditsResult } from '../contracts/api.js';
 
 import { callBackend } from './backend.js';
 
@@ -39,12 +41,6 @@ export interface CourseWalletResult {
 		totalCharges: number;
 		transactionCount: number;
 	};
-}
-
-export interface AddCreditsInput {
-	amount: number;
-	idempotencyKey: string;
-	paymentRef?: string | null;
 }
 
 /**
@@ -204,8 +200,8 @@ export async function getCourseWallet(
 export async function addCredits(
 	config: MentoraAPIConfig,
 	input: AddCreditsInput
-): Promise<APIResult<{ id: string; idempotent: boolean; newBalance: number }>> {
-	return callBackend<{ id: string; idempotent: boolean; newBalance: number }>(config, '/wallets', {
+): Promise<APIResult<AddCreditsResult>> {
+	return callBackend<AddCreditsResult>(config, '/wallets', {
 		method: 'POST',
 		body: JSON.stringify({
 			amount: input.amount,
