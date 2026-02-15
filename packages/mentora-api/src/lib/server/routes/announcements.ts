@@ -10,7 +10,7 @@ import { requireAuth, requireParam } from './utils.js';
  * POST /api/announcements/:id/read
  * Mark one announcement as read for the current user.
  */
-async function markRead(ctx: RouteContext, _request: Request): Promise<Response> {
+async function markRead(ctx: RouteContext): Promise<Response> {
 	const user = requireAuth(ctx);
 	const announcementId = requireParam(ctx, 'id');
 
@@ -23,7 +23,7 @@ async function markRead(ctx: RouteContext, _request: Request): Promise<Response>
  * POST /api/announcements/read-all
  * Mark all announcements as read for the current user.
  */
-async function markAllRead(ctx: RouteContext, _request: Request): Promise<Response> {
+async function markAllRead(ctx: RouteContext): Promise<Response> {
 	const user = requireAuth(ctx);
 
 	const { announcementService } = createServiceContainer(ctx);
