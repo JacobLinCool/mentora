@@ -28,6 +28,69 @@ export const zMessageStance = z
     .describe("Automated stance classification for a conversation turn.");
 export type MessageStance = z.infer<typeof zMessageStance>;
 
+export const zTokenUsageTotals = z
+    .object({
+        cachedContentTokenCount: z
+            .number()
+            .int()
+            .nonnegative()
+            .optional()
+            .default(0),
+        promptTokenCount: z.number().int().nonnegative().optional().default(0),
+        toolUsePromptTokenCount: z
+            .number()
+            .int()
+            .nonnegative()
+            .optional()
+            .default(0),
+        thoughtsTokenCount: z
+            .number()
+            .int()
+            .nonnegative()
+            .optional()
+            .default(0),
+        candidatesTokenCount: z
+            .number()
+            .int()
+            .nonnegative()
+            .optional()
+            .default(0),
+        inputTokenCount: z.number().int().nonnegative().optional().default(0),
+        outputTokenCount: z.number().int().nonnegative().optional().default(0),
+        totalTokenCount: z.number().int().nonnegative().optional().default(0),
+    })
+    .describe("Normalized token usage counters.");
+export type TokenUsageTotals = z.infer<typeof zTokenUsageTotals>;
+
+export const zTokenUsageBreakdown = z
+    .object({
+        byFeature: z
+            .record(z.string(), zTokenUsageTotals)
+            .optional()
+            .default({})
+            .describe("Feature-level token usage map."),
+        totals: zTokenUsageTotals.describe(
+            "Total token usage across features.",
+        ),
+    })
+    .describe("Token usage summary with feature breakdown.");
+export type TokenUsageBreakdown = z.infer<typeof zTokenUsageBreakdown>;
+
+export const zConversationTokenUsage = z
+    .object({
+        byFeature: z
+            .record(z.string(), zTokenUsageTotals)
+            .optional()
+            .default({})
+            .describe("Aggregated token usage grouped by feature."),
+        totals: zTokenUsageTotals.describe("Aggregated token usage totals."),
+        updatedAt: zFirebaseTimestamp.describe(
+            "Timestamp when token usage aggregate was last updated.",
+        ),
+    })
+    .describe("Conversation-level token usage aggregate.");
+export type ConversationTokenUsage = z.infer<typeof zConversationTokenUsage>;
+
 export const zTurn = z
     .object({
         id: z
@@ -58,6 +121,13 @@ export const zTurn = z
             .default(null)
             .describe(
                 "Timestamp marking when the turn entered a pending state, if any.",
+            ),
+        tokenUsage: zTokenUsageBreakdown
+            .nullable()
+            .optional()
+            .default(null)
+            .describe(
+                "Optional token usage captured while processing this turn.",
             ),
         createdAt: zFirebaseTimestamp.describe(
             "Timestamp when the turn was created.",
@@ -93,6 +163,13 @@ export const zConversation = z
             .max(1000)
             .describe(
                 "Chronological list of conversational turns between student and AI.",
+            ),
+        tokenUsage: zConversationTokenUsage
+            .nullable()
+            .optional()
+            .default(null)
+            .describe(
+                "Aggregated token usage across all turns in this conversation.",
             ),
     })
     .describe(

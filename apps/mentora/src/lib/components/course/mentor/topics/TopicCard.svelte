@@ -12,7 +12,7 @@
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
     } from "svelte-dnd-action";
     import AssignmentItem from "./AssignmentItem.svelte";
-    import * as m from "$lib/paraglide/messages.js";
+    import * as m from "$lib/paraglide/messages";
 
     interface Assignment {
         id: string;
@@ -168,6 +168,7 @@
                     class="cursor-pointer p-1.5 text-gray-500 hover:text-green-600"
                     title={m.mentor_assignment_save()}
                     onclick={handleSave}
+                    aria-label={m.mentor_assignment_save()}
                 >
                     <Save size={18} />
                 </button>
@@ -176,6 +177,7 @@
                     class="cursor-pointer p-1.5 text-gray-500 hover:text-gray-700"
                     title={m.mentor_assignment_cancel()}
                     onclick={handleCancel}
+                    aria-label={m.mentor_assignment_cancel()}
                 >
                     <X size={18} />
                 </button>
@@ -184,6 +186,7 @@
                     type="button"
                     class="cursor-pointer p-1.5 text-gray-500 hover:text-gray-700"
                     onclick={enterEditMode}
+                    aria-label={m.edit()}
                 >
                     <Pencil size={18} />
                 </button>
@@ -192,6 +195,7 @@
                 type="button"
                 class="cursor-pointer p-1.5 text-gray-500 hover:text-red-500"
                 onclick={onDelete}
+                aria-label={m.delete()}
             >
                 <Trash2 size={18} />
             </button>

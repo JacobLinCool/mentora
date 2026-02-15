@@ -11,7 +11,21 @@
 
 // Base client export - works in any JavaScript environment
 export { MentoraClient, type MentoraClientConfig } from './api/client.js';
-export type { APIResult, MentoraAPIConfig, QueryOptions } from './api/types.js';
+export type {
+	APIResult,
+	ListOptions,
+	MentoraAPIConfig,
+	QueryOptions,
+	TokenUsageBreakdown,
+	TokenUsageTotals
+} from './api/types.js';
+export type {
+	AddCreditsInput,
+	AddCreditsResult,
+	CreateConversationResult,
+	DelegatedListOptions,
+	JoinCourseResult
+} from './contracts/api.js';
 export { success, failure, tryCatch, APIErrorCode } from './api/types.js';
 export type { WhereFilterOp } from 'firebase/firestore';
 export type {

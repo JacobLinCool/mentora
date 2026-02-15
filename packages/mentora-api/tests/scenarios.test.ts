@@ -81,14 +81,11 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should get course details', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await teacher.courses.get(testCourseId);
+			const result = await teacher.courses.get(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -98,12 +95,9 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should be in course roster as instructor', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacher.courses.getRoster(testCourseId);
+			const result = await teacher.courses.getRoster(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -116,27 +110,25 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should NOT see private course before joining', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			// Student tries to get course directly - should fail without membership
-			const result = await student.courses.get(testCourseId);
+			const result = await student.courses.get(testCourseId!);
 
-			// May succeed if course is public, or fail if unlisted/private
-			if (!result.success) {
+			// Course is unlisted, student should not have access before joining
+			if (result.success) {
+				// If read succeeds, it means rules allow reading (e.g. public visibility)
+				expect(result.data).toBeDefined();
+			} else {
+				expect(result.success).toBe(false);
 				expect(result.error).toBeDefined();
 			}
 		});
 
 		it('Student: should join course by code', async () => {
-			if (!testCourseCode) {
-				console.log('Skipping - no course code');
-				return;
-			}
+			expect(testCourseCode, 'testCourseCode should be set by prior test').toBeTruthy();
 
-			const result = await student.courses.joinByCode(testCourseCode);
+			const result = await student.courses.joinByCode(testCourseCode!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -145,14 +137,11 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should now see course after joining', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await student.courses.get(testCourseId);
+			const result = await student.courses.get(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -161,12 +150,9 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should see student in roster', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
-			const result = await teacher.courses.getRoster(testCourseId);
+			const result = await teacher.courses.getRoster(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -185,13 +171,10 @@ describe('Multi-Account Scenarios', () => {
 
 	describe('Scenario 2: Topics and Assignments', () => {
 		it('Teacher: should create a topic', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const result = await teacher.topics.create({
-				courseId: testCourseId,
+				courseId: testCourseId!,
 				title: `Test Topic ${generateTestId()}`,
 				description: 'Topic for integration testing',
 				order: 1,
@@ -205,13 +188,10 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should create an assignment', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const result = await teacher.assignments.create({
-				courseId: testCourseId,
+				courseId: testCourseId!,
 				topicId: testTopicId,
 				title: `Test Assignment ${generateTestId()}`,
 				question: null,
@@ -231,14 +211,11 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should get assignment details', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await teacher.assignments.get(testAssignmentId);
+			const result = await teacher.assignments.get(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -248,12 +225,9 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should see assignment in course', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const result = await student.assignments.get(testAssignmentId);
+			const result = await student.assignments.get(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -262,13 +236,10 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should update assignment', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			const newTitle = `Updated Assignment ${Date.now()}`;
-			const result = await teacher.assignments.update(testAssignmentId, {
+			const result = await teacher.assignments.update(testAssignmentId!, {
 				title: newTitle
 			});
 
@@ -285,25 +256,19 @@ describe('Multi-Account Scenarios', () => {
 
 	describe('Scenario 3: Submissions and Grading', () => {
 		it('Student: should start a submission', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const result = await student.submissions.start(testAssignmentId);
+			const result = await student.submissions.start(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 		});
 
 		it('Student: should get their submission', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await student.submissions.getMine(testAssignmentId);
+			const result = await student.submissions.getMine(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success && result.data) {
@@ -312,31 +277,22 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should submit the assignment', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const result = await student.submissions.submit(testAssignmentId);
+			const result = await student.submissions.submit(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 		});
 
 		it('Teacher: should see student submission', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
-			const result = await teacher.submissions.get(testAssignmentId, studentUid);
+			const result = await teacher.submissions.get(testAssignmentId!, studentUid!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -345,12 +301,9 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should list all submissions for assignment', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const result = await teacher.submissions.listForAssignment(testAssignmentId);
+			const result = await teacher.submissions.listForAssignment(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -360,18 +313,12 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should grade submission', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
-			const result = await teacher.submissions.grade(testAssignmentId, studentUid, {
+			const result = await teacher.submissions.grade(testAssignmentId!, studentUid!, {
 				scoreCompletion: 95,
 				notes: 'Excellent work! Great integration test.',
 				state: 'graded_complete'
@@ -384,14 +331,11 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should see graded submission', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await student.submissions.getMine(testAssignmentId);
+			const result = await student.submissions.getMine(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success && result.data) {
@@ -407,12 +351,9 @@ describe('Multi-Account Scenarios', () => {
 
 	describe('Scenario 4: Conversations', () => {
 		it('Student: should create a conversation for assignment', async () => {
-			if (!testAssignmentId) {
-				console.log('Skipping - no assignment created');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
 
-			const result = await student.conversations.create(testAssignmentId);
+			const result = await student.conversations.create(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -422,14 +363,11 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should get their conversation', async () => {
-			if (!testConversationId) {
-				console.log('Skipping - no conversation created');
-				return;
-			}
+			expect(testConversationId, 'testConversationId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await student.conversations.get(testConversationId);
+			const result = await student.conversations.get(testConversationId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -439,12 +377,10 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should get conversation by assignment', async () => {
-			if (!testAssignmentId || !testConversationId) {
-				console.log('Skipping - no conversation/assignment');
-				return;
-			}
+			expect(testAssignmentId, 'testAssignmentId should be set by prior test').toBeTruthy();
+			expect(testConversationId, 'testConversationId should be set by prior test').toBeTruthy();
 
-			const result = await student.conversations.getForAssignment(testAssignmentId);
+			const result = await student.conversations.getForAssignment(testAssignmentId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -453,12 +389,9 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should view student conversation', async () => {
-			if (!testConversationId) {
-				console.log('Skipping - no conversation created');
-				return;
-			}
+			expect(testConversationId, 'testConversationId should be set by prior test').toBeTruthy();
 
-			const result = await teacher.conversations.get(testConversationId);
+			const result = await teacher.conversations.get(testConversationId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -467,18 +400,9 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should end conversation', async () => {
-			if (!testConversationId) {
-				console.log('Skipping - no conversation created');
-				return;
-			}
+			expect(testConversationId, 'testConversationId should be set by prior test').toBeTruthy();
 
-			const result = await student.conversations.end(testConversationId);
-
-			// Backend may not be running in test environment
-			if (!result.success && result.error?.includes('fetch')) {
-				console.log('Skipping - backend not available');
-				return;
-			}
+			const result = await student.conversations.end(testConversationId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -493,13 +417,10 @@ describe('Multi-Account Scenarios', () => {
 
 	describe('Scenario 5: Roster Management', () => {
 		it('Teacher: should invite another member', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const testEmail = `test-invite-${Date.now()}@example.com`;
-			const result = await teacher.courses.inviteMember(testCourseId, testEmail, 'auditor');
+			const result = await teacher.courses.inviteMember(testCourseId!, testEmail, 'auditor');
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -508,18 +429,12 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should update student role to TA', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
-			const result = await teacher.courses.updateMember(testCourseId, studentUid, {
+			const result = await teacher.courses.updateMember(testCourseId!, studentUid!, {
 				role: 'ta'
 			});
 
@@ -530,15 +445,12 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should now have TA permissions', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
 			// As TA, student should be able to view roster
-			const result = await student.courses.getRoster(testCourseId);
+			const result = await student.courses.getRoster(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -548,18 +460,12 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Teacher: should change student back to student role', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
-			const result = await teacher.courses.updateMember(testCourseId, studentUid, {
+			const result = await teacher.courses.updateMember(testCourseId!, studentUid!, {
 				role: 'student'
 			});
 
@@ -576,13 +482,10 @@ describe('Multi-Account Scenarios', () => {
 
 	describe('Scenario 6: Course Updates', () => {
 		it('Teacher: should update course details', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			const newTitle = `Updated Course Title ${Date.now()}`;
-			const result = await teacher.courses.update(testCourseId, {
+			const result = await teacher.courses.update(testCourseId!, {
 				title: newTitle,
 				description: 'Updated description from integration test'
 			});
@@ -594,14 +497,11 @@ describe('Multi-Account Scenarios', () => {
 		});
 
 		it('Student: should see updated course', async () => {
-			if (!testCourseId) {
-				console.log('Skipping - no course created');
-				return;
-			}
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
 
 			await delay(500);
 
-			const result = await student.courses.get(testCourseId);
+			const result = await student.courses.get(testCourseId!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {

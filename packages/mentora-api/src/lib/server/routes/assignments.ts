@@ -2,7 +2,6 @@
  * Assignment route handlers
  */
 
-import { Assignments, type Assignment } from 'mentora-firebase';
 import {
 	errorResponse,
 	HttpStatus,
@@ -11,9 +10,9 @@ import {
 	type RouteContext,
 	type RouteDefinition
 } from '../types.js';
-import { requireAuth, requireCourseAccess, parseBody } from './utils.js';
+import { requireAuth, parseBody } from './utils.js';
 import { GenerateContentSchema } from '../llm/schemas.js';
-import { getContentExecutor } from '../llm/executors.js';
+import { createServiceContainer } from '../application/container.js';
 
 /**
  * GET /api/assignments?courseId=X[&available=true]
@@ -34,32 +33,14 @@ async function listAssignments(ctx: RouteContext, request: Request): Promise<Res
 		);
 	}
 
-	await requireCourseAccess(ctx, courseId, user.uid, 'assignments');
-
-	// Query assignments
-	let query = ctx.firestore
-		.collection(Assignments.collectionPath())
-		.where('courseId', '==', courseId);
-
-	// If available=true, filter by startAt <= now
-	if (available) {
-		const now = Date.now();
-		query = query.where('startAt', '<=', now);
-	}
-
-	query = query.orderBy('startAt', 'desc');
-
-	if (limitParam) {
-		const limit = parseInt(limitParam, 10);
-		if (!isNaN(limit) && limit > 0) {
-			query = query.limit(limit);
-		}
-	}
-
-	const snapshot = await query.get();
-	const assignments: Assignment[] = snapshot.docs.map((doc) =>
-		Assignments.schema.parse(doc.data())
-	);
+	const { catalogService } = createServiceContainer(ctx);
+	const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
+	const assignments = await catalogService.listAssignments({
+		courseId,
+		userId: user.uid,
+		available,
+		limit: Number.isFinite(limit) && (limit ?? 0) > 0 ? limit : undefined
+	});
 
 	return jsonResponse(assignments);
 }
@@ -84,20 +65,10 @@ async function generateContent(ctx: RouteContext, request: Request): Promise<Res
 	const { question } = body;
 
 	try {
-		const contentExecutor = getContentExecutor();
+		const { contentGenerationService } = createServiceContainer(ctx);
+		const result = await contentGenerationService.generateAssignmentContent(question);
 
-		// Reset token usage for this request
-		contentExecutor.resetTokenUsage();
-
-		// Generate detailed content from the question
-		const generatedContent = await contentExecutor.generateContent(question);
-
-		return jsonResponse(
-			{
-				content: generatedContent
-			},
-			HttpStatus.OK
-		);
+		return jsonResponse(result, HttpStatus.OK);
 	} catch (error) {
 		console.error('[API] Error generating content:', error);
 		return errorResponse(

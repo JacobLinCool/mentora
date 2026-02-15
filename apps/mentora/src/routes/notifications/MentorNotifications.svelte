@@ -3,11 +3,11 @@
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
     import {
         Bell,
-        CheckCircle2,
+        CircleCheck,
         Clock,
         MessageSquare,
         UserPlus,
-        AlertCircle,
+        CircleAlert,
     } from "@lucide/svelte";
 
     // Mock data for notifications
@@ -65,9 +65,9 @@
             case "message":
                 return MessageSquare;
             case "system":
-                return CheckCircle2;
+                return CircleCheck;
             case "alert":
-                return AlertCircle;
+                return CircleAlert;
             default:
                 return Bell;
         }

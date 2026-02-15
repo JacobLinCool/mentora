@@ -77,7 +77,7 @@
     <title>{course?.code || "Loading"} - {m.explore_title()} - Mentora</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-[#404040] to-[#6b6b6b] pb-24">
+<div class="min-h-screen bg-linear-to-br from-[#404040] to-[#6b6b6b] pb-24">
     <!-- Back Button -->
     <div class="absolute top-4 left-4 z-10">
         <button
@@ -118,7 +118,7 @@
                 />
                 <!-- Dark gradient overlay -->
                 <div
-                    class="absolute inset-0 bg-gradient-to-b from-transparent via-[#404040]/60 to-[#404040]"
+                    class="absolute inset-0 bg-linear-to-b from-transparent via-[#404040]/60 to-[#404040]"
                 ></div>
             </div>
 

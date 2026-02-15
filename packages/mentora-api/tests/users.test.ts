@@ -22,7 +22,8 @@ describe('Users Module (Integration)', () => {
 	describe('getMyProfile()', () => {
 		it('should return current user profile when authenticated', async () => {
 			// First ensure the profile exists
-			await client.users.updateMyProfile({ displayName: 'Test Teacher' });
+			const setupResult = await client.users.updateMyProfile({ displayName: 'Test Teacher' });
+			expect(setupResult.success).toBe(true);
 
 			const result = await client.users.getMyProfile();
 
@@ -38,16 +39,13 @@ describe('Users Module (Integration)', () => {
 	describe('getUserProfile()', () => {
 		it('should return user profile by UID', async () => {
 			const currentUser = getTeacherUser();
-			if (!currentUser) {
-				console.log('Skipping - no current user');
-				return;
-			}
+			expect(currentUser, 'currentUser should be available from getTeacherUser()').toBeTruthy();
 
-			const result = await client.users.getProfile(currentUser.uid);
+			const result = await client.users.getProfile(currentUser!.uid);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.uid).toBe(currentUser.uid);
+				expect(result.data.uid).toBe(currentUser!.uid);
 			}
 		});
 

@@ -1,5 +1,5 @@
 import type { RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
     assertFails,
     assertSucceeds,
@@ -151,67 +151,67 @@ describe("Courses Security Rules", () => {
             await assertFails(db.collection("courses").get());
         });
 
-        // NOTE: The following list query tests are disabled due to Firestore emulator
-        // timing out on list operations with complex rules. The rules themselves are
-        // correct, but the emulator struggles with evaluating list permissions that
-        // involve multiple conditional checks (visibility, membership, ownership).
-        // These scenarios should be tested in a staging/production environment.
+        it("should deny querying courses collection without specific filters", async () => {
+            const userId = "user123";
+            const db = testEnv.authenticatedContext(userId).firestore();
+            await assertFails(db.collection("courses").get());
+        });
 
-        // it("should deny querying courses collection without specific filters", async () => {
-        //     const userId = "user123";
-        //     const db = testEnv.authenticatedContext(userId).firestore();
-        //     // Querying the entire courses collection fails because rules require
-        //     // either course membership or ownership check which needs document data
-        //     await assertFails(db.collection("courses").get());
-        // });
+        it("should allow unauthenticated users to query public courses when filtered", async () => {
+            const db = testEnv.unauthenticatedContext().firestore();
+            await assertSucceeds(
+                db
+                    .collection("courses")
+                    .where("visibility", "==", "public")
+                    .get(),
+            );
+        });
 
-        // it("should allow unauthenticated users to query public courses when filtered", async () => {
-        //     const db = testEnv.unauthenticatedContext().firestore();
-        //     // Empty collection should be queryable when properly filtered
-        //     await assertSucceeds(
-        //         db.collection("courses").where("visibility", "==", "public").get()
-        //     );
-        // });
+        it("should allow querying empty courses by ownerId", async () => {
+            const ownerId = "owner456";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+            await assertSucceeds(
+                db.collection("courses").where("ownerId", "==", ownerId).get(),
+            );
+        });
 
-        // it("should allow querying empty courses by ownerId", async () => {
-        //     const ownerId = "owner456";
-        //     const db = testEnv.authenticatedContext(ownerId).firestore();
-        //     // No courses created - should succeed with empty result when filtering by owner
-        //     await assertSucceeds(
-        //         db.collection("courses").where("ownerId", "==", ownerId).get()
-        //     );
-        // });
+        it("should allow querying courses by ownerId with ordering", async () => {
+            const ownerId = "owner456";
+            const db = testEnv.authenticatedContext(ownerId).firestore();
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const fs = context.firestore();
+                const now = Date.now();
+                await fs
+                    .collection("courses")
+                    .doc("course1")
+                    .set({
+                        id: "course1",
+                        title: "Older Course",
+                        code: "OLD123",
+                        ownerId: ownerId,
+                        createdAt: now - 10000,
+                        updatedAt: now - 10000,
+                    });
+                await fs.collection("courses").doc("course2").set({
+                    id: "course2",
+                    title: "Newer Course",
+                    code: "NEW456",
+                    ownerId: ownerId,
+                    createdAt: now,
+                    updatedAt: now,
+                });
+            });
 
-        // it("should allow querying courses by ownerId with ordering", async () => {
-        //     const ownerId = "owner456";
-        //     const db = testEnv.authenticatedContext(ownerId).firestore();
-        //     await testEnv.withSecurityRulesDisabled(async (context) => {
-        //         const fs = context.firestore();
-        //         const now = Date.now();
-        //         await fs.collection("courses").doc("course1").set({
-        //             id: "course1",
-        //             title: "Older Course",
-        //             code: "OLD123",
-        //             ownerId: ownerId,
-        //             createdAt: now - 10000,
-        //             updatedAt: now - 10000,
-        //         });
-        //         await fs.collection("courses").doc("course2").set({
-        //             id: "course2",
-        //             title: "Newer Course",
-        //             code: "NEW456",
-        //             ownerId: ownerId,
-        //             createdAt: now,
-        //             updatedAt: now,
-        //         });
-        //     });
-        //     // Should succeed with ordered results
-        //     const result = await assertSucceeds(
-        //         db.collection("courses").where("ownerId", "==", ownerId).orderBy("createdAt", "desc").get()
-        //     );
-        //     expect(result.size).toBe(2);
-        //     expect(result.docs[0]?.data().title).toBe("Newer Course");
-        // });
+            const result = await assertSucceeds(
+                db
+                    .collection("courses")
+                    .where("ownerId", "==", ownerId)
+                    .orderBy("createdAt", "desc")
+                    .get(),
+            );
+            expect(result.size).toBe(2);
+            expect(result.docs[0]?.data().title).toBe("Newer Course");
+        });
     });
 
     describe("Create Access", () => {

@@ -1,0 +1,13 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"entryPoints": ["src/lib/index.ts", "src/lib/api", "src/lib/server/index.ts"],
+	"entryPointStrategy": "expand",
+	"tsconfig": "tsconfig.json",
+	"exclude": ["**/*.test.ts", "**/*.svelte.ts"],
+	"excludePrivate": true,
+	"excludeInternal": true,
+	"skipErrorChecking": true,
+	"readme": "none",
+	"out": "docs/typedoc",
+	"sort": ["source-order"]
+}

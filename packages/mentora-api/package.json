@@ -12,7 +12,10 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"test:coverage:emulator": "firebase emulators:exec --config ../firebase/firebase.json --project demo-no-project --only firestore,auth \"vitest run --coverage\"",
+		"docs:api": "svelte-kit sync && typedoc --options typedoc.json",
+		"docs:api:watch": "svelte-kit sync && typedoc --options typedoc.json --watch"
 	},
 	"files": [
 		"dist",
@@ -76,6 +79,7 @@
 		"svelte": "^5.46.1",
 		"svelte-check": "^4.3.5",
 		"tailwindcss": "^4.1.18",
+		"typedoc": "^0.28.17",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.51.0",
 		"vite": "^7.3.0",

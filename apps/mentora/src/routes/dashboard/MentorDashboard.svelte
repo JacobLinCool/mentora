@@ -2,49 +2,127 @@
     import { Plus } from "@lucide/svelte";
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
     import { m } from "$lib/paraglide/messages";
+    import { onMount } from "svelte";
 
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import CreateCourseModal from "$lib/components/course/CreateCourseModal.svelte";
     import UsageChart from "$lib/components/dashboard/mentor/UsageChart.svelte";
-    import { api, type Course } from "$lib/api";
+    import { api, type Course, type TokenUsageTotals } from "$lib/api";
 
     let isCreateModalOpen = $state(false);
 
-    // Initial State
-    let courses = $state<Course[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    let isLoadingCourses = $state(true);
+    const ownedCoursesState = api.createState<Course[]>();
+    const courses = $derived(ownedCoursesState.value ?? []);
 
     // Current User Display Name
     const userName = $derived(api.currentUserProfile?.displayName || "Mentor");
 
-    // Mock Usage Data (Pending Analytics API)
-    const usageData = [
-        { day: m.mentor_dashboard_day_mon(), input: 1200, output: 800 },
-        { day: m.mentor_dashboard_day_tue(), input: 1500, output: 950 },
-        { day: m.mentor_dashboard_day_wed(), input: 800, output: 400 },
-        { day: m.mentor_dashboard_day_thu(), input: 2000, output: 1200 },
-        { day: m.mentor_dashboard_day_fri(), input: 1800, output: 1100 },
-        { day: m.mentor_dashboard_day_sat(), input: 600, output: 300 },
-        { day: m.mentor_dashboard_day_sun(), input: 400, output: 200 },
-    ];
+    type TokenUsageDay = {
+        date: string;
+        inputTokens: number;
+        outputTokens: number;
+        totalTokens: number;
+        byFeature: Record<string, TokenUsageTotals>;
+    };
 
-    async function loadCourses() {
-        isLoadingCourses = true;
-        const result = await api.courses.listMine();
-        if (result.success) {
-            courses = result.data;
-        } else {
-            console.error("Failed to load courses", result.error);
+    type TokenUsageAnalyticsResponse = {
+        days: TokenUsageDay[];
+        totals: {
+            inputTokens: number;
+            outputTokens: number;
+            totalTokens: number;
+            byFeature: Record<string, TokenUsageTotals>;
+        };
+        windowDays: number;
+    };
+
+    type UsagePoint = { day: string; input: number; output: number };
+
+    let usageData = $state<UsagePoint[]>(buildFallbackUsageData());
+
+    function labelFromWeekdayIndex(day: number): string {
+        switch (day) {
+            case 0:
+                return m.mentor_dashboard_day_sun();
+            case 1:
+                return m.mentor_dashboard_day_mon();
+            case 2:
+                return m.mentor_dashboard_day_tue();
+            case 3:
+                return m.mentor_dashboard_day_wed();
+            case 4:
+                return m.mentor_dashboard_day_thu();
+            case 5:
+                return m.mentor_dashboard_day_fri();
+            case 6:
+                return m.mentor_dashboard_day_sat();
+            default:
+                return "";
         }
-        isLoadingCourses = false;
     }
+
+    function buildFallbackUsageData(): UsagePoint[] {
+        return [
+            { day: m.mentor_dashboard_day_mon(), input: 0, output: 0 },
+            { day: m.mentor_dashboard_day_tue(), input: 0, output: 0 },
+            { day: m.mentor_dashboard_day_wed(), input: 0, output: 0 },
+            { day: m.mentor_dashboard_day_thu(), input: 0, output: 0 },
+            { day: m.mentor_dashboard_day_fri(), input: 0, output: 0 },
+            { day: m.mentor_dashboard_day_sat(), input: 0, output: 0 },
+            { day: m.mentor_dashboard_day_sun(), input: 0, output: 0 },
+        ];
+    }
+
+    function mapTokenUsageToChart(days: TokenUsageDay[]): UsagePoint[] {
+        return days.map((entry) => {
+            const weekday = new Date(`${entry.date}T00:00:00.000Z`).getUTCDay();
+            return {
+                day: labelFromWeekdayIndex(weekday),
+                input: entry.inputTokens,
+                output: entry.outputTokens,
+            };
+        });
+    }
+
+    async function loadTokenUsage() {
+        const response = await api.backend.call<TokenUsageAnalyticsResponse>(
+            "/analytics/token-usage?days=7",
+            {
+                method: "GET",
+            },
+        );
+
+        if (!response.success) {
+            usageData = buildFallbackUsageData();
+            console.warn("Failed to load token analytics:", response.error);
+            return;
+        }
+
+        usageData = mapTokenUsageToChart(response.data.days);
+    }
+
+    onMount(async () => {
+        if (!api.isAuthenticated) {
+            await api.authReady;
+        }
+        if (!api.isAuthenticated) {
+            usageData = buildFallbackUsageData();
+            return;
+        }
+        await loadTokenUsage();
+    });
 
     $effect(() => {
         if (api.isAuthenticated) {
-            loadCourses();
+            api.coursesSubscribe.listMine(ownedCoursesState);
+            return () => {
+                ownedCoursesState.cleanup();
+            };
         }
+        ownedCoursesState.set([]);
+        ownedCoursesState.setLoading(false);
+        ownedCoursesState.setError(null);
     });
 
     async function handleCreateCourse(data: {
@@ -66,8 +144,6 @@
         );
 
         if (result.success) {
-            // Reload courses or prepend locally
-            await loadCourses();
             goto(resolve(`/courses/${result.data}`));
         } else {
             console.error("Failed to create course", result.error);

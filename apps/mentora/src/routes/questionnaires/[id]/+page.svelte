@@ -3,48 +3,30 @@
     import { resolve } from "$app/paths";
     import { page } from "$app/state";
     import { api, type QuestionnaireResponse } from "$lib/api";
+    import { m } from "$lib/paraglide/messages";
     import { ArrowLeft } from "@lucide/svelte";
+    import {
+        mapAnswersFromApi,
+        mapAnswersToApi,
+        mapQuestionnaireFromApi,
+        type UiAnswerMap,
+        type UiQuestion,
+    } from "$lib/features/questionnaires/mapper";
 
     import PageHead from "$lib/components/PageHead.svelte";
     import SingleChoiceQuestion from "$lib/components/questionnaire/SingleChoiceQuestion.svelte";
     import MultipleChoiceQuestion from "$lib/components/questionnaire/MultipleChoiceQuestion.svelte";
     import ShortAnswerQuestion from "$lib/components/questionnaire/ShortAnswerQuestion.svelte";
+    import SliderQuestion from "$lib/components/questionnaire/SliderQuestion.svelte";
     import QuestionNavigator from "$lib/components/questionnaire/QuestionNavigator.svelte";
     import QuestionProgress from "$lib/components/questionnaire/QuestionProgress.svelte";
 
-    // Question type definitions
-    type SingleChoice = {
-        type: "single_choice";
-        id: string;
-        question: string;
-        options: string[];
-        required: boolean;
-    };
-
-    type MultipleChoice = {
-        type: "multiple_choice";
-        id: string;
-        question: string;
-        options: string[];
-        required: boolean;
-    };
-
-    type ShortAnswer = {
-        type: "short_answer";
-        id: string;
-        question: string;
-        placeholder?: string;
-        maxLength?: number;
-        required: boolean;
-    };
-
-    type Question = SingleChoice | MultipleChoice | ShortAnswer;
-
     // State
     let currentIndex = $state(0);
-    let answers = $state<Record<string, string | string[]>>({});
+    let hasExistingResponse = $state(false);
+    let answers = $state<UiAnswerMap>({});
     let submitting = $state(false);
-    let questions = $state<Question[]>([]);
+    let questions = $state<UiQuestion[]>([]);
 
     // Navigation state
     let courseId = $state<string | null>(null);
@@ -77,74 +59,22 @@
                 }
 
                 if (qa.questions && Array.isArray(qa.questions)) {
-                    // Map backend question schema to UI question schema
-                    questions = qa.questions.map(
-                        (q, index: number): Question => {
-                            const base = q.question;
-                            const id = index.toString();
-                            const required = q.required;
-                            const questionText = base.questionText;
-
-                            if (base.type === "single_answer_choice") {
-                                return {
-                                    type: "single_choice",
-                                    id,
-                                    question: questionText,
-                                    options: base.options,
-                                    required,
-                                };
-                            } else if (base.type === "multiple_answer_choice") {
-                                return {
-                                    type: "multiple_choice",
-                                    id,
-                                    question: questionText,
-                                    options: base.options,
-                                    required,
-                                };
-                            } else {
-                                // short_answer
-                                // Define interface for potential extra fields
-                                const shortBase = base as {
-                                    placeholder?: string;
-                                    maxLength?: number;
-                                };
-                                return {
-                                    type: "short_answer",
-                                    id,
-                                    question: questionText,
-                                    required,
-                                    placeholder: shortBase.placeholder,
-                                    maxLength: shortBase.maxLength,
-                                };
-                            }
-                        },
+                    const mappedQuestions = mapQuestionnaireFromApi(
+                        qa.questions,
                     );
+                    questions = mappedQuestions;
 
                     // Restore existing answers from QuestionnaireResponse
                     if (myResponseRes.success && myResponseRes.data) {
-                        const savedResponses = myResponseRes.data.responses;
-                        if (Array.isArray(savedResponses)) {
-                            savedResponses.forEach((r) => {
-                                // Identify question by index
-                                const qIndex = r.questionIndex;
-                                if (qIndex >= 0 && qIndex < questions.length) {
-                                    const qId = questions[qIndex].id;
-                                    if (
-                                        r.answer &&
-                                        r.answer.response !== undefined
-                                    ) {
-                                        const val = r.answer.response;
-                                        answers[qId] =
-                                            typeof val === "number"
-                                                ? String(val)
-                                                : val;
-                                    }
-                                }
-                            });
-                        }
+                        hasExistingResponse = true;
+                        answers = mapAnswersFromApi(
+                            myResponseRes.data.responses,
+                            mappedQuestions,
+                        );
                     }
                 } else {
                     questions = [];
+                    answers = {};
                 }
             } else {
                 console.error(
@@ -162,59 +92,31 @@
     async function saveAnswers() {
         if (!assignmentId || !api.currentUser) return;
 
-        // Map UI answers to Backend Schema Responses
-        // Schema requires: { questionIndex: number, answer: { type: string, response: any } }[]
-        const responses: QuestionnaireResponse["responses"] = questions
-            .map((q, index) => {
-                // Use index for backend mapping
-                const answerVal = answers[q.id];
-
-                // Skip missing answers
-                if (answerVal === undefined) return null;
-
-                // Construct strictly typed response object based on question type
-                if (q.type === "short_answer") {
-                    return {
-                        questionIndex: index,
-                        answer: {
-                            type: "short_answer" as const,
-                            response: answerVal as string,
-                        },
-                    };
-                }
-                if (q.type === "single_choice") {
-                    return {
-                        questionIndex: index,
-                        answer: {
-                            type: "single_answer_choice" as const,
-                            response: answerVal as string,
-                        },
-                    };
-                }
-                if (q.type === "multiple_choice") {
-                    return {
-                        questionIndex: index,
-                        answer: {
-                            type: "multiple_answer_choice" as const,
-                            response: answerVal as string[],
-                        },
-                    };
-                }
-                return null;
-            })
-            // Filter out nulls and satisfy TS
-            .filter((r): r is NonNullable<typeof r> => r !== null);
+        const responses: QuestionnaireResponse["responses"] = mapAnswersToApi(
+            questions,
+            answers,
+        );
 
         try {
-            // Call api.questionnaireResponses.submit
-            const result = await api.questionnaireResponses.submit(
-                assignmentId,
-                responses,
-                courseId,
-            );
-
-            if (!result.success) {
-                console.error("Failed to save answers:", result.error);
+            if (hasExistingResponse) {
+                const result = await api.questionnaireResponses.updateMine(
+                    assignmentId,
+                    responses,
+                );
+                if (!result.success) {
+                    console.error("Failed to save answers:", result.error);
+                }
+            } else {
+                const result = await api.questionnaireResponses.submit(
+                    assignmentId,
+                    responses,
+                    courseId,
+                );
+                if (!result.success) {
+                    console.error("Failed to save answers:", result.error);
+                } else {
+                    hasExistingResponse = true;
+                }
             }
         } catch (e) {
             console.error("Failed to save answers", e);
@@ -239,7 +141,8 @@
         if (!currentQuestion) return false;
         const answer = answers[currentQuestion.id];
         if (!currentQuestion.required) return true;
-        if (answer === undefined) return false;
+        if (answer === undefined || answer === null) return false;
+        if (typeof answer === "number") return true;
         if (Array.isArray(answer)) return answer.length > 0;
         return answer.trim().length > 0;
     });
@@ -261,6 +164,11 @@
     }
 
     function handleShortAnswer(value: string) {
+        if (!currentQuestion) return;
+        answers[currentQuestion.id] = value;
+    }
+
+    function handleSliderAnswer(value: number) {
         if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
     }
@@ -367,6 +275,20 @@
                                 value={getCurrentAnswer(currentQuestion.id, "")}
                                 onAnswer={handleShortAnswer}
                             />
+                        {:else if currentQuestion.type === "slider"}
+                            <SliderQuestion
+                                question={currentQuestion.question}
+                                minLabel={currentQuestion.minLabel ?? "Min"}
+                                maxLabel={currentQuestion.maxLabel ?? "Max"}
+                                minValue={currentQuestion.minValue ?? 0}
+                                maxValue={currentQuestion.maxValue ?? 10}
+                                step={currentQuestion.step ?? 1}
+                                value={getCurrentAnswer<number | null>(
+                                    currentQuestion.id,
+                                    null,
+                                )}
+                                onAnswer={handleSliderAnswer}
+                            />
                         {/if}
                     </div>
                 {/key}
@@ -378,6 +300,7 @@
                     <button
                         class="icon-btn rounded-full bg-white/10 p-2 hover:bg-white/20"
                         onclick={goBack}
+                        aria-label={m.back()}
                     >
                         <ArrowLeft size={24} color="white" />
                     </button>

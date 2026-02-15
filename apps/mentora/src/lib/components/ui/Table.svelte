@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="ts" generics="TRow extends Record<string, unknown>">
     import { ChevronUp, ChevronDown } from "@lucide/svelte";
     import Pagination from "./Pagination.svelte";
     import type { Snippet } from "svelte";
@@ -11,13 +11,11 @@
 
     interface Props {
         columns: Column[];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: any[];
+        data: TRow[];
         pageSize?: number;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        renderCell?: Snippet<[item: any, key: string]>;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        actions?: Snippet<[item: any]>;
+        renderCell?: Snippet<[item: TRow, key: string]>;
+        actions?: Snippet<[item: TRow]>;
+        getRowKey?: (item: TRow, index: number) => string | number;
         className?: string;
     }
 
@@ -27,6 +25,7 @@
         pageSize = 10,
         renderCell,
         actions,
+        getRowKey,
         className = "",
     }: Props = $props();
 
@@ -42,8 +41,11 @@
         if (!sortKey) return data;
         const key = sortKey; // Narrow type to string
         return [...data].sort((a, b) => {
-            const aVal = a[key];
-            const bVal = b[key];
+            const aRaw = a[key];
+            const bRaw = b[key];
+            const aVal = typeof aRaw === "number" ? aRaw : String(aRaw ?? "");
+            const bVal = typeof bRaw === "number" ? bRaw : String(bRaw ?? "");
+
             if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
             if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
             return 0;
@@ -110,7 +112,7 @@
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
-            {#each paginatedData as row, idx (idx)}
+            {#each paginatedData as row, idx (getRowKey ? getRowKey(row, idx) : (((row as { id?: string | number }).id ?? `${currentPage}-${idx}`) as string | number))}
                 <tr class="transition-colors hover:bg-gray-100">
                     {#each columns as column (column.key)}
                         <td class="px-4 py-3">

@@ -1,11 +1,11 @@
 <script lang="ts">
     import PopupModal from "$lib/components/ui/PopupModal.svelte";
-    import FileTable from "$lib/components/course/mentor/table/FileTable.svelte";
     import QuestionItem from "./QuestionItem.svelte";
     import { Label, Input, Select, Textarea, Helper } from "flowbite-svelte";
     import { Button } from "flowbite-svelte";
-    import { Plus, Sparkles } from "@lucide/svelte";
-    import * as m from "$lib/paraglide/messages.js";
+    import { Plus } from "@lucide/svelte";
+    import { SvelteSet } from "svelte/reactivity";
+    import * as m from "$lib/paraglide/messages";
     import {
         dndzone,
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
@@ -24,13 +24,7 @@
         type: QuestionType;
         question: string;
         options: Option[];
-        initialEditMode?: boolean; // New property
         [SHADOW_ITEM_MARKER_PROPERTY_NAME]?: boolean;
-    }
-
-    interface FileItem {
-        name: string;
-        uploadedAt: string;
     }
 
     interface Assignment {
@@ -39,7 +33,6 @@
         introduction?: string;
         type: AssignmentType;
         prompt?: string;
-        files?: FileItem[];
         questions?: Question[];
         startAt?: string;
         dueAt?: string;
@@ -61,12 +54,10 @@
         onCancel,
     }: Props = $props();
 
-    // Form state
     let assignmentType = $state<AssignmentType>("dialogue");
     let title = $state("");
     let introduction = $state("");
     let prompt = $state("");
-    let files = $state<FileItem[]>([]);
     let questions = $state<Question[]>([]);
     let startAt = $state("");
     let dueAt = $state("");
@@ -79,28 +70,75 @@
     }>({});
 
     const flipDurationMs = 200;
+    const DEFAULT_DUE_OFFSET_MS = 7 * 24 * 60 * 60 * 1000;
 
-    // Load assignment data when editing
+    function getNormalizedQuestionOptionsText(option: Option): string {
+        return option.text.trim();
+    }
+
+    function hasDuplicateOptions(question: Question): boolean {
+        if (question.type === "text") {
+            return false;
+        }
+
+        const normalizedOptions = question.options
+            .map(getNormalizedQuestionOptionsText)
+            .filter((option) => option.length > 0);
+
+        return new Set(normalizedOptions).size !== normalizedOptions.length;
+    }
+
+    function dedupeQuestionOptions(question: Question): Option[] {
+        if (question.type === "text") {
+            return [];
+        }
+
+        const seen = new SvelteSet<string>();
+        const deduped = question.options
+            .map((option) => {
+                const text = getNormalizedQuestionOptionsText(option);
+                return text.length > 0 ? { ...option, text } : null;
+            })
+            .filter((option): option is Option => Boolean(option))
+            .filter((option) => {
+                if (seen.has(option.text)) return false;
+                seen.add(option.text);
+                return true;
+            });
+
+        return deduped;
+    }
+
+    function toDateTimeInputValue(date: Date): string {
+        // `datetime-local` expects local time format without timezone,
+        // so convert from local Date to a local "YYYY-MM-DDTHH:mm" string.
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+            .toISOString()
+            .slice(0, 16);
+    }
+
     $effect(() => {
+        if (!open) return;
+
         if (mode === "edit" && assignment) {
             assignmentType = assignment.type;
             title = assignment.title;
             introduction = assignment.introduction || "";
             prompt = assignment.prompt || "";
-            files = assignment.files || [];
             questions = assignment.questions || [];
             startAt = assignment.startAt || "";
             dueAt = assignment.dueAt || "";
         } else if (mode === "create") {
-            // Reset form for create mode
             assignmentType = "dialogue";
             title = "";
             introduction = "";
             prompt = "";
-            files = [];
             questions = [];
-            startAt = "";
-            dueAt = "";
+            const now = new Date();
+            startAt = toDateTimeInputValue(now);
+            dueAt = toDateTimeInputValue(
+                new Date(now.getTime() + DEFAULT_DUE_OFFSET_MS),
+            );
         }
     });
 
@@ -113,7 +151,6 @@
     ];
 
     function handleSubmit() {
-        // Reset errors
         errors = {};
         let isValid = true;
 
@@ -127,7 +164,31 @@
             isValid = false;
         }
 
-        if (assignmentType === "questionnaire" && questions.length === 0) {
+        if (assignmentType === "questionnaire") {
+            const hasInvalidQuestion = questions.some((question) => {
+                if (!question.question.trim()) {
+                    return true;
+                }
+                if (question.type !== "text") {
+                    const hasNoValidOption = question.options.every(
+                        (option) => !option.text.trim(),
+                    );
+                    if (hasNoValidOption) {
+                        return true;
+                    }
+                    if (hasDuplicateOptions(question)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            if (questions.length === 0 || hasInvalidQuestion) {
+                errors.questions =
+                    m.mentor_assignment_error_questions_required();
+                isValid = false;
+            }
+        } else if (questions.length === 0) {
             errors.questions = m.mentor_assignment_error_questions_required();
             isValid = false;
         }
@@ -150,15 +211,26 @@
 
         if (assignmentType === "dialogue") {
             assignmentData.prompt = prompt;
-            assignmentData.files = files;
         } else {
-            // Clean up internal dnd properties before saving
-            assignmentData.questions = questions.map((q) => {
-                const copy = { ...q };
-                delete copy[SHADOW_ITEM_MARKER_PROPERTY_NAME];
-                delete copy.initialEditMode;
-                return copy;
+            assignmentData.questions = questions.map((question) => {
+                const normalizedQuestion = { ...question };
+                if (question.type === "text") {
+                    return normalizedQuestion;
+                }
+
+                return {
+                    ...normalizedQuestion,
+                    options: dedupeQuestionOptions(question),
+                };
             });
+            // Strip internal drag state before sending to API
+            assignmentData.questions = assignmentData.questions.map(
+                (question) => {
+                    const cleanedQuestion = { ...question };
+                    delete cleanedQuestion[SHADOW_ITEM_MARKER_PROPERTY_NAME];
+                    return cleanedQuestion;
+                },
+            );
         }
 
         onSave?.(assignmentData);
@@ -181,7 +253,6 @@
                     { id: crypto.randomUUID(), text: "" },
                     { id: crypto.randomUUID(), text: "" },
                 ],
-                initialEditMode: true,
             },
         ];
     }
@@ -192,35 +263,15 @@
             type: QuestionType;
             question: string;
             options: Option[];
-            initialEditMode?: boolean;
         },
     ) {
-        questions = questions.map((q) =>
-            q.id === questionId ? { ...q, ...data } : q,
+        questions = questions.map((question) =>
+            question.id === questionId ? { ...question, ...data } : question,
         );
     }
 
     function deleteQuestion(questionId: string) {
-        questions = questions.filter((q) => q.id !== questionId);
-    }
-
-    function handleFileUpload() {
-        // Mock file upload - in real implementation would open file picker
-        files = [
-            ...files,
-            {
-                name: `file_${Date.now()}.pdf`,
-                uploadedAt: new Date().toLocaleString("zh-TW"),
-            },
-        ];
-    }
-
-    function handleDeleteFile(index: number) {
-        files = files.filter((_, i) => i !== index);
-        // Also update assignment object if we are in edit mode to ensure changes persist if submit happens immediately
-        if (assignment) {
-            assignment.files = files;
-        }
+        questions = questions.filter((question) => question.id !== questionId);
     }
 
     function handleQuestionDndConsider(e: CustomEvent<{ items: Question[] }>) {
@@ -229,11 +280,6 @@
 
     function handleQuestionDndFinalize(e: CustomEvent<{ items: Question[] }>) {
         questions = e.detail.items;
-    }
-
-    function handleGenerateIntroduction() {
-        // Mock AI generation
-        introduction = "AI generated introduction...";
     }
 </script>
 
@@ -267,7 +313,6 @@
         class="custom-form flex flex-col space-y-4"
         onsubmit={(e) => e.preventDefault()}
     >
-        <!-- Type + Name on same row -->
         <div class="grid grid-cols-2 gap-4">
             <Label>
                 <span class="text-gray-700">{m.mentor_assignment_type()}</span>
@@ -288,21 +333,10 @@
             </Label>
         </div>
 
-        <!-- Introduction Field -->
         <Label>
-            <div class="mb-2 flex items-center justify-between">
-                <span class="text-gray-700"
-                    >{m.mentor_assignment_introduction()}</span
-                >
-                <Button
-                    size="xs"
-                    class="cursor-pointer border border-gray-300 !bg-transparent text-gray-500 hover:bg-transparent hover:text-gray-700 focus:ring-0"
-                    onclick={handleGenerateIntroduction}
-                >
-                    <Sparkles class="mr-1 h-3 w-3" />
-                    {m.mentor_assignment_ai_generate()}
-                </Button>
-            </div>
+            <span class="text-gray-700"
+                >{m.mentor_assignment_introduction()}</span
+            >
             <Textarea
                 bind:value={introduction}
                 rows={3}
@@ -311,7 +345,6 @@
             />
         </Label>
 
-        <!-- Dialogue-specific fields -->
         {#if assignmentType === "dialogue"}
             <Label>
                 <span class="text-gray-700"
@@ -329,21 +362,8 @@
                     <Helper class="mt-2" color="red">{errors.prompt}</Helper>
                 {/if}
             </Label>
-
-            <div>
-                <span class="mb-2 block text-sm font-medium text-gray-700"
-                    >{m.mentor_assignment_ai_references()}</span
-                >
-                <FileTable
-                    {files}
-                    onUpload={handleFileUpload}
-                    onDelete={handleDeleteFile}
-                    showUploadButton={true}
-                />
-            </div>
         {/if}
 
-        <!-- Questionnaire-specific fields -->
         {#if assignmentType === "questionnaire"}
             <div>
                 <span class="mb-2 block text-sm font-medium text-gray-700"
@@ -364,7 +384,6 @@
                             type={question.type}
                             question={question.question}
                             options={question.options}
-                            editMode={true}
                             isDragging={question[
                                 SHADOW_ITEM_MARKER_PROPERTY_NAME
                             ]}
@@ -385,7 +404,6 @@
             </div>
         {/if}
 
-        <!-- Start/End Time -->
         <div class="grid grid-cols-2 gap-4">
             <Label>
                 <span class="text-gray-700"

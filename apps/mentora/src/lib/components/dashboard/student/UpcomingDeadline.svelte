@@ -1,51 +1,44 @@
-<script>
+<script lang="ts">
     import { m } from "$lib/paraglide/messages";
 
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api } from "$lib/api";
+    import { openAssignmentTarget } from "$lib/features/course/navigation";
+    import type { SvelteDate } from "svelte/reactivity";
 
     import WeekCalendar from "./WeekCalendar.svelte";
     import CountdownTimer from "./CountdownTimer.svelte";
 
-    let { deadline, deadlineDates = [], onDateSelect } = $props();
-    // deadline shape: { date: Date, course: string, assignment: string, dueDate: Date, assignmentId: string, type: string, courseId: string }
+    interface Deadline {
+        date: Date;
+        course: string;
+        assignment: string;
+        dueDate: Date;
+        assignmentId: string;
+        type: string;
+        courseId?: string;
+    }
+
+    interface Props {
+        deadline: Deadline | null;
+        deadlineDates?: Date[];
+        onDateSelect?: (date: SvelteDate) => void;
+    }
+
+    let { deadline, deadlineDates = [], onDateSelect }: Props = $props();
 
     async function handleEnterAssignment() {
         if (!deadline) return;
 
-        // Navigate to course page instead of direct assignment/conversation
-        if (deadline.courseId) {
-            goto(resolve(`/courses/${deadline.courseId}`));
-            return;
-        }
-
-        // Fallback or explicit assignment nav if no courseId (shouldn't happen for course assignments)
-        if (deadline.type === "questionnaire") {
-            goto(resolve(`/questionnaires/${deadline.assignmentId}`));
-            return;
-        }
-
-        // Try conversation
-        try {
-            const convRes = await api.conversations.getForAssignment(
-                deadline.assignmentId,
-            );
-            if (convRes.success && convRes.data.id) {
-                goto(resolve(`/conversations/${convRes.data.id}`));
-                return;
-            }
-
-            // Create
-            const createRes = await api.conversations.create(
-                deadline.assignmentId,
-            );
-            if (createRes.success && createRes.data.id) {
-                await api.submissions.start(deadline.assignmentId);
-                goto(resolve(`/conversations/${createRes.data.id}`));
-            }
-        } catch (e) {
-            console.error("Route error", e);
+        const target = await openAssignmentTarget(api, {
+            assignmentId: deadline.assignmentId,
+            type: deadline.type,
+            courseId: deadline.courseId,
+            preferCourseRoute: true,
+        });
+        if (target) {
+            goto(resolve(target.route, target.params));
         }
     }
 </script>

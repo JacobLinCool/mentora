@@ -22,13 +22,15 @@ import { Conversations, type Conversation as ConversationDoc } from 'mentora-fir
 export type Conversation = ConversationDoc & { id: string };
 
 import { callBackend } from './backend.js';
+import type { CreateConversationResult } from '../contracts/api.js';
 import type { ReactiveState } from './state.svelte';
 import {
 	failure,
 	tryCatch,
 	type APIResult,
+	type ListOptions,
 	type MentoraAPIConfig,
-	type QueryOptions
+	type TokenUsageBreakdown
 } from './types.js';
 
 /**
@@ -36,7 +38,7 @@ import {
  */
 export async function listMyConversations(
 	config: MentoraAPIConfig,
-	options?: QueryOptions
+	options?: ListOptions
 ): Promise<APIResult<Conversation[]>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
@@ -51,13 +53,6 @@ export async function listMyConversations(
 
 		if (options?.limit) {
 			constraints.push(limit(options.limit));
-		}
-
-		if (options?.where) {
-			// Allow filtering by assignmentId, etc.
-			for (const w of options.where) {
-				constraints.push(where(w.field, w.op, w.value));
-			}
 		}
 
 		const q = query(collection(config.db, Conversations.collectionPath()), ...constraints);
@@ -135,7 +130,7 @@ export async function getAssignmentConversation(
 export async function createConversation(
 	config: MentoraAPIConfig,
 	assignmentId: string
-): Promise<APIResult<{ id: string }>> {
+): Promise<APIResult<CreateConversationResult>> {
 	return callBackend(config, '/conversations', {
 		method: 'POST',
 		body: JSON.stringify({ assignmentId })
@@ -172,14 +167,30 @@ export async function endConversation(
 export async function addTurn(
 	config: MentoraAPIConfig,
 	conversationId: string,
-	options: { text: string } | { audioBase64: string; audioMimeType: string }
+	options:
+		| { text: string }
+		| { audioBase64: string; audioMimeType: string }
+		| { audio: Blob; text?: string }
 ): Promise<
 	APIResult<{
 		text: string;
 		audio: string; // Base64 encoded audio
 		audioMimeType: string;
+		tokenUsage: TokenUsageBreakdown;
 	}>
 > {
+	if ('audio' in options) {
+		const formData = new FormData();
+		if (options.text && options.text.trim().length > 0) {
+			formData.set('text', options.text.trim());
+		}
+		formData.set('audio', options.audio);
+		return callBackend(config, `/conversations/${conversationId}/turns`, {
+			method: 'POST',
+			body: formData
+		});
+	}
+
 	return callBackend(config, `/conversations/${conversationId}/turns`, {
 		method: 'POST',
 		body: JSON.stringify(options)

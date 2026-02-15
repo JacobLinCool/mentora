@@ -62,7 +62,7 @@
 	}
 </script>
 
-<div class="max-w-[1600px] mx-auto p-6">
+<div class="max-w-400 mx-auto p-6">
 	<header class="mb-6 flex items-start justify-between">
 		<div>
 			<h1 class="text-3xl font-bold text-slate-50 mb-2">📖 {t.title}</h1>
@@ -132,7 +132,7 @@
 
 	<div class="flex gap-6">
 		<!-- Sidebar: Module List -->
-		<aside class="w-80 flex-shrink-0 max-h-[calc(100vh-320px)] overflow-y-auto">
+		<aside class="w-80 shrink-0 max-h-[calc(100vh-320px)] overflow-y-auto">
 			{#each apiModules as module (module.name)}
 				<div class="mb-2">
 					<button

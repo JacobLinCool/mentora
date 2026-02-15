@@ -8,8 +8,9 @@ import {
 	failure,
 	tryCatch,
 	type APIResult,
+	type ListOptions,
 	type MentoraAPIConfig,
-	type QueryOptions
+	type TokenUsageBreakdown
 } from './types.js';
 
 /**
@@ -37,7 +38,7 @@ export async function getAssignment(
 export async function listCourseAssignments(
 	config: MentoraAPIConfig,
 	courseId: string,
-	options?: QueryOptions
+	options?: ListOptions
 ): Promise<APIResult<Assignment[]>> {
 	const params = new URLSearchParams({ courseId });
 	if (options?.limit) {
@@ -61,7 +62,7 @@ export async function listCourseAssignments(
 export async function listAvailableAssignments(
 	config: MentoraAPIConfig,
 	courseId: string,
-	options?: QueryOptions
+	options?: ListOptions
 ): Promise<APIResult<Assignment[]>> {
 	const params = new URLSearchParams({ courseId, available: 'true' });
 	if (options?.limit) {
@@ -166,11 +167,15 @@ export async function deleteAssignment(
 export async function generateContent(
 	config: MentoraAPIConfig,
 	question: string
-): Promise<APIResult<{ content: string }>> {
-	const result = await callBackend<{ content: string }>(config, '/assignments/generate-content', {
-		method: 'POST',
-		body: JSON.stringify({ question })
-	});
+): Promise<APIResult<{ content: string; tokenUsage: TokenUsageBreakdown }>> {
+	const result = await callBackend<{ content: string; tokenUsage: TokenUsageBreakdown }>(
+		config,
+		'/assignments/generate-content',
+		{
+			method: 'POST',
+			body: JSON.stringify({ question })
+		}
+	);
 
 	return result;
 }

@@ -2,124 +2,25 @@
  * Wallet route handlers
  */
 
-import { Wallets, type LedgerEntry } from 'mentora-firebase';
 import { AddCreditsSchema } from '../llm/schemas.js';
 import { HttpStatus, jsonResponse, type RouteContext, type RouteDefinition } from '../types.js';
+import { createServiceContainer } from '../application/container.js';
 import { parseBody, requireAuth } from './utils.js';
 
 /**
  * POST /api/wallets
  * Add credits to current user's wallet
- *
- * Uses a Firestore transaction to prevent race conditions:
- * - Atomic wallet creation if not exists
- * - Atomic balance update
- * - Idempotency check within transaction
  */
 async function addCredits(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
 	const body = await parseBody(request, AddCreditsSchema);
-	const { amount, paymentMethodId, idempotencyKey } = body;
 
-	// Use deterministic wallet ID based on user UID
-	const walletId = `wallet_${user.uid}`;
-	const walletRef = ctx.firestore.doc(Wallets.docPath(walletId));
-
-	// Run transaction for atomic read-modify-write
-	const result = await ctx.firestore.runTransaction(async (transaction) => {
-		const now = Date.now();
-
-		// 1. Get or create wallet atomically
-		const walletDoc = await transaction.get(walletRef);
-		let currentBalance = 0;
-
-		if (!walletDoc.exists) {
-			transaction.set(walletRef, {
-				ownerType: 'user',
-				ownerId: user.uid,
-				balanceCredits: 0,
-				createdAt: now,
-				updatedAt: now
-			});
-			currentBalance = 0;
-		} else {
-			const walletData = Wallets.schema.parse(walletDoc.data());
-			currentBalance = walletData.balanceCredits;
-		}
-
-		// 2. Check idempotency within transaction
-		if (idempotencyKey) {
-			const entriesCollection = ctx.firestore.collection(Wallets.entries.collectionPath(walletId));
-			const existingEntries = await entriesCollection
-				.where('idempotencyKey', '==', idempotencyKey)
-				.limit(1)
-				.get();
-
-			if (!existingEntries.empty) {
-				const entryData = existingEntries.docs[0].data();
-				const entry = Wallets.entries.schema.parse(entryData);
-				return {
-					isIdempotent: true,
-					message: 'Credit already applied (idempotent)',
-					entry,
-					newBalance: currentBalance
-				};
-			}
-		}
-
-		// 3. Create ledger entry
-		const entryRef = ctx.firestore.collection(Wallets.entries.collectionPath(walletId)).doc();
-		const entryId = entryRef.id;
-
-		const entry: LedgerEntry = {
-			type: 'topup',
-			amountCredits: amount,
-			idempotencyKey: idempotencyKey || null,
-			scope: {
-				courseId: null,
-				topicId: null,
-				assignmentId: null,
-				conversationId: null
-			},
-			provider: {
-				name: paymentMethodId ? 'stripe' : 'manual',
-				ref: paymentMethodId || null
-			},
-			metadata: null,
-			createdBy: user.uid,
-			createdAt: now
-		};
-
-		const validatedEntry = Wallets.entries.schema.parse(entry);
-
-		// 4. Update wallet balance atomically
-		const newBalance = currentBalance + amount;
-
-		transaction.update(walletRef, {
-			balanceCredits: newBalance,
-			updatedAt: now
-		});
-
-		// 5. Save ledger entry
-		transaction.set(entryRef, validatedEntry);
-
-		return {
-			isIdempotent: false,
-			id: entryId,
-			newBalance
-		};
-	});
-
-	// Return appropriate response
-	if (result.isIdempotent) {
-		return jsonResponse({
-			message: result.message,
-			entry: result.entry,
-			newBalance: result.newBalance
-		});
+	const { walletService } = createServiceContainer(ctx);
+	const result = await walletService.addCredits(user.uid, body);
+	if (result.idempotent) {
+		return jsonResponse(result, HttpStatus.OK);
 	}
-
-	return jsonResponse({ id: result.id }, HttpStatus.CREATED);
+	return jsonResponse(result, HttpStatus.CREATED);
 }
 
 /**
@@ -128,27 +29,18 @@ async function addCredits(ctx: RouteContext, request: Request): Promise<Response
  */
 async function getMyWallet(ctx: RouteContext): Promise<Response> {
 	const user = requireAuth(ctx);
-
-	// Query for user's wallet
-	const snapshot = await ctx.firestore
-		.collection(Wallets.collectionPath())
-		.where('ownerId', '==', user.uid)
-		.where('ownerType', '==', 'user')
-		.limit(1)
-		.get();
-
-	if (snapshot.empty) {
-		// Return null if no wallet exists
-		return jsonResponse(null);
+	const { walletService } = createServiceContainer(ctx);
+	const result = await walletService.getMyWallet(user.uid);
+	if (!result) {
+		return jsonResponse(null, HttpStatus.OK);
 	}
-
-	const doc = snapshot.docs[0];
-	const walletData = Wallets.schema.parse(doc.data());
-
-	return jsonResponse({
-		id: doc.id,
-		...walletData
-	});
+	return jsonResponse(
+		{
+			id: result.id,
+			...result.wallet
+		},
+		HttpStatus.OK
+	);
 }
 
 /**

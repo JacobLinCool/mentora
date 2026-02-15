@@ -147,3 +147,5 @@ storybook-static/
 
 package-lock.json
 .shared
+
+packages/mentora-api/docs/typedoc/

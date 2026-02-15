@@ -9,6 +9,7 @@ export * from './health.js';
 export * from './topics.js';
 export * from './assignments.js';
 export * from './questionnaires.js';
+export * from './analytics.js';
 export * from './utils.js';
 
 import { conversationRoutes } from './conversations.js';
@@ -18,6 +19,7 @@ import { healthRoutes } from './health.js';
 import { topicRoutes } from './topics.js';
 import { assignmentRoutes } from './assignments.js';
 import { questionnaireRoutes } from './questionnaires.js';
+import { analyticsRoutes } from './analytics.js';
 import type { RouteDefinition } from '../types.js';
 
 /**
@@ -30,5 +32,6 @@ export const allRoutes: RouteDefinition[] = [
 	...healthRoutes,
 	...topicRoutes,
 	...assignmentRoutes,
-	...questionnaireRoutes
+	...questionnaireRoutes,
+	...analyticsRoutes
 ];

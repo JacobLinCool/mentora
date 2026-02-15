@@ -4,7 +4,7 @@
     import GlassCard from "$lib/components/ui/GlassCard.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import {
-        BarChart3,
+        ChartColumn,
         Users,
         TrendingUp,
         MessageSquare,
@@ -16,15 +16,53 @@
     import PageHead from "$lib/components/PageHead.svelte";
     import { api } from "$lib/api";
 
+    type DashboardResponse = {
+        overview: {
+            activeStudents: number;
+            completionRate: number;
+            avgEngagement: number;
+            totalArguments: number;
+        };
+        spectrum: {
+            id: number;
+            initial: number;
+            current: number;
+            name: string;
+        }[];
+        wordCloud: { text: string; value: number; sentiment: string }[];
+    };
+
     // State
-    let overviewStats = $state([
-        { label: "Active Students", value: "-", trend: "-", icon: Users },
-        { label: "Completion Rate", value: "-", trend: "-", icon: TrendingUp },
-        { label: "Avg. Engagement", value: "-", trend: "-", icon: Clock },
+    let overview = $state<DashboardResponse["overview"]>({
+        activeStudents: 0,
+        completionRate: 0,
+        avgEngagement: 0,
+        totalArguments: 0,
+    });
+
+    const overviewStats = $derived([
+        {
+            label: "Active Students",
+            value: String(overview.activeStudents),
+            trend: "",
+            icon: Users,
+        },
+        {
+            label: "Completion Rate",
+            value: `${overview.completionRate}%`,
+            trend: "",
+            icon: TrendingUp,
+        },
+        {
+            label: "Avg. Engagement",
+            value: String(overview.avgEngagement),
+            trend: "",
+            icon: Clock,
+        },
         {
             label: "Total Arguments",
-            value: "-",
-            trend: "-",
+            value: String(overview.totalArguments),
+            trend: "",
             icon: MessageSquare,
         },
     ]);
@@ -42,17 +80,14 @@
     });
 
     async function loadAnalytics() {
-        // loading = true; // Unused
         try {
-            // Call backend analytics endpoint (to be implemented)
-            const res = await api.backend.call<{
-                overview: typeof overviewStats;
-                spectrum: typeof spectrumData;
-                wordCloud: typeof wordCloudData;
-            }>("/analytics/dashboard", { method: "GET" });
+            const res = await api.backend.call<DashboardResponse>(
+                "/analytics/dashboard",
+                { method: "GET" },
+            );
 
             if (res.success) {
-                overviewStats = res.data.overview;
+                overview = res.data.overview;
                 spectrumData = res.data.spectrum;
                 wordCloudData = res.data.wordCloud;
             } else {
@@ -94,7 +129,7 @@
                 <h1
                     class="flex items-center gap-3 font-serif text-4xl text-white"
                 >
-                    <BarChart3 class="text-brand-gold h-8 w-8" />
+                    <ChartColumn class="text-brand-gold h-8 w-8" />
                     Analytics Dashboard
                 </h1>
                 <p class="text-text-secondary mt-2">
@@ -133,11 +168,13 @@
                             <div class="font-serif text-4xl text-white">
                                 {stat.value}
                             </div>
-                            <div
-                                class="text-status-success bg-status-success/10 mb-2 rounded px-2 py-0.5 font-mono text-sm"
-                            >
-                                {stat.trend}
-                            </div>
+                            {#if stat.trend}
+                                <div
+                                    class="text-status-success bg-status-success/10 mb-2 rounded px-2 py-0.5 font-mono text-sm"
+                                >
+                                    {stat.trend}
+                                </div>
+                            {/if}
                         </div>
                     </div>
                 </GlassCard>
@@ -146,7 +183,7 @@
 
         <div class="mb-8 grid gap-8 lg:grid-cols-2">
             <!-- Stance Spectrum -->
-            <GlassCard className="h-[500px] flex flex-col">
+            <GlassCard className="h-125 flex flex-col">
                 <div class="mb-6 flex items-center justify-between">
                     <div>
                         <h3
@@ -241,7 +278,7 @@
             </GlassCard>
 
             <!-- Attributed Word Cloud -->
-            <GlassCard className="h-[500px] flex flex-col">
+            <GlassCard className="h-125 flex flex-col">
                 <div class="mb-6">
                     <h3
                         class="flex items-center gap-2 font-serif text-xl text-white"
@@ -294,7 +331,7 @@
         <GlassCard>
             <div class="mb-4 flex items-center justify-between">
                 <h3 class="font-serif text-lg text-white">Recent Activity</h3>
-                <CosmicButton variant="ghost" className="!text-sm"
+                <CosmicButton variant="ghost" className="text-sm!"
                     >View All <ArrowRight class="ml-1 h-4 w-4" /></CosmicButton
                 >
             </div>

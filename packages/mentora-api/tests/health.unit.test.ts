@@ -35,7 +35,14 @@ describe('/health routes', () => {
 	function createHandler() {
 		const firestoreMock = {
 			collection: vi.fn(() => ({
-				count: vi.fn(() => Promise.resolve({ data: () => ({ count: 0 }) }))
+				limit: vi.fn(() => ({
+					get: vi.fn(() =>
+						Promise.resolve({
+							empty: true,
+							docs: []
+						})
+					)
+				}))
 			}))
 		};
 		const handler = new MentoraServerHandler({

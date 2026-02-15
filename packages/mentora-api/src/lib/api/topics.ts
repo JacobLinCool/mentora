@@ -8,8 +8,8 @@ import {
 	failure,
 	tryCatch,
 	type APIResult,
-	type MentoraAPIConfig,
-	type QueryOptions
+	type ListOptions,
+	type MentoraAPIConfig
 } from './types.js';
 
 /**
@@ -37,7 +37,7 @@ export async function getTopic(
 export async function listCourseTopics(
 	config: MentoraAPIConfig,
 	courseId: string,
-	options?: QueryOptions
+	options?: ListOptions
 ): Promise<APIResult<Topic[]>> {
 	const params = new URLSearchParams({ courseId });
 	if (options?.limit) {

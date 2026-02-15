@@ -4,7 +4,7 @@
     import { api } from "$lib";
     import AuthLoader from "$lib/components/ui/AuthLoader.svelte";
 
-    import { page } from "$app/stores";
+    import { page } from "$app/state";
     import MeshGradient from "$lib/components/ui/MeshGradient.svelte";
 
     let { children } = $props();
@@ -14,7 +14,7 @@
     // Check if we are in a conversation page (which handles its own background)
     // Adjust logic to check for 'conversations' in path
     const isConversationPage = $derived(
-        $page.url.pathname.includes("/conversations/"),
+        page.url.pathname.includes("/conversations/"),
     );
 </script>
 

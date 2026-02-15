@@ -8,6 +8,11 @@ export const zUserProfile = z
             .string()
             .max(128)
             .describe("Unique Firebase Authentication user ID."),
+        activeMode: z
+            .union([z.literal("mentor"), z.literal("student")])
+            .optional()
+            .default("student")
+            .describe("Current UI mode preference for this user."),
         displayName: z
             .string()
             .min(1)

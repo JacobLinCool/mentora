@@ -7,6 +7,7 @@ import {
 	collectionGroup,
 	doc,
 	getDoc,
+	onSnapshot,
 	getDocs,
 	setDoc,
 	updateDoc,
@@ -30,6 +31,7 @@ import {
 	type QueryOptions,
 	success
 } from './types.js';
+import type { ReactiveState } from './state.svelte.js';
 import { callBackend } from './backend.js';
 
 export interface JoinCourseResult {
@@ -91,6 +93,65 @@ export async function listMyCourses(
 			...Courses.schema.parse(doc.data())
 		}));
 	});
+}
+
+/**
+ * Subscribe to courses owned by current user
+ */
+export function subscribeToMyCourses(
+	config: MentoraAPIConfig,
+	state: ReactiveState<Course[]>,
+	options?: QueryOptions
+): void {
+	const currentUser = config.getCurrentUser();
+	if (!currentUser) {
+		state.setError('Not authenticated');
+		state.setLoading(false);
+		return;
+	}
+
+	state.setLoading(true);
+
+	const constraints: QueryConstraint[] = [
+		where('ownerId', '==', currentUser.uid),
+		orderBy('createdAt', 'desc')
+	];
+
+	if (options?.limit) {
+		constraints.push(limit(options.limit));
+	}
+
+	if (options?.where) {
+		for (const w of options.where) {
+			constraints.push(where(w.field, w.op, w.value));
+		}
+	}
+
+	const q = query(collection(config.db, Courses.collectionPath()), ...constraints);
+
+	const unsubscribe = onSnapshot(
+		q,
+		(snapshot) => {
+			try {
+				const data = snapshot.docs.map((doc) => ({
+					id: doc.id,
+					...Courses.schema.parse(doc.data())
+				}));
+
+				state.set(data);
+				state.setError(null);
+			} catch (error) {
+				state.setError(error instanceof Error ? error.message : 'Parse error');
+			}
+			state.setLoading(false);
+		},
+		(error) => {
+			state.setError(error.message);
+			state.setLoading(false);
+		}
+	);
+
+	state.attachUnsubscribe(unsubscribe);
 }
 
 /**
@@ -216,7 +277,8 @@ export async function inviteMember(
 			email: normalizedEmail,
 			role,
 			status: 'invited',
-			joinedAt: null
+			joinedAt: null,
+			invitedAt: Date.now()
 		};
 
 		await setDoc(memberRef, membership);
@@ -394,9 +456,11 @@ export async function updateMember(
 			throw new Error('Member not found');
 		}
 
-		// Check if trying to modify owner
+		// Check if trying to modify owner (compare userId against course ownerId)
 		const memberData = memberDoc.data();
-		if (memberData?.role === 'owner') {
+		const courseRef = doc(config.db, Courses.docPath(courseId));
+		const courseSnap = await getDoc(courseRef);
+		if (courseSnap.exists() && memberData?.userId === courseSnap.data()?.ownerId) {
 			throw new Error('Cannot modify course owner');
 		}
 
@@ -430,9 +494,11 @@ export async function removeMember(
 			throw new Error('Member not found');
 		}
 
-		// Check if trying to remove owner
+		// Check if trying to remove owner (compare userId against course ownerId)
 		const memberData = memberDoc.data();
-		if (memberData?.role === 'owner') {
+		const courseRef = doc(config.db, Courses.docPath(courseId));
+		const courseSnap = await getDoc(courseRef);
+		if (courseSnap.exists() && memberData?.userId === courseSnap.data()?.ownerId) {
 			throw new Error('Cannot remove course owner');
 		}
 

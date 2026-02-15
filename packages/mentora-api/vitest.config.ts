@@ -12,7 +12,13 @@ export default defineConfig({
 			provider: 'v8',
 			reporter: ['text', 'json', 'html'],
 			include: ['src/lib/api/**/*.ts'],
-			exclude: ['src/lib/api/**/*.svelte.ts']
+			exclude: ['src/lib/api/**/*.svelte.ts'],
+			thresholds: {
+				lines: 98,
+				statements: 98,
+				functions: 98,
+				branches: 95
+			}
 		},
 		fileParallelism: false, // Run tests sequentially for shared state
 		pool: 'forks', // Use forks for better isolation

@@ -158,6 +158,11 @@ export const zCourseMembership = z
             .describe(
                 "Timestamp when the member accepted the invitation, if applicable.",
             ),
+        invitedAt: zFirebaseTimestamp
+            .nullable()
+            .optional()
+            .default(null)
+            .describe("Timestamp when the invitation was sent, if applicable."),
     })
     .describe("Roster entry stored at courses/{courseId}/roster/{memberId}.");
 export type CourseMembership = z.infer<typeof zCourseMembership>;

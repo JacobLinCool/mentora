@@ -21,6 +21,13 @@ import {
 	type TTSExecutor
 } from 'mentora-ai';
 
+export const EXECUTOR_MODEL = {
+	PROMPT: 'gemini-3-flash-preview',
+	ASR: 'gemini-2.5-flash',
+	CONTENT: 'gemini-2.5-flash',
+	TTS: 'gemini-2.5-flash'
+} as const;
+
 /**
  * Singleton instances for each executor type
  * Reused across requests for efficiency
@@ -54,7 +61,7 @@ export function getPromptExecutor(): PromptExecutor {
 	}
 
 	const genai = getGenAIClient();
-	promptExecutorInstance = new GeminiPromptExecutor(genai, 'gemini-3-flash-preview');
+	promptExecutorInstance = new GeminiPromptExecutor(genai, EXECUTOR_MODEL.PROMPT);
 
 	return promptExecutorInstance;
 }
@@ -70,7 +77,7 @@ export function getASRExecutor(): ASRExecutor {
 	}
 
 	const genai = getGenAIClient();
-	asrExecutorInstance = new GeminiASRExecutor(genai, 'gemini-2.5-flash');
+	asrExecutorInstance = new GeminiASRExecutor(genai, EXECUTOR_MODEL.ASR);
 
 	return asrExecutorInstance;
 }
@@ -89,7 +96,7 @@ export function getContentExecutor(): ContentExecutor {
 	}
 
 	const genai = getGenAIClient();
-	contentExecutorInstance = new GeminiContentExecutor(genai, 'gemini-2.5-flash');
+	contentExecutorInstance = new GeminiContentExecutor(genai, EXECUTOR_MODEL.CONTENT);
 
 	return contentExecutorInstance;
 }
@@ -105,7 +112,7 @@ export function getTTSExecutor(): TTSExecutor {
 	}
 
 	const genai = getGenAIClient();
-	ttsExecutorInstance = new GeminiTTSExecutor(genai, 'gemini-2.5-flash');
+	ttsExecutorInstance = new GeminiTTSExecutor(genai, EXECUTOR_MODEL.TTS);
 
 	return ttsExecutorInstance;
 }

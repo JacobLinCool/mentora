@@ -98,7 +98,7 @@
                     onclick={() =>
                         setLocale(getLocale() === "en" ? "zh-tw" : "en")}
                 >
-                    <span>{getLocale() === "en" ? "繁中" : "English"}</span>
+                    <span>{getLocale() === "en" ? "中文" : "English"}</span>
                 </button>
             </div>
 

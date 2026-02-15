@@ -18,6 +18,7 @@
     } from "$lib/components/course/AssignmentTimeline.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import PageHead from "$lib/components/PageHead.svelte";
+    import { openAssignmentTarget } from "$lib/features/course/navigation";
 
     const courseId = $derived(page.params.id);
 
@@ -178,8 +179,7 @@
                                 (sub.state === "submitted" ||
                                     sub.state === "graded_complete");
 
-                            // Determine type from itemType (topic data), fallback to 'conversation' only if unspecified or generic 'assignment'
-                            let finalType =
+                            const finalType =
                                 itemType === "assignment"
                                     ? "conversation"
                                     : itemType;
@@ -197,25 +197,13 @@
                         }
                     };
 
-                    if (topic.contents && topic.contents.length > 0) {
-                        topic.contents.forEach((id, idx) => {
-                            const type =
-                                topic.contentTypes?.[idx] || "assignment";
-                            addItem(id, type);
-                        });
-                    } else {
-                        // Legacy Fallback
-                        if (assignmentsRes.success) {
-                            assignmentsRes.data
-                                .filter((a) => a.topicId === topic.id)
-                                .forEach((a) => addItem(a.id, "assignment"));
+                    topic.contents.forEach((id, idx) => {
+                        const type = topic.contentTypes?.[idx];
+                        if (type !== "assignment" && type !== "questionnaire") {
+                            return;
                         }
-                        if (questionnairesRes.success) {
-                            questionnairesRes.data
-                                .filter((q) => q.topicId === topic.id)
-                                .forEach((q) => addItem(q.id, "questionnaire"));
-                        }
-                    }
+                        addItem(id, type);
+                    });
                 });
             }
 
@@ -259,35 +247,13 @@
 
     async function handleAssignmentClick(item: TimelineAssignment) {
         if (item.locked) return;
-
-        if (item.type === "questionnaire") {
-            goto(resolve(`/questionnaires/${item.id}`));
-            return;
+        const target = await openAssignmentTarget(api, {
+            assignmentId: item.id,
+            type: item.type,
+        });
+        if (target) {
+            goto(resolve(target.route, target.params));
         }
-
-        // Treat everything else as conversation (or specific conversation type)
-        // because we don't have separate assignment pages anymore.
-        try {
-            // Check if a conversation actually exists or can be created
-            const convRes = await api.conversations.getForAssignment(item.id);
-            if (convRes.success && convRes.data.id) {
-                goto(resolve(`/conversations/${convRes.data.id}`));
-                return;
-            }
-
-            // Try to create
-            const createRes = await api.conversations.create(item.id);
-            if (createRes.success && createRes.data.id) {
-                await api.submissions.start(item.id);
-                goto(resolve(`/conversations/${createRes.data.id}`));
-                return;
-            }
-        } catch (e) {
-            console.error("Failed to route to conversation", e);
-        }
-
-        // If we fall through here, it means we couldn't find or create a conversation.
-        // We do NOT redirect to /assignments anymore.
     }
 
     function goBack() {

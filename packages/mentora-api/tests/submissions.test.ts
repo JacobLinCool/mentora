@@ -110,6 +110,20 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		}
 
 		await delay(500);
+
+		expect(testCourseId, 'testCourseId should be created in beforeAll').toBeTruthy();
+		expect(
+			assignmentAllowResubmit,
+			'assignmentAllowResubmit should be created in beforeAll'
+		).toBeTruthy();
+		expect(
+			assignmentNoResubmit,
+			'assignmentNoResubmit should be created in beforeAll'
+		).toBeTruthy();
+		expect(
+			assignmentWithDueDate,
+			'assignmentWithDueDate should be created in beforeAll'
+		).toBeTruthy();
 	});
 
 	afterAll(async () => {
@@ -137,26 +151,26 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 
 	describe('startSubmission()', () => {
 		it('should start a new submission', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
-			const result = await studentClient.submissions.start(assignmentAllowResubmit);
+			const result = await studentClient.submissions.start(assignmentAllowResubmit!);
 
 			expect(result.success).toBe(true);
 		});
 
 		it('should start submission with state in_progress', async () => {
-			if (!assignmentNoResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentNoResubmit,
+				'assignmentNoResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
-			await studentClient.submissions.start(assignmentNoResubmit);
+			await studentClient.submissions.start(assignmentNoResubmit!);
 			await delay(300);
 
-			const result = await studentClient.submissions.getMine(assignmentNoResubmit);
+			const result = await studentClient.submissions.getMine(assignmentNoResubmit!);
 
 			expect(result.success).toBe(true);
 			if (result.success && result.data) {
@@ -167,38 +181,38 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		});
 
 		it('should start multiple submissions sequentially', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
 			// Start first submission
-			const result1 = await studentClient.submissions.start(assignmentAllowResubmit);
+			const result1 = await studentClient.submissions.start(assignmentAllowResubmit!);
 			expect(result1.success).toBe(true);
 
 			await delay(100);
 
 			// Submit it
-			const submitResult = await studentClient.submissions.submit(assignmentAllowResubmit);
+			const submitResult = await studentClient.submissions.submit(assignmentAllowResubmit!);
 			expect(submitResult.success).toBe(true);
 
 			await delay(300);
 
 			// Verify it's submitted
-			let getResult = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			let getResult = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			expect(getResult.success).toBe(true);
 			if (getResult.success && getResult.data) {
 				expect(getResult.data.state).toBe('submitted');
 			}
 
 			// Start second submission
-			const result2 = await studentClient.submissions.start(assignmentAllowResubmit);
+			const result2 = await studentClient.submissions.start(assignmentAllowResubmit!);
 			expect(result2.success).toBe(true);
 
 			await delay(300);
 
 			// Verify new submission is in progress
-			getResult = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			getResult = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			expect(getResult.success).toBe(true);
 			if (getResult.success && getResult.data) {
 				expect(getResult.data.state).toBe('in_progress');
@@ -208,27 +222,27 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 
 	describe('submitAssignment()', () => {
 		it('should submit assignment and set submittedAt timestamp', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
 			// First ensure clean state - check if already submitted
-			const existing = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const existing = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			if (existing.success && existing.data?.state === 'submitted') {
 				// Start a new one for this test
-				await studentClient.submissions.start(assignmentAllowResubmit);
+				await studentClient.submissions.start(assignmentAllowResubmit!);
 			}
 
 			const beforeSubmit = Date.now();
-			const result = await studentClient.submissions.submit(assignmentAllowResubmit);
+			const result = await studentClient.submissions.submit(assignmentAllowResubmit!);
 			const afterSubmit = Date.now();
 
 			expect(result.success).toBe(true);
 
 			// Verify submission state
 			await delay(300);
-			const getResult = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const getResult = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			expect(getResult.success).toBe(true);
 			if (getResult.success && getResult.data) {
 				expect(getResult.data.state).toBe('submitted');
@@ -238,37 +252,37 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		});
 
 		it('should resubmit when allowResubmit is true', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
 			// Check current state
-			const existing = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const existing = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			expect(existing.success).toBe(true);
 
 			if (existing.success && existing.data?.state === 'submitted') {
 				// Resubmit by starting a new submission
-				const result = await studentClient.submissions.start(assignmentAllowResubmit);
+				const result = await studentClient.submissions.start(assignmentAllowResubmit!);
 				expect(result.success).toBe(true);
 
 				await delay(200);
 
 				// Verify we're back in progress
-				const progressResult = await studentClient.submissions.getMine(assignmentAllowResubmit);
+				const progressResult = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 				expect(progressResult.success).toBe(true);
 				if (progressResult.success && progressResult.data) {
 					expect(progressResult.data.state).toBe('in_progress');
 				}
 
 				// Submit again
-				const submitResult = await studentClient.submissions.submit(assignmentAllowResubmit);
+				const submitResult = await studentClient.submissions.submit(assignmentAllowResubmit!);
 				expect(submitResult.success).toBe(true);
 
 				await delay(200);
 
 				// Verify submitted again
-				const finalResult = await studentClient.submissions.getMine(assignmentAllowResubmit);
+				const finalResult = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 				expect(finalResult.success).toBe(true);
 				if (finalResult.success && finalResult.data) {
 					expect(finalResult.data.state).toBe('submitted');
@@ -279,23 +293,23 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 
 	describe('Late Submissions', () => {
 		it('should set late flag based on due date', async () => {
-			if (!assignmentWithDueDate) {
-				console.log('Skipping - no test assignment with due date');
-				return;
-			}
+			expect(
+				assignmentWithDueDate,
+				'assignmentWithDueDate should be set by prior test/setup'
+			).toBeTruthy();
 
 			// Start and submit
-			const startResult = await studentClient.submissions.start(assignmentWithDueDate);
+			const startResult = await studentClient.submissions.start(assignmentWithDueDate!);
 			expect(startResult.success).toBe(true);
 
 			await delay(200);
 
-			const submitResult = await studentClient.submissions.submit(assignmentWithDueDate);
+			const submitResult = await studentClient.submissions.submit(assignmentWithDueDate!);
 			expect(submitResult.success).toBe(true);
 
 			// Verify submission properties
 			await delay(300);
-			const getResult = await studentClient.submissions.getMine(assignmentWithDueDate);
+			const getResult = await studentClient.submissions.getMine(assignmentWithDueDate!);
 			expect(getResult.success).toBe(true);
 			if (getResult.success && getResult.data) {
 				expect(getResult.data.state).toBe('submitted');
@@ -308,28 +322,25 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 
 	describe('gradeSubmission()', () => {
 		it('should grade submission with score', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
 			// Ensure submission exists and is submitted
-			const submission = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const submission = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			if (!submission.success || submission.data?.state !== 'submitted') {
 				// Create and submit
-				await studentClient.submissions.start(assignmentAllowResubmit);
+				await studentClient.submissions.start(assignmentAllowResubmit!);
 				await delay(100);
-				await studentClient.submissions.submit(assignmentAllowResubmit);
+				await studentClient.submissions.submit(assignmentAllowResubmit!);
 				await delay(300);
 			}
 
-			const result = await teacherClient.submissions.grade(assignmentAllowResubmit, studentUid, {
+			const result = await teacherClient.submissions.grade(assignmentAllowResubmit!, studentUid!, {
 				scoreCompletion: 95,
 				notes: 'Excellent work!'
 			});
@@ -342,30 +353,27 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		});
 
 		it('should grade submission with state', async () => {
-			if (!assignmentNoResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentNoResubmit,
+				'assignmentNoResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
 			// Create submission
-			const startResult = await studentClient.submissions.start(assignmentNoResubmit);
+			const startResult = await studentClient.submissions.start(assignmentNoResubmit!);
 			expect(startResult.success).toBe(true);
 
 			await delay(200);
 
-			const submitResult = await studentClient.submissions.submit(assignmentNoResubmit);
+			const submitResult = await studentClient.submissions.submit(assignmentNoResubmit!);
 			expect(submitResult.success).toBe(true);
 
 			await delay(300);
 
 			// Grade with state
-			const result = await teacherClient.submissions.grade(assignmentNoResubmit, studentUid, {
+			const result = await teacherClient.submissions.grade(assignmentNoResubmit!, studentUid!, {
 				scoreCompletion: 80,
 				state: 'submitted'
 			});
@@ -378,26 +386,26 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		});
 
 		it('should update grading with different states', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
 			// Ensure we have a submitted submission
-			const submission = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const submission = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			if (!submission.success || submission.data?.state !== 'submitted') {
-				console.log('Skipping - no submitted submission');
-				return;
+				// Create fresh submission
+				await studentClient.submissions.start(assignmentAllowResubmit!);
+				await delay(100);
+				await studentClient.submissions.submit(assignmentAllowResubmit!);
+				await delay(300);
 			}
 
 			// Grade with partial
-			const result1 = await teacherClient.submissions.grade(assignmentAllowResubmit, studentUid, {
+			const result1 = await teacherClient.submissions.grade(assignmentAllowResubmit!, studentUid!, {
 				scoreCompletion: 50,
 				state: 'graded_complete',
 				notes: 'Partial credit'
@@ -410,7 +418,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			await delay(200);
 
 			// Update to complete
-			const result2 = await teacherClient.submissions.grade(assignmentAllowResubmit, studentUid, {
+			const result2 = await teacherClient.submissions.grade(assignmentAllowResubmit!, studentUid!, {
 				scoreCompletion: 85,
 				state: 'graded_complete',
 				notes: 'Updated to full credit'
@@ -424,30 +432,27 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		});
 
 		it('should allow updating only some grading fields', async () => {
-			if (!assignmentWithDueDate) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentWithDueDate,
+				'assignmentWithDueDate should be set by prior test/setup'
+			).toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
 			// Create submission
-			const startResult = await studentClient.submissions.start(assignmentWithDueDate);
+			const startResult = await studentClient.submissions.start(assignmentWithDueDate!);
 			expect(startResult.success).toBe(true);
 
 			await delay(100);
 
-			const submitResult = await studentClient.submissions.submit(assignmentWithDueDate);
+			const submitResult = await studentClient.submissions.submit(assignmentWithDueDate!);
 			expect(submitResult.success).toBe(true);
 
 			await delay(300);
 
 			// Grade with score only
-			const result1 = await teacherClient.submissions.grade(assignmentWithDueDate, studentUid, {
+			const result1 = await teacherClient.submissions.grade(assignmentWithDueDate!, studentUid!, {
 				scoreCompletion: 90
 			});
 			expect(result1.success).toBe(true);
@@ -455,7 +460,7 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 			await delay(200);
 
 			// Update only notes
-			const result2 = await teacherClient.submissions.grade(assignmentWithDueDate, studentUid, {
+			const result2 = await teacherClient.submissions.grade(assignmentWithDueDate!, studentUid!, {
 				notes: 'Added notes later'
 			});
 			expect(result2.success).toBe(true);
@@ -468,12 +473,12 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 
 	describe('listAssignmentSubmissions()', () => {
 		it('should list all submissions for an assignment', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
-			const result = await teacherClient.submissions.listForAssignment(assignmentAllowResubmit);
+			const result = await teacherClient.submissions.listForAssignment(assignmentAllowResubmit!);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
@@ -483,12 +488,12 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		});
 
 		it('should list submissions with limit', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
-			const result = await teacherClient.submissions.listForAssignment(assignmentAllowResubmit, {
+			const result = await teacherClient.submissions.listForAssignment(assignmentAllowResubmit!, {
 				limit: 5
 			});
 
@@ -499,12 +504,12 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 		});
 
 		it('should list submissions ordered by startedAt descending', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
-			const result = await teacherClient.submissions.listForAssignment(assignmentAllowResubmit);
+			const result = await teacherClient.submissions.listForAssignment(assignmentAllowResubmit!);
 
 			expect(result.success).toBe(true);
 			if (result.success && result.data.length > 1) {
@@ -518,29 +523,26 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 
 	describe('Submission Data Integrity', () => {
 		it('should preserve submission fields after grading', async () => {
-			if (!assignmentAllowResubmit) {
-				console.log('Skipping - no test assignment created');
-				return;
-			}
+			expect(
+				assignmentAllowResubmit,
+				'assignmentAllowResubmit should be set by prior test/setup'
+			).toBeTruthy();
 
 			const studentUid = getStudentUser()?.uid;
-			if (!studentUid) {
-				console.log('Skipping - no student UID');
-				return;
-			}
+			expect(studentUid, 'studentUid should be available').toBeTruthy();
 
 			// Get current submission state
-			const current = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const current = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			if (!current.success || !current.data || current.data.state !== 'submitted') {
 				// Create fresh submission
-				await studentClient.submissions.start(assignmentAllowResubmit);
+				await studentClient.submissions.start(assignmentAllowResubmit!);
 				await delay(100);
-				await studentClient.submissions.submit(assignmentAllowResubmit);
+				await studentClient.submissions.submit(assignmentAllowResubmit!);
 				await delay(300);
 			}
 
 			// Get original submission
-			const originalResult = await studentClient.submissions.getMine(assignmentAllowResubmit);
+			const originalResult = await studentClient.submissions.getMine(assignmentAllowResubmit!);
 			expect(originalResult.success).toBe(true);
 			if (!originalResult.success || !originalResult.data) return;
 
@@ -550,8 +552,8 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 
 			// Grade the submission
 			const gradeResult = await teacherClient.submissions.grade(
-				assignmentAllowResubmit,
-				studentUid,
+				assignmentAllowResubmit!,
+				studentUid!,
 				{
 					scoreCompletion: 88,
 					notes: 'Good work'

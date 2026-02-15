@@ -8,7 +8,7 @@
         RotateCcw,
         Check,
     } from "@lucide/svelte";
-    import * as m from "$lib/paraglide/messages.js";
+    import * as m from "$lib/paraglide/messages";
     import { api, type CourseDoc } from "$lib/api";
     import { onMount } from "svelte";
     import { page } from "$app/state";
@@ -33,6 +33,7 @@
     let isUploading = $state(false);
     let isCopied = $state(false);
     let loading = $state(false);
+    let saveError = $state<string | null>(null);
 
     // Derived state to check for unsaved changes
     let isDirty = $derived(
@@ -73,6 +74,7 @@
     async function handleSave() {
         if (!courseId) return;
         loading = true;
+        saveError = null;
         try {
             const updates: Partial<Omit<CourseDoc, "ownerId" | "createdAt">> = {
                 title: courseName,
@@ -93,11 +95,11 @@
                 savedState.thumbnail = thumbnail;
                 savedState.code = code;
             } else {
-                alert("Failed to update: " + res.error);
+                saveError = `${m.courses_error()}: ${res.error}`;
             }
         } catch (e) {
             console.error(e);
-            alert("Error saving");
+            saveError = m.course_settings_save_failed();
         } finally {
             loading = false;
         }
@@ -142,13 +144,12 @@
     let password = $derived(code || "------");
 
     function handleResetPassword() {
-        // Generate a random 6-character alphanumeric code
         const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        let newCode = "";
-        for (let i = 0; i < 6; i++) {
-            newCode += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        code = newCode;
+        const buffer = new Uint32Array(6);
+        crypto.getRandomValues(buffer);
+        code = Array.from(buffer, (value) => chars[value % chars.length]).join(
+            "",
+        );
     }
 
     function handleCopyLink() {
@@ -379,6 +380,9 @@
         <span class="text-xs font-medium text-gray-500">
             {m.course_settings_unsaved_changes()}
         </span>
+        {#if saveError}
+            <span class="text-xs font-medium text-red-500">{saveError}</span>
+        {/if}
         <div class="flex items-center gap-2">
             <button
                 onclick={handleRevert}
