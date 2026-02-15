@@ -94,34 +94,34 @@
         if (!courseId || !fullCourse) return;
 
         const currentAnnouncements = fullCourse.announcements || [];
-        const now = Date.now();
         const formattedContent = `**${title}**\n${content}`;
 
-        let newAnnouncements = [...currentAnnouncements];
-
         if (id) {
+            const now = Date.now();
+            let newAnnouncements = [...currentAnnouncements];
             // Edit
             newAnnouncements = newAnnouncements.map((a) =>
                 a.id === id
                     ? { ...a, content: formattedContent, updatedAt: now }
                     : a,
             );
+
+            const res = await api.courses.update(courseId, {
+                announcements: newAnnouncements,
+            });
+
+            if (res.success) {
+                loadCourseData();
+            }
         } else {
             // Create
-            newAnnouncements.push({
-                id: crypto.randomUUID(),
-                content: formattedContent,
-                createdAt: now,
-                updatedAt: now,
-            });
-        }
-
-        const res = await api.courses.update(courseId, {
-            announcements: newAnnouncements,
-        });
-
-        if (res.success) {
-            loadCourseData();
+            const res = await api.courses.createAnnouncement(
+                courseId,
+                formattedContent,
+            );
+            if (res.success) {
+                loadCourseData();
+            }
         }
     }
 

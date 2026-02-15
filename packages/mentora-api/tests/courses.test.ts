@@ -593,6 +593,47 @@ describe('Courses Module (Integration)', () => {
 				expect(courseResult.data.announcements.length).toBeGreaterThanOrEqual(2);
 			}
 		});
+
+		it('should fan out persistent announcements to active members excluding actor', async () => {
+			expect(testCourseId, 'testCourseId should be set by prior test').toBeTruthy();
+
+			const content = `Fanout announcement ${Date.now()}`;
+			const createResult = await teacherClient.courses.createAnnouncement(testCourseId!, content);
+			expect(createResult.success).toBe(true);
+			if (!createResult.success) return;
+
+			await delay(400);
+
+			const studentInboxResult = await studentClient.announcements.listMine({ limit: 50 });
+			expect(studentInboxResult.success).toBe(true);
+			if (studentInboxResult.success) {
+				const foundAnnouncement = studentInboxResult.data.find(
+					(announcement) =>
+						announcement.type === 'course_announcement' &&
+						announcement.payload.courseId === testCourseId &&
+						announcement.payload.courseAnnouncementId === createResult.data.id
+				);
+				expect(foundAnnouncement).toBeDefined();
+				if (foundAnnouncement) {
+					const markReadResult = await studentClient.announcements.markRead(foundAnnouncement.id);
+					expect(markReadResult.success).toBe(true);
+				}
+
+				const markAllReadResult = await studentClient.announcements.markAllRead();
+				expect(markAllReadResult.success).toBe(true);
+			}
+
+			const teacherInboxResult = await teacherClient.announcements.listMine({ limit: 50 });
+			expect(teacherInboxResult.success).toBe(true);
+			if (teacherInboxResult.success) {
+				const ownEntryFound = teacherInboxResult.data.some(
+					(announcement) =>
+						announcement.type === 'course_announcement' &&
+						announcement.payload.courseAnnouncementId === createResult.data.id
+				);
+				expect(ownEntryFound).toBe(false);
+			}
+		});
 	});
 
 	describe('copyCourse()', () => {

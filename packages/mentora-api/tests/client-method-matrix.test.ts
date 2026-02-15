@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as AssignmentsModule from '../src/lib/api/assignments.js';
+import * as AnnouncementsModule from '../src/lib/api/announcements.js';
 import * as BackendModule from '../src/lib/api/backend.js';
 import { MentoraClient } from '../src/lib/api/client.js';
 import * as ConversationsModule from '../src/lib/api/conversations.js';
@@ -99,6 +100,21 @@ describe('MentoraClient method matrix', () => {
 			createAnnouncement: vi
 				.spyOn(CoursesModule, 'createAnnouncement')
 				.mockResolvedValue({ success: true, data: {} as any })
+		};
+
+		const announcementsSpies = {
+			getMyAnnouncement: vi
+				.spyOn(AnnouncementsModule, 'getMyAnnouncement')
+				.mockResolvedValue({ success: true, data: {} as any }),
+			listMyAnnouncements: vi
+				.spyOn(AnnouncementsModule, 'listMyAnnouncements')
+				.mockResolvedValue({ success: true, data: [] }),
+			markAnnouncementRead: vi
+				.spyOn(AnnouncementsModule, 'markAnnouncementRead')
+				.mockResolvedValue({ success: true, data: { updated: true } }),
+			markAllAnnouncementsRead: vi
+				.spyOn(AnnouncementsModule, 'markAllAnnouncementsRead')
+				.mockResolvedValue({ success: true, data: { updatedCount: 1 } })
 		};
 
 		const topicsSpies = {
@@ -285,6 +301,10 @@ describe('MentoraClient method matrix', () => {
 		await client.courses.getWallet('course-a', { includeLedger: true, ledgerLimit: 5 });
 		await client.courses.copy('course-a', { includeContent: true, includeRoster: false });
 		await client.courses.createAnnouncement('course-a', 'Announcement');
+		await client.announcements.get('announcement-a');
+		await client.announcements.listMine({ limit: 5 });
+		await client.announcements.markRead('announcement-a');
+		await client.announcements.markAllRead();
 
 		await client.topics.get('topic-a');
 		await client.topics.listForCourse('course-a', { limit: 5 });
@@ -392,6 +412,7 @@ describe('MentoraClient method matrix', () => {
 
 		for (const spy of Object.values(usersSpies)) expect(spy).toHaveBeenCalled();
 		for (const spy of Object.values(coursesSpies)) expect(spy).toHaveBeenCalled();
+		for (const spy of Object.values(announcementsSpies)) expect(spy).toHaveBeenCalled();
 		for (const spy of Object.values(topicsSpies)) expect(spy).toHaveBeenCalled();
 		for (const spy of Object.values(assignmentsSpies)) expect(spy).toHaveBeenCalled();
 		for (const spy of Object.values(questionnairesSpies)) expect(spy).toHaveBeenCalled();
@@ -419,6 +440,14 @@ describe('MentoraClient method matrix', () => {
 			expect.any(Object),
 			'course-a',
 			'member-a'
+		);
+		expect(announcementsSpies.getMyAnnouncement).toHaveBeenCalledWith(
+			expect.any(Object),
+			'announcement-a'
+		);
+		expect(announcementsSpies.markAnnouncementRead).toHaveBeenCalledWith(
+			expect.any(Object),
+			'announcement-a'
 		);
 		expect(topicsSpies.getTopic).toHaveBeenCalledWith(expect.any(Object), 'topic-a');
 		expect(assignmentsSpies.getAssignment).toHaveBeenCalledWith(expect.any(Object), 'assignment-a');
