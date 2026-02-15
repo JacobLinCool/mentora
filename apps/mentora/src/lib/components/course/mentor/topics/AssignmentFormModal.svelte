@@ -70,7 +70,7 @@
     }>({});
 
     const flipDurationMs = 200;
-    const MS_PER_DAY = 7 * 24 * 60 * 60 * 1000;
+    const DEFAULT_DUE_OFFSET_MS = 7 * 24 * 60 * 60 * 1000;
 
     function getNormalizedQuestionOptionsText(option: Option): string {
         return option.text.trim();
@@ -136,7 +136,9 @@
             questions = [];
             const now = new Date();
             startAt = toDateTimeInputValue(now);
-            dueAt = toDateTimeInputValue(new Date(now.getTime() + MS_PER_DAY));
+            dueAt = toDateTimeInputValue(
+                new Date(now.getTime() + DEFAULT_DUE_OFFSET_MS),
+            );
         }
     });
 

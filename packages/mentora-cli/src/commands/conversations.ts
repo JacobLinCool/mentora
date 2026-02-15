@@ -19,17 +19,24 @@ export function createConversationsCommand(
         .option("-l, --limit <n>", "Limit number of results", parseInt)
         .action(async (options: { assignment?: string; limit?: number }) => {
             const client = await getClient();
-            const result = await client.conversations.listMine({
-                limit: options.limit,
-            });
+            const assignmentId = options.assignment?.trim();
+            const hasAssignmentFilter = Boolean(assignmentId);
+
+            const result = await client.conversations.listMine(
+                hasAssignmentFilter ? undefined : { limit: options.limit },
+            );
 
             if (result.success) {
-                const conversations = options.assignment
+                let conversations = hasAssignmentFilter
                     ? result.data.filter(
                           (conversation) =>
-                              conversation.assignmentId === options.assignment,
+                              conversation.assignmentId === assignmentId,
                       )
                     : result.data;
+
+                if (hasAssignmentFilter && options.limit) {
+                    conversations = conversations.slice(0, options.limit);
+                }
 
                 if (conversations.length === 0) {
                     info("No conversations found.");

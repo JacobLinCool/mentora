@@ -67,12 +67,20 @@ export function createWalletsCommand(
                 amount: string,
                 options: { idempotencyKey?: string; paymentRef?: string },
             ) => {
+                const parsedAmount = Number(amount);
+                if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+                    error(
+                        "Amount must be a valid positive number (for example: 10 or 10.5).",
+                    );
+                    process.exit(1);
+                }
+
                 const client = await getClient();
                 const idempotencyKey =
                     options.idempotencyKey ??
                     `cli_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
                 const result = await client.wallets.addCredits({
-                    amount: parseFloat(amount),
+                    amount: parsedAmount,
                     idempotencyKey,
                     paymentRef: options.paymentRef ?? null,
                 });

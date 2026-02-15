@@ -132,28 +132,18 @@
         showKeywords = !showKeywords;
     }
 
-    async function blobToBase64(blob: Blob): Promise<string> {
-        const buffer = await blob.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = "";
-        const chunkSize = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.subarray(i, i + chunkSize);
-            binary += String.fromCharCode(...chunk);
-        }
-        return btoa(binary);
-    }
-
     async function handleRecordingComplete(blob: Blob) {
         if (!conversationId) return;
 
         sending = true;
         sendError = null;
         try {
-            const audioBase64 = await blobToBase64(blob);
+            const audio =
+                blob.type.length > 0
+                    ? blob
+                    : new Blob([blob], { type: "audio/webm" });
             const res = await api.conversations.addTurn(conversationId, {
-                audioBase64,
-                audioMimeType: blob.type || "audio/webm",
+                audio,
             });
             if (!res.success) {
                 console.error("Failed to add audio turn:", res.error);
