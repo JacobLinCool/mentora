@@ -4,7 +4,7 @@
     import GlassCard from "$lib/components/ui/GlassCard.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import {
-        BarChart3,
+        ChartColumn,
         Users,
         TrendingUp,
         MessageSquare,
@@ -129,7 +129,7 @@
                 <h1
                     class="flex items-center gap-3 font-serif text-4xl text-white"
                 >
-                    <BarChart3 class="text-brand-gold h-8 w-8" />
+                    <ChartColumn class="text-brand-gold h-8 w-8" />
                     Analytics Dashboard
                 </h1>
                 <p class="text-text-secondary mt-2">

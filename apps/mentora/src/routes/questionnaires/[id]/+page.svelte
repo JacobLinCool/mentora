@@ -17,11 +17,13 @@
     import SingleChoiceQuestion from "$lib/components/questionnaire/SingleChoiceQuestion.svelte";
     import MultipleChoiceQuestion from "$lib/components/questionnaire/MultipleChoiceQuestion.svelte";
     import ShortAnswerQuestion from "$lib/components/questionnaire/ShortAnswerQuestion.svelte";
+    import SliderQuestion from "$lib/components/questionnaire/SliderQuestion.svelte";
     import QuestionNavigator from "$lib/components/questionnaire/QuestionNavigator.svelte";
     import QuestionProgress from "$lib/components/questionnaire/QuestionProgress.svelte";
 
     // State
     let currentIndex = $state(0);
+    let hasExistingResponse = $state(false);
     let answers = $state<UiAnswerMap>({});
     let submitting = $state(false);
     let questions = $state<UiQuestion[]>([]);
@@ -64,6 +66,7 @@
 
                     // Restore existing answers from QuestionnaireResponse
                     if (myResponseRes.success && myResponseRes.data) {
+                        hasExistingResponse = true;
                         answers = mapAnswersFromApi(
                             myResponseRes.data.responses,
                             mappedQuestions,
@@ -95,15 +98,25 @@
         );
 
         try {
-            // Call api.questionnaireResponses.submit
-            const result = await api.questionnaireResponses.submit(
-                assignmentId,
-                responses,
-                courseId,
-            );
-
-            if (!result.success) {
-                console.error("Failed to save answers:", result.error);
+            if (hasExistingResponse) {
+                const result = await api.questionnaireResponses.updateMine(
+                    assignmentId,
+                    responses,
+                );
+                if (!result.success) {
+                    console.error("Failed to save answers:", result.error);
+                }
+            } else {
+                const result = await api.questionnaireResponses.submit(
+                    assignmentId,
+                    responses,
+                    courseId,
+                );
+                if (!result.success) {
+                    console.error("Failed to save answers:", result.error);
+                } else {
+                    hasExistingResponse = true;
+                }
             }
         } catch (e) {
             console.error("Failed to save answers", e);
@@ -128,7 +141,8 @@
         if (!currentQuestion) return false;
         const answer = answers[currentQuestion.id];
         if (!currentQuestion.required) return true;
-        if (answer === undefined) return false;
+        if (answer === undefined || answer === null) return false;
+        if (typeof answer === "number") return true;
         if (Array.isArray(answer)) return answer.length > 0;
         return answer.trim().length > 0;
     });
@@ -150,6 +164,11 @@
     }
 
     function handleShortAnswer(value: string) {
+        if (!currentQuestion) return;
+        answers[currentQuestion.id] = value;
+    }
+
+    function handleSliderAnswer(value: number) {
         if (!currentQuestion) return;
         answers[currentQuestion.id] = value;
     }
@@ -255,6 +274,20 @@
                                 maxLength={currentQuestion.maxLength}
                                 value={getCurrentAnswer(currentQuestion.id, "")}
                                 onAnswer={handleShortAnswer}
+                            />
+                        {:else if currentQuestion.type === "slider"}
+                            <SliderQuestion
+                                question={currentQuestion.question}
+                                minLabel={currentQuestion.minLabel ?? "Min"}
+                                maxLabel={currentQuestion.maxLabel ?? "Max"}
+                                minValue={currentQuestion.minValue ?? 0}
+                                maxValue={currentQuestion.maxValue ?? 10}
+                                step={currentQuestion.step ?? 1}
+                                value={getCurrentAnswer<number | null>(
+                                    currentQuestion.id,
+                                    null,
+                                )}
+                                onAnswer={handleSliderAnswer}
                             />
                         {/if}
                     </div>

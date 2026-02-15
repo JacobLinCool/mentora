@@ -311,7 +311,8 @@ export class CourseService {
 			email: user.email,
 			role: 'student',
 			status: 'active',
-			joinedAt: Date.now()
+			joinedAt: Date.now(),
+			invitedAt: null
 		};
 		await this.courseRepository.upsertMembership(course.id, user.uid, membership);
 		return {

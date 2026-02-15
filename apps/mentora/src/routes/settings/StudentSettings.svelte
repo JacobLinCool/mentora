@@ -17,7 +17,7 @@
         Wallet,
         CreditCard,
         ArrowRight,
-        Loader2,
+        LoaderCircle,
         Pencil,
         X,
         Globe,
@@ -170,7 +170,7 @@
                                                 className="px-5 py-3"
                                             >
                                                 {#if s.displayNameSaving}
-                                                    <Loader2
+                                                    <LoaderCircle
                                                         class="h-4 w-4 animate-spin"
                                                     />
                                                     <span>{m.save()}</span>
@@ -288,7 +288,7 @@
 
                         {#if s.walletLoading}
                             <div class="flex items-center justify-center py-8">
-                                <Loader2
+                                <LoaderCircle
                                     class="text-brand-gold h-8 w-8 animate-spin"
                                 />
                             </div>
@@ -380,7 +380,9 @@
                                 className="min-w-37.5"
                             >
                                 {#if s.loggingOut}
-                                    <Loader2 class="h-4 w-4 animate-spin" />
+                                    <LoaderCircle
+                                        class="h-4 w-4 animate-spin"
+                                    />
                                     <span>{m.auth_signing_out()}</span>
                                 {:else}
                                     <LogOut class="h-4 w-4" />

@@ -5,6 +5,7 @@
     import CourseTopics from "$lib/components/course/mentor/CourseTopics.svelte";
     import CourseMembers from "$lib/components/course/mentor/CourseMembers.svelte";
     import CourseSettings from "$lib/components/course/mentor/CourseSettings.svelte";
+    import CourseSubmissions from "$lib/components/course/mentor/CourseSubmissions.svelte";
     import { onMount } from "svelte";
     import { api } from "$lib";
     import type { Course } from "$lib/api";
@@ -155,5 +156,7 @@
         <CourseMembers {courseId} />
     {:else if activeTab === "settings"}
         <CourseSettings />
+    {:else if activeTab === "submissions" && courseId}
+        <CourseSubmissions {courseId} />
     {/if}
 </MentorCourseLayout>

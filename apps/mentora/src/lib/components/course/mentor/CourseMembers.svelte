@@ -1,5 +1,11 @@
 <script lang="ts">
-    import { CircleMinus, CirclePlus, Loader2, X } from "@lucide/svelte";
+    import {
+        CircleMinus,
+        CirclePlus,
+        LoaderCircle,
+        UserPlus,
+        X,
+    } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
     import Table from "$lib/components/ui/Table.svelte";
     import { api } from "$lib/api";
@@ -12,7 +18,7 @@
         id: string;
         name: string;
         email: string;
-        joinedDate: string;
+        dateInfo: string;
         role: MemberRole;
         status: "active" | "invited";
     };
@@ -21,6 +27,14 @@
     let loading = $state(false);
     let mutatingMemberId = $state<string | null>(null);
     let error = $state<string | null>(null);
+
+    // Invite member state
+    let showInviteForm = $state(false);
+    let inviteEmail = $state("");
+    let inviteRole = $state<MemberRole>("student");
+    let inviting = $state(false);
+    let inviteError = $state<string | null>(null);
+    let inviteSuccess = $state(false);
 
     onMount(() => {
         void loadMembers();
@@ -74,13 +88,18 @@
                             ? member.role
                             : "student";
 
+                    let dateInfo = "-";
+                    if (member.joinedAt) {
+                        dateInfo = new Date(member.joinedAt).toLocaleString();
+                    } else if (member.invitedAt) {
+                        dateInfo = `${m.course_members_invited_date()} ${new Date(member.invitedAt).toLocaleString()}`;
+                    }
+
                     return {
                         id: member.id,
                         name,
                         email: member.email,
-                        joinedDate: member.joinedAt
-                            ? new Date(member.joinedAt).toLocaleString()
-                            : "-",
+                        dateInfo,
                         role,
                         status: member.status,
                     } as Member;
@@ -157,6 +176,40 @@
         if (role === "instructor") return "Instructor";
         return "TA";
     }
+
+    async function handleInvite() {
+        if (!courseId || !inviteEmail.trim()) return;
+
+        inviting = true;
+        inviteError = null;
+        inviteSuccess = false;
+
+        try {
+            const result = await api.courses.inviteMember(
+                courseId,
+                inviteEmail.trim(),
+                inviteRole,
+            );
+            if (!result.success) {
+                inviteError = result.error;
+                return;
+            }
+
+            inviteSuccess = true;
+            inviteEmail = "";
+            inviteRole = "student";
+            await loadMembers();
+
+            setTimeout(() => {
+                inviteSuccess = false;
+            }, 3000);
+        } catch (e) {
+            inviteError =
+                e instanceof Error ? e.message : "Failed to send invite";
+        } finally {
+            inviting = false;
+        }
+    }
 </script>
 
 {#if error}
@@ -170,6 +223,85 @@
 {#if loading}
     <div class="p-8 text-center text-gray-500">Loading...</div>
 {:else}
+    <!-- Invite Member -->
+    <div class="mb-4">
+        <button
+            class="flex cursor-pointer items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+            onclick={() => {
+                showInviteForm = !showInviteForm;
+                inviteError = null;
+                inviteSuccess = false;
+            }}
+        >
+            <UserPlus size={16} />
+            {m.course_members_invite()}
+        </button>
+
+        {#if showInviteForm}
+            <div class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div class="flex-1">
+                        <label
+                            for="invite-email"
+                            class="mb-1 block text-sm font-medium text-gray-700"
+                            >{m.course_members_invite_email()}</label
+                        >
+                        <input
+                            id="invite-email"
+                            type="email"
+                            bind:value={inviteEmail}
+                            placeholder="user@example.com"
+                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
+                        />
+                    </div>
+                    <div class="w-full sm:w-40">
+                        <label
+                            for="invite-role"
+                            class="mb-1 block text-sm font-medium text-gray-700"
+                            >{m.course_members_invite_role()}</label
+                        >
+                        <select
+                            id="invite-role"
+                            bind:value={inviteRole}
+                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
+                        >
+                            <option value="student"
+                                >{m.course_members_role_student()}</option
+                            >
+                            <option value="auditor"
+                                >{m.course_members_role_auditor()}</option
+                            >
+                            <option value="instructor">Instructor</option>
+                            <option value="ta">TA</option>
+                        </select>
+                    </div>
+                    <button
+                        class="flex items-center justify-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        onclick={handleInvite}
+                        disabled={inviting || !inviteEmail.trim()}
+                    >
+                        {#if inviting}
+                            <LoaderCircle size={14} class="animate-spin" />
+                        {/if}
+                        {m.course_members_invite_submit()}
+                    </button>
+                </div>
+
+                {#if inviteError}
+                    <div class="mt-2 text-sm text-red-600">
+                        {inviteError}
+                    </div>
+                {/if}
+
+                {#if inviteSuccess}
+                    <div class="mt-2 text-sm text-green-600">
+                        {m.course_members_invite_success()}
+                    </div>
+                {/if}
+            </div>
+        {/if}
+    </div>
+
     <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
         <Table
             columns={[
@@ -184,8 +316,8 @@
                     sortable: true,
                 },
                 {
-                    key: "joinedDate",
-                    label: m.course_members_joined_date(),
+                    key: "dateInfo",
+                    label: m.course_members_date(),
                     sortable: true,
                 },
                 {
@@ -209,7 +341,7 @@
     {:else if key === "email"}
         <div class="text-gray-600">{item.email}</div>
     {:else}
-        <div class="text-gray-600">{item.joinedDate}</div>
+        <div class="text-gray-600">{item.dateInfo}</div>
     {/if}
 {/snippet}
 
@@ -221,7 +353,7 @@
             disabled={mutatingMemberId === member.id}
         >
             {#if mutatingMemberId === member.id}
-                <Loader2 size={14} class="animate-spin" />
+                <LoaderCircle size={14} class="animate-spin" />
             {:else if member.role === "student"}
                 <CircleMinus size={16} class="fill-gray-600 text-white" />
             {:else}

@@ -24,7 +24,7 @@ import {
 } from 'firebase/firestore';
 import { Firestore as ServerFirestore } from 'fires2rest';
 import { MentoraClient } from '../src/lib/api/client.js';
-import { Questionnaires, Wallets, type LedgerEntry } from 'mentora-firebase';
+import { Wallets, type LedgerEntry } from 'mentora-firebase';
 
 // Emulator configuration
 const FIRESTORE_HOST = '127.0.0.1';

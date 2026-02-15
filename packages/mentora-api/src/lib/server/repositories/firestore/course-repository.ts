@@ -119,7 +119,8 @@ export class FirestoreCourseRepository implements ICourseRepository {
 					email: params.ownerEmail,
 					role: 'instructor',
 					status: 'active',
-					joinedAt: params.now
+					joinedAt: params.now,
+					invitedAt: null
 				};
 				transaction.set(membershipRef, Courses.roster.schema.parse(membership));
 
@@ -151,7 +152,8 @@ export class FirestoreCourseRepository implements ICourseRepository {
 			email: params.newOwnerEmail,
 			role: 'instructor',
 			status: 'active',
-			joinedAt: params.now
+			joinedAt: params.now,
+			invitedAt: null
 		};
 		await this.upsertMembership(params.newCourseId, params.newOwnerId, ownerMembership);
 	}

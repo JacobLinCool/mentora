@@ -45,7 +45,7 @@ describe('Users Module (Integration)', () => {
 
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.uid).toBe(currentUser.uid);
+				expect(result.data.uid).toBe(currentUser!.uid);
 			}
 		});
 

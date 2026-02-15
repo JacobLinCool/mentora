@@ -1,6 +1,6 @@
 <script lang="ts">
     import { m } from "$lib/paraglide/messages";
-    import { Bell, CheckCircle2, AlertCircle, Sparkles } from "@lucide/svelte";
+    import { Bell, CircleCheck, CircleAlert, Sparkles } from "@lucide/svelte";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
 
@@ -50,9 +50,9 @@
             case "grade":
                 return Sparkles;
             case "system":
-                return CheckCircle2;
+                return CircleCheck;
             case "alert":
-                return AlertCircle;
+                return CircleAlert;
             default:
                 return Bell;
         }

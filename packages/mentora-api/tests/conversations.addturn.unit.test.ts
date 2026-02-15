@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as BackendModule from '../src/lib/api/backend.js';
 import { MentoraClient } from '../src/lib/api/client.js';
@@ -51,7 +52,7 @@ describe('conversations.addTurn payload handling', () => {
 				text: 'ok',
 				audio: 'base64-audio',
 				audioMimeType: 'audio/mp3',
-				tokenUsage: { byFeature: {}, totals: {} }
+				tokenUsage: { byFeature: {}, totals: {} as any }
 			}
 		});
 
@@ -71,7 +72,7 @@ describe('conversations.addTurn payload handling', () => {
 				text: 'ok',
 				audio: 'base64-audio',
 				audioMimeType: 'audio/mp3',
-				tokenUsage: { byFeature: {}, totals: {} }
+				tokenUsage: { byFeature: {}, totals: {} as any }
 			}
 		});
 
@@ -97,7 +98,7 @@ describe('conversations.addTurn payload handling', () => {
 				text: 'ok',
 				audio: 'base64-audio',
 				audioMimeType: 'audio/mp3',
-				tokenUsage: { byFeature: {}, totals: {} }
+				tokenUsage: { byFeature: {}, totals: {} as any }
 			}
 		});
 
@@ -129,7 +130,7 @@ describe('MentoraClient.conversations.addTurn normalization', () => {
 				text: 'ok',
 				audio: 'base64-audio',
 				audioMimeType: 'audio/mp3',
-				tokenUsage: { byFeature: {}, totals: {} }
+				tokenUsage: { byFeature: {}, totals: {} as any }
 			}
 		});
 

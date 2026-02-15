@@ -3,7 +3,8 @@ import type { Questionnaire, QuestionnaireResponse } from "$lib/api";
 export type UiQuestionType =
     | "single_choice"
     | "multiple_choice"
-    | "short_answer";
+    | "short_answer"
+    | "slider";
 
 export interface UiQuestion {
     id: string;
@@ -13,6 +14,11 @@ export interface UiQuestion {
     options: string[];
     placeholder?: string;
     maxLength?: number;
+    minLabel?: string;
+    maxLabel?: string;
+    minValue?: number;
+    maxValue?: number;
+    step?: number;
 }
 
 export interface MentorQuestionOption {
@@ -28,7 +34,7 @@ export interface MentorQuestion {
     required?: boolean;
 }
 
-export type UiAnswerMap = Record<string, string | string[]>;
+export type UiAnswerMap = Record<string, string | string[] | number>;
 
 export function mapQuestionnaireFromApi(
     questions: Questionnaire["questions"] | undefined,
@@ -57,6 +63,21 @@ export function mapQuestionnaireFromApi(
                 type: "multiple_choice" as const,
                 question: question.questionText,
                 options: question.options,
+            };
+        }
+
+        if (question.type === "slider_answer") {
+            return {
+                id,
+                required,
+                type: "slider" as const,
+                question: question.questionText,
+                options: [],
+                minLabel: question.minLabel,
+                maxLabel: question.maxLabel,
+                minValue: question.minValue,
+                maxValue: question.maxValue,
+                step: question.step,
             };
         }
 
@@ -114,6 +135,21 @@ export function mapQuestionnaireToApi(
                         type: "multiple_answer_choice" as const,
                         questionText: question.question.trim(),
                         options: options.length > 0 ? options : ["Option"],
+                    },
+                    required: question.required,
+                };
+            }
+
+            if (question.type === "slider") {
+                return {
+                    question: {
+                        type: "slider_answer" as const,
+                        questionText: question.question.trim(),
+                        minLabel: question.minLabel ?? "Min",
+                        maxLabel: question.maxLabel ?? "Max",
+                        minValue: question.minValue ?? 0,
+                        maxValue: question.maxValue ?? 10,
+                        step: question.step ?? 1,
                     },
                     required: question.required,
                 };
@@ -187,6 +223,11 @@ export function mapAnswersFromApi(
             continue;
         }
 
+        if (targetQuestion.type === "slider" && typeof answer === "number") {
+            answers[targetQuestion.id] = answer;
+            continue;
+        }
+
         answers[targetQuestion.id] =
             typeof answer === "number" ? String(answer) : answer;
     }
@@ -221,7 +262,21 @@ export function mapAnswersToApi(
             return;
         }
 
-        const text = Array.isArray(value) ? value.join(",") : value;
+        if (question.type === "slider") {
+            const numValue = typeof value === "number" ? value : Number(value);
+            if (Number.isNaN(numValue)) return;
+
+            payload.push({
+                questionIndex: index,
+                answer: {
+                    type: "slider_answer",
+                    response: numValue,
+                },
+            });
+            return;
+        }
+
+        const text = Array.isArray(value) ? value.join(",") : String(value);
         if (text.trim().length === 0) return;
 
         payload.push({

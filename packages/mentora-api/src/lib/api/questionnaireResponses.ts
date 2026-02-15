@@ -158,7 +158,8 @@ export async function submitQuestionnaireResponse(
 			userId: currentUser.uid,
 			courseId: courseId ?? null,
 			responses,
-			submittedAt: now
+			submittedAt: now,
+			updatedAt: null
 		};
 
 		// Validate against schema before sending

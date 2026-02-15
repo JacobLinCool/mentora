@@ -1,3 +1,4 @@
+import type { User } from 'firebase/auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { callBackend } from '../src/lib/api/backend.js';
 import { APIErrorCode, type MentoraAPIConfig } from '../src/lib/api/types.js';
@@ -24,7 +25,7 @@ function createConfig(overrides?: {
 		db: {} as MentoraAPIConfig['db'],
 		backendBaseUrl: overrides?.backendBaseUrl ?? 'http://api.test',
 		environment: { browser: false },
-		getCurrentUser: () => currentUser
+		getCurrentUser: () => currentUser as User | null
 	};
 }
 

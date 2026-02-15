@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as AssignmentsModule from '../src/lib/api/assignments.js';
 import * as BackendModule from '../src/lib/api/backend.js';
@@ -42,10 +43,10 @@ describe('MentoraClient method matrix', () => {
 		const usersSpies = {
 			getMyProfile: vi
 				.spyOn(UsersModule, 'getMyProfile')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			getUserProfile: vi
 				.spyOn(UsersModule, 'getUserProfile')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			updateMyProfile: vi
 				.spyOn(UsersModule, 'updateMyProfile')
 				.mockResolvedValue({ success: true, data: undefined })
@@ -54,7 +55,7 @@ describe('MentoraClient method matrix', () => {
 		const coursesSpies = {
 			getCourse: vi
 				.spyOn(CoursesModule, 'getCourse')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			listMyCourses: vi
 				.spyOn(CoursesModule, 'listMyCourses')
 				.mockResolvedValue({ success: true, data: [] }),
@@ -82,13 +83,13 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: [] }),
 			updateCourse: vi
 				.spyOn(CoursesModule, 'updateCourse')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			deleteCourse: vi
 				.spyOn(CoursesModule, 'deleteCourse')
 				.mockResolvedValue({ success: true, data: undefined }),
 			updateMember: vi
 				.spyOn(CoursesModule, 'updateMember')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			removeMember: vi
 				.spyOn(CoursesModule, 'removeMember')
 				.mockResolvedValue({ success: true, data: undefined }),
@@ -97,11 +98,13 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: 'course-copy-1' }),
 			createAnnouncement: vi
 				.spyOn(CoursesModule, 'createAnnouncement')
-				.mockResolvedValue({ success: true, data: {} })
+				.mockResolvedValue({ success: true, data: {} as any })
 		};
 
 		const topicsSpies = {
-			getTopic: vi.spyOn(TopicsModule, 'getTopic').mockResolvedValue({ success: true, data: {} }),
+			getTopic: vi
+				.spyOn(TopicsModule, 'getTopic')
+				.mockResolvedValue({ success: true, data: {} as any }),
 			listCourseTopics: vi
 				.spyOn(TopicsModule, 'listCourseTopics')
 				.mockResolvedValue({ success: true, data: [] }),
@@ -110,7 +113,7 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: 'topic-1' }),
 			updateTopic: vi
 				.spyOn(TopicsModule, 'updateTopic')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			deleteTopic: vi
 				.spyOn(TopicsModule, 'deleteTopic')
 				.mockResolvedValue({ success: true, data: undefined })
@@ -119,7 +122,7 @@ describe('MentoraClient method matrix', () => {
 		const assignmentsSpies = {
 			getAssignment: vi
 				.spyOn(AssignmentsModule, 'getAssignment')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			listCourseAssignments: vi
 				.spyOn(AssignmentsModule, 'listCourseAssignments')
 				.mockResolvedValue({ success: true, data: [] }),
@@ -131,20 +134,20 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: 'assignment-1' }),
 			updateAssignment: vi
 				.spyOn(AssignmentsModule, 'updateAssignment')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			deleteAssignment: vi
 				.spyOn(AssignmentsModule, 'deleteAssignment')
 				.mockResolvedValue({ success: true, data: undefined }),
 			generateContent: vi.spyOn(AssignmentsModule, 'generateContent').mockResolvedValue({
 				success: true,
-				data: { content: 'generated', tokenUsage: { byFeature: {}, totals: {} } }
+				data: { content: 'generated', tokenUsage: { byFeature: {}, totals: {} as any } }
 			})
 		};
 
 		const questionnairesSpies = {
 			getQuestionnaire: vi
 				.spyOn(QuestionnairesModule, 'getQuestionnaire')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			listCourseQuestionnaires: vi
 				.spyOn(QuestionnairesModule, 'listCourseQuestionnaires')
 				.mockResolvedValue({ success: true, data: [] }),
@@ -156,7 +159,7 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: 'questionnaire-1' }),
 			updateQuestionnaire: vi
 				.spyOn(QuestionnairesModule, 'updateQuestionnaire')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			deleteQuestionnaire: vi
 				.spyOn(QuestionnairesModule, 'deleteQuestionnaire')
 				.mockResolvedValue({ success: true, data: undefined })
@@ -165,7 +168,7 @@ describe('MentoraClient method matrix', () => {
 		const questionnaireResponsesSpies = {
 			getQuestionnaireResponse: vi
 				.spyOn(QuestionnaireResponsesModule, 'getQuestionnaireResponse')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			listQuestionnaireResponses: vi
 				.spyOn(QuestionnaireResponsesModule, 'listQuestionnaireResponses')
 				.mockResolvedValue({ success: true, data: [] }),
@@ -180,7 +183,7 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: 'response-1' }),
 			updateMyQuestionnaireResponse: vi
 				.spyOn(QuestionnaireResponsesModule, 'updateMyQuestionnaireResponse')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			deleteQuestionnaireResponse: vi
 				.spyOn(QuestionnaireResponsesModule, 'deleteQuestionnaireResponse')
 				.mockResolvedValue({ success: true, data: undefined })
@@ -189,10 +192,10 @@ describe('MentoraClient method matrix', () => {
 		const submissionsSpies = {
 			getSubmission: vi
 				.spyOn(SubmissionsModule, 'getSubmission')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			getMySubmission: vi
 				.spyOn(SubmissionsModule, 'getMySubmission')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			listAssignmentSubmissions: vi
 				.spyOn(SubmissionsModule, 'listAssignmentSubmissions')
 				.mockResolvedValue({ success: true, data: [] }),
@@ -204,16 +207,16 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: undefined }),
 			gradeSubmission: vi
 				.spyOn(SubmissionsModule, 'gradeSubmission')
-				.mockResolvedValue({ success: true, data: {} })
+				.mockResolvedValue({ success: true, data: {} as any })
 		};
 
 		const conversationsSpies = {
 			getConversation: vi
 				.spyOn(ConversationsModule, 'getConversation')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			getAssignmentConversation: vi
 				.spyOn(ConversationsModule, 'getAssignmentConversation')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			listMyConversations: vi
 				.spyOn(ConversationsModule, 'listMyConversations')
 				.mockResolvedValue({ success: true, data: [] }),
@@ -230,7 +233,7 @@ describe('MentoraClient method matrix', () => {
 					text: 'ok',
 					audio: 'base64',
 					audioMimeType: 'audio/mp3',
-					tokenUsage: { byFeature: {}, totals: {} }
+					tokenUsage: { byFeature: {}, totals: {} as any }
 				}
 			})
 		};
@@ -238,7 +241,7 @@ describe('MentoraClient method matrix', () => {
 		const walletsSpies = {
 			getWallet: vi
 				.spyOn(WalletsModule, 'getWallet')
-				.mockResolvedValue({ success: true, data: {} }),
+				.mockResolvedValue({ success: true, data: {} as any }),
 			getMyWallet: vi
 				.spyOn(WalletsModule, 'getMyWallet')
 				.mockResolvedValue({ success: true, data: null }),
@@ -247,7 +250,7 @@ describe('MentoraClient method matrix', () => {
 				.mockResolvedValue({ success: true, data: [] }),
 			getCourseWallet: vi
 				.spyOn(WalletsModule, 'getCourseWallet')
-				.mockResolvedValue({ success: true, data: { wallet: {} } }),
+				.mockResolvedValue({ success: true, data: { wallet: {} as any } }),
 			addCredits: vi.spyOn(WalletsModule, 'addCredits').mockResolvedValue({
 				success: true,
 				data: { id: 'entry-1', idempotent: false, newBalance: 100 }

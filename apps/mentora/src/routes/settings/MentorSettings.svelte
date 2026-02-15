@@ -17,7 +17,7 @@
         Globe,
         Wallet,
         CreditCard,
-        Loader2,
+        LoaderCircle,
         LogOut,
     } from "@lucide/svelte";
     import { slide } from "svelte/transition";
@@ -247,7 +247,7 @@
 
                         {#if s.walletLoading}
                             <div class="flex items-center justify-center py-8">
-                                <Loader2
+                                <LoaderCircle
                                     class="h-8 w-8 animate-spin text-gray-400"
                                 />
                             </div>

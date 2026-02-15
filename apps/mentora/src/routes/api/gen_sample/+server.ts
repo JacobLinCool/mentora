@@ -269,6 +269,7 @@ export const GET: RequestHandler = async (event) => {
                         lastActionAt: now,
                         createdAt: now - ONE_DAY,
                         updatedAt: now,
+                        tokenUsage: null,
                         turns: [
                             {
                                 id: "turn-1",
@@ -277,6 +278,7 @@ export const GET: RequestHandler = async (event) => {
                                 createdAt: now - ONE_DAY,
                                 analysis: null,
                                 pendingStartAt: null,
+                                tokenUsage: null,
                             },
                             {
                                 id: "turn-2",
@@ -287,6 +289,7 @@ export const GET: RequestHandler = async (event) => {
                                     stance: "neutral",
                                 },
                                 pendingStartAt: null,
+                                tokenUsage: null,
                             },
                         ],
                     };
