@@ -3,6 +3,7 @@
  */
 
 export * from './conversations.js';
+export * from './announcements.js';
 export * from './courses.js';
 export * from './wallets.js';
 export * from './health.js';
@@ -13,6 +14,7 @@ export * from './analytics.js';
 export * from './utils.js';
 
 import { conversationRoutes } from './conversations.js';
+import { announcementRoutes } from './announcements.js';
 import { courseRoutes } from './courses.js';
 import { walletRoutes } from './wallets.js';
 import { healthRoutes } from './health.js';
@@ -27,6 +29,7 @@ import type { RouteDefinition } from '../types.js';
  */
 export const allRoutes: RouteDefinition[] = [
 	...conversationRoutes,
+	...announcementRoutes,
 	...courseRoutes,
 	...walletRoutes,
 	...healthRoutes,

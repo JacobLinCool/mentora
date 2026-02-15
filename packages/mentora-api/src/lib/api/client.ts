@@ -15,6 +15,7 @@ import type {
 } from 'mentora-firebase';
 
 import * as AssignmentsModule from './assignments.js';
+import * as AnnouncementsModule from './announcements.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
 import * as QuestionnairesModule from './questionnaires.js';
@@ -49,6 +50,7 @@ export type Course = CoursesModule.Course;
 export type Conversation = ConversationsModule.Conversation;
 export type Wallet = WalletsModule.Wallet;
 export type LedgerEntry = WalletsModule.LedgerEntry;
+export type Announcement = AnnouncementsModule.Announcement;
 export type {
 	APIResult,
 	ListOptions,
@@ -221,6 +223,20 @@ export class MentoraClient {
 			content: string
 		): Promise<APIResult<import('mentora-firebase').CourseAnnouncement>> =>
 			this.authReadyThen(() => CoursesModule.createAnnouncement(this._config, courseId, content))
+	};
+
+	// ============ Announcements ============
+	announcements = {
+		get: (announcementId: string): Promise<APIResult<AnnouncementsModule.Announcement>> =>
+			this.authReadyThen(() => AnnouncementsModule.getMyAnnouncement(this._config, announcementId)),
+		listMine: (options?: QueryOptions): Promise<APIResult<AnnouncementsModule.Announcement[]>> =>
+			this.authReadyThen(() => AnnouncementsModule.listMyAnnouncements(this._config, options)),
+		markRead: (announcementId: string): Promise<APIResult<{ updated: boolean }>> =>
+			this.authReadyThen(() =>
+				AnnouncementsModule.markAnnouncementRead(this._config, announcementId)
+			),
+		markAllRead: (): Promise<APIResult<{ updatedCount: number }>> =>
+			this.authReadyThen(() => AnnouncementsModule.markAllAnnouncementsRead(this._config))
 	};
 
 	// ============ Topics ============

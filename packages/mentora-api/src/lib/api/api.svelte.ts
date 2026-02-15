@@ -4,6 +4,7 @@
  */
 import type { User } from 'firebase/auth';
 import type { UserProfile } from 'mentora-firebase';
+import * as AnnouncementsModule from './announcements.js';
 import { MentoraClient, type MentoraClientConfig } from './client.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
@@ -12,6 +13,7 @@ import type { ReactiveState } from './state.svelte.js';
 import { createState } from './state.svelte.js';
 import * as UsersModule from './users.js';
 import type { Conversation } from './conversations.js';
+import type { Announcement } from './announcements.js';
 import type { Course } from './courses.js';
 
 // Re-export types from base client
@@ -25,7 +27,7 @@ export type {
 	Turn,
 	UserProfile
 } from 'mentora-firebase';
-export type { Course, Conversation, Wallet } from './client.js';
+export type { Announcement, Course, Conversation, Wallet } from './client.js';
 export { createState, type ReactiveState } from './state.svelte.js';
 export type {
 	APIResult,
@@ -95,6 +97,15 @@ export class MentoraAPI extends MentoraClient {
 	coursesSubscribe = {
 		listMine: (state: ReactiveState<Course[]>, options?: import('./types.js').QueryOptions): void =>
 			CoursesModule.subscribeToMyCourses(this._config, state, options)
+	};
+
+	announcementsSubscribe = {
+		subscribeToMine: (
+			state: ReactiveState<Announcement[]>,
+			options?: import('./types.js').QueryOptions
+		): void => AnnouncementsModule.subscribeToMyAnnouncements(this._config, state, options),
+		subscribeToUnreadCount: (state: ReactiveState<number>): void =>
+			AnnouncementsModule.subscribeToUnreadAnnouncementCount(this._config, state)
 	};
 
 	// Conversation methods with additional subscription capability
