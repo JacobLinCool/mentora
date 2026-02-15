@@ -1,3 +1,4 @@
+import { Announcements } from "./announcements";
 import { Assignments } from "./assignments";
 import { Conversations } from "./conversations";
 import { Courses } from "./courses";
@@ -8,6 +9,7 @@ import { Wallets } from "./wallets";
 
 export const FirestoreCollections = {
     userProfiles: UserProfiles,
+    announcements: Announcements,
     courses: Courses,
     assignments: Assignments,
     conversations: Conversations,

@@ -66,6 +66,26 @@ service cloud.firestore {
              data.createdAt is number && data.updatedAt is number;
     }
 
+    function isValidCourseAnnouncementPayload(data) {
+      return data is map &&
+             'courseId' in data && data.courseId is string && data.courseId.size() <= 128 &&
+             'courseTitle' in data && data.courseTitle is string &&
+             data.courseTitle.size() >= 1 && data.courseTitle.size() <= 200 &&
+             'courseAnnouncementId' in data && data.courseAnnouncementId is string &&
+             data.courseAnnouncementId.size() >= 1 && data.courseAnnouncementId.size() <= 256 &&
+             'contentPreview' in data && data.contentPreview is string && data.contentPreview.size() <= 300;
+    }
+
+    function isValidAnnouncementDoc(data) {
+      return data.type == "course_announcement" &&
+             'payload' in data && isValidCourseAnnouncementPayload(data.payload) &&
+             'actorId' in data && data.actorId is string && data.actorId.size() <= 128 &&
+             'isRead' in data && data.isRead is bool &&
+             (!('readAt' in data) || data.readAt == null || data.readAt is number) &&
+             'createdAt' in data && data.createdAt is number &&
+             'updatedAt' in data && data.updatedAt is number;
+    }
+
     function isValidCourseAnnouncement(item) {
       return item is map &&
              'id' in item && item.id is string && item.id.size() >= 1 && item.id.size() <= 256 &&
@@ -349,6 +369,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && (uid == request.auth.uid) &&
                        isValidUserProfile(request.resource.data);
       allow delete: if false; // keep profiles
+    }
+
+    /* ---------- User Announcements ---------- */
+    match /users/{uid}/announcements/{announcementId} {
+      allow get, list: if isSignedIn() && uid == request.auth.uid;
+      // Persistent announcement writes are backend-only.
+      allow create, update, delete: if false;
     }
 
     /* ---------- Courses ---------- */
