@@ -224,7 +224,7 @@ export const apiModules: APIModule[] = [
 				name: 'createAnnouncement',
 				signature: 'courses.createAnnouncement(courseId, content)',
 				summary: 'Post an announcement',
-				accessType: 'direct',
+				accessType: 'delegated',
 				requiresAuth: true,
 				params: [
 					{ name: 'courseId', type: 'string', required: true, description: 'Course ID' },
@@ -366,6 +366,71 @@ export const apiModules: APIModule[] = [
 					}
 				],
 				returns: 'Promise<APIResult<CourseWalletStatsResult>>'
+			}
+		]
+	},
+	{
+		name: 'announcements',
+		description: 'Persistent announcement inbox',
+		color: '#f59e0b',
+		icon: '📣',
+		methods: [
+			{
+				name: 'get',
+				signature: 'announcements.get(announcementId)',
+				summary: 'Get my announcement by ID',
+				accessType: 'direct',
+				requiresAuth: true,
+				params: [
+					{
+						name: 'announcementId',
+						type: 'string',
+						required: true,
+						description: 'Announcement ID'
+					}
+				],
+				returns: 'Promise<APIResult<AnnouncementDoc>>'
+			},
+			{
+				name: 'listMine',
+				signature: 'announcements.listMine(options?)',
+				summary: 'List my announcements',
+				accessType: 'direct',
+				requiresAuth: true,
+				params: [
+					{
+						name: 'options',
+						type: 'QueryOptions',
+						required: false,
+						description: 'Query options'
+					}
+				],
+				returns: 'Promise<APIResult<AnnouncementDoc[]>>'
+			},
+			{
+				name: 'markRead',
+				signature: 'announcements.markRead(announcementId)',
+				summary: 'Mark one announcement as read',
+				accessType: 'delegated',
+				requiresAuth: true,
+				params: [
+					{
+						name: 'announcementId',
+						type: 'string',
+						required: true,
+						description: 'Announcement ID'
+					}
+				],
+				returns: 'Promise<APIResult<{ updated: boolean }>>'
+			},
+			{
+				name: 'markAllRead',
+				signature: 'announcements.markAllRead()',
+				summary: 'Mark all announcements as read',
+				accessType: 'delegated',
+				requiresAuth: true,
+				params: [],
+				returns: 'Promise<APIResult<{ updatedCount: number }>>'
 			}
 		]
 	},

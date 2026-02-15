@@ -188,9 +188,6 @@
                     m.mentor_assignment_error_questions_required();
                 isValid = false;
             }
-        } else if (questions.length === 0) {
-            errors.questions = m.mentor_assignment_error_questions_required();
-            isValid = false;
         }
 
         if (startAt && dueAt && new Date(startAt) > new Date(dueAt)) {

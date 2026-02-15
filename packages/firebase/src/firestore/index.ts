@@ -1,3 +1,4 @@
+export * from "./announcements";
 export * from "./assignments";
 export * from "./collections";
 export * from "./conversations";

@@ -71,6 +71,14 @@ describe('MentoraClient (Integration)', () => {
 			expect(client.courses.create).toBeDefined();
 		});
 
+		it('should have announcements namespace', () => {
+			expect(client.announcements).toBeDefined();
+			expect(client.announcements.get).toBeDefined();
+			expect(client.announcements.listMine).toBeDefined();
+			expect(client.announcements.markRead).toBeDefined();
+			expect(client.announcements.markAllRead).toBeDefined();
+		});
+
 		it('should have topics namespace', () => {
 			expect(client.topics).toBeDefined();
 			expect(client.topics.get).toBeDefined();

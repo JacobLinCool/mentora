@@ -2,7 +2,12 @@
  * Course route handlers
  */
 
-import { CopyCourseSchema, CreateCourseSchema, JoinCourseSchema } from '../llm/schemas.js';
+import {
+	CopyCourseSchema,
+	CreateCourseAnnouncementSchema,
+	CreateCourseSchema,
+	JoinCourseSchema
+} from '../llm/schemas.js';
 import { HttpStatus, jsonResponse, type RouteContext, type RouteDefinition } from '../types.js';
 import { createServiceContainer } from '../application/container.js';
 import { parseBody, requireAuth, requireParam } from './utils.js';
@@ -52,6 +57,20 @@ async function joinByCode(ctx: RouteContext, request: Request): Promise<Response
 }
 
 /**
+ * POST /api/courses/:id/announcements
+ * Create a course announcement and fan out user announcements.
+ */
+async function createAnnouncement(ctx: RouteContext, request: Request): Promise<Response> {
+	const user = requireAuth(ctx);
+	const courseId = requireParam(ctx, 'id');
+	const body = await parseBody(request, CreateCourseAnnouncementSchema);
+
+	const { announcementService } = createServiceContainer(ctx);
+	const result = await announcementService.createCourseAnnouncement(user, courseId, body.content);
+	return jsonResponse(result, HttpStatus.CREATED);
+}
+
+/**
  * Export route definitions
  */
 export const courseRoutes: RouteDefinition[] = [
@@ -72,7 +91,13 @@ export const courseRoutes: RouteDefinition[] = [
 		pattern: '/courses/join',
 		handler: joinByCode,
 		requireAuth: true
+	},
+	{
+		method: 'POST',
+		pattern: '/courses/:id/announcements',
+		handler: createAnnouncement,
+		requireAuth: true
 	}
 ];
 
-export { copyCourse, createCourse, joinByCode };
+export { copyCourse, createAnnouncement, createCourse, joinByCode };

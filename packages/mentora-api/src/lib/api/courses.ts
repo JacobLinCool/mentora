@@ -2,7 +2,6 @@
  * Course management operations
  */
 import {
-	arrayUnion,
 	collection,
 	collectionGroup,
 	doc,
@@ -15,7 +14,6 @@ import {
 	limit,
 	orderBy,
 	query,
-	Timestamp,
 	where,
 	type QueryConstraint
 } from 'firebase/firestore';
@@ -539,36 +537,21 @@ export async function copyCourse(
 /**
  * Create an announcement
  *
- * Appends to the announcements array in the course document.
+ * Delegated to backend to guarantee recipient fan-out for announcement inbox.
  */
 export async function createAnnouncement(
 	config: MentoraAPIConfig,
 	courseId: string,
 	content: string
 ): Promise<APIResult<import('mentora-firebase').CourseAnnouncement>> {
-	const currentUser = config.getCurrentUser();
-	if (!currentUser) {
-		return failure('Not authenticated');
-	}
-
-	return tryCatch(async () => {
-		const docRef = doc(config.db, Courses.docPath(courseId));
-
-		const now = Timestamp.now();
-		const announcement = {
-			id: crypto.randomUUID(),
-			content,
-			createdAt: now.toMillis(),
-			updatedAt: now.toMillis()
-		};
-
-		await updateDoc(docRef, {
-			announcements: arrayUnion(announcement),
-			updatedAt: now.toMillis()
-		});
-
-		return announcement;
-	});
+	return callBackend<import('mentora-firebase').CourseAnnouncement>(
+		config,
+		`/courses/${courseId}/announcements`,
+		{
+			method: 'POST',
+			body: JSON.stringify({ content })
+		}
+	);
 }
 
 /**

@@ -7,6 +7,7 @@ type FirestoreModuleMocks = {
 
 async function loadSubscriptionModules(): Promise<
 	FirestoreModuleMocks & {
+		announcements: typeof import('../src/lib/api/announcements.js');
 		users: typeof import('../src/lib/api/users.js');
 		courses: typeof import('../src/lib/api/courses.js');
 		conversations: typeof import('../src/lib/api/conversations.js');
@@ -35,13 +36,14 @@ async function loadSubscriptionModules(): Promise<
 		onSnapshot
 	}));
 
-	const [users, courses, conversations] = await Promise.all([
+	const [announcements, users, courses, conversations] = await Promise.all([
+		import('../src/lib/api/announcements.js'),
 		import('../src/lib/api/users.js'),
 		import('../src/lib/api/courses.js'),
 		import('../src/lib/api/conversations.js')
 	]);
 
-	return { onSnapshot, users, courses, conversations };
+	return { onSnapshot, announcements, users, courses, conversations };
 }
 
 type ReactiveStateMock<T> = {
@@ -214,6 +216,77 @@ describe('Subscription APIs (Unit)', () => {
 		courses.subscribeToMyCourses(createConfig('teacher-1'), snapshotErrorState as never);
 		expect(snapshotErrorState.setError).toHaveBeenCalledWith('courses snapshot error');
 		expect(snapshotErrorState.setLoading).toHaveBeenLastCalledWith(false);
+	});
+
+	it('announcements subscriptions: handles list and unread count scenarios', async () => {
+		const { onSnapshot, announcements } = await loadSubscriptionModules();
+
+		const unauthListState = createStateMock();
+		announcements.subscribeToMyAnnouncements(createConfig(null), unauthListState as never);
+		expect(unauthListState.setError).toHaveBeenCalledWith('Not authenticated');
+		expect(unauthListState.setLoading).toHaveBeenCalledWith(false);
+
+		const listState = createStateMock();
+		const listUnsubscribe = vi.fn();
+		onSnapshot.mockImplementationOnce((_query, onValue) => {
+			onValue({
+				docs: [
+					{
+						id: 'announcement-1',
+						data: () => ({
+							type: 'course_announcement',
+							payload: {
+								courseId: 'course-1',
+								courseTitle: 'Course 1',
+								courseAnnouncementId: 'course-ann-1',
+								contentPreview: 'Preview'
+							},
+							actorId: 'teacher-1',
+							isRead: false,
+							readAt: null,
+							createdAt: Date.now(),
+							updatedAt: Date.now()
+						})
+					}
+				]
+			});
+			return listUnsubscribe;
+		});
+		announcements.subscribeToMyAnnouncements(createConfig('user-1'), listState as never, {
+			limit: 5
+		});
+		expect(listState.setLoading).toHaveBeenCalledWith(true);
+		expect(listState.set).toHaveBeenCalledWith(
+			expect.arrayContaining([expect.objectContaining({ id: 'announcement-1' })])
+		);
+		expect(listState.setError).toHaveBeenCalledWith(null);
+		expect(listState.attachUnsubscribe).toHaveBeenCalledWith(listUnsubscribe);
+		expect(listState.setLoading).toHaveBeenLastCalledWith(false);
+
+		const unreadState = createStateMock<number>();
+		const unreadUnsubscribe = vi.fn();
+		onSnapshot.mockImplementationOnce((_query, onValue) => {
+			onValue({ size: 3 });
+			return unreadUnsubscribe;
+		});
+		announcements.subscribeToUnreadAnnouncementCount(createConfig('user-1'), unreadState as never);
+		expect(unreadState.setLoading).toHaveBeenCalledWith(true);
+		expect(unreadState.set).toHaveBeenCalledWith(3);
+		expect(unreadState.setError).toHaveBeenCalledWith(null);
+		expect(unreadState.attachUnsubscribe).toHaveBeenCalledWith(unreadUnsubscribe);
+		expect(unreadState.setLoading).toHaveBeenLastCalledWith(false);
+
+		const unreadErrorState = createStateMock<number>();
+		onSnapshot.mockImplementationOnce((_query, _onValue, onError) => {
+			onError(new Error('unread snapshot error'));
+			return vi.fn();
+		});
+		announcements.subscribeToUnreadAnnouncementCount(
+			createConfig('user-1'),
+			unreadErrorState as never
+		);
+		expect(unreadErrorState.setError).toHaveBeenCalledWith('unread snapshot error');
+		expect(unreadErrorState.setLoading).toHaveBeenLastCalledWith(false);
 	});
 
 	it('conversations.subscribeToConversation: handles success, parse error, and snapshot error', async () => {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MentoraAPIConfig } from '../src/lib/api/types.js';
 
 type FirestoreModuleMocks = {
+	callBackend: ReturnType<typeof vi.fn>;
 	doc: ReturnType<typeof vi.fn>;
 	getDoc: ReturnType<typeof vi.fn>;
 	getDocs: ReturnType<typeof vi.fn>;
@@ -55,6 +56,7 @@ async function loadModules(): Promise<
 	const arrayUnion = vi.fn((value: unknown) => ({ arrayUnion: value }));
 	const Timestamp = { now: vi.fn(() => ({ toMillis: () => Date.now() })) };
 	const onSnapshot = vi.fn();
+	const callBackend = vi.fn();
 
 	vi.doMock('firebase/firestore', () => ({
 		doc,
@@ -73,9 +75,13 @@ async function loadModules(): Promise<
 		Timestamp,
 		onSnapshot
 	}));
+	vi.doMock('../src/lib/api/backend.js', () => ({
+		callBackend
+	}));
 
 	const courses = await import('../src/lib/api/courses.js');
 	return {
+		callBackend,
 		doc,
 		getDoc,
 		getDocs,
@@ -403,13 +409,17 @@ describe('Courses (Unit)', () => {
 	});
 
 	describe('createAnnouncement', () => {
-		it('appends announcement with arrayUnion', async () => {
-			const { updateDoc, courses } = await loadModules();
-			updateDoc.mockResolvedValueOnce(undefined);
-
-			// Mock crypto.randomUUID
-			const originalRandomUUID = crypto.randomUUID;
-			crypto.randomUUID = vi.fn().mockReturnValue('mock-uuid');
+		it('delegates to backend announcement endpoint', async () => {
+			const { callBackend, courses } = await loadModules();
+			callBackend.mockResolvedValueOnce({
+				success: true,
+				data: {
+					id: 'announcement-1',
+					content: 'Hello class!',
+					createdAt: 1,
+					updatedAt: 1
+				}
+			});
 
 			const result = await courses.createAnnouncement(
 				createConfig('user-1'),
@@ -419,11 +429,16 @@ describe('Courses (Unit)', () => {
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.content).toBe('Hello class!');
-				expect(result.data.id).toBe('mock-uuid');
+				expect(result.data.id).toBe('announcement-1');
 			}
-			expect(updateDoc).toHaveBeenCalled();
-
-			crypto.randomUUID = originalRandomUUID;
+			expect(callBackend).toHaveBeenCalledWith(
+				expect.any(Object),
+				'/courses/course-1/announcements',
+				{
+					method: 'POST',
+					body: JSON.stringify({ content: 'Hello class!' })
+				}
+			);
 		});
 	});
 });

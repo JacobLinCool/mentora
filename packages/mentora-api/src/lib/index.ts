@@ -29,6 +29,7 @@ export type {
 export { success, failure, tryCatch, APIErrorCode } from './api/types.js';
 export type { WhereFilterOp } from 'firebase/firestore';
 export type {
+	AnnouncementDoc,
 	Assignment,
 	CourseAnnouncement,
 	CourseDoc,
@@ -39,4 +40,4 @@ export type {
 	Turn,
 	UserProfile
 } from 'mentora-firebase';
-export type { Course, Conversation, Wallet, SubmissionWithId } from './api/client.js';
+export type { Announcement, Course, Conversation, Wallet, SubmissionWithId } from './api/client.js';

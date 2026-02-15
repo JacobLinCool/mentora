@@ -5,6 +5,12 @@ import {
 	listAvailableAssignments,
 	listCourseAssignments
 } from '../src/lib/api/assignments.js';
+import {
+	getMyAnnouncement,
+	listMyAnnouncements,
+	markAllAnnouncementsRead,
+	markAnnouncementRead
+} from '../src/lib/api/announcements.js';
 import { listMyConversations, getAssignmentConversation } from '../src/lib/api/conversations.js';
 import {
 	createCourse,
@@ -175,6 +181,24 @@ describe('API unauthenticated guards', () => {
 
 		it('createAnnouncement rejects unauthenticated', async () => {
 			expectFailure(await createAnnouncement(unauthConfig, 'course-1', 'notice'));
+		});
+	});
+
+	describe('announcements', () => {
+		it('listMyAnnouncements rejects unauthenticated', async () => {
+			expectFailure(await listMyAnnouncements(unauthConfig));
+		});
+
+		it('getMyAnnouncement rejects unauthenticated', async () => {
+			expectFailure(await getMyAnnouncement(unauthConfig, 'announcement-1'));
+		});
+
+		it('markAnnouncementRead rejects unauthenticated', async () => {
+			expectFailure(await markAnnouncementRead(unauthConfig, 'announcement-1'));
+		});
+
+		it('markAllAnnouncementsRead rejects unauthenticated', async () => {
+			expectFailure(await markAllAnnouncementsRead(unauthConfig));
 		});
 	});
 

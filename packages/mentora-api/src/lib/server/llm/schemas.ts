@@ -75,6 +75,13 @@ export const JoinCourseSchema = z.object({
 	code: z.string().min(1, 'Join code is required')
 });
 
+export const CreateCourseAnnouncementSchema = z.object({
+	content: z
+		.string()
+		.min(1, 'Announcement content is required')
+		.max(2000, 'Announcement content is too long')
+});
+
 // ============ Wallets ============
 
 export const AddCreditsSchema: z.ZodType<ContractAddCreditsInput> = z.object({
@@ -92,4 +99,5 @@ export type GenerateContentInput = z.infer<typeof GenerateContentSchema>;
 export type CreateCourseInput = z.infer<typeof CreateCourseSchema>;
 export type CopyCourseInput = z.infer<typeof CopyCourseSchema>;
 export type JoinCourseInput = z.infer<typeof JoinCourseSchema>;
+export type CreateCourseAnnouncementInput = z.infer<typeof CreateCourseAnnouncementSchema>;
 export type AddCreditsInput = ContractAddCreditsInput;
