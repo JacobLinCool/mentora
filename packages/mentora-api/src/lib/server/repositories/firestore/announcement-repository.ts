@@ -18,6 +18,7 @@ type FirestoreDocSnapshot = {
 
 type FirestoreTransaction = {
 	get(ref: unknown): Promise<FirestoreDocSnapshot>;
+	set(ref: unknown, data: unknown): void;
 	update(ref: unknown, data: unknown): void;
 };
 
@@ -59,8 +60,8 @@ export class FirestoreAnnouncementRepository implements IAnnouncementRepository 
 			return;
 		}
 
-		await Promise.all(
-			recipientUserIds.map(async (recipientUserId) => {
+		await this.firestore.runTransaction(async (transaction: FirestoreTransaction) => {
+			for (const recipientUserId of recipientUserIds) {
 				const docRef = this.firestore
 					.collection(Announcements.collectionPath(recipientUserId))
 					.doc();
@@ -73,9 +74,9 @@ export class FirestoreAnnouncementRepository implements IAnnouncementRepository 
 					createdAt: input.now,
 					updatedAt: input.now
 				};
-				await docRef.set(Announcements.schema.parse(announcementDoc));
-			})
-		);
+				transaction.set(docRef, Announcements.schema.parse(announcementDoc));
+			}
+		});
 	}
 
 	async markRead(userId: string, announcementId: string, now: number): Promise<boolean> {
@@ -108,15 +109,16 @@ export class FirestoreAnnouncementRepository implements IAnnouncementRepository 
 			return 0;
 		}
 
-		await Promise.all(
-			snapshot.docs.map((doc) =>
-				this.firestore.doc(Announcements.docPath(userId, doc.id)).update({
+		await this.firestore.runTransaction(async (transaction: FirestoreTransaction) => {
+			for (const doc of snapshot.docs) {
+				const docRef = this.firestore.doc(Announcements.docPath(userId, doc.id));
+				transaction.update(docRef, {
 					isRead: true,
 					readAt: now,
 					updatedAt: now
-				})
-			)
-		);
+				});
+			}
+		});
 
 		return snapshot.docs.length;
 	}

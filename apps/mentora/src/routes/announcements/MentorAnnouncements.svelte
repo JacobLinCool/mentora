@@ -10,6 +10,7 @@
 
     const announcementsState = api.createState<Announcement[]>();
     const announcements = $derived(announcementsState.value || []);
+    let actionError = $state<string | null>(null);
     const unreadCount = $derived(
         announcements.reduce(
             (count, announcement) => count + (announcement.isRead ? 0 : 1),
@@ -53,18 +54,44 @@
     }
 
     async function openAnnouncement(announcement: Announcement) {
-        if (!announcement.isRead) {
-            await api.announcements.markRead(announcement.id);
-        }
+        actionError = null;
+        try {
+            if (!announcement.isRead) {
+                const result = await api.announcements.markRead(
+                    announcement.id,
+                );
+                if (!result.success) {
+                    actionError = result.error;
+                    console.error(
+                        "Failed to mark announcement as read",
+                        result.error,
+                    );
+                }
+            }
 
-        if (announcement.type === "course_announcement") {
-            await goto(resolve(`/courses/${announcement.payload.courseId}`));
+            if (announcement.type === "course_announcement") {
+                await goto(
+                    resolve(`/courses/${announcement.payload.courseId}`),
+                );
+            }
+        } catch (error) {
+            actionError =
+                error instanceof Error ? error.message : m.error_generic();
+            console.error("Failed to open announcement", error);
         }
     }
 
     async function markAllRead() {
         if (unreadCount === 0) return;
-        await api.announcements.markAllRead();
+        actionError = null;
+        const result = await api.announcements.markAllRead();
+        if (!result.success) {
+            actionError = result.error;
+            console.error(
+                "Failed to mark all announcements as read",
+                result.error,
+            );
+        }
     }
 
     onMount(() => {
@@ -112,6 +139,14 @@
                 {m.announcements_mark_all_read()}
             </button>
         </div>
+
+        {#if actionError}
+            <div
+                class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+                {actionError}
+            </div>
+        {/if}
 
         {#if announcementsState.error}
             <div

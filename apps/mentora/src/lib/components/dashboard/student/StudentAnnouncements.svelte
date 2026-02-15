@@ -9,6 +9,7 @@
 
     const announcementsState = api.createState<Announcement[]>();
     const announcements = $derived(announcementsState.value || []);
+    let actionError = $state<string | null>(null);
 
     function getIcon(type: Announcement["type"]) {
         if (type === "course_announcement") return Megaphone;
@@ -20,12 +21,30 @@
     }
 
     async function openAnnouncement(announcement: Announcement) {
-        if (!announcement.isRead) {
-            await api.announcements.markRead(announcement.id);
-        }
+        actionError = null;
+        try {
+            if (!announcement.isRead) {
+                const result = await api.announcements.markRead(
+                    announcement.id,
+                );
+                if (!result.success) {
+                    actionError = result.error;
+                    console.error(
+                        "Failed to mark announcement as read",
+                        result.error,
+                    );
+                }
+            }
 
-        if (announcement.type === "course_announcement") {
-            await goto(resolve(`/courses/${announcement.payload.courseId}`));
+            if (announcement.type === "course_announcement") {
+                await goto(
+                    resolve(`/courses/${announcement.payload.courseId}`),
+                );
+            }
+        } catch (error) {
+            actionError =
+                error instanceof Error ? error.message : m.error_generic();
+            console.error("Failed to open announcement", error);
         }
     }
 
@@ -65,6 +84,14 @@
             {m.announcements_title()}
         </h2>
     </div>
+
+    {#if announcementsState.error || actionError}
+        <div
+            class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+        >
+            {actionError || announcementsState.error}
+        </div>
+    {/if}
 
     <div class="space-y-4">
         {#each announcements as announcement (announcement.id)}
