@@ -2,31 +2,44 @@
     import { onMount } from "svelte";
     import { Bell, CircleUser } from "@lucide/svelte";
     import { resolve } from "$app/paths";
-    import { api } from "$lib";
+    import { api } from "$lib/api";
     import { m } from "$lib/paraglide/messages";
 
     const unreadCountState = api.createState<number>();
     const unreadCount = $derived(unreadCountState.value || 0);
 
-    onMount(() => {
-        let cancelled = false;
+    type ApiWithUnreadSubscription = {
+        announcementsSubscribe?: {
+            subscribeToUnreadCount: (state: typeof unreadCountState) => void;
+        };
+    };
 
-        const subscribe = () => {
-            api.announcementsSubscribe.subscribeToUnreadCount(unreadCountState);
+    onMount(() => {
+        let disposed = false;
+        const subApi = api as unknown as ApiWithUnreadSubscription;
+
+        const subscribeUnreadCount = () => {
+            if (subApi.announcementsSubscribe?.subscribeToUnreadCount) {
+                subApi.announcementsSubscribe.subscribeToUnreadCount(
+                    unreadCountState,
+                );
+            } else {
+                unreadCountState.set(0);
+            }
         };
 
         if (api.isAuthenticated) {
-            subscribe();
+            subscribeUnreadCount();
         } else {
             api.authReady.then(() => {
-                if (!cancelled && api.isAuthenticated) {
-                    subscribe();
+                if (!disposed && api.isAuthenticated) {
+                    subscribeUnreadCount();
                 }
             });
         }
 
         return () => {
-            cancelled = true;
+            disposed = true;
             unreadCountState.cleanup();
         };
     });

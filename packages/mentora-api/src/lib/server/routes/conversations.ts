@@ -26,15 +26,19 @@ async function parseMultipartForm(
 	if (contentType.includes('application/json')) {
 		try {
 			const body = await request.json();
-			const text = body.text as string | undefined;
+			const text = body.text as unknown;
 			const audioBase64 = body.audioBase64 as string | undefined;
 			const audioMimeType = body.audioMimeType as string | undefined;
 
-			if (text !== undefined) {
+			if (typeof text === 'string') {
 				if (text.trim().length === 0) {
 					throw new Error('Text input cannot be empty');
 				}
 				return { text: text.trim() };
+			}
+
+			if (text !== undefined) {
+				throw new Error('Text input must be a string');
 			}
 
 			if (audioBase64 !== undefined && audioMimeType !== undefined) {
@@ -51,8 +55,10 @@ async function parseMultipartForm(
 	if (contentType.includes('multipart/form-data')) {
 		try {
 			const formData = await request.formData();
-			const text = formData.get('text') as string | null;
-			const audio = formData.get('audio') as Blob | null;
+			const textField = formData.get('text');
+			const audioField = formData.get('audio');
+			const text = typeof textField === 'string' ? textField : null;
+			const audio = audioField instanceof Blob ? audioField : null;
 
 			if (text && text.trim().length > 0) {
 				return { text: text.trim() };

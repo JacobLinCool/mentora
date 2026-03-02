@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { SvelteDate } from "svelte/reactivity";
+    import { SvelteDate, SvelteMap } from "svelte/reactivity";
     import DashboardHeader from "$lib/components/dashboard/student/DashboardHeader.svelte";
     import UpcomingDeadline from "$lib/components/dashboard/student/UpcomingDeadline.svelte";
     import ContinueConversation from "$lib/components/dashboard/student/ContinueConversation.svelte";
@@ -125,7 +125,38 @@
                     .filter((a) => a.dueAt && a.dueAt > now)
                     .sort((a, b) => (a.dueAt || 0) - (b.dueAt || 0));
 
-                deadlines = upcoming.map((a) => ({
+                const completedByItemId = new SvelteMap<string, boolean>();
+                const chunkSize = 10;
+                for (let i = 0; i < upcoming.length; i += chunkSize) {
+                    const chunk = upcoming.slice(i, i + chunkSize);
+                    const chunkResults = await Promise.all(
+                        chunk.map(async (item) => {
+                            const submissionRes = await api.submissions.getMine(
+                                item.id,
+                            );
+
+                            if (!submissionRes.success || !submissionRes.data) {
+                                return { id: item.id, completed: false };
+                            }
+
+                            const isCompleted =
+                                submissionRes.data.state === "submitted" ||
+                                submissionRes.data.state === "graded_complete";
+
+                            return { id: item.id, completed: isCompleted };
+                        }),
+                    );
+
+                    for (const result of chunkResults) {
+                        completedByItemId.set(result.id, result.completed);
+                    }
+                }
+
+                const pendingUpcoming = upcoming.filter(
+                    (item) => !completedByItemId.get(item.id),
+                );
+
+                deadlines = pendingUpcoming.map((a) => ({
                     id: a.id,
                     date: new Date(a.dueAt!),
                     title: a.title,

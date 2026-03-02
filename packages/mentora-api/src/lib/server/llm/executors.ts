@@ -25,7 +25,7 @@ export const EXECUTOR_MODEL = {
 	PROMPT: 'gemini-3-flash-preview',
 	ASR: 'gemini-2.5-flash',
 	CONTENT: 'gemini-2.5-flash',
-	TTS: 'gemini-2.5-flash'
+	TTS: 'gemini-2.5-flash-preview-tts'
 } as const;
 
 /**

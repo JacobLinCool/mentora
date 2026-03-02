@@ -1,5 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { api } from "$lib";
     import { m } from "$lib/paraglide/messages";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
@@ -40,8 +42,11 @@
             if (!result.success) {
                 console.error("Failed to switch mode:", result.error);
             }
+
+            await goto(resolve("/dashboard"));
         } catch (error) {
             console.error("Failed to switch mode:", error);
+            await goto(resolve("/dashboard"));
         } finally {
             switchingMode = false;
         }

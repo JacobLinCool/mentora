@@ -1,10 +1,12 @@
 <script lang="ts">
     import { api } from "$lib";
     import StudentAnnouncements from "$lib/components/dashboard/student/StudentAnnouncements.svelte";
-    import { isMentorMode } from "$lib/features/routing/role";
+    import { getProfileMode, isMentorMode } from "$lib/features/routing/role";
     import MentorAnnouncements from "./MentorAnnouncements.svelte";
 
-    const isMentor = $derived(isMentorMode(api.currentUserProfile?.activeMode));
+    const isMentor = $derived(
+        isMentorMode(getProfileMode(api.currentUserProfile)),
+    );
 </script>
 
 {#if isMentor}

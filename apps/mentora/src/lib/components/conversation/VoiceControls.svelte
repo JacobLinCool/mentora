@@ -4,7 +4,11 @@
 
     interface Props {
         showKeywords?: boolean;
+        showTextInput?: boolean;
         isRecording?: boolean;
+        disabled?: boolean;
+        recordDisabled?: boolean;
+        textInputDisabled?: boolean;
         onToggleKeywords?: () => void;
         onShowTextInput?: () => void;
         onRecordingComplete?: (blob: Blob) => void;
@@ -12,7 +16,11 @@
 
     let {
         showKeywords = false,
+        showTextInput = false,
         isRecording = $bindable(false),
+        disabled = false,
+        recordDisabled = false,
+        textInputDisabled = false,
         onToggleKeywords,
         onShowTextInput,
         onRecordingComplete = () => {},
@@ -25,6 +33,7 @@
         class="control-btn"
         class:active={showKeywords}
         onclick={onToggleKeywords}
+        {disabled}
         aria-label={showKeywords ? "Hide keywords" : "Show keywords"}
     >
         {#if showKeywords}
@@ -35,13 +44,19 @@
     </button>
 
     <!-- Microphone (center) -->
-    <Record bind:isRecording {onRecordingComplete} />
+    <Record
+        bind:isRecording
+        {onRecordingComplete}
+        disabled={disabled || recordDisabled}
+    />
 
     <!-- Text input toggle (right) -->
     <button
         class="control-btn"
+        class:active={showTextInput}
         onclick={onShowTextInput}
-        aria-label="Show text input"
+        disabled={disabled || textInputDisabled}
+        aria-label={showTextInput ? "Hide text input" : "Show text input"}
     >
         <Keyboard />
     </button>
@@ -75,5 +90,10 @@
 
     .control-btn.active {
         color: white;
+    }
+
+    .control-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
     }
 </style>

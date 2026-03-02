@@ -3,17 +3,30 @@
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
     import { m } from "$lib/paraglide/messages";
     import { onMount } from "svelte";
+    import { SvelteMap, SvelteSet } from "svelte/reactivity";
+    import { db } from "$lib/firebase";
+    import { collectionGroup, getDocs, query, where } from "firebase/firestore";
 
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import CreateCourseModal from "$lib/components/course/CreateCourseModal.svelte";
     import UsageChart from "$lib/components/dashboard/mentor/UsageChart.svelte";
-    import { api, type Course, type TokenUsageTotals } from "$lib/api";
+    import { api, type Course } from "$lib/api";
 
     let isCreateModalOpen = $state(false);
+    let showArchivedCourses = $state(false);
 
-    const ownedCoursesState = api.createState<Course[]>();
-    const courses = $derived(ownedCoursesState.value ?? []);
+    let ownedCourses = $state<Course[]>([]);
+    let ownedCoursesLoading = $state(false);
+    let ownedCoursesError = $state<string | null>(null);
+    let teachingCourses = $state<Course[]>([]);
+    let teachingCoursesLoading = $state(false);
+    let teachingCoursesError = $state<string | null>(null);
+
+    const coursesLoading = $derived(
+        ownedCoursesLoading || teachingCoursesLoading,
+    );
+    const coursesError = $derived(ownedCoursesError || teachingCoursesError);
 
     // Current User Display Name
     const userName = $derived(api.currentUserProfile?.displayName || "Mentor");
@@ -23,7 +36,14 @@
         inputTokens: number;
         outputTokens: number;
         totalTokens: number;
-        byFeature: Record<string, TokenUsageTotals>;
+        byFeature: Record<
+            string,
+            {
+                inputTokenCount: number;
+                outputTokenCount: number;
+                totalTokenCount: number;
+            }
+        >;
     };
 
     type TokenUsageAnalyticsResponse = {
@@ -32,7 +52,14 @@
             inputTokens: number;
             outputTokens: number;
             totalTokens: number;
-            byFeature: Record<string, TokenUsageTotals>;
+            byFeature: Record<
+                string,
+                {
+                    inputTokenCount: number;
+                    outputTokenCount: number;
+                    totalTokenCount: number;
+                }
+            >;
         };
         windowDays: number;
     };
@@ -40,6 +67,34 @@
     type UsagePoint = { day: string; input: number; output: number };
 
     let usageData = $state<UsagePoint[]>(buildFallbackUsageData());
+
+    function isArchivedCourse(course: Course): boolean {
+        const archivedAt = (course as Course & { archivedAt?: number | null })
+            .archivedAt;
+        return typeof archivedAt === "number" && archivedAt > 0;
+    }
+
+    function mergeCourseLists(
+        primary: Course[],
+        secondary: Course[],
+    ): Course[] {
+        const merged = new SvelteMap<string, Course>();
+
+        for (const course of [...primary, ...secondary]) {
+            merged.set(course.id, course);
+        }
+
+        return [...merged.values()].sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    const allCourses = $derived(
+        mergeCourseLists(ownedCourses, teachingCourses),
+    );
+    const visibleCourses = $derived(
+        allCourses.filter(
+            (course) => showArchivedCourses || !isArchivedCourse(course),
+        ),
+    );
 
     function labelFromWeekdayIndex(day: number): string {
         switch (day) {
@@ -102,6 +157,89 @@
         usageData = mapTokenUsageToChart(response.data.days);
     }
 
+    async function loadOwnedCourses() {
+        if (!api.isAuthenticated) {
+            ownedCourses = [];
+            ownedCoursesError = null;
+            ownedCoursesLoading = false;
+            return;
+        }
+
+        ownedCoursesLoading = true;
+        ownedCoursesError = null;
+
+        const response = await api.courses.listMine();
+        if (response.success) {
+            ownedCourses = response.data;
+        } else {
+            ownedCourses = [];
+            ownedCoursesError = response.error;
+        }
+
+        ownedCoursesLoading = false;
+    }
+
+    async function loadTeachingCourses() {
+        if (!api.isAuthenticated || !api.currentUser) {
+            teachingCourses = [];
+            teachingCoursesError = null;
+            teachingCoursesLoading = false;
+            return;
+        }
+
+        teachingCoursesLoading = true;
+        teachingCoursesError = null;
+
+        try {
+            const rosterQuery = query(
+                collectionGroup(db, "roster"),
+                where("userId", "==", api.currentUser.uid),
+                where("status", "==", "active"),
+            );
+
+            const rosterSnapshot = await getDocs(rosterQuery);
+            const teachingCourseIds = new SvelteSet<string>();
+
+            for (const doc of rosterSnapshot.docs) {
+                const data = doc.data() as { role?: unknown };
+                if (data.role !== "instructor" && data.role !== "ta") {
+                    continue;
+                }
+
+                const pathSegments = doc.ref.path.split("/");
+                const courseId = pathSegments[1];
+                if (courseId) {
+                    teachingCourseIds.add(courseId);
+                }
+            }
+
+            if (teachingCourseIds.size === 0) {
+                teachingCourses = [];
+                return;
+            }
+
+            const teachingResults = await Promise.all(
+                [...teachingCourseIds].map((courseId) =>
+                    api.courses.get(courseId),
+                ),
+            );
+
+            teachingCourses = teachingResults
+                .filter(
+                    (result): result is { success: true; data: Course } =>
+                        result.success,
+                )
+                .map((result) => result.data);
+        } catch (error) {
+            const detail =
+                error instanceof Error ? error.message : m.courses_error();
+            teachingCoursesError = detail;
+            teachingCourses = [];
+        } finally {
+            teachingCoursesLoading = false;
+        }
+    }
+
     onMount(async () => {
         if (!api.isAuthenticated) {
             await api.authReady;
@@ -111,18 +249,30 @@
             return;
         }
         await loadTokenUsage();
+        await loadOwnedCourses();
+        await loadTeachingCourses();
     });
 
     $effect(() => {
         if (api.isAuthenticated) {
-            api.coursesSubscribe.listMine(ownedCoursesState);
-            return () => {
-                ownedCoursesState.cleanup();
-            };
+            void loadOwnedCourses();
+            return;
         }
-        ownedCoursesState.set([]);
-        ownedCoursesState.setLoading(false);
-        ownedCoursesState.setError(null);
+
+        ownedCourses = [];
+        ownedCoursesLoading = false;
+        ownedCoursesError = null;
+    });
+
+    $effect(() => {
+        if (api.isAuthenticated) {
+            void loadTeachingCourses();
+            return;
+        }
+
+        teachingCourses = [];
+        teachingCoursesLoading = false;
+        teachingCoursesError = null;
     });
 
     async function handleCreateCourse(data: {
@@ -221,6 +371,11 @@
                     </button>
                     <button
                         class="cursor-pointer rounded-full bg-white px-4 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
+                        class:bg-[#5A5A5A]={showArchivedCourses}
+                        class:text-white={showArchivedCourses}
+                        onclick={() => {
+                            showArchivedCourses = !showArchivedCourses;
+                        }}
                     >
                         {m.mentor_dashboard_show_archived()}
                     </button>
@@ -246,30 +401,59 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#F5F5F5]">
-                        {#each courses as course (course.id)}
-                            <tr
-                                class="cursor-pointer transition-colors hover:bg-[#F5F5F5]"
-                                onclick={() =>
-                                    goto(resolve(`/courses/${course.id}`))}
-                            >
-                                <td class="px-6 py-4 text-gray-900"
-                                    >{course.title}</td
+                        {#if coursesLoading}
+                            <tr>
+                                <td
+                                    class="px-6 py-8 text-center text-gray-500"
+                                    colspan="4"
                                 >
-                                <td class="px-6 py-4 text-gray-600"
-                                    >{course.code || "General"}</td
-                                >
-                                <td class="px-6 py-4 text-gray-600"
-                                    >{formatDate(course.createdAt)}</td
-                                >
-                                <td class="px-6 py-4 text-gray-600">
-                                    {course.visibility === "public"
-                                        ? m.mentor_dashboard_visibility_public()
-                                        : course.visibility === "private"
-                                          ? m.mentor_dashboard_visibility_private()
-                                          : m.mentor_dashboard_visibility_non_public()}
+                                    {m.courses_loading()}
                                 </td>
                             </tr>
-                        {/each}
+                        {:else if coursesError}
+                            <tr>
+                                <td
+                                    class="px-6 py-8 text-center text-red-500"
+                                    colspan="4"
+                                >
+                                    {m.courses_error()}: {coursesError}
+                                </td>
+                            </tr>
+                        {:else if visibleCourses.length === 0}
+                            <tr>
+                                <td
+                                    class="px-6 py-8 text-center text-gray-500"
+                                    colspan="4"
+                                >
+                                    {m.courses_empty()}
+                                </td>
+                            </tr>
+                        {:else}
+                            {#each visibleCourses as course (course.id)}
+                                <tr
+                                    class="cursor-pointer transition-colors hover:bg-[#F5F5F5]"
+                                    onclick={() =>
+                                        goto(resolve(`/courses/${course.id}`))}
+                                >
+                                    <td class="px-6 py-4 text-gray-900"
+                                        >{course.title}</td
+                                    >
+                                    <td class="px-6 py-4 text-gray-600"
+                                        >{course.code || "General"}</td
+                                    >
+                                    <td class="px-6 py-4 text-gray-600"
+                                        >{formatDate(course.createdAt)}</td
+                                    >
+                                    <td class="px-6 py-4 text-gray-600">
+                                        {course.visibility === "public"
+                                            ? m.mentor_dashboard_visibility_public()
+                                            : course.visibility === "private"
+                                              ? m.mentor_dashboard_visibility_private()
+                                              : m.mentor_dashboard_visibility_non_public()}
+                                    </td>
+                                </tr>
+                            {/each}
+                        {/if}
                     </tbody>
                 </table>
             </div>

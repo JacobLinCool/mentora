@@ -304,6 +304,7 @@
         ? m.mentor_topic_add_assignment()
         : m.mentor_topic_edit_assignment()}
     size="lg"
+    preventCloseOnOutside={true}
     {footer}
 >
     <form
