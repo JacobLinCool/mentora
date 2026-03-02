@@ -74,13 +74,9 @@
     });
 </script>
 
-<div
-    class="mb-6 rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md"
->
+<div class="mb-6">
     <div class="mb-4 flex items-center justify-between">
-        <h2
-            class="font-serif-tc text-text-secondary text-sm tracking-wide uppercase"
-        >
+        <h2 class="text-text-primary font-serif-tc text-2xl font-bold">
             {m.announcements_title()}
         </h2>
     </div>
@@ -93,8 +89,9 @@
         </div>
     {/if}
 
-    <div class="space-y-4">
+    <div class="space-y-4 rounded-3xl bg-white/10 p-6 backdrop-blur-md">
         {#each announcements as announcement (announcement.id)}
+            {@const Icon = getIcon(announcement.type)}
             <button
                 class="group flex w-full items-start gap-4 text-left transition-opacity hover:opacity-80"
                 onclick={() => openAnnouncement(announcement)}
@@ -106,10 +103,7 @@
                             : "bg-yellow-100 text-yellow-700"
                     }`}
                 >
-                    <svelte:component
-                        this={getIcon(announcement.type)}
-                        class="h-4 w-4"
-                    />
+                    <Icon class="h-4 w-4" />
                 </div>
 
                 <div class="min-w-0 flex-1">
@@ -131,7 +125,7 @@
         {/each}
 
         {#if announcements.length === 0}
-            <div class="py-4 text-center text-sm text-white/30 italic">
+            <div class="py-4 text-center text-sm text-white/30">
                 {m.announcements_empty()}
             </div>
         {/if}

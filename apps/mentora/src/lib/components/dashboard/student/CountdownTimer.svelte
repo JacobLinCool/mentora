@@ -30,28 +30,30 @@
     });
 </script>
 
-<div class="grid grid-cols-3 gap-4">
-    <div class="bg-text-secondary/20 rounded-2xl p-4 text-center">
-        <div class="text-text-primary text-3xl font-bold">
+<div class="flex items-center gap-3">
+    <div class="flex flex-col items-center">
+        <div class="text-text-primary text-xl leading-none font-bold">
             {String(timeRemaining.days).padStart(2, "0")}
         </div>
-        <div class="text-text-secondary font-serif-tc mt-1 text-xs">
+        <div class="text-text-secondary mt-0.5 text-[10px]">
             {m.dashboard_days()}
         </div>
     </div>
-    <div class="bg-text-secondary/20 rounded-2xl p-4 text-center">
-        <div class="text-text-primary text-3xl font-bold">
+    <div class="mb-3 text-xl font-light text-white/20">:</div>
+    <div class="flex flex-col items-center">
+        <div class="text-text-primary text-xl leading-none font-bold">
             {String(timeRemaining.hours).padStart(2, "0")}
         </div>
-        <div class="text-text-secondary font-serif-tc mt-1 text-xs">
+        <div class="text-text-secondary mt-0.5 text-[10px]">
             {m.dashboard_hours()}
         </div>
     </div>
-    <div class="bg-text-secondary/20 rounded-2xl p-4 text-center">
-        <div class="text-text-primary text-3xl font-bold">
+    <div class="mb-3 text-xl font-light text-white/20">:</div>
+    <div class="flex flex-col items-center">
+        <div class="text-text-primary text-xl leading-none font-bold">
             {String(timeRemaining.mins).padStart(2, "0")}
         </div>
-        <div class="text-text-secondary font-serif-tc mt-1 text-xs">
+        <div class="text-text-secondary mt-0.5 text-[10px]">
             {m.dashboard_mins()}
         </div>
     </div>

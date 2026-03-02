@@ -263,17 +263,28 @@
 
 <PageHead title={courseTitle || "Course"} description="Course details" />
 
-<div class="course-page">
+<div
+    class="min-h-screen bg-linear-to-br from-[#2d2d2d] via-[#404040] to-[#5a5a5a] pb-24"
+>
     <!-- Header -->
-    <header class="page-header">
-        <button class="back-button" onclick={goBack}>
-            <ArrowLeft class="back-icon" />
+    <header
+        class="mx-auto flex max-w-[42rem] items-center gap-4 px-6 pt-6 pb-2 lg:max-w-4xl"
+    >
+        <button
+            class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 transition-all duration-200 ease-in-out hover:-translate-x-[2px] hover:bg-white/15"
+            onclick={goBack}
+        >
+            <ArrowLeft class="h-5 w-5 text-white" />
         </button>
-        <h1 class="course-title">{courseTitle}</h1>
+        <h1
+            class="m-0 text-[1.75rem] font-light tracking-[0.05em] text-white uppercase"
+        >
+            {courseTitle}
+        </h1>
     </header>
 
     {#if loading}
-        <div class="loading-container">
+        <div class="flex h-[50vh] items-center justify-center">
             <Spinner size="12" color="gray" />
         </div>
     {:else}
@@ -285,8 +296,12 @@
         />
 
         <!-- Assignment Timeline -->
-        <section class="assignments-section">
-            <h3 class="section-title">作業進度</h3>
+        <section class="mx-auto max-w-[42rem] px-6 lg:max-w-4xl">
+            <h3
+                class="mb-4 text-sm font-semibold tracking-[0.05em] text-white/60"
+            >
+                作業進度
+            </h3>
             <AssignmentTimeline
                 assignments={currentAssignments}
                 onAssignmentClick={handleAssignmentClick}
@@ -297,91 +312,3 @@
     <!-- Bottom Navigation -->
     <BottomNav activeTab="home" />
 </div>
-
-<style>
-    .course-page {
-        min-height: 100vh;
-        background: linear-gradient(
-            135deg,
-            #2d2d2d 0%,
-            #404040 50%,
-            #5a5a5a 100%
-        );
-        padding-bottom: 6rem;
-    }
-
-    .page-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem 1.5rem 0.5rem;
-        max-width: 42rem;
-        margin: 0 auto;
-    }
-
-    @media (min-width: 1024px) {
-        .page-header {
-            max-width: 56rem;
-        }
-    }
-
-    .back-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 2.5rem;
-        height: 2.5rem;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 0.75rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .back-button:hover {
-        background: rgba(255, 255, 255, 0.15);
-        transform: translateX(-2px);
-    }
-
-    .back-button :global(.back-icon) {
-        width: 1.25rem;
-        height: 1.25rem;
-        color: #fff;
-    }
-
-    .course-title {
-        margin: 0;
-        font-size: 1.75rem;
-        font-weight: 300;
-        color: #fff;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-    }
-
-    .loading-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 50vh;
-    }
-
-    .assignments-section {
-        padding: 0 1.5rem;
-        max-width: 42rem;
-        margin: 0 auto;
-    }
-
-    @media (min-width: 1024px) {
-        .assignments-section {
-            max-width: 56rem;
-        }
-    }
-
-    .section-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.6);
-        margin: 0 0 1rem;
-        letter-spacing: 0.05em;
-    }
-</style>

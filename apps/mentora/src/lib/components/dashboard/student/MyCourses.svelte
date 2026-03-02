@@ -31,9 +31,7 @@
         {m.dashboard_my_courses()}
     </h2>
     {#if courses.length === 0}
-        <div
-            class="rounded-3xl border border-white/20 bg-white/5 p-6 text-white"
-        >
+        <div class="rounded-3xl bg-white/5 p-6 text-white">
             <h3 class="text-xl font-bold">
                 {m.dashboard_courses_empty_title()}
             </h3>

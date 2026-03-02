@@ -137,9 +137,30 @@
                     type: a.itemType ?? "assignment",
                 }));
 
+                // MOCK DATA ADDED BY REQUEST
+                const mockDate = new Date("2026-02-26T23:59:59+08:00");
+                deadlines.push({
+                    id: "mock-1",
+                    date: mockDate,
+                    title: "Mock Assignment",
+                    course: "Mock Course",
+                    courseId: "mock-course",
+                    assignment: "Mock Assignment",
+                    assignmentId: "mock-1",
+                    dueDate: mockDate,
+                    type: "assignment",
+                });
+
+                // Sort again to ensure correct order
+                deadlines.sort(
+                    (a, b) => a.dueDate.getTime() - b.dueDate.getTime(),
+                );
+
                 deadlineDates = deadlines.map((d) => d.dueDate);
                 if (deadlines.length > 0) {
-                    selectedDeadline = deadlines[0];
+                    selectedDeadline =
+                        deadlines.find((d) => d.dueDate >= new Date()) ||
+                        deadlines[0];
                 }
             }
 
@@ -190,7 +211,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-linear-to-br from-[#404040] to-[#858585] pb-24">
-    <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
+    <div class="mx-auto max-w-md px-6 pt-6 md:max-w-2xl lg:max-w-4xl">
         <DashboardHeader
             userName={profile?.displayName || user?.displayName || "User"}
         />
