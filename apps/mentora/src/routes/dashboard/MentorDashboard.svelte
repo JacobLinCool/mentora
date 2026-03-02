@@ -68,10 +68,15 @@
 
     let usageData = $state<UsagePoint[]>(buildFallbackUsageData());
 
-    function isArchivedCourse(course: Course): boolean {
-        const archivedAt = (course as Course & { archivedAt?: number | null })
+    function getArchivedAt(course: Course): number | null {
+        const archivedAt = (course as Course & { archivedAt?: unknown })
             .archivedAt;
-        return typeof archivedAt === "number" && archivedAt > 0;
+        return typeof archivedAt === "number" ? archivedAt : null;
+    }
+
+    function isArchivedCourse(course: Course): boolean {
+        const archivedAt = getArchivedAt(course);
+        return archivedAt !== null && archivedAt > 0;
     }
 
     function mergeCourseLists(
@@ -90,11 +95,22 @@
     const allCourses = $derived(
         mergeCourseLists(ownedCourses, teachingCourses),
     );
-    const visibleCourses = $derived(
-        allCourses.filter(
-            (course) => showArchivedCourses || !isArchivedCourse(course),
-        ),
+    const supportsArchivedCourses = $derived(
+        allCourses.some((course) => getArchivedAt(course) !== null),
     );
+    const visibleCourses = $derived(
+        supportsArchivedCourses
+            ? allCourses.filter(
+                  (course) => showArchivedCourses || !isArchivedCourse(course),
+              )
+            : allCourses,
+    );
+
+    $effect(() => {
+        if (!supportsArchivedCourses && showArchivedCourses) {
+            showArchivedCourses = false;
+        }
+    });
 
     function labelFromWeekdayIndex(day: number): string {
         switch (day) {
@@ -369,16 +385,18 @@
                         <Plus size={16} />
                         {m.mentor_dashboard_create()}
                     </button>
-                    <button
-                        class="cursor-pointer rounded-full bg-white px-4 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
-                        class:bg-[#5A5A5A]={showArchivedCourses}
-                        class:text-white={showArchivedCourses}
-                        onclick={() => {
-                            showArchivedCourses = !showArchivedCourses;
-                        }}
-                    >
-                        {m.mentor_dashboard_show_archived()}
-                    </button>
+                    {#if supportsArchivedCourses}
+                        <button
+                            class="cursor-pointer rounded-full bg-white px-4 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
+                            class:bg-[#5A5A5A]={showArchivedCourses}
+                            class:text-white={showArchivedCourses}
+                            onclick={() => {
+                                showArchivedCourses = !showArchivedCourses;
+                            }}
+                        >
+                            {m.mentor_dashboard_show_archived()}
+                        </button>
+                    {/if}
                 </div>
             </div>
 

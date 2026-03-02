@@ -14,7 +14,17 @@
     }: Props = $props();
 
     let mediaRecorder: MediaRecorder | null = null;
+    let activeStream: MediaStream | null = null;
     let audioChunks: Blob[] = [];
+
+    function stopActiveStream() {
+        if (!activeStream) {
+            return;
+        }
+
+        activeStream.getTracks().forEach((track) => track.stop());
+        activeStream = null;
+    }
 
     function resolveRecorderOptions(): MediaRecorderOptions | undefined {
         const supportedTypes = [
@@ -50,6 +60,7 @@
                     autoGainControl: true,
                 },
             });
+            activeStream = stream;
 
             mediaRecorder = new MediaRecorder(stream, resolveRecorderOptions());
 
@@ -65,7 +76,8 @@
                 onRecordingComplete(audioBlob);
                 audioChunks = [];
 
-                stream.getTracks().forEach((track) => track.stop());
+                stopActiveStream();
+                mediaRecorder = null;
             };
 
             mediaRecorder.start();
@@ -79,10 +91,15 @@
     }
 
     function stopRecording() {
-        if (mediaRecorder && isRecording) {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
             isRecording = false;
+            return;
         }
+
+        stopActiveStream();
+        mediaRecorder = null;
+        isRecording = false;
     }
 
     function toggleRecording() {
@@ -96,6 +113,12 @@
             startRecording();
         }
     }
+
+    $effect(() => {
+        if (!isRecording && mediaRecorder?.state === "recording") {
+            stopRecording();
+        }
+    });
 </script>
 
 <button

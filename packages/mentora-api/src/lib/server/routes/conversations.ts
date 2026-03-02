@@ -27,8 +27,8 @@ async function parseMultipartForm(
 		try {
 			const body = await request.json();
 			const text = body.text as unknown;
-			const audioBase64 = body.audioBase64 as string | undefined;
-			const audioMimeType = body.audioMimeType as string | undefined;
+			const rawAudioBase64 = body.audioBase64 as unknown;
+			const rawAudioMimeType = body.audioMimeType as unknown;
 
 			if (typeof text === 'string') {
 				if (text.trim().length === 0) {
@@ -41,7 +41,17 @@ async function parseMultipartForm(
 				throw new Error('Text input must be a string');
 			}
 
-			if (audioBase64 !== undefined && audioMimeType !== undefined) {
+			if (rawAudioBase64 !== undefined || rawAudioMimeType !== undefined) {
+				if (typeof rawAudioBase64 !== 'string' || typeof rawAudioMimeType !== 'string') {
+					throw new Error('audioBase64 and audioMimeType must be strings');
+				}
+
+				const audioBase64 = rawAudioBase64.trim();
+				const audioMimeType = rawAudioMimeType.trim();
+				if (audioBase64.length === 0 || audioMimeType.length === 0) {
+					throw new Error('audioBase64 and audioMimeType cannot be empty');
+				}
+
 				return { audioBase64, audioMimeType };
 			}
 
@@ -119,7 +129,22 @@ async function endConversation(ctx: RouteContext): Promise<Response> {
 async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	const user = requireAuth(ctx);
 	const conversationId = requireParam(ctx, 'id');
-	const input = await parseMultipartForm(request);
+
+	let input: { text: string } | { audioBase64: string; audioMimeType: string };
+	try {
+		input = await parseMultipartForm(request);
+	} catch (error) {
+		if (error instanceof Error) {
+			return errorResponse(error.message, HttpStatus.BAD_REQUEST, ServerErrorCode.INVALID_INPUT);
+		}
+
+		return errorResponse(
+			'Invalid request payload',
+			HttpStatus.BAD_REQUEST,
+			ServerErrorCode.INVALID_INPUT
+		);
+	}
+
 	const { conversationService } = createServiceContainer(ctx);
 
 	try {

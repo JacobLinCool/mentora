@@ -1,6 +1,5 @@
 ﻿<script lang="ts">
     import { m } from "$lib/paraglide/messages";
-    import { onMount } from "svelte";
     import { SvelteMap } from "svelte/reactivity";
     import { Send, ArrowLeft } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
@@ -35,15 +34,27 @@
         api.conversationsSubscribe.subscribe(conversationId, convState);
     }
 
-    onMount(() => {
+    $effect(() => {
+        const id = conversationId;
+        const authed = api.isAuthenticated;
+
+        if (!id) {
+            convState.cleanup();
+            return;
+        }
+
         let disposed = false;
 
         (async () => {
-            await subscribeConversation();
+            if (!authed) {
+                await api.authReady;
+            }
 
-            if (disposed) {
+            if (disposed || conversationId !== id) {
                 return;
             }
+
+            await subscribeConversation();
         })();
 
         return () => {
@@ -483,11 +494,7 @@
         sendErrorCode = null;
 
         try {
-            const res = await api.conversations.addTurn(
-                conversationId,
-                text,
-                "idea",
-            );
+            const res = await api.conversations.addTurn(conversationId, text);
             if (!res.success) {
                 console.error("Failed to add turn:", res.error);
                 const msg = extractErrorMessage(res.error);

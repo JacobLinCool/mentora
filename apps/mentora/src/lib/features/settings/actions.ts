@@ -14,8 +14,11 @@ export async function switchActiveMode(
     api: ModeSwitchApi,
     activeMode: ActiveMode,
 ): Promise<{ success: boolean; error?: unknown }> {
-    persistActiveMode(activeMode);
-    return api.users.updateMyProfile({ activeMode });
+    const result = await api.users.updateMyProfile({ activeMode });
+    if (result.success) {
+        persistActiveMode(activeMode);
+    }
+    return result;
 }
 
 export function getNextLocale(current: string): "en" | "zh-tw" {
