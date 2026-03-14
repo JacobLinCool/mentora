@@ -13,7 +13,7 @@
 		"lint": "prettier --check . && eslint .",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:coverage:emulator": "firebase emulators:exec --config ../firebase/firebase.json --project mentora-dev --only firestore,auth \"vitest run --coverage\"",
+		"test:coverage:emulator": "firebase emulators:exec --config ../firebase/firebase.json --project demo-mentora --only firestore,auth \"vitest run --coverage\"",
 		"docs:api": "svelte-kit sync && typedoc --options typedoc.json",
 		"docs:api:watch": "svelte-kit sync && typedoc --options typedoc.json --watch"
 	},
