@@ -284,6 +284,14 @@ export class ConversationService {
 				const asrExecutor = getASRExecutor();
 				asrExecutor.resetTokenUsage();
 				userInputText = await asrExecutor.transcribe(input.audioBase64, input.audioMimeType);
+				userInputText = userInputText.trim();
+				if (!userInputText) {
+					throw errorResponse(
+						'No speech detected in the audio. Please try again or use text input.',
+						HttpStatus.BAD_REQUEST,
+						ServerErrorCode.INVALID_INPUT
+					);
+				}
 				asrUsageReport = createTokenUsageReport([
 					{
 						feature: TOKEN_USAGE_FEATURES.CONVERSATION_ASR,

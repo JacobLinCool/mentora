@@ -21,38 +21,27 @@ import { getPromptExecutor } from './executors.js';
 import { normalizeTokenUsage, sumTokenUsageTotals, type TokenUsageTotals } from './token-usage.js';
 
 /**
- * Singleton orchestrator instance
- * Reuses the same orchestrator across requests for efficiency
- */
-let orchestratorInstance: MentoraOrchestrator | null = null;
-
-/**
- * Get or create the MentoraOrchestrator singleton
+ * Create a new MentoraOrchestrator instance
+ *
+ * Returns a fresh instance per call because the orchestrator holds a reference
+ * to a PromptExecutor, which contains mutable per-request token usage state.
+ * Sharing a single orchestrator across concurrent requests would cause token
+ * usage interference between different students.
  *
  * The orchestrator handles all dialogue logic:
  * - Stage transitions (asking_stance → case_challenge → principle_reasoning → closure)
  * - Prompt generation via stage builders
  * - LLM communication via GeminiPromptExecutor
  * - State management (stance history, principles, etc.)
- *
- * @throws Error if GOOGLE_GENAI_API_KEY is not configured
  */
 export function getOrchestrator(): MentoraOrchestrator {
-	if (orchestratorInstance) {
-		return orchestratorInstance;
-	}
-
-	// Get the shared PromptExecutor instance
 	const executor = getPromptExecutor();
 
-	// Initialize orchestrator with default config
-	orchestratorInstance = new MentoraOrchestrator(executor, {
+	return new MentoraOrchestrator(executor, {
 		maxLoops: 5,
 		minLoopsForClosure: 1,
 		logger: (msg: string, ...args: unknown[]) => console.log(`[MentoraLLM] ${msg}`, ...args)
 	});
-
-	return orchestratorInstance;
 }
 
 /**
