@@ -8,7 +8,7 @@
     } from "firebase/auth";
     import { auth } from "$lib/firebase";
     import { m } from "$lib/paraglide/messages";
-    import { Button, Card, Alert } from "flowbite-svelte";
+    import { Alert } from "flowbite-svelte";
     import { LoaderCircle, LogIn } from "@lucide/svelte";
 
     interface Props {
@@ -51,21 +51,27 @@
         <Alert color="red" class="mb-4">{error}</Alert>
     {/if}
 
-    <Card class="mx-auto p-4 text-center">
+    <div class="card-glass mx-auto max-w-sm rounded-3xl p-8 text-center">
         <div class="flex flex-col items-center gap-4">
-            <div class="text-2xl font-semibold">
+            <div class="text-text-primary text-2xl font-semibold">
                 {m.auth_sign_in_title()}
             </div>
-            <p class="text-sm text-gray-500">{m.auth_sign_in_subtitle()}</p>
-            <Button onclick={login} class="w-full sm:w-auto" disabled={loading}>
+            <p class="text-text-secondary text-sm">
+                {m.auth_sign_in_subtitle()}
+            </p>
+            <button
+                onclick={login}
+                class="bg-brand-gold flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-gray-900 transition hover:brightness-110 disabled:opacity-50 sm:w-auto"
+                disabled={loading}
+            >
                 {#if loading}
-                    <LoaderCircle class="mr-2 h-5 w-5 animate-spin" />
+                    <LoaderCircle class="h-5 w-5 animate-spin" />
                     {m.auth_signing_in()}
                 {:else}
-                    <LogIn class="mr-2 h-5 w-5" />
+                    <LogIn class="h-5 w-5" />
                     {m.auth_continue_with_google()}
                 {/if}
-            </Button>
+            </button>
         </div>
-    </Card>
+    </div>
 </div>

@@ -7,11 +7,12 @@
         Button,
         Textarea,
     } from "flowbite-svelte";
+    import * as m from "$lib/paraglide/messages";
 
     type CreateCoursePayload = {
         title: string;
         code: string;
-        visibility: "public" | "unlisted" | "private";
+        visibility: "public" | "private";
         description: string;
     };
 
@@ -23,19 +24,37 @@
     let title = $state("");
     let code = $state("");
     let description = $state("");
-    let visibility = $state<"public" | "unlisted" | "private">("private");
+    let visibility = $state<"public" | "private">("private");
     let loading = $state(false);
     let errorMessage = $state("");
 
-    const visibilityOptions = [
-        { value: "private", name: "Private (Invite Only)" },
-        { value: "unlisted", name: "Unlisted (Link Access)" },
-        { value: "public", name: "Public (Visible to All)" },
-    ];
+    const visibilityOptions = $derived([
+        { value: "private", name: m.courses_create_visibility_private() },
+        { value: "public", name: m.courses_create_visibility_public() },
+    ]);
+
+    function validateCode(value: string): string | null {
+        if (!value) return null; // optional field
+        const upper = value.toUpperCase();
+        if (!/^[A-Z0-9\-_]+$/.test(upper)) {
+            return m.courses_create_code_error_format();
+        }
+        const stripped = upper.replace(/[-_]/g, "");
+        if (stripped.length < 6 || stripped.length > 64) {
+            return m.courses_create_code_error_format();
+        }
+        return null;
+    }
 
     async function handleSubmit() {
         if (!title.trim()) {
-            title = "New Course";
+            title = m.courses_create_default_title();
+        }
+
+        const codeError = validateCode(code.trim());
+        if (codeError) {
+            errorMessage = codeError;
+            return;
         }
 
         if (!onCreate) {
@@ -62,14 +81,19 @@
             visibility = "private";
         } catch (e) {
             errorMessage =
-                e instanceof Error ? e.message : "Failed to create course";
+                e instanceof Error ? e.message : m.courses_create_error();
         } finally {
             loading = false;
         }
     }
 </script>
 
-<Modal bind:open title="Create New Course" size="xs" autoclose={false}>
+<Modal
+    bind:open
+    title={m.courses_create_modal_title()}
+    size="xs"
+    autoclose={false}
+>
     <form
         class="custom-form flex flex-col space-y-6"
         onsubmit={(e) => {
@@ -77,43 +101,42 @@
             handleSubmit();
         }}
     >
-        <h3 class="text-xl font-medium text-gray-900 dark:text-white">
-            Create a course
-        </h3>
-
         <Label>
-            <span>Title</span>
+            <span>{m.courses_create_title()}</span>
             <Input
                 type="text"
                 name="title"
                 bind:value={title}
-                placeholder="e.g. Introduction to Philosophy"
+                placeholder={m.courses_create_title_placeholder()}
                 required
             />
         </Label>
 
         <Label>
-            <span>Course Code (Optional)</span>
+            <span>{m.courses_create_code_optional()}</span>
             <Input
                 type="text"
                 name="code"
                 bind:value={code}
-                placeholder="e.g. PHIL101"
+                placeholder={m.courses_create_code_placeholder()}
             />
+            <p class="mt-1 text-xs text-gray-500">
+                {m.courses_create_code_hint()}
+            </p>
         </Label>
 
         <Label>
-            <span>Visibility</span>
+            <span>{m.course_settings_visibility()}</span>
             <Select items={visibilityOptions} bind:value={visibility} />
         </Label>
 
         <Label>
-            <span>Description (Optional)</span>
+            <span>{m.courses_create_description_label()}</span>
             <Textarea
                 name="description"
                 bind:value={description}
                 rows={3}
-                placeholder="Course description..."
+                placeholder={m.courses_create_description_placeholder()}
                 class="w-full"
             />
         </Label>
@@ -128,14 +151,14 @@
                 onclick={() => (open = false)}
                 class="cursor-pointer text-[#494949] hover:text-[#494949]/90"
             >
-                Cancel
+                {m.cancel()}
             </Button>
             <Button
                 type="submit"
                 disabled={loading}
                 class="cursor-pointer bg-[#494949] text-white hover:bg-[#494949]/90"
             >
-                {#if loading}Creating...{:else}Create Course{/if}
+                {#if loading}{m.courses_creating()}{:else}{m.courses_create()}{/if}
             </Button>
         </div>
     </form>

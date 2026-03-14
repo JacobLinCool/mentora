@@ -116,10 +116,7 @@ export function createCoursesCommand(
         .description("Update a course")
         .argument("<courseId>", "Course ID")
         .option("--title <title>", "Course title")
-        .option(
-            "--visibility <visibility>",
-            "Visibility (public/unlisted/private)",
-        )
+        .option("--visibility <visibility>", "Visibility (public/private)")
         .option("--description <description>", "Course description")
         .action(
             async (
