@@ -11,7 +11,10 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api, type Conversation } from "$lib/api";
-    import type { AssessmentResult } from "mentora-firebase";
+    import type {
+        AssessmentResult,
+        DialogueStateDisplay,
+    } from "mentora-firebase";
     import {
         resolveConversationStage,
         TOTAL_CONVERSATION_STAGES,
@@ -125,6 +128,10 @@
     let assessmentScoreCompletion = $state<number | null>(null);
     let expandedDimensions = new SvelteSet<string>();
 
+    // Dialogue state (for enhanced report)
+    let dialogueState = $state<DialogueStateDisplay | null>(null);
+    let dialogueStateLoading = $state(false);
+
     const assessmentDimensions = [
         { key: "argumentQuality", label: "論證品質" },
         { key: "criticalThinking", label: "批判思考" },
@@ -175,6 +182,7 @@
             !assessmentLoadAttempted
         ) {
             loadAssessment(conversation.assignmentId);
+            loadDialogueState(conversationId);
         }
     });
 
@@ -195,6 +203,20 @@
             console.error("Failed to load assessment", e);
         } finally {
             assessmentLoading = false;
+        }
+    }
+
+    async function loadDialogueState(convId: string) {
+        dialogueStateLoading = true;
+        try {
+            const res = await api.conversations.getDialogueState(convId);
+            if (res.success) {
+                dialogueState = res.data;
+            }
+        } catch (e) {
+            console.error("Failed to load dialogue state", e);
+        } finally {
+            dialogueStateLoading = false;
         }
     }
 
@@ -898,6 +920,22 @@
                             </div>
                         {/if}
 
+                        <!-- Conversation Summary -->
+                        {#if dialogueState?.summary}
+                            <div
+                                class="mb-6 rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm"
+                            >
+                                <div
+                                    class="mb-2 text-sm font-medium text-white/60"
+                                >
+                                    對話摘要
+                                </div>
+                                <p class="leading-relaxed text-white/90">
+                                    {dialogueState.summary}
+                                </p>
+                            </div>
+                        {/if}
+
                         <!-- Dimension Scores -->
                         <div class="mb-6 space-y-2">
                             {#each assessmentDimensions as dim (dim.key)}
@@ -951,6 +989,129 @@
                                 {/if}
                             {/each}
                         </div>
+
+                        <!-- Stance Evolution -->
+                        {#if dialogueState?.stanceHistory && dialogueState.stanceHistory.length > 0}
+                            <div class="mb-6">
+                                <h3 class="mb-3 text-lg font-medium text-white">
+                                    思考演變歷程
+                                </h3>
+                                <div class="space-y-3">
+                                    {#each dialogueState.stanceHistory as stance, i (stance.version)}
+                                        <div
+                                            class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+                                        >
+                                            <div
+                                                class="mb-2 flex items-center justify-between"
+                                            >
+                                                <span
+                                                    class="text-brand-gold text-sm font-medium"
+                                                >
+                                                    立場 V{stance.version}
+                                                </span>
+                                                {#if stance.confidence != null}
+                                                    <span
+                                                        class="text-xs text-white/40"
+                                                    >
+                                                        信心度 {(
+                                                            stance.confidence *
+                                                            100
+                                                        ).toFixed(0)}%
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                            <p
+                                                class="mb-1 text-sm font-medium text-white/90"
+                                            >
+                                                {stance.position}
+                                            </p>
+                                            <p class="text-sm text-white/60">
+                                                {stance.reason}
+                                            </p>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Principle History -->
+                        {#if dialogueState?.principleHistory && dialogueState.principleHistory.length > 0}
+                            <div class="mb-6">
+                                <h3 class="mb-3 text-lg font-medium text-white">
+                                    原則提煉歷程
+                                </h3>
+                                <div class="space-y-3">
+                                    {#each dialogueState.principleHistory as principle (principle.version)}
+                                        <div
+                                            class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+                                        >
+                                            <div
+                                                class="mb-2 flex items-center justify-between"
+                                            >
+                                                <span
+                                                    class="text-brand-gold text-sm font-medium"
+                                                >
+                                                    原則 V{principle.version}
+                                                </span>
+                                                {#if principle.classification}
+                                                    <span
+                                                        class="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60"
+                                                    >
+                                                        {principle.classification}
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                            <p class="text-sm text-white/90">
+                                                {principle.statement}
+                                            </p>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Conversation Transcript -->
+                        {#if conversation?.turns && conversation.turns.length > 0}
+                            <div class="mb-6">
+                                <h3 class="mb-3 text-lg font-medium text-white">
+                                    對話記錄
+                                </h3>
+                                <div class="space-y-2">
+                                    {#each conversation.turns as turn (turn.id)}
+                                        <div
+                                            class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+                                        >
+                                            <div
+                                                class="mb-1 flex items-center gap-2"
+                                            >
+                                                <span
+                                                    class="text-xs font-medium {turn.type ===
+                                                    'idea'
+                                                        ? 'text-blue-300'
+                                                        : 'text-brand-gold'}"
+                                                >
+                                                    {turn.type === "idea"
+                                                        ? "學生"
+                                                        : "AI"}
+                                                </span>
+                                                {#if turn.analysis?.stance}
+                                                    <span
+                                                        class="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/40"
+                                                    >
+                                                        {turn.analysis.stance}
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                            <p
+                                                class="text-sm leading-relaxed text-white/80"
+                                            >
+                                                {turn.text}
+                                            </p>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
 
                         <!-- Teacher Score -->
                         <div
