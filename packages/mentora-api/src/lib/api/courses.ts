@@ -194,7 +194,7 @@ export async function listMyEnrolledCourses(
  * Course creation options
  */
 export interface CreateCourseOptions {
-	visibility?: 'public' | 'unlisted' | 'private';
+	visibility?: 'public' | 'private';
 	description?: string | null;
 	theme?: string | null;
 	isDemo?: boolean;

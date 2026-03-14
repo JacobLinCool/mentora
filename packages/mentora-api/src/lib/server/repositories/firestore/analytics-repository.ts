@@ -5,6 +5,7 @@ import {
 	Conversations,
 	Courses,
 	type Assignment,
+	type ClassReport,
 	type Conversation,
 	type CourseMembership,
 	type Submission
@@ -51,5 +52,17 @@ export class FirestoreAnalyticsRepository implements IAnalyticsRepository {
 			.where('assignmentId', '==', assignmentId)
 			.get();
 		return snapshot.docs.map((doc) => Conversations.schema.parse(doc.data()));
+	}
+
+	async getAssignment(assignmentId: string): Promise<Assignment | null> {
+		const doc = await this.firestore.doc(Assignments.docPath(assignmentId)).get();
+		if (!doc.exists) {
+			return null;
+		}
+		return Assignments.schema.parse(doc.data());
+	}
+
+	async updateAssignmentClassReport(assignmentId: string, classReport: ClassReport): Promise<void> {
+		await this.firestore.doc(Assignments.docPath(assignmentId)).update({ classReport });
 	}
 }

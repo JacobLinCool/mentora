@@ -51,7 +51,7 @@ export const GenerateContentSchema = z.object({
 export const CreateCourseSchema = z.object({
 	title: z.string().min(1, 'Title is required'),
 	code: z.string().optional(),
-	visibility: z.enum(['public', 'unlisted', 'private']).optional(),
+	visibility: z.enum(['public', 'private']).optional(),
 	theme: z.string().nullable().optional(),
 	description: z.string().nullable().optional(),
 	isDemo: z.boolean().optional(),

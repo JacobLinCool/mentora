@@ -71,8 +71,27 @@
         joining = false;
     }
 
+    function validateCode(value: string): string | null {
+        if (!value) return null;
+        const upper = value.toUpperCase();
+        if (!/^[A-Z0-9\-_]+$/.test(upper)) {
+            return m.courses_create_code_error_format();
+        }
+        const stripped = upper.replace(/[-_]/g, "");
+        if (stripped.length < 6 || stripped.length > 64) {
+            return m.courses_create_code_error_format();
+        }
+        return null;
+    }
+
     async function handleCreateCourse() {
         if (!createTitle.trim() || !createCode.trim()) return;
+
+        const codeError = validateCode(createCode.trim());
+        if (codeError) {
+            createError = codeError;
+            return;
+        }
 
         creating = true;
         createError = null;
@@ -274,6 +293,9 @@
                 disabled={creating}
                 required
             />
+            <p class="mt-1 text-xs text-gray-500">
+                {m.courses_create_code_hint()}
+            </p>
         </div>
 
         {#if createError}

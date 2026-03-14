@@ -8,7 +8,12 @@
  * accessing dialogue state. Pass userId to ensure authorization checks are enforced.
  */
 
-import { MentoraOrchestrator, type DialogueState, type StageResult } from 'mentora-ai';
+import {
+	MentoraOrchestrator,
+	type DialogueState,
+	type StageAssessmentResult,
+	type StageResult
+} from 'mentora-ai';
 import { DialogueStage } from 'mentora-ai';
 import type { Firestore } from 'fires2rest';
 import { Conversations, joinPath } from 'mentora-firebase';
@@ -16,38 +21,27 @@ import { getPromptExecutor } from './executors.js';
 import { normalizeTokenUsage, sumTokenUsageTotals, type TokenUsageTotals } from './token-usage.js';
 
 /**
- * Singleton orchestrator instance
- * Reuses the same orchestrator across requests for efficiency
- */
-let orchestratorInstance: MentoraOrchestrator | null = null;
-
-/**
- * Get or create the MentoraOrchestrator singleton
+ * Create a new MentoraOrchestrator instance
+ *
+ * Returns a fresh instance per call because the orchestrator holds a reference
+ * to a PromptExecutor, which contains mutable per-request token usage state.
+ * Sharing a single orchestrator across concurrent requests would cause token
+ * usage interference between different students.
  *
  * The orchestrator handles all dialogue logic:
  * - Stage transitions (asking_stance → case_challenge → principle_reasoning → closure)
  * - Prompt generation via stage builders
  * - LLM communication via GeminiPromptExecutor
  * - State management (stance history, principles, etc.)
- *
- * @throws Error if GOOGLE_GENAI_API_KEY is not configured
  */
 export function getOrchestrator(): MentoraOrchestrator {
-	if (orchestratorInstance) {
-		return orchestratorInstance;
-	}
-
-	// Get the shared PromptExecutor instance
 	const executor = getPromptExecutor();
 
-	// Initialize orchestrator with default config
-	orchestratorInstance = new MentoraOrchestrator(executor, {
+	return new MentoraOrchestrator(executor, {
 		maxLoops: 5,
 		minLoopsForClosure: 1,
 		logger: (msg: string, ...args: unknown[]) => console.log(`[MentoraLLM] ${msg}`, ...args)
 	});
-
-	return orchestratorInstance;
 }
 
 /**
@@ -198,6 +192,9 @@ export async function processWithLLM(
 	updatedState: DialogueState;
 	ended: boolean;
 	tokenUsage: TokenUsageTotals;
+	assessment?: StageAssessmentResult;
+	assessmentError?: string;
+	stanceSnapshot?: { stance: string };
 }> {
 	// Step 1: Load current state from Firestore (includes ownership validation FIRST)
 	const currentState = await loadDialogueState(firestore, conversationId, userId);
@@ -244,7 +241,10 @@ export async function processWithLLM(
 		aiMessage: result.message,
 		updatedState: result.newState,
 		ended: result.ended || orchestrator.isEnded(result.newState),
-		tokenUsage: usage
+		tokenUsage: usage,
+		assessment: result.assessment,
+		assessmentError: result.assessmentError,
+		stanceSnapshot: result.stanceSnapshot
 	};
 }
 

@@ -1,46 +1,20 @@
-import { browser } from "$app/environment";
-
 export type ActiveMode = "mentor" | "student";
 
-const ACTIVE_MODE_STORAGE_KEY = "mentora:active-mode";
-
-function readStoredActiveMode(): ActiveMode | null {
-    if (!browser) {
-        return null;
-    }
-
-    const value = localStorage.getItem(ACTIVE_MODE_STORAGE_KEY);
-    return value === "mentor" || value === "student" ? value : null;
-}
-
-export function persistActiveMode(mode: ActiveMode): void {
-    if (!browser) {
-        return;
-    }
-
-    localStorage.setItem(ACTIVE_MODE_STORAGE_KEY, mode);
-}
-
-export function getProfileMode(profile: unknown): string | null {
+export function getProfileMode(profile: unknown): ActiveMode | null {
     if (!profile || typeof profile !== "object") {
         return null;
     }
 
-    const mode = (profile as { activeMode?: unknown }).activeMode;
-    return typeof mode === "string" ? mode : null;
+    const role = (profile as { role?: unknown }).role;
+    return role === "mentor" || role === "student" ? role : null;
 }
 
 export function getActiveMode(mode: string | null | undefined): ActiveMode {
-    const storedMode = readStoredActiveMode();
-    if (storedMode) {
-        return storedMode;
-    }
-
     return mode === "mentor" ? "mentor" : "student";
 }
 
 export function isMentorMode(mode: string | null | undefined): boolean {
-    return getActiveMode(mode) === "mentor";
+    return mode === "mentor";
 }
 
 export function resolveRoleRoute(

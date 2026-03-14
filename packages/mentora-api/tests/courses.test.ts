@@ -60,13 +60,13 @@ describe('Courses Module (Integration)', () => {
 			}
 		});
 
-		it('should create a new unlisted course', async () => {
-			const testTitle = `Unlisted Course ${generateTestId()}`;
+		it('should create a new private course', async () => {
+			const testTitle = `Private Course ${generateTestId()}`;
 			const testCode = `UC${Date.now().toString().slice(-6)}`;
 
 			const result = await teacherClient.courses.create(testTitle, testCode, {
-				visibility: 'unlisted',
-				description: 'Unlisted course for testing'
+				visibility: 'private',
+				description: 'Private course for testing'
 			});
 
 			expect(result.success).toBe(true);
@@ -246,16 +246,14 @@ describe('Courses Module (Integration)', () => {
 			}
 		});
 
-		it('should not list private or unlisted courses', async () => {
+		it('should not list private courses', async () => {
 			const result = await studentClient.courses.listPublic();
 
 			expect(result.success).toBe(true);
 			if (result.success) {
-				// Private and unlisted courses should not appear
+				// Private courses should not appear
 				const hasPrivate = result.data.some((c) => c.visibility === 'private');
-				const hasUnlisted = result.data.some((c) => c.visibility === 'unlisted');
 				expect(hasPrivate).toBe(false);
-				expect(hasUnlisted).toBe(false);
 			}
 		});
 	});
@@ -696,7 +694,7 @@ describe('Courses Module (Integration)', () => {
 			const createResult = await teacherClient.courses.create(
 				`Lifecycle Course ${generateTestId()}`,
 				`LC${Date.now().toString().slice(-6)}`,
-				{ visibility: 'unlisted' }
+				{ visibility: 'private' }
 			);
 
 			expect(createResult.success).toBe(true);

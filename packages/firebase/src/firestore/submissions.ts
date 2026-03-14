@@ -2,6 +2,26 @@ import { z } from "zod";
 
 import { joinPath, zFirebaseTimestamp } from "./shared";
 
+export const zDimensionScore = z.object({
+    score: z.number().min(1).max(5),
+    feedback: z.string(),
+});
+export type DimensionScore = z.infer<typeof zDimensionScore>;
+
+export const zAssessmentResult = z.object({
+    dimensions: z.object({
+        argumentQuality: zDimensionScore,
+        criticalThinking: zDimensionScore,
+        principleExtraction: zDimensionScore,
+        openness: zDimensionScore,
+        coherence: zDimensionScore,
+    }),
+    overallScore: z.number().min(1).max(5),
+    overallFeedback: z.string(),
+    generatedAt: z.number(),
+});
+export type AssessmentResult = z.infer<typeof zAssessmentResult>;
+
 export const zSubmission = z
     .object({
         userId: z
@@ -41,6 +61,18 @@ export const zSubmission = z
             .optional()
             .default(null)
             .describe("Optional instructor notes or feedback."),
+        assessment: zAssessmentResult
+            .nullable()
+            .optional()
+            .default(null)
+            .describe("AI-generated structured assessment."),
+        assessmentError: z
+            .string()
+            .max(1000)
+            .nullable()
+            .optional()
+            .default(null)
+            .describe("Reason if AI assessment generation failed."),
     })
     .describe(
         "Submission document stored at assignments/{assignmentId}/submissions/{userId}.",

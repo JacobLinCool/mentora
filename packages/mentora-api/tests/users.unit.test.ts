@@ -47,7 +47,7 @@ function createConfig(
 
 const validProfile = {
 	uid: 'user-1',
-	activeMode: 'student' as const,
+	role: 'student' as const,
 	displayName: 'Test User',
 	email: 'test@test.local',
 	photoURL: null,
@@ -119,7 +119,7 @@ describe('Users (Unit)', () => {
 
 			const result = await users.updateMyProfile(createConfig('user-1'), {
 				displayName: 'Custom Name',
-				activeMode: 'mentor'
+				role: 'mentor'
 			});
 			expect(result.success).toBe(true);
 			expect(setDoc).toHaveBeenCalledWith(
@@ -127,7 +127,7 @@ describe('Users (Unit)', () => {
 				expect.objectContaining({
 					uid: 'user-1',
 					displayName: 'Custom Name',
-					activeMode: 'mentor'
+					role: 'mentor'
 				})
 			);
 		});
@@ -139,7 +139,7 @@ describe('Users (Unit)', () => {
 
 			const result = await users.updateMyProfile(
 				createConfig('user-1', { displayName: 'Auth Name' }),
-				{ activeMode: 'student' }
+				{ role: 'student' }
 			);
 			expect(result.success).toBe(true);
 			expect(setDoc).toHaveBeenCalledWith(
@@ -155,7 +155,7 @@ describe('Users (Unit)', () => {
 
 			const result = await users.updateMyProfile(
 				createConfig('user-1', { photoURL: 'https://example.com/me.jpg' }),
-				{ activeMode: 'student' }
+				{ role: 'student' }
 			);
 			expect(result.success).toBe(true);
 			expect(setDoc).toHaveBeenCalledWith(

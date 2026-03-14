@@ -271,7 +271,7 @@ export class MentoraClient {
 				AssignmentsModule.listAvailableAssignments(this._config, courseId, options)
 			),
 		create: (
-			assignment: Omit<Assignment, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
+			assignment: Omit<Assignment, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'classReport'>
 		): Promise<APIResult<string>> =>
 			this.authReadyThen(() => AssignmentsModule.createAssignment(this._config, assignment)),
 		update: (

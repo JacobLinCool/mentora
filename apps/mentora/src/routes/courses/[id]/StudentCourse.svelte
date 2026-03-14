@@ -161,6 +161,7 @@
                                 question: null,
                                 prompt: "", // Dummy to satisfy interface
                                 mode: "instant",
+                                classReport: null,
                                 submissionState: sub?.state,
                                 completed: isCompleted, // Correctly setting completed based on submission
                                 locked: q.startAt

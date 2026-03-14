@@ -3,7 +3,7 @@ import { z } from "zod";
 import { joinPath, zCourseMemberRole, zFirebaseTimestamp } from "./shared";
 
 export const zCourseVisibility = z
-    .union([z.literal("public"), z.literal("unlisted"), z.literal("private")])
+    .union([z.literal("public"), z.literal("private")])
     .describe("Visibility level for a course.");
 export type CourseVisibility = z.infer<typeof zCourseVisibility>;
 
@@ -76,7 +76,7 @@ export const zCourseDoc = z
         visibility: zCourseVisibility
             .optional()
             .default("private")
-            .describe("Public/unlisted/private visibility for this course."),
+            .describe("Public or private visibility for this course."),
         passwordHash: z
             .string()
             .max(512)

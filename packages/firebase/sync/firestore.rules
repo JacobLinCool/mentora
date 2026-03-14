@@ -59,7 +59,7 @@ service cloud.firestore {
 
     function isValidUserProfile(data) {
       return data.uid is string && data.uid.size() <= 128 &&
-             (!('activeMode' in data) || data.activeMode in ["mentor", "student"]) &&
+             data.role in ["mentor", "student"] &&
              data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
              data.email is string && data.email.size() <= 320 &&
              (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 2048)) &&
@@ -106,7 +106,7 @@ service cloud.firestore {
       return data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
              data.code is string && data.code.size() >= 6 && data.code.size() <= 64 &&
              data.ownerId is string && data.ownerId.size() <= 128 &&
-             (!('visibility' in data) || data.visibility in ["public", "unlisted", "private"]) &&
+             (!('visibility' in data) || data.visibility in ["public", "private"]) &&
              (!('passwordHash' in data) || data.passwordHash == null || (data.passwordHash is string && data.passwordHash.size() <= 512)) &&
              (!('theme' in data) || data.theme == null || (data.theme is string && data.theme.size() <= 200)) &&
              (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 5000)) &&
@@ -367,6 +367,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && (uid == request.auth.uid) &&
                        isValidUserProfile(request.resource.data);
       allow update: if isSignedIn() && (uid == request.auth.uid) &&
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || !('role' in resource.data)) &&
                        isValidUserProfile(request.resource.data);
       allow delete: if false; // keep profiles
     }
@@ -380,7 +381,7 @@ service cloud.firestore {
 
     /* ---------- Courses ---------- */
     match /courses/{courseId} {
-      // Public courses are readable by anyone; private/unlisted require membership or ownership
+      // Public courses are readable by anyone; private require membership or ownership
       allow get: if targetNotExists() ||
         (resource.data != null && 'visibility' in resource.data && resource.data.visibility == "public") ||
         (isSignedIn() && resource.data != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||

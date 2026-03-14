@@ -69,7 +69,7 @@ describe('Multi-Account Scenarios', () => {
 			testCourseCode = `IT${Date.now().toString().slice(-8)}`;
 
 			const result = await teacher.courses.create(title, testCourseCode, {
-				visibility: 'unlisted',
+				visibility: 'private',
 				description: 'Created by integration test'
 			});
 
@@ -115,7 +115,7 @@ describe('Multi-Account Scenarios', () => {
 			// Student tries to get course directly - should fail without membership
 			const result = await student.courses.get(testCourseId!);
 
-			// Course is unlisted, student should not have access before joining
+			// Course is private, student should not have access before joining
 			if (result.success) {
 				// If read succeeds, it means rules allow reading (e.g. public visibility)
 				expect(result.data).toBeDefined();

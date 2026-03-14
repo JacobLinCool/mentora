@@ -1,5 +1,6 @@
 <script lang="ts">
     import { m } from "$lib/paraglide/messages";
+    import { resolve } from "$app/paths";
     import {
         GripVertical,
         ClipboardList,
@@ -8,9 +9,12 @@
         Pencil,
         Trash2,
         ChevronDown,
+        BarChart3,
     } from "@lucide/svelte";
 
     interface Props {
+        courseId?: string;
+        assignmentId?: string;
         title: string;
         type: "questionnaire" | "dialogue";
         dueDate?: string;
@@ -22,6 +26,8 @@
     }
 
     let {
+        courseId,
+        assignmentId,
         title,
         type,
         dueDate = "",
@@ -70,6 +76,16 @@
                 <Hourglass size={14} />
                 <span>{formatDate(dueDate)}</span>
             </div>
+        {/if}
+
+        {#if !editMode && type === "dialogue" && courseId && assignmentId}
+            <a
+                href={resolve(`/host/courses/${courseId}/assignments/${assignmentId}/analytics`)}
+                class="p-1 text-gray-400 hover:text-blue-500"
+                title="班級分析"
+            >
+                <BarChart3 size={16} />
+            </a>
         {/if}
 
         {#if editMode}

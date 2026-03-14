@@ -85,7 +85,7 @@ export async function listAvailableAssignments(
  */
 export async function createAssignment(
 	config: MentoraAPIConfig,
-	assignment: Omit<Assignment, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'>
+	assignment: Omit<Assignment, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'classReport'>
 ): Promise<APIResult<string>> {
 	const currentUser = config.getCurrentUser();
 	if (!currentUser) {
@@ -98,6 +98,7 @@ export async function createAssignment(
 		const assignmentData: Assignment = {
 			...assignment,
 			id: docRef.id,
+			classReport: null,
 			createdBy: currentUser.uid,
 			createdAt: now,
 			updatedAt: now

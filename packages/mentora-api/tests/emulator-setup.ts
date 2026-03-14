@@ -373,7 +373,7 @@ export function waitForSnapshot<T>(
 }
 
 export interface CourseFixtureOptions {
-	visibility?: 'public' | 'unlisted' | 'private';
+	visibility?: 'public' | 'private';
 	joinStudent?: boolean;
 }
 

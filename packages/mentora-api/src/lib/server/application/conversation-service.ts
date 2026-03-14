@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
 	type Assignment,
 	type Conversation,
+	type MessageStance,
 	type Submission,
 	type TokenUsageBreakdown,
 	type TokenUsageTotals,
@@ -81,7 +82,9 @@ export class ConversationService {
 				submittedAt: null,
 				late: false,
 				scoreCompletion: null,
-				notes: null
+				notes: null,
+				assessment: null,
+				assessmentError: null
 			};
 			await this.conversationRepository.saveSubmission(assignment.id, userId, restarted);
 			return;
@@ -94,12 +97,18 @@ export class ConversationService {
 			submittedAt: null,
 			late: false,
 			scoreCompletion: null,
-			notes: null
+			notes: null,
+			assessment: null,
+			assessmentError: null
 		};
 		await this.conversationRepository.saveSubmission(assignment.id, userId, submission);
 	}
 
-	private async submitSubmission(assignment: Assignment, userId: string): Promise<void> {
+	private async submitSubmission(
+		assignment: Assignment,
+		userId: string,
+		assessmentData?: { assessment?: unknown; assessmentError?: string }
+	): Promise<void> {
 		const existing = await this.conversationRepository.getSubmission(assignment.id, userId);
 		const submittedAt = Date.now();
 		ensureSubmissionWindow(assignment, submittedAt);
@@ -121,7 +130,9 @@ export class ConversationService {
 			submittedAt,
 			late: isLate,
 			scoreCompletion,
-			notes
+			notes,
+			assessment: (assessmentData?.assessment as Submission['assessment']) ?? null,
+			assessmentError: assessmentData?.assessmentError ?? null
 		};
 		await this.conversationRepository.saveSubmission(assignment.id, userId, submitted);
 	}
@@ -273,6 +284,14 @@ export class ConversationService {
 				const asrExecutor = getASRExecutor();
 				asrExecutor.resetTokenUsage();
 				userInputText = await asrExecutor.transcribe(input.audioBase64, input.audioMimeType);
+				userInputText = userInputText.trim();
+				if (!userInputText) {
+					throw errorResponse(
+						'No speech detected in the audio. Please try again or use text input.',
+						HttpStatus.BAD_REQUEST,
+						ServerErrorCode.INVALID_INPUT
+					);
+				}
 				asrUsageReport = createTokenUsageReport([
 					{
 						feature: TOKEN_USAGE_FEATURES.CONVERSATION_ASR,
@@ -342,7 +361,9 @@ export class ConversationService {
 			id: userTurnId,
 			type: 'idea',
 			text: userInputText,
-			analysis: null,
+			analysis: llmResult.stanceSnapshot
+				? { stance: llmResult.stanceSnapshot.stance as MessageStance }
+				: null,
 			pendingStartAt: null,
 			tokenUsage: userTurnTokenUsage,
 			createdAt: now
@@ -394,7 +415,10 @@ export class ConversationService {
 		}
 
 		if (llmResult.ended) {
-			await this.submitSubmission(assignment, user.uid);
+			await this.submitSubmission(assignment, user.uid, {
+				assessment: llmResult.assessment ?? undefined,
+				assessmentError: llmResult.assessmentError
+			});
 		}
 
 		const summary = this.llmGateway.extractSummary(llmResult);

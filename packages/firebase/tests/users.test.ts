@@ -106,6 +106,7 @@ describe("User Profiles Security Rules", () => {
             await assertSucceeds(
                 db.collection("users").doc(userId).set({
                     uid: userId,
+                    role: "student",
                     displayName: "Test User",
                     email: "test@example.com",
                     photoURL: null,
@@ -157,6 +158,7 @@ describe("User Profiles Security Rules", () => {
             await testEnv.withSecurityRulesDisabled(async (context) => {
                 await context.firestore().collection("users").doc(userId).set({
                     uid: userId,
+                    role: "student",
                     displayName: "Test User",
                     email: "test@example.com",
                     photoURL: null,
@@ -274,6 +276,7 @@ describe("User Profiles Security Rules", () => {
                     .doc(userId)
                     .set({
                         uid: "a".repeat(128),
+                        role: "student",
                         displayName: "Test User",
                         email: "test@example.com",
                         photoURL: null,
@@ -328,6 +331,7 @@ describe("User Profiles Security Rules", () => {
                     .doc(userId)
                     .set({
                         uid: userId,
+                        role: "student",
                         displayName: "a".repeat(100),
                         email: "test@example.com",
                         photoURL: null,
@@ -385,6 +389,7 @@ describe("User Profiles Security Rules", () => {
                     .doc(userId)
                     .set({
                         uid: userId,
+                        role: "student",
                         displayName: "Test User",
                         email: "test@example.com",
                         photoURL: "a".repeat(2048),

@@ -1,7 +1,7 @@
 ﻿<script lang="ts">
     import { m } from "$lib/paraglide/messages";
-    import { SvelteMap } from "svelte/reactivity";
-    import { Send, ArrowLeft } from "@lucide/svelte";
+    import { SvelteMap, SvelteSet } from "svelte/reactivity";
+    import { Send, ArrowLeft, ChevronDown, ChevronRight } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import TypewriterText from "$lib/components/conversation/TypewriterText.svelte";
     import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
@@ -11,6 +11,7 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api, type Conversation } from "$lib/api";
+    import type { AssessmentResult } from "mentora-firebase";
     import {
         resolveConversationStage,
         TOTAL_CONVERSATION_STAGES,
@@ -116,6 +117,86 @@
     let responseToType = $state("");
     let questionToType = $state("");
     let sendErrorCode = $state<string | null>(null);
+
+    // Assessment state
+    let assessmentData = $state<AssessmentResult | null>(null);
+    let assessmentLoading = $state(false);
+    let assessmentLoadAttempted = $state(false);
+    let assessmentScoreCompletion = $state<number | null>(null);
+    let expandedDimensions = new SvelteSet<string>();
+
+    const assessmentDimensions = [
+        { key: "argumentQuality", label: "論證品質" },
+        { key: "criticalThinking", label: "批判思考" },
+        { key: "principleExtraction", label: "原則提煉" },
+        { key: "openness", label: "開放性" },
+        { key: "coherence", label: "論述連貫性" },
+    ] as const;
+
+    function polarToCartesian(
+        cx: number,
+        cy: number,
+        radius: number,
+        angleDeg: number,
+    ) {
+        const rad = ((angleDeg - 90) * Math.PI) / 180;
+        return {
+            x: cx + radius * Math.cos(rad),
+            y: cy + radius * Math.sin(rad),
+        };
+    }
+
+    function getRadarPolygonPoints(
+        dimensions: Record<string, { score: number }>,
+        cx: number,
+        cy: number,
+        maxR: number,
+    ) {
+        return assessmentDimensions.map((dim, i) => {
+            const angle = i * 72;
+            const score = dimensions[dim.key]?.score ?? 0;
+            const r = (score / 5) * maxR;
+            return polarToCartesian(cx, cy, r, angle);
+        });
+    }
+
+    function toggleDimension(key: string) {
+        if (expandedDimensions.has(key)) {
+            expandedDimensions.delete(key);
+        } else {
+            expandedDimensions.add(key);
+        }
+    }
+
+    $effect(() => {
+        if (
+            isConversationClosed &&
+            conversation?.assignmentId &&
+            !assessmentLoadAttempted
+        ) {
+            loadAssessment(conversation.assignmentId);
+        }
+    });
+
+    async function loadAssessment(assignmentId: string) {
+        assessmentLoading = true;
+        assessmentLoadAttempted = true;
+        try {
+            const res = await api.submissions.getMine(assignmentId);
+            if (res.success && res.data) {
+                if (res.data.assessment) {
+                    assessmentData = res.data.assessment;
+                }
+                if (res.data.scoreCompletion != null) {
+                    assessmentScoreCompletion = res.data.scoreCompletion;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load assessment", e);
+        } finally {
+            assessmentLoading = false;
+        }
+    }
 
     function resolveConversationIntro(assignment: unknown): string {
         if (!assignment || typeof assignment !== "object") {
@@ -530,7 +611,11 @@
 
 <PageHead title="Conversation" />
 
-<div class="conversation-container">
+<div
+    class={isConversationClosed
+        ? "conversation-container conversation-closed"
+        : "conversation-container"}
+>
     <div class="background"></div>
 
     <div class="content relative">
@@ -683,6 +768,212 @@
                 </div>
             </div>
         {/if}
+
+        <!-- Assessment Results Section (shown when conversation is closed) -->
+        {#if isConversationClosed}
+            <div class="assessment-section">
+                {#if assessmentLoading}
+                    <div class="flex items-center justify-center py-12">
+                        <div class="animate-pulse text-white/50">
+                            載入評估結果中...
+                        </div>
+                    </div>
+                {:else if assessmentData}
+                    <div class="mx-auto w-full max-w-2xl px-6 py-8">
+                        <h2 class="mb-6 font-serif text-2xl text-white">
+                            學習評估
+                        </h2>
+
+                        <!-- Radar Chart -->
+                        <div class="mb-8 flex justify-center">
+                            <svg
+                                viewBox="0 0 200 200"
+                                width="200"
+                                height="200"
+                                class="drop-shadow-lg"
+                            >
+                                <!-- Grid rings -->
+                                {#each [1, 2, 3, 4, 5] as level (level)}
+                                    {@const r = (level / 5) * 80}
+                                    <polygon
+                                        points={assessmentDimensions
+                                            .map((_, i) => {
+                                                const pt = polarToCartesian(
+                                                    100,
+                                                    100,
+                                                    r,
+                                                    i * 72,
+                                                );
+                                                return `${pt.x},${pt.y}`;
+                                            })
+                                            .join(" ")}
+                                        fill="none"
+                                        stroke="rgba(255,255,255,0.15)"
+                                        stroke-width="0.5"
+                                    />
+                                {/each}
+                                <!-- Axis lines -->
+                                <!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+                                {#each assessmentDimensions as _dim, i (i)}
+                                    {@const pt = polarToCartesian(
+                                        100,
+                                        100,
+                                        80,
+                                        i * 72,
+                                    )}
+                                    <line
+                                        x1="100"
+                                        y1="100"
+                                        x2={pt.x}
+                                        y2={pt.y}
+                                        stroke="rgba(255,255,255,0.1)"
+                                        stroke-width="0.5"
+                                    />
+                                {/each}
+                                <!-- Data polygon & points -->
+                                {#each [getRadarPolygonPoints(assessmentData.dimensions, 100, 100, 80)] as pts, i (i)}
+                                    <polygon
+                                        points={pts
+                                            .map((p) => `${p.x},${p.y}`)
+                                            .join(" ")}
+                                        fill="rgba(251, 191, 36, 0.25)"
+                                        stroke="#fbbf24"
+                                        stroke-width="2"
+                                    />
+                                    {#each pts as pt, i (i)}
+                                        <circle
+                                            cx={pt.x}
+                                            cy={pt.y}
+                                            r="3"
+                                            fill="#fbbf24"
+                                        />
+                                    {/each}
+                                {/each}
+                                <!-- Labels -->
+                                {#each assessmentDimensions as dim, i (dim.key)}
+                                    {@const labelPt = polarToCartesian(
+                                        100,
+                                        100,
+                                        95,
+                                        i * 72,
+                                    )}
+                                    <text
+                                        x={labelPt.x}
+                                        y={labelPt.y}
+                                        text-anchor="middle"
+                                        dominant-baseline="middle"
+                                        fill="rgba(255,255,255,0.8)"
+                                        font-size="10">{dim.label}</text
+                                    >
+                                {/each}
+                            </svg>
+                        </div>
+
+                        <!-- Overall Score -->
+                        <div
+                            class="mb-6 rounded-xl border border-white/10 bg-white/5 p-5 text-center backdrop-blur-sm"
+                        >
+                            <div class="mb-1 text-sm text-white/60">
+                                整體分數
+                            </div>
+                            <div class="text-brand-gold font-serif text-4xl">
+                                {assessmentData.overallScore.toFixed(1)}
+                                <span class="text-lg text-white/40">/ 5</span>
+                            </div>
+                        </div>
+
+                        <!-- Overall Feedback -->
+                        {#if assessmentData.overallFeedback}
+                            <div
+                                class="mb-6 rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm"
+                            >
+                                <div
+                                    class="mb-2 text-sm font-medium text-white/60"
+                                >
+                                    整體回饋
+                                </div>
+                                <p class="leading-relaxed text-white/90">
+                                    {assessmentData.overallFeedback}
+                                </p>
+                            </div>
+                        {/if}
+
+                        <!-- Dimension Scores -->
+                        <div class="mb-6 space-y-2">
+                            {#each assessmentDimensions as dim (dim.key)}
+                                {@const dimData =
+                                    assessmentData.dimensions[dim.key]}
+                                {#if dimData}
+                                    <div
+                                        class="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm"
+                                    >
+                                        <button
+                                            class="flex w-full cursor-pointer items-center justify-between p-4 text-left"
+                                            onclick={() =>
+                                                toggleDimension(dim.key)}
+                                        >
+                                            <div
+                                                class="flex items-center gap-3"
+                                            >
+                                                {#if expandedDimensions.has(dim.key)}
+                                                    <ChevronDown
+                                                        class="h-4 w-4 text-white/50"
+                                                    />
+                                                {:else}
+                                                    <ChevronRight
+                                                        class="h-4 w-4 text-white/50"
+                                                    />
+                                                {/if}
+                                                <span class="text-white"
+                                                    >{dim.label}</span
+                                                >
+                                            </div>
+                                            <span
+                                                class="text-brand-gold font-serif text-lg"
+                                                >{dimData.score}<span
+                                                    class="text-sm text-white/40"
+                                                    >/5</span
+                                                ></span
+                                            >
+                                        </button>
+                                        {#if expandedDimensions.has(dim.key) && dimData.feedback}
+                                            <div
+                                                class="border-t border-white/5 px-4 pt-3 pb-4"
+                                            >
+                                                <p
+                                                    class="text-sm leading-relaxed text-white/70"
+                                                >
+                                                    {dimData.feedback}
+                                                </p>
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {/if}
+                            {/each}
+                        </div>
+
+                        <!-- Teacher Score -->
+                        <div
+                            class="rounded-xl border border-white/10 bg-white/5 p-5 text-center backdrop-blur-sm"
+                        >
+                            <div class="mb-1 text-sm text-white/60">
+                                教師評分
+                            </div>
+                            {#if assessmentScoreCompletion != null}
+                                <div class="font-serif text-2xl text-white">
+                                    {assessmentScoreCompletion}
+                                    <span class="text-sm text-white/40"
+                                        >/ 100</span
+                                    >
+                                </div>
+                            {:else}
+                                <div class="text-white/40">尚未評分</div>
+                            {/if}
+                        </div>
+                    </div>
+                {/if}
+            </div>
+        {/if}
     </div>
 </div>
 
@@ -691,6 +982,12 @@
         position: fixed;
         inset: 0;
         overflow: hidden;
+    }
+
+    .conversation-container.conversation-closed {
+        position: relative;
+        min-height: 100vh;
+        overflow: auto;
     }
 
     .background {
@@ -703,6 +1000,10 @@
             #4a4a4a 100%
         );
         z-index: -1;
+    }
+
+    .conversation-container.conversation-closed .background {
+        position: fixed;
     }
 
     .background::before {
@@ -932,5 +1233,13 @@
             transform: translateY(0);
             opacity: 1;
         }
+    }
+
+    .assessment-section {
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .conversation-container.conversation-closed .content {
+        min-height: 100vh;
     }
 </style>

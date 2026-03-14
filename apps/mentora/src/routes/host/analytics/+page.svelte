@@ -12,6 +12,9 @@
         ArrowRight,
         Download,
         Clock,
+        Radar,
+        BarChart3,
+        AlertTriangle,
     } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import { api } from "$lib/api";
@@ -30,6 +33,23 @@
             name: string;
         }[];
         wordCloud: { text: string; value: number; sentiment: string }[];
+        assessmentOverview?: {
+            avgScores: {
+                argumentQuality: number;
+                criticalThinking: number;
+                principleExtraction: number;
+                openness: number;
+                coherence: number;
+                overall: number;
+            };
+            scoreDistribution: Array<{ range: string; count: number }>;
+            needsAttention: Array<{
+                studentName: string;
+                courseTitle: string;
+                overallScore: number;
+                weakestDimension: string;
+            }>;
+        };
     };
 
     // State
@@ -73,6 +93,53 @@
     let wordCloudData = $state<
         { text: string; value: number; sentiment: string }[]
     >([]);
+    let assessmentOverview =
+        $state<DashboardResponse["assessmentOverview"]>(undefined);
+
+    // Radar chart helpers
+    const radarDimensions = [
+        { key: "argumentQuality" as const, label: "論證品質" },
+        { key: "criticalThinking" as const, label: "批判思考" },
+        { key: "principleExtraction" as const, label: "原則提煉" },
+        { key: "openness" as const, label: "開放性" },
+        { key: "coherence" as const, label: "連貫性" },
+    ];
+
+    function polarToCartesian(
+        centerX: number,
+        centerY: number,
+        radius: number,
+        angleInDegrees: number,
+    ) {
+        const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
+        return {
+            x: centerX + radius * Math.cos(angleInRadians),
+            y: centerY + radius * Math.sin(angleInRadians),
+        };
+    }
+
+    function getRadarPoints(
+        scores: DashboardResponse["assessmentOverview"] extends undefined
+            ? never
+            : NonNullable<DashboardResponse["assessmentOverview"]>["avgScores"],
+        cx: number,
+        cy: number,
+        maxRadius: number,
+    ) {
+        return radarDimensions.map((dim, i) => {
+            const angle = i * 72;
+            const value = scores[dim.key];
+            const radius = (value / 5) * maxRadius;
+            return polarToCartesian(cx, cy, radius, angle);
+        });
+    }
+
+    const barColors = [
+        "from-red-500 to-red-400",
+        "from-orange-500 to-yellow-400",
+        "from-yellow-400 to-green-400",
+        "from-green-500 to-green-400",
+    ];
 
     onMount(async () => {
         if (!api.isAuthenticated) await api.authReady;
@@ -90,6 +157,7 @@
                 overview = res.data.overview;
                 spectrumData = res.data.spectrum;
                 wordCloudData = res.data.wordCloud;
+                assessmentOverview = res.data.assessmentOverview;
             } else {
                 console.warn("Analytics API unavailable:", res.error);
             }
@@ -324,6 +392,279 @@
                         Neutral Concepts
                     </div>
                 </div>
+            </GlassCard>
+        </div>
+
+        <!-- Assessment Overview: Radar Chart + Score Distribution -->
+        <div class="mb-8 grid gap-8 lg:grid-cols-2">
+            <!-- Radar Chart -->
+            <GlassCard className="flex flex-col">
+                <div class="mb-6">
+                    <h3
+                        class="flex items-center gap-2 font-serif text-xl text-white"
+                    >
+                        <Radar class="text-brand-gold h-5 w-5" />
+                        學習評估概覽
+                    </h3>
+                    <p class="text-text-secondary text-sm">
+                        五維度班級平均分數
+                    </p>
+                </div>
+
+                {#if assessmentOverview}
+                    {@const cx = 150}
+                    {@const cy = 150}
+                    {@const maxR = 110}
+                    {@const scores = assessmentOverview.avgScores}
+                    {@const dataPoints = getRadarPoints(scores, cx, cy, maxR)}
+                    {@const dataPath =
+                        dataPoints
+                            .map(
+                                (p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`,
+                            )
+                            .join(" ") + " Z"}
+
+                    <div class="flex flex-1 items-center justify-center p-4">
+                        <svg
+                            viewBox="0 0 300 300"
+                            class="h-full w-full max-w-[300px]"
+                        >
+                            <!-- Grid rings -->
+                            {#each [1, 2, 3, 4, 5] as level (level)}
+                                {@const r = (level / 5) * maxR}
+                                {@const ringPoints = Array.from(
+                                    { length: 5 },
+                                    (_, i) =>
+                                        polarToCartesian(cx, cy, r, i * 72),
+                                )}
+                                {@const ringPath =
+                                    ringPoints
+                                        .map(
+                                            (p, i) =>
+                                                `${i === 0 ? "M" : "L"}${p.x},${p.y}`,
+                                        )
+                                        .join(" ") + " Z"}
+                                <path
+                                    d={ringPath}
+                                    fill="none"
+                                    stroke="white"
+                                    stroke-opacity="0.1"
+                                    stroke-width="1"
+                                />
+                            {/each}
+
+                            <!-- Axis lines -->
+                            <!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+                            {#each radarDimensions as _dim, i (i)}
+                                {@const end = polarToCartesian(
+                                    cx,
+                                    cy,
+                                    maxR,
+                                    i * 72,
+                                )}
+                                <line
+                                    x1={cx}
+                                    y1={cy}
+                                    x2={end.x}
+                                    y2={end.y}
+                                    stroke="white"
+                                    stroke-opacity="0.15"
+                                    stroke-width="1"
+                                />
+                            {/each}
+
+                            <!-- Data polygon -->
+                            <path
+                                d={dataPath}
+                                fill="rgba(234, 179, 8, 0.25)"
+                                stroke="rgb(234, 179, 8)"
+                                stroke-width="2"
+                            />
+
+                            <!-- Data points -->
+                            {#each dataPoints as point, i (i)}
+                                <circle
+                                    cx={point.x}
+                                    cy={point.y}
+                                    r="4"
+                                    fill="rgb(234, 179, 8)"
+                                />
+                            {/each}
+
+                            <!-- Labels -->
+                            {#each radarDimensions as dim, i (dim.key)}
+                                {@const labelPos = polarToCartesian(
+                                    cx,
+                                    cy,
+                                    maxR + 24,
+                                    i * 72,
+                                )}
+                                {@const score = scores[dim.key]}
+                                <text
+                                    x={labelPos.x}
+                                    y={labelPos.y}
+                                    text-anchor="middle"
+                                    dominant-baseline="middle"
+                                    fill="white"
+                                    font-size="12"
+                                    class="font-serif"
+                                >
+                                    {dim.label}
+                                </text>
+                                <text
+                                    x={labelPos.x}
+                                    y={labelPos.y + 14}
+                                    text-anchor="middle"
+                                    dominant-baseline="middle"
+                                    fill="rgb(234, 179, 8)"
+                                    font-size="11"
+                                    font-weight="bold"
+                                >
+                                    {score.toFixed(1)}
+                                </text>
+                            {/each}
+                        </svg>
+                    </div>
+                {:else}
+                    <div
+                        class="text-text-secondary flex flex-1 items-center justify-center text-sm"
+                    >
+                        暫無評估數據
+                    </div>
+                {/if}
+            </GlassCard>
+
+            <!-- Score Distribution Bar Chart -->
+            <GlassCard className="flex flex-col">
+                <div class="mb-6">
+                    <h3
+                        class="flex items-center gap-2 font-serif text-xl text-white"
+                    >
+                        <BarChart3 class="text-brand-gold h-5 w-5" />
+                        分數分佈
+                    </h3>
+                    <p class="text-text-secondary text-sm">
+                        各分數區間學生人數
+                    </p>
+                </div>
+
+                {#if assessmentOverview}
+                    {@const distribution = assessmentOverview.scoreDistribution}
+                    {@const maxCount = Math.max(
+                        ...distribution.map((d) => d.count),
+                        1,
+                    )}
+
+                    <div class="flex flex-1 flex-col justify-center gap-4 px-4">
+                        {#each distribution as bucket, i (bucket.range)}
+                            <div class="flex items-center gap-3">
+                                <span
+                                    class="w-10 text-right font-mono text-sm text-white"
+                                    >{bucket.range}</span
+                                >
+                                <div
+                                    class="relative h-8 flex-1 overflow-hidden rounded-md bg-white/5"
+                                >
+                                    <div
+                                        class="bg-linear-to-r {barColors[i] ??
+                                            barColors[
+                                                barColors.length - 1
+                                            ]} flex h-full items-center rounded-md transition-all duration-700"
+                                        style="width: {(bucket.count /
+                                            maxCount) *
+                                            100}%;"
+                                    >
+                                        <span
+                                            class="px-2 text-xs font-bold text-white drop-shadow"
+                                            >{bucket.count}</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <div
+                        class="text-text-secondary flex flex-1 items-center justify-center text-sm"
+                    >
+                        暫無評估數據
+                    </div>
+                {/if}
+            </GlassCard>
+        </div>
+
+        <!-- Needs Attention List -->
+        <div class="mb-8">
+            <GlassCard>
+                <div class="mb-4">
+                    <h3
+                        class="flex items-center gap-2 font-serif text-xl text-white"
+                    >
+                        <AlertTriangle class="h-5 w-5 text-amber-400" />
+                        需關注學生
+                    </h3>
+                    <p class="text-text-secondary text-sm">
+                        整體評分低於 2.5 的學生
+                    </p>
+                </div>
+
+                {#if assessmentOverview}
+                    {#if assessmentOverview.needsAttention.length > 0}
+                        <div class="space-y-2">
+                            {#each assessmentOverview.needsAttention as student (student.studentName + student.courseTitle)}
+                                <div
+                                    class="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 transition-colors hover:bg-amber-500/10"
+                                >
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-400"
+                                        >
+                                            <AlertTriangle class="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <div
+                                                class="text-sm font-medium text-white"
+                                            >
+                                                {student.studentName}
+                                            </div>
+                                            <div
+                                                class="text-text-secondary text-xs"
+                                            >
+                                                {student.courseTitle}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-4">
+                                        <div class="text-right">
+                                            <div
+                                                class="font-mono text-sm font-bold text-amber-400"
+                                            >
+                                                {student.overallScore.toFixed(
+                                                    1,
+                                                )}
+                                            </div>
+                                            <div
+                                                class="text-text-secondary text-xs"
+                                            >
+                                                弱項: {student.weakestDimension}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    {:else}
+                        <div
+                            class="text-text-secondary py-8 text-center text-sm"
+                        >
+                            目前沒有需要特別關注的學生
+                        </div>
+                    {/if}
+                {:else}
+                    <div class="text-text-secondary py-8 text-center text-sm">
+                        暫無評估數據
+                    </div>
+                {/if}
             </GlassCard>
         </div>
 

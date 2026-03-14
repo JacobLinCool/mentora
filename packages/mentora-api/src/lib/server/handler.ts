@@ -221,12 +221,13 @@ export class MentoraServerHandler {
 		try {
 			return await route.handler(ctx, request);
 		} catch (error) {
-			console.error('Route handler error:', error);
-
-			// Check if it's already a Response (e.g., from errorResponse)
+			// Thrown Response objects are expected control-flow (e.g. errorResponse 404/403).
+			// Only log unexpected errors as console.error.
 			if (error instanceof Response) {
 				return error;
 			}
+
+			console.error('Route handler error:', error);
 
 			// Handle known error types — redact sensitive details from client response
 			if (error instanceof Error) {

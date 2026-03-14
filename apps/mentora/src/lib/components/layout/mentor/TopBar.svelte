@@ -28,15 +28,11 @@
             }
         };
 
-        if (api.isAuthenticated) {
-            subscribeUnreadCount();
-        } else {
-            api.authReady.then(() => {
-                if (!disposed && api.isAuthenticated) {
-                    subscribeUnreadCount();
-                }
-            });
-        }
+        api.authReady.then(() => {
+            if (!disposed && api.isAuthenticated) {
+                subscribeUnreadCount();
+            }
+        });
 
         return () => {
             disposed = true;

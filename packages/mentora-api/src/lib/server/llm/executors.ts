@@ -29,19 +29,14 @@ export const EXECUTOR_MODEL = {
 } as const;
 
 /**
- * Singleton instances for each executor type
- * Reused across requests for efficiency
+ * Singleton GoogleGenAI client (stateless, safe to share across requests)
  */
-let promptExecutorInstance: PromptExecutor | null = null;
-let asrExecutorInstance: ASRExecutor | null = null;
-let contentExecutorInstance: ContentExecutor | null = null;
-let ttsExecutorInstance: TTSExecutor | null = null;
 let genaiInstance: GoogleGenAI | null = null;
 
 /**
  * Get or create the shared GoogleGenAI client
  */
-function getGenAIClient(): GoogleGenAI {
+export function getGenAIClient(): GoogleGenAI {
 	if (genaiInstance) {
 		return genaiInstance;
 	}
@@ -51,80 +46,53 @@ function getGenAIClient(): GoogleGenAI {
 }
 
 /**
- * Get or create the GeminiPromptExecutor singleton
+ * Create a new GeminiPromptExecutor instance
  *
- * Used for structured dialogue prompts with JSON schema validation.
+ * Returns a fresh instance per call to avoid shared mutable token usage state
+ * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
 export function getPromptExecutor(): PromptExecutor {
-	if (promptExecutorInstance) {
-		return promptExecutorInstance;
-	}
-
 	const genai = getGenAIClient();
-	promptExecutorInstance = new GeminiPromptExecutor(genai, EXECUTOR_MODEL.PROMPT);
-
-	return promptExecutorInstance;
+	return new GeminiPromptExecutor(genai, EXECUTOR_MODEL.PROMPT);
 }
 
 /**
- * Get or create the GeminiASRExecutor singleton
+ * Create a new GeminiASRExecutor instance
  *
- * Used for transcribing audio to text in traditional Chinese.
+ * Returns a fresh instance per call to avoid shared mutable token usage state
+ * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
 export function getASRExecutor(): ASRExecutor {
-	if (asrExecutorInstance) {
-		return asrExecutorInstance;
-	}
-
 	const genai = getGenAIClient();
-	asrExecutorInstance = new GeminiASRExecutor(genai, EXECUTOR_MODEL.ASR);
-
-	return asrExecutorInstance;
+	return new GeminiASRExecutor(genai, EXECUTOR_MODEL.ASR);
 }
 
 /**
- * Get or create the GeminiContentExecutor singleton
+ * Create a new GeminiContentExecutor instance
  *
- * Used for generating educational reference content from questions.
- * Includes Google Search retrieval for up-to-date information.
- *
- * @throws Error if GOOGLE_GENAI_API_KEY is not configured
+ * Returns a fresh instance per call to avoid shared mutable token usage state
+ * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
 export function getContentExecutor(): ContentExecutor {
-	if (contentExecutorInstance) {
-		return contentExecutorInstance;
-	}
-
 	const genai = getGenAIClient();
-	contentExecutorInstance = new GeminiContentExecutor(genai, EXECUTOR_MODEL.CONTENT);
-
-	return contentExecutorInstance;
+	return new GeminiContentExecutor(genai, EXECUTOR_MODEL.CONTENT);
 }
 
 /**
- * Get or create the GeminiTTSExecutor singleton
+ * Create a new GeminiTTSExecutor instance
  *
- * Used for synthesizing text to speech in traditional Chinese.
+ * Returns a fresh instance per call to avoid shared mutable token usage state
+ * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
 export function getTTSExecutor(): TTSExecutor {
-	if (ttsExecutorInstance) {
-		return ttsExecutorInstance;
-	}
-
 	const genai = getGenAIClient();
-	ttsExecutorInstance = new GeminiTTSExecutor(genai, EXECUTOR_MODEL.TTS);
-
-	return ttsExecutorInstance;
+	return new GeminiTTSExecutor(genai, EXECUTOR_MODEL.TTS);
 }
 
 /**
- * Reset all executor instances
+ * Reset the shared GoogleGenAI client
  * Useful for testing or forcing re-initialization
  */
 export function resetExecutors(): void {
-	promptExecutorInstance = null;
-	asrExecutorInstance = null;
-	contentExecutorInstance = null;
-	ttsExecutorInstance = null;
 	genaiInstance = null;
 }
