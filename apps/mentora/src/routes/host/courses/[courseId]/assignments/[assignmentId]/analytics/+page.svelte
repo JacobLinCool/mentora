@@ -141,8 +141,17 @@
         return new Date(ts).toLocaleString("zh-TW");
     }
 
+    function escapeHtml(str: string): string {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     function renderMarkdown(md: string): string {
-        return md
+        return escapeHtml(md)
             .replace(/### (.+)/g, '<h3 class="text-lg font-serif text-white mt-4 mb-2">$1</h3>')
             .replace(/## (.+)/g, '<h2 class="text-xl font-serif text-white mt-6 mb-3">$1</h2>')
             .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")

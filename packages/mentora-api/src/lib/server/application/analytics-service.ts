@@ -4,7 +4,6 @@ import type {
 	ClassReport,
 	Conversation,
 	MessageStance,
-	Submission,
 	TokenUsageTotals
 } from 'mentora-firebase';
 import { createEmptyTokenUsageTotals, sumTokenUsageTotals } from '../llm/token-usage.js';
@@ -183,6 +182,10 @@ export type AssignmentAnalytics = {
 
 export class AnalyticsService {
 	constructor(private readonly analyticsRepository: IAnalyticsRepository) {}
+
+	async listOwnedCourseIds(ownerId: string): Promise<string[]> {
+		return this.analyticsRepository.listOwnedCourseIds(ownerId);
+	}
 
 	async getDashboard(ownerId: string) {
 		const courseIds = await this.analyticsRepository.listOwnedCourseIds(ownerId);
@@ -629,10 +632,7 @@ export class AnalyticsService {
 		}
 
 		// Pick up to 3 excerpts from each side
-		const excerpts: StanceExcerpt[] = [
-			...proExcerpts.slice(0, 3),
-			...conExcerpts.slice(0, 3)
-		];
+		const excerpts: StanceExcerpt[] = [...proExcerpts.slice(0, 3), ...conExcerpts.slice(0, 3)];
 
 		// Scores table
 		let overallScoreSum = 0;
@@ -659,7 +659,7 @@ export class AnalyticsService {
 				},
 				submittedAt: sub.submittedAt ?? null,
 				late: sub.late,
-				conversationId: conv ? `${conv.assignmentId}_${conv.userId}` : null
+				conversationId: conv ? `${conv.userId}_${conv.assignmentId}` : null
 			});
 		}
 
@@ -681,10 +681,10 @@ export class AnalyticsService {
 		courseId: string,
 		genai: GoogleGenAI,
 		model: string
-	): Promise<ClassReport> {
+	): Promise<ClassReport | null> {
 		const assignment = await this.analyticsRepository.getAssignment(assignmentId);
 		if (!assignment || assignment.courseId !== courseId) {
-			throw new Error('Assignment not found');
+			return null;
 		}
 
 		const roster = await this.analyticsRepository.listActiveRoster(courseId);
@@ -710,9 +710,7 @@ export class AnalyticsService {
 		for (const conv of conversations) {
 			if (!studentIds.has(conv.userId)) continue;
 			const studentTurns = conv.turns.filter((_, i) => i % 2 === 0);
-			const stances = studentTurns
-				.filter((t) => t.analysis?.stance)
-				.map((t) => t.analysis!.stance);
+			const stances = studentTurns.filter((t) => t.analysis?.stance).map((t) => t.analysis!.stance);
 			const keyTexts = studentTurns.slice(-2).map((t) => t.text.slice(0, 200));
 
 			const sub = studentSubmissions.find((s) => s.userId === conv.userId);
@@ -722,9 +720,7 @@ export class AnalyticsService {
 				[
 					`立場變化: ${stances.join(' → ')}`,
 					`關鍵發言: ${keyTexts.join(' | ')}`,
-					assessment
-						? `評估分數: 整體 ${assessment.overallScore}/5`
-						: '評估: 尚未評估'
+					assessment ? `評估分數: 整體 ${assessment.overallScore}/5` : '評估: 尚未評估'
 				].join('\n')
 			);
 		}

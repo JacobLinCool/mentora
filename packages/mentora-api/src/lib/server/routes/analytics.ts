@@ -43,15 +43,23 @@ async function getTokenUsage(ctx: RouteContext, request: Request): Promise<Respo
  * Get per-assignment analytics data
  */
 async function getAssignmentAnalytics(ctx: RouteContext, request: Request): Promise<Response> {
-	requireAuth(ctx);
+	const user = requireAuth(ctx);
 	const assignmentId = requireParam(ctx, 'assignmentId');
 	const url = new URL(request.url);
 	const courseId = url.searchParams.get('courseId');
 	if (!courseId) {
-		throw errorResponse('courseId is required', HttpStatus.BAD_REQUEST, ServerErrorCode.INVALID_INPUT);
+		throw errorResponse(
+			'courseId is required',
+			HttpStatus.BAD_REQUEST,
+			ServerErrorCode.INVALID_INPUT
+		);
 	}
 
 	const { analyticsService } = createServiceContainer(ctx);
+	const ownedCourses = await analyticsService.listOwnedCourseIds(user.uid);
+	if (!ownedCourses.includes(courseId)) {
+		throw errorResponse('Forbidden', HttpStatus.FORBIDDEN, ServerErrorCode.PERMISSION_DENIED);
+	}
 	const data = await analyticsService.getAssignmentAnalytics(assignmentId, courseId);
 	if (!data) {
 		throw errorResponse('Assignment not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
@@ -64,7 +72,7 @@ async function getAssignmentAnalytics(ctx: RouteContext, request: Request): Prom
  * Generate AI class report for an assignment
  */
 async function generateClassReport(ctx: RouteContext, request: Request): Promise<Response> {
-	requireAuth(ctx);
+	const user = requireAuth(ctx);
 	const body = (await request.json()) as { assignmentId?: string; courseId?: string };
 	const { assignmentId, courseId } = body;
 	if (!assignmentId || !courseId) {
@@ -76,6 +84,10 @@ async function generateClassReport(ctx: RouteContext, request: Request): Promise
 	}
 
 	const { analyticsService } = createServiceContainer(ctx);
+	const ownedCourses = await analyticsService.listOwnedCourseIds(user.uid);
+	if (!ownedCourses.includes(courseId)) {
+		throw errorResponse('Forbidden', HttpStatus.FORBIDDEN, ServerErrorCode.PERMISSION_DENIED);
+	}
 	const genai = getGenAIClient();
 	const classReport = await analyticsService.generateClassReport(
 		assignmentId,
@@ -83,6 +95,9 @@ async function generateClassReport(ctx: RouteContext, request: Request): Promise
 		genai,
 		EXECUTOR_MODEL.CONTENT
 	);
+	if (!classReport) {
+		throw errorResponse('Assignment not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
+	}
 	return jsonResponse(classReport);
 }
 

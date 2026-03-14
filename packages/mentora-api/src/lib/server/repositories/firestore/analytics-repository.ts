@@ -62,10 +62,7 @@ export class FirestoreAnalyticsRepository implements IAnalyticsRepository {
 		return Assignments.schema.parse(doc.data());
 	}
 
-	async updateAssignmentClassReport(
-		assignmentId: string,
-		classReport: ClassReport
-	): Promise<void> {
+	async updateAssignmentClassReport(assignmentId: string, classReport: ClassReport): Promise<void> {
 		await this.firestore.doc(Assignments.docPath(assignmentId)).update({ classReport });
 	}
 }
