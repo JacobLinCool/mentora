@@ -2,12 +2,15 @@ import type { Firestore } from 'fires2rest';
 import {
 	AssignmentSubmissions,
 	Assignments,
+	ConversationMetadata,
 	Conversations,
 	Courses,
+	zDialogueStateDisplay,
 	type Assignment,
 	type ClassReport,
 	type Conversation,
 	type CourseMembership,
+	type DialogueStateDisplay,
 	type Submission
 } from 'mentora-firebase';
 import type { IAnalyticsRepository } from '../ports/analytics-repository.js';
@@ -46,12 +49,29 @@ export class FirestoreAnalyticsRepository implements IAnalyticsRepository {
 		return snapshot.docs.map((doc) => AssignmentSubmissions.schema.parse(doc.data()));
 	}
 
-	async listConversationsByAssignment(assignmentId: string): Promise<Conversation[]> {
+	async listConversationsByAssignment(
+		assignmentId: string
+	): Promise<(Conversation & { id: string })[]> {
 		const snapshot = await this.firestore
 			.collection(Conversations.collectionPath())
 			.where('assignmentId', '==', assignmentId)
 			.get();
-		return snapshot.docs.map((doc) => Conversations.schema.parse(doc.data()));
+		return snapshot.docs.map((doc) => ({
+			id: doc.id,
+			...Conversations.schema.parse(doc.data())
+		}));
+	}
+
+	async getDialogueState(conversationId: string): Promise<DialogueStateDisplay | null> {
+		const doc = await this.firestore.doc(ConversationMetadata.statePath(conversationId)).get();
+		if (!doc.exists) {
+			return null;
+		}
+		try {
+			return zDialogueStateDisplay.parse(doc.data());
+		} catch {
+			return null;
+		}
 	}
 
 	async getAssignment(assignmentId: string): Promise<Assignment | null> {

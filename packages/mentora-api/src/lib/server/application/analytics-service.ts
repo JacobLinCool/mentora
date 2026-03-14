@@ -3,6 +3,7 @@ import type {
 	AssessmentResult,
 	ClassReport,
 	Conversation,
+	DialogueStateDisplay,
 	MessageStance,
 	TokenUsageTotals
 } from 'mentora-firebase';
@@ -177,6 +178,9 @@ export type AssignmentAnalytics = {
 		submittedAt: number | null;
 		late: boolean;
 		conversationId: string | null;
+		stanceHistory: DialogueStateDisplay['stanceHistory'] | null;
+		principleHistory: DialogueStateDisplay['principleHistory'] | null;
+		summary: string | null;
 	}>;
 };
 
@@ -591,9 +595,11 @@ export class AnalyticsService {
 
 		// Build conversation map by userId
 		const convByUser = new Map<string, Conversation>();
+		const convIdByUser = new Map<string, string>();
 		for (const conv of conversations) {
 			if (studentIds.has(conv.userId)) {
 				convByUser.set(conv.userId, conv);
+				convIdByUser.set(conv.userId, conv.id);
 			}
 		}
 
@@ -659,8 +665,22 @@ export class AnalyticsService {
 				},
 				submittedAt: sub.submittedAt ?? null,
 				late: sub.late,
-				conversationId: conv ? `${conv.userId}_${conv.assignmentId}` : null
+				conversationId: convIdByUser.get(sub.userId) ?? null,
+				stanceHistory: null,
+				principleHistory: null,
+				summary: null
 			});
+		}
+
+		// Fetch dialogue states
+		for (const score of scores) {
+			const convId = convIdByUser.get(score.userId);
+			if (convId) {
+				const state = await this.analyticsRepository.getDialogueState(convId);
+				score.stanceHistory = state?.stanceHistory ?? null;
+				score.principleHistory = state?.principleHistory ?? null;
+				score.summary = state?.summary ?? null;
+			}
 		}
 
 		return {
