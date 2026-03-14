@@ -11,6 +11,7 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api, type Conversation } from "$lib/api";
+    import type { AssessmentResult } from "mentora-firebase";
     import {
         resolveConversationStage,
         TOTAL_CONVERSATION_STAGES,
@@ -118,7 +119,7 @@
     let sendErrorCode = $state<string | null>(null);
 
     // Assessment state
-    let assessmentData = $state<Record<string, unknown> | null>(null);
+    let assessmentData = $state<AssessmentResult | null>(null);
     let assessmentLoading = $state(false);
     let assessmentLoadAttempted = $state(false);
     let assessmentScoreCompletion = $state<number | null>(null);
