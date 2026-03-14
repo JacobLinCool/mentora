@@ -129,7 +129,7 @@ export class AskingStanceHandler implements StageHandler {
             newState,
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "undetermined" },
+            stanceSnapshot: { stance: "neutral" },
         };
     }
 }
