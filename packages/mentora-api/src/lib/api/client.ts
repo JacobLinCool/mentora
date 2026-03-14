@@ -8,6 +8,7 @@ import type {
 	Assignment,
 	CourseDoc,
 	CourseMembership,
+	DialogueStateDisplay,
 	Questionnaire,
 	Submission,
 	Topic,
@@ -441,6 +442,8 @@ export class MentoraClient {
 			this.authReadyThen(() => ConversationsModule.createConversation(this._config, assignmentId)),
 		end: (conversationId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => ConversationsModule.endConversation(this._config, conversationId)),
+		getDialogueState: (conversationId: string): Promise<APIResult<DialogueStateDisplay>> =>
+			this.authReadyThen(() => ConversationsModule.getDialogueState(this._config, conversationId)),
 		addTurn: (
 			conversationId: string,
 			input:

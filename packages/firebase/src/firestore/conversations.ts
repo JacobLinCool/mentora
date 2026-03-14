@@ -183,3 +183,52 @@ export const Conversations = {
         joinPath("conversations", conversationId),
     schema: zConversation,
 } as const;
+
+// Minimal dialogue state schema for client-side display (excludes conversationHistory which is large)
+export const zDialogueStateDisplay = z.object({
+    stage: z.string(),
+    loopCount: z.number(),
+    stanceHistory: z.array(
+        z.object({
+            version: z.number(),
+            position: z.string(),
+            reason: z.string(),
+            establishedAt: z.number(),
+            confidence: z.number().optional(),
+        }),
+    ),
+    currentStance: z
+        .object({
+            version: z.number(),
+            position: z.string(),
+            reason: z.string(),
+            establishedAt: z.number(),
+            confidence: z.number().optional(),
+        })
+        .nullable(),
+    principleHistory: z.array(
+        z.object({
+            version: z.number(),
+            statement: z.string(),
+            classification: z.string().nullable(),
+            establishedAt: z.number(),
+        }),
+    ),
+    currentPrinciple: z
+        .object({
+            version: z.number(),
+            statement: z.string(),
+            classification: z.string().nullable(),
+            establishedAt: z.number(),
+        })
+        .nullable(),
+    summary: z.string().nullable(),
+    discussionSatisfied: z.boolean(),
+});
+export type DialogueStateDisplay = z.infer<typeof zDialogueStateDisplay>;
+
+export const ConversationMetadata = {
+    statePath: (conversationId: string) =>
+        joinPath("conversations", conversationId, "metadata", "state"),
+    stateSchema: zDialogueStateDisplay,
+} as const;
