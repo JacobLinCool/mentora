@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { page } from "$app/state";
+    import { resolve } from "$app/paths";
     import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
     import GlassCard from "$lib/components/ui/GlassCard.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
@@ -224,7 +225,7 @@
         <!-- Header -->
         <div class="mb-8">
             <a
-                href="/courses/{courseId}"
+                href={resolve(`/courses/${courseId}`)}
                 class="text-text-secondary hover:text-brand-gold mb-4 inline-flex items-center gap-2 text-sm transition-colors"
             >
                 <ArrowLeft class="h-4 w-4" />
@@ -450,6 +451,7 @@
                         {/if}
 
                         <div class="prose-invert text-text-secondary max-w-none text-sm leading-relaxed">
+                            <!-- eslint-disable svelte/no-at-html-tags -->
                             {@html renderMarkdown(data.classReport.content)}
                         </div>
                     {:else}
@@ -511,7 +513,7 @@
                                                 <td class="px-3 py-3 font-medium text-white">
                                                     {#if score.conversationId}
                                                         <a
-                                                            href="/conversations/{score.conversationId}"
+                                                            href={resolve(`/conversations/${score.conversationId}`)}
                                                             class="text-brand-gold hover:underline"
                                                         >
                                                             {score.name}

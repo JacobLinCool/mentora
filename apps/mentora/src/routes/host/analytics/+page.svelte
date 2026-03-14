@@ -430,7 +430,7 @@
                             class="h-full w-full max-w-[300px]"
                         >
                             <!-- Grid rings -->
-                            {#each [1, 2, 3, 4, 5] as level}
+                            {#each [1, 2, 3, 4, 5] as level (level)}
                                 {@const r = (level / 5) * maxR}
                                 {@const ringPoints = Array.from(
                                     { length: 5 },
@@ -454,7 +454,8 @@
                             {/each}
 
                             <!-- Axis lines -->
-                            {#each radarDimensions as _, i}
+                            <!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+                            {#each radarDimensions as _dim, i (i)}
                                 {@const end = polarToCartesian(
                                     cx,
                                     cy,
@@ -481,7 +482,7 @@
                             />
 
                             <!-- Data points -->
-                            {#each dataPoints as point}
+                            {#each dataPoints as point, i (i)}
                                 <circle
                                     cx={point.x}
                                     cy={point.y}
@@ -491,7 +492,7 @@
                             {/each}
 
                             <!-- Labels -->
-                            {#each radarDimensions as dim, i}
+                            {#each radarDimensions as dim, i (dim.key)}
                                 {@const labelPos = polarToCartesian(
                                     cx,
                                     cy,

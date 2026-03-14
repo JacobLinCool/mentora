@@ -1,6 +1,6 @@
 ﻿<script lang="ts">
     import { m } from "$lib/paraglide/messages";
-    import { SvelteMap } from "svelte/reactivity";
+    import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { Send, ArrowLeft, ChevronDown, ChevronRight } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import TypewriterText from "$lib/components/conversation/TypewriterText.svelte";
@@ -118,11 +118,11 @@
     let sendErrorCode = $state<string | null>(null);
 
     // Assessment state
-    let assessmentData = $state<any>(null);
+    let assessmentData = $state<Record<string, unknown> | null>(null);
     let assessmentLoading = $state(false);
     let assessmentLoadAttempted = $state(false);
     let assessmentScoreCompletion = $state<number | null>(null);
-    let expandedDimensions = $state<Set<string>>(new Set());
+    let expandedDimensions = new SvelteSet<string>();
 
     const assessmentDimensions = [
         { key: "argumentQuality", label: "論證品質" },
@@ -160,13 +160,11 @@
     }
 
     function toggleDimension(key: string) {
-        const next = new Set(expandedDimensions);
-        if (next.has(key)) {
-            next.delete(key);
+        if (expandedDimensions.has(key)) {
+            expandedDimensions.delete(key);
         } else {
-            next.add(key);
+            expandedDimensions.add(key);
         }
-        expandedDimensions = next;
     }
 
     $effect(() => {
@@ -794,7 +792,7 @@
                                 class="drop-shadow-lg"
                             >
                                 <!-- Grid rings -->
-                                {#each [1, 2, 3, 4, 5] as level}
+                                {#each [1, 2, 3, 4, 5] as level (level)}
                                     {@const r = (level / 5) * 80}
                                     <polygon
                                         points={assessmentDimensions
@@ -814,7 +812,8 @@
                                     />
                                 {/each}
                                 <!-- Axis lines -->
-                                {#each assessmentDimensions as _, i}
+                                <!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+                                {#each assessmentDimensions as _dim, i (i)}
                                     {@const pt = polarToCartesian(
                                         100,
                                         100,
@@ -831,7 +830,7 @@
                                     />
                                 {/each}
                                 <!-- Data polygon & points -->
-                                {#each [getRadarPolygonPoints(assessmentData.dimensions, 100, 100, 80)] as pts}
+                                {#each [getRadarPolygonPoints(assessmentData.dimensions, 100, 100, 80)] as pts, i (i)}
                                     <polygon
                                         points={pts
                                             .map((p) => `${p.x},${p.y}`)
@@ -840,7 +839,7 @@
                                         stroke="#fbbf24"
                                         stroke-width="2"
                                     />
-                                    {#each pts as pt}
+                                    {#each pts as pt, i (i)}
                                         <circle
                                             cx={pt.x}
                                             cy={pt.y}
@@ -850,7 +849,7 @@
                                     {/each}
                                 {/each}
                                 <!-- Labels -->
-                                {#each assessmentDimensions as dim, i}
+                                {#each assessmentDimensions as dim, i (dim.key)}
                                     {@const labelPt = polarToCartesian(
                                         100,
                                         100,
@@ -900,7 +899,7 @@
 
                         <!-- Dimension Scores -->
                         <div class="mb-6 space-y-2">
-                            {#each assessmentDimensions as dim}
+                            {#each assessmentDimensions as dim (dim.key)}
                                 {@const dimData =
                                     assessmentData.dimensions[dim.key]}
                                 {#if dimData}
