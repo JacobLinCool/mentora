@@ -25,7 +25,7 @@ async function getBackendHandler() {
 
 			return createServerHandler({
 				firestore: Firestore.useEmulator(),
-				projectId: 'mentora-dev',
+				projectId: 'demo-mentora',
 				useEmulator: true
 			});
 		})();

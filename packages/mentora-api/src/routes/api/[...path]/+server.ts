@@ -6,7 +6,7 @@ const firestore = Firestore.useEmulator();
 
 const handler = createServerHandler({
 	firestore,
-	projectId: 'mentora-dev',
+	projectId: 'demo-mentora',
 	useEmulator: true
 });
 
