@@ -1,6 +1,4 @@
 <script lang="ts">
-    import { m } from "$lib/paraglide/messages";
-
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api } from "$lib/api";
@@ -43,40 +41,39 @@
     }
 </script>
 
-<div
-    class="mb-6 rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md"
->
-    <h2 class="text-text-secondary font-serif-tc mb-4 text-sm tracking-wide">
-        {m.dashboard_upcoming_deadline()}
-    </h2>
-
-    <WeekCalendar
-        selectedDate={deadline?.date}
-        {deadlineDates}
-        {onDateSelect}
-    />
+<div class="mb-6">
+    <div class="mb-6">
+        <WeekCalendar
+            selectedDate={deadline?.date}
+            {deadlineDates}
+            {onDateSelect}
+        />
+    </div>
 
     {#if deadline}
-        <div class="mt-4 mb-4">
-            <button
-                class="text-text-primary flex w-full cursor-pointer items-center text-left transition-opacity hover:opacity-80"
-                onclick={handleEnterAssignment}
-            >
-                <span class="text-xl font-bold">{deadline.course}</span>
-                <span class="text-text-secondary mx-2">···</span>
-                <span class="text-text-secondary text-sm"
-                    >{deadline.assignment}</span
+        <button
+            class="group mb-4 flex w-full cursor-pointer items-center justify-between rounded-2xl bg-white/10 p-4 text-left shadow-lg shadow-black/10 backdrop-blur-md transition-all active:translate-y-0 active:scale-[0.98]"
+            onclick={handleEnterAssignment}
+        >
+            <div class="flex flex-col gap-1 pr-4">
+                <span class="text-lg font-medium text-white"
+                    >{deadline.course}</span
                 >
-            </button>
-        </div>
+                <span class="text-sm text-white/60">{deadline.assignment}</span>
+            </div>
 
-        <CountdownTimer targetDate={deadline.dueDate} />
+            <div class="flex shrink-0 items-center justify-end">
+                <CountdownTimer targetDate={deadline.dueDate} />
+            </div>
+        </button>
     {:else}
         <div
-            class="flex h-48 flex-col items-center justify-center text-center text-white/50"
+            class="rounded-2xl border border-white/10 bg-[#4C4C4C] p-8 text-center shadow-sm backdrop-blur-md"
         >
-            <p class="mb-2 text-lg font-medium">No upcoming deadlines</p>
-            <p class="text-sm">You are all caught up!</p>
+            <p class="mb-2 text-lg font-medium text-white/80">
+                No upcoming deadlines
+            </p>
+            <p class="text-sm text-white/50">You are all caught up!</p>
         </div>
     {/if}
 </div>

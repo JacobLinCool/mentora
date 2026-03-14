@@ -63,7 +63,11 @@
 <div class="min-h-screen bg-linear-to-br from-[#404040] to-[#858585] pb-24">
     <div class="mx-auto max-w-md px-6 pt-12 md:max-w-2xl lg:max-w-4xl">
         <!-- Header -->
-        <h1 class="mb-8 font-serif text-5xl text-white">{m.explore_title()}</h1>
+        <h1
+            class="font-serif-tc mb-8 text-3xl font-bold text-white md:text-4xl"
+        >
+            {m.explore_title()}
+        </h1>
 
         <!-- Search Bar -->
         <div class="relative mb-6">

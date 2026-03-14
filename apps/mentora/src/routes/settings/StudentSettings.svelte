@@ -57,25 +57,13 @@
     class="selection:bg-brand-gold min-h-screen w-full overflow-x-hidden bg-linear-to-br from-[#404040] to-[#858585] pb-24 font-sans text-white selection:text-white"
 >
     <main class="relative z-10 w-full">
-        <div class="mx-auto max-w-md px-6 pt-8 md:max-w-2xl lg:max-w-4xl">
+        <div class="mx-auto max-w-md px-6 pt-12 md:max-w-2xl lg:max-w-4xl">
             <div class="mb-8 flex items-center justify-between">
-                <h1 class="font-serif-tc text-3xl text-white md:text-4xl">
+                <h1
+                    class="font-serif-tc text-3xl font-bold text-white md:text-4xl"
+                >
                     {m.settings_title()}
                 </h1>
-
-                <div class="flex items-center gap-3">
-                    <button
-                        class="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 transition hover:border-white/30 hover:text-white"
-                        onclick={() => {
-                            setLocale(getNextLocale(getLocale()));
-                        }}
-                    >
-                        <Globe class="h-3.5 w-3.5" />
-                        <span class="tracking-wider uppercase">
-                            {getLocale() === "en" ? "English" : "繁體中文"}
-                        </span>
-                    </button>
-                </div>
             </div>
 
             {#if !s.user}
@@ -102,7 +90,7 @@
                 <div class="space-y-8 pb-24">
                     <!-- Profile Section -->
                     <div
-                        class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md"
+                        class="animate-slide-up rounded-3xl bg-white/10 p-6 backdrop-blur-md"
                         style="container-type: inline-size"
                     >
                         <div class="mb-6 flex items-center justify-between">
@@ -273,7 +261,7 @@
 
                     <!-- Credits Section -->
                     <div
-                        class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md [animation-delay:100ms]"
+                        class="animate-slide-up rounded-3xl bg-white/10 p-6 backdrop-blur-md [animation-delay:100ms]"
                     >
                         <div class="mb-6 flex items-center justify-between">
                             <div>
@@ -340,70 +328,62 @@
                             </div>
                         {/if}
                     </div>
-
                     <div
-                        class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md [animation-delay:100ms]"
+                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                     >
-                        <div
-                            class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                        <CosmicButton
+                            onclick={() => {
+                                setLocale(getNextLocale(getLocale()));
+                            }}
+                            className="min-w-37.5 bg-white/10 backdrop-blur-md border-none shadow-lg shadow-black/10"
                         >
-                            <div>
-                                <h2 class="mb-1 text-xl text-white">
-                                    {m.settings_switch_to_mentor_title()}
-                                </h2>
-                                <p
-                                    class="text-text-secondary text-sm font-light"
-                                >
-                                    {m.settings_switch_to_mentor_description()}
-                                </p>
-                            </div>
-                            <button
-                                class="inline-flex items-center justify-center rounded-full bg-[#F5F5F5] px-5 py-2 text-sm font-semibold text-black transition"
-                                onclick={handleSwitchToMentor}
-                                disabled={switchingMode}
-                            >
-                                {m.settings_switch_to_mentor_action()}
-                            </button>
-                        </div>
+                            <Globe class="h-4 w-4" />
+                            <span>
+                                {getLocale() === "en"
+                                    ? "Switch to 繁體中文"
+                                    : "切換為 English"}
+                            </span>
+                        </CosmicButton>
+                    </div>
+                    <div
+                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                    >
+                        <CosmicButton
+                            onclick={handleSwitchToMentor}
+                            disabled={switchingMode}
+                            className="min-w-37.5 bg-white/10 backdrop-blur-md border-none shadow-lg shadow-black/10"
+                        >
+                            {#if switchingMode}
+                                <LoaderCircle class="h-4 w-4 animate-spin" />
+                            {/if}
+                            <span>{m.settings_switch_to_mentor_action()}</span>
+                        </CosmicButton>
+                    </div>
+                    <div
+                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                    >
+                        <CosmicButton
+                            onclick={s.handleLogout}
+                            disabled={s.loggingOut}
+                            className="min-w-37.5 bg-white/10 backdrop-blur-md border-none shadow-lg shadow-black/10"
+                        >
+                            {#if s.loggingOut}
+                                <LoaderCircle class="h-4 w-4 animate-spin" />
+                                <span>{m.auth_signing_out()}</span>
+                            {:else}
+                                <LogOut class="h-4 w-4" />
+                                <span>{m.auth_sign_out()}</span>
+                            {/if}
+                        </CosmicButton>
                     </div>
 
-                    <div
-                        class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 backdrop-blur-md [animation-delay:150ms]"
-                    >
-                        <div
-                            class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-                        >
-                            <div>
-                                <h2 class="mb-1 text-xl text-white">
-                                    {m.auth_sign_out()}
-                                </h2>
-                            </div>
-                            <CosmicButton
-                                variant="danger"
-                                onclick={s.handleLogout}
-                                disabled={s.loggingOut}
-                                className="min-w-37.5"
-                            >
-                                {#if s.loggingOut}
-                                    <LoaderCircle
-                                        class="h-4 w-4 animate-spin"
-                                    />
-                                    <span>{m.auth_signing_out()}</span>
-                                {:else}
-                                    <LogOut class="h-4 w-4" />
-                                    <span>{m.auth_sign_out()}</span>
-                                {/if}
-                            </CosmicButton>
-                        </div>
-                        {#if s.logoutError}
-                            <p class="text-status-error mt-4 text-sm">
-                                {s.logoutError}
-                            </p>
-                        {/if}
-                    </div>
-
-                    <!-- Preferences Section -->
+                    {#if s.logoutError}
+                        <p class="text-status-error mt-4 text-sm">
+                            {s.logoutError}
+                        </p>
+                    {/if}
                 </div>
+
                 <BottomNav activeTab="profile" />
             {/if}
         </div>

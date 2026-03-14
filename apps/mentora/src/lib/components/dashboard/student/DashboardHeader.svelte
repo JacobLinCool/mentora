@@ -39,11 +39,11 @@
 </script>
 
 <div class="mb-6">
-    <p class="text-text-secondary text-sm tracking-wide uppercase">
+    <p class="text-text-secondary mt-1 mb-2 text-sm tracking-wide uppercase">
         {dayName}, {monthName}
         {date}
     </p>
-    <h1 class="text-text-primary font-serif-tc mt-1 text-3xl font-bold">
+    <h1 class="font-serif-tc text-3xl font-bold text-white md:text-4xl">
         {m.dashboard_greeting()}，{userName}
     </h1>
 </div>
