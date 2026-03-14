@@ -17,7 +17,12 @@ import {
 	orderBy,
 	type QueryConstraint
 } from 'firebase/firestore';
-import { Conversations, type Conversation as ConversationDoc } from 'mentora-firebase';
+import {
+	Conversations,
+	ConversationMetadata,
+	type Conversation as ConversationDoc,
+	type DialogueStateDisplay
+} from 'mentora-firebase';
 
 export type Conversation = ConversationDoc & { id: string };
 
@@ -194,6 +199,26 @@ export async function addTurn(
 	return callBackend(config, `/conversations/${conversationId}/turns`, {
 		method: 'POST',
 		body: JSON.stringify(options)
+	});
+}
+
+/**
+ * Get dialogue state metadata for a closed conversation.
+ * Contains stance history, principle history, and summary.
+ */
+export async function getDialogueState(
+	config: MentoraAPIConfig,
+	conversationId: string
+): Promise<APIResult<DialogueStateDisplay>> {
+	return tryCatch(async () => {
+		const docRef = doc(config.db, ConversationMetadata.statePath(conversationId));
+		const snapshot = await getDoc(docRef);
+
+		if (!snapshot.exists()) {
+			throw new Error('Dialogue state not found');
+		}
+
+		return ConversationMetadata.stateSchema.parse(snapshot.data());
 	});
 }
 
