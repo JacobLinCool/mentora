@@ -181,7 +181,9 @@
             !assessmentLoadAttempted
         ) {
             loadAssessment(conversation.assignmentId);
-            loadDialogueState(conversationId);
+            if (conversationId) {
+                loadDialogueState(conversationId);
+            }
         }
     });
 
