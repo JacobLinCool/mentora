@@ -5,14 +5,12 @@ import type { User } from 'firebase/auth';
 import { doc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { UserProfiles, type UserProfile } from 'mentora-firebase';
 import type { MentoraAPIConfig } from './types.js';
-import * as UsersModule from './users.js';
 
 export class ProfileWatcher {
 	#profile = $state<UserProfile | null>(null);
 	#unsubscribe: Unsubscribe | null = null;
 	#readyPromise: Promise<void> | null = null;
 	#readyResolve: (() => void) | null = null;
-	#creationInProgress = false;
 	#currentUser: User | null = null;
 
 	constructor(private readonly config: MentoraAPIConfig) {}
@@ -81,14 +79,6 @@ export class ProfileWatcher {
 			(snapshot) => {
 				if (!snapshot.exists()) {
 					this.#profile = null;
-
-					if (!this.#creationInProgress) {
-						this.#creationInProgress = true;
-						this.#createProfileIfMissing(user).finally(() => {
-							this.#creationInProgress = false;
-						});
-					}
-
 					this.#resolveReady();
 					return;
 				}
@@ -116,32 +106,11 @@ export class ProfileWatcher {
 			this.#unsubscribe();
 			this.#unsubscribe = null;
 		}
-		this.#creationInProgress = false;
 	}
 
 	#resolveReady() {
 		if (this.#readyResolve) {
 			this.#readyResolve();
-		}
-	}
-
-	async #createProfileIfMissing(user: User) {
-		if (!this.config.environment.browser) {
-			return;
-		}
-
-		const currentUser = this.config.getCurrentUser();
-		if (!currentUser || currentUser.uid !== user.uid) {
-			return;
-		}
-
-		try {
-			const result = await UsersModule.updateMyProfile(this.config, {});
-			if (!result.success) {
-				console.error('Failed to create profile:', result.error);
-			}
-		} catch (error) {
-			console.error('Unexpected error creating profile:', error);
 		}
 	}
 }

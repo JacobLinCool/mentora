@@ -57,15 +57,11 @@
             });
         };
 
-        if (api.isAuthenticated) {
-            subscribe();
-        } else {
-            api.authReady.then(() => {
-                if (!cancelled && api.isAuthenticated) {
-                    subscribe();
-                }
-            });
-        }
+        api.authReady.then(() => {
+            if (!cancelled && api.isAuthenticated) {
+                subscribe();
+            }
+        });
 
         return () => {
             cancelled = true;

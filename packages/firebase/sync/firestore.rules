@@ -367,7 +367,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && (uid == request.auth.uid) &&
                        isValidUserProfile(request.resource.data);
       allow update: if isSignedIn() && (uid == request.auth.uid) &&
-                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) &&
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || !('role' in resource.data)) &&
                        isValidUserProfile(request.resource.data);
       allow delete: if false; // keep profiles
     }
