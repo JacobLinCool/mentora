@@ -477,6 +477,7 @@
     >
         {#each topics as topic, idx (topic.id)}
             <TopicCard
+                {courseId}
                 topicIndex={idx + 1}
                 title={topic.title}
                 description={topic.description}

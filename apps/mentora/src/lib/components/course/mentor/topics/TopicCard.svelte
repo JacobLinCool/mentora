@@ -24,6 +24,7 @@
     }
 
     interface Props {
+        courseId: string;
         topicIndex: number;
         title: string;
         description: string;
@@ -38,6 +39,7 @@
     }
 
     let {
+        courseId,
         topicIndex,
         title: initialTitle,
         description: initialDescription,
@@ -222,6 +224,8 @@
         >
             {#each localAssignments as assignment, idx (assignment.id)}
                 <AssignmentItem
+                    {courseId}
+                    assignmentId={assignment.id}
                     title={assignment.title}
                     type={assignment.type}
                     dueDate={assignment.dueAt ?? assignment.dueDate}

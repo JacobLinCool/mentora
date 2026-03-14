@@ -2,6 +2,25 @@ import { z } from "zod";
 
 import { joinPath, zFirebaseTimestamp } from "./shared";
 
+export const zClassReport = z
+    .object({
+        content: z
+            .string()
+            .describe("AI-generated report content in markdown format."),
+        generatedAt: zFirebaseTimestamp.describe(
+            "Timestamp when the report was generated.",
+        ),
+        submissionCount: z
+            .number()
+            .int()
+            .nonnegative()
+            .describe(
+                "Number of submissions at the time of report generation.",
+            ),
+    })
+    .describe("AI-generated class analytics report.");
+export type ClassReport = z.infer<typeof zClassReport>;
+
 export const zAssignment = z
     .object({
         id: z
@@ -73,6 +92,13 @@ export const zAssignment = z
         updatedAt: zFirebaseTimestamp.describe(
             "Timestamp of the latest assignment update.",
         ),
+        classReport: zClassReport
+            .nullable()
+            .optional()
+            .default(null)
+            .describe(
+                "AI-generated class analytics report, or null if not yet generated.",
+            ),
     })
     .describe("Assignment document stored at assignments/{assignmentId}.");
 export type Assignment = z.infer<typeof zAssignment>;

@@ -1,5 +1,6 @@
 import type {
 	Assignment,
+	ClassReport,
 	Conversation,
 	CourseMembership,
 	Submission,
@@ -12,6 +13,8 @@ export interface IAnalyticsRepository {
 	listAssignmentsByCourse(courseId: string): Promise<Assignment[]>;
 	listSubmissionsByAssignment(assignmentId: string): Promise<Submission[]>;
 	listConversationsByAssignment(assignmentId: string): Promise<Conversation[]>;
+	getAssignment(assignmentId: string): Promise<Assignment | null>;
+	updateAssignmentClassReport(assignmentId: string, classReport: ClassReport): Promise<void>;
 }
 
 export interface TokenUsageAggregateBucket {

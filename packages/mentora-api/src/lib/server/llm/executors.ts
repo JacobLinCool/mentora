@@ -36,7 +36,7 @@ let genaiInstance: GoogleGenAI | null = null;
 /**
  * Get or create the shared GoogleGenAI client
  */
-function getGenAIClient(): GoogleGenAI {
+export function getGenAIClient(): GoogleGenAI {
 	if (genaiInstance) {
 		return genaiInstance;
 	}

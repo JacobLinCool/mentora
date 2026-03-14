@@ -142,7 +142,9 @@ export async function startSubmission(
 			submittedAt: null,
 			late: false,
 			scoreCompletion: null,
-			notes: null
+			notes: null,
+			assessment: null,
+			assessmentError: null
 		};
 
 		await setDoc(docRef, submission);
