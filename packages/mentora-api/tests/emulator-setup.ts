@@ -486,7 +486,7 @@ export async function seedHostWalletWithLedger(
 	courseId: string,
 	entries: HostLedgerSeed[] = []
 ): Promise<{ walletId: string }> {
-	const firestore = ServerFirestore.useEmulator();
+	const firestore = ServerFirestore.useEmulator({ projectId: 'demo-mentora' });
 	const walletId = `wallet_host_${courseId}`;
 	const now = Date.now();
 

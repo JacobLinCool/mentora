@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { createServerHandler } from '$lib/server';
 import { Firestore } from 'fires2rest';
 
-const firestore = Firestore.useEmulator();
+const firestore = Firestore.useEmulator({ projectId: 'demo-mentora' });
 
 const handler = createServerHandler({
 	firestore,
