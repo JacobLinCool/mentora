@@ -255,7 +255,7 @@ const SENSITIVE_PATTERNS = [
 	/\b[A-Za-z0-9_-]{20,}\b/g, // Long tokens / API keys
 	/\/(?:Users|home|var|tmp|etc)\/.+/g, // Filesystem paths
 	/(?:quota|rate.?limit|exceeded|billing)/i, // Quota / billing details
-	/(?:GOOGLE|GEMINI|OPENAI|FIREBASE|GCP)_[A-Z_]+/g // Environment variable names
+	/(?:GOOGLE|GEMINI|FIREBASE|GCP)_[A-Z_]+/g // Environment variable names
 ];
 
 /**

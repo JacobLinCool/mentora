@@ -34,8 +34,8 @@ const AUTH_HOST = 'http://127.0.0.1:9099';
 // Firebase configuration for emulator (project ID must match emulator)
 const firebaseConfig = {
 	apiKey: 'demo-api-key',
-	authDomain: 'demo-no-project.firebaseapp.com',
-	projectId: 'demo-no-project'
+	authDomain: 'mentora-dev.firebaseapp.com',
+	projectId: 'mentora-dev'
 };
 
 // Backend URL (use dev server by default)
@@ -529,7 +529,7 @@ export async function seedHostWalletWithLedger(
  * Call this in beforeEach/afterEach to reset state
  */
 export async function clearFirestoreEmulator(): Promise<void> {
-	const endpoint = `http://${FIRESTORE_HOST}:${FIRESTORE_PORT}/emulator/v1/projects/demo-no-project/databases/(default)/documents`;
+	const endpoint = `http://${FIRESTORE_HOST}:${FIRESTORE_PORT}/emulator/v1/projects/mentora-dev/databases/(default)/documents`;
 	const deadline = Date.now() + 20_000;
 	let lastStatus: number | null = null;
 	let lastStatusText = '';
