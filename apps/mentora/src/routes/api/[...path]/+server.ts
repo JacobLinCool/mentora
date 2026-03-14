@@ -16,7 +16,7 @@ const useEmulator = PUBLIC_USE_FIREBASE_EMULATOR === "true";
 
 const handler = createServerHandler({
     firestore,
-    projectId: useEmulator ? "mentora-dev" : PUBLIC_FIREBASE_PROJECT_ID,
+    projectId: useEmulator ? "demo-mentora" : PUBLIC_FIREBASE_PROJECT_ID,
     useEmulator,
 });
 

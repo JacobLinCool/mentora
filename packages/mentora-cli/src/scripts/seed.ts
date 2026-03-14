@@ -13,7 +13,7 @@ import { getFirestore } from "firebase-admin/firestore";
 process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
 
-const app = initializeApp({ projectId: "mentora-dev" });
+const app = initializeApp({ projectId: "demo-mentora" });
 const auth = getAuth(app);
 const db = getFirestore(app);
 
