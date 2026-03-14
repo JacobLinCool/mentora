@@ -646,7 +646,6 @@ export class AnalyticsService {
 		const scores: AssignmentAnalytics['scores'] = [];
 
 		for (const sub of studentSubmissions) {
-			const conv = convByUser.get(sub.userId);
 			const assessment = sub.assessment;
 			if (assessment) {
 				overallScoreSum += assessment.overallScore;
