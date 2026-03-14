@@ -12,11 +12,14 @@ export { DEFAULT_CONFIG } from "./types.js";
 export type {
     DialogueStage,
     DialogueState,
+    DimensionScore,
     OrchestratorConfig,
     PrincipleVersion,
+    StageAssessmentResult,
     StageContext,
     StageHandler,
     StageHandlerRegistry,
+    StageMessageStance,
     StageResult,
     StanceVersion,
 } from "./types.js";

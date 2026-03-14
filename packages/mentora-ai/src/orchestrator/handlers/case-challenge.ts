@@ -93,6 +93,7 @@ export class CaseChallengeHandler implements StageHandler {
             newState: transitionTo(state, DialogueStage.CASE_CHALLENGE),
             ended: false,
             usage: executor.getTokenUsage(),
+            stanceSnapshot: { stance: "undetermined" },
         };
     }
 
@@ -132,11 +133,16 @@ export class CaseChallengeHandler implements StageHandler {
             );
         }
 
+        const stanceSnapshot = classification.extracted_data?.stance
+            ? { stance: "neutral" as const }
+            : { stance: "undetermined" as const };
+
         return {
             message,
             newState,
             ended: false,
             usage: executor.getTokenUsage(),
+            stanceSnapshot,
         };
     }
 
@@ -174,6 +180,7 @@ export class CaseChallengeHandler implements StageHandler {
             },
             ended: false,
             usage: executor.getTokenUsage(),
+            stanceSnapshot: { stance: "neutral" },
         };
     }
 }

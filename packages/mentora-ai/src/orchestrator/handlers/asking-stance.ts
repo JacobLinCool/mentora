@@ -76,6 +76,7 @@ export class AskingStanceHandler implements StageHandler {
             newState: transitionTo(state, DialogueStage.ASKING_STANCE),
             ended: false,
             usage: executor.getTokenUsage(),
+            stanceSnapshot: { stance: "undetermined" },
         };
     }
 
@@ -128,6 +129,7 @@ export class AskingStanceHandler implements StageHandler {
             newState,
             ended: false,
             usage: executor.getTokenUsage(),
+            stanceSnapshot: { stance: "undetermined" },
         };
     }
 }

@@ -1,4 +1,4 @@
-import type { MessageStance, TokenUsageTotals } from 'mentora-firebase';
+import type { AssessmentResult, MessageStance, TokenUsageTotals } from 'mentora-firebase';
 import { createEmptyTokenUsageTotals, sumTokenUsageTotals } from '../llm/token-usage.js';
 import type { IAnalyticsRepository } from '../repositories/ports/analytics-repository.js';
 
@@ -151,7 +151,24 @@ export class AnalyticsService {
 					totalArguments: 0
 				},
 				spectrum: [],
-				wordCloud: []
+				wordCloud: [],
+				assessmentOverview: {
+					avgScores: {
+						argumentQuality: 0,
+						criticalThinking: 0,
+						principleExtraction: 0,
+						openness: 0,
+						coherence: 0,
+						overall: 0
+					},
+					scoreDistribution: [
+						{ range: '1-2', count: 0 },
+						{ range: '2-3', count: 0 },
+						{ range: '3-4', count: 0 },
+						{ range: '4-5', count: 0 }
+					],
+					needsAttention: []
+				}
 			};
 		}
 
@@ -202,6 +219,12 @@ export class AnalyticsService {
 		let totalArguments = 0;
 		const spectrum: SpectrumPoint[] = [];
 		const wordFreq = new Map<string, number>();
+		const wordSentiment = new Map<string, { pro: number; con: number; neutral: number }>();
+		const assessedSubmissions: Array<{
+			userId: string;
+			assignmentId: string;
+			assessment: AssessmentResult;
+		}> = [];
 
 		for (const [assignmentId, courseId] of courseIdByAssignment.entries()) {
 			const studentSet = studentIdsByCourse.get(courseId) ?? new Set<string>();
@@ -212,6 +235,13 @@ export class AnalyticsService {
 				}
 				if (submission.state === 'submitted' || submission.state === 'graded_complete') {
 					submittedCount += 1;
+				}
+				if (submission.assessment) {
+					assessedSubmissions.push({
+						userId: submission.userId,
+						assignmentId,
+						assessment: submission.assessment
+					});
 				}
 			}
 
@@ -225,8 +255,17 @@ export class AnalyticsService {
 				const studentTurns = conversation.turns.filter((_, index) => index % 2 === 0);
 				totalArguments += studentTurns.length;
 				for (const turn of studentTurns) {
+					const stance = turn.analysis?.stance;
+					const sentiment = stance?.startsWith('pro')
+						? 'pro'
+						: stance?.startsWith('con')
+							? 'con'
+							: 'neutral';
 					for (const token of tokenize(turn.text)) {
 						wordFreq.set(token, (wordFreq.get(token) ?? 0) + 1);
+						const existing = wordSentiment.get(token) ?? { pro: 0, con: 0, neutral: 0 };
+						existing[sentiment] += 1;
+						wordSentiment.set(token, existing);
 					}
 				}
 
@@ -250,7 +289,92 @@ export class AnalyticsService {
 		const wordCloud: WordCloudPoint[] = [...wordFreq.entries()]
 			.sort((a, b) => b[1] - a[1])
 			.slice(0, 50)
-			.map(([text, value]) => ({ text, value, sentiment: 'neutral' }));
+			.map(([text, value]) => {
+				const sentiments = wordSentiment.get(text) ?? { pro: 0, con: 0, neutral: 0 };
+				const dominant =
+					sentiments.pro >= sentiments.con && sentiments.pro > sentiments.neutral
+						? 'pro'
+						: sentiments.con > sentiments.pro && sentiments.con > sentiments.neutral
+							? 'con'
+							: 'neutral';
+				return { text, value, sentiment: dominant as WordCloudPoint['sentiment'] };
+			});
+
+		// Build assessment overview
+		const assessmentCount = assessedSubmissions.length;
+		const dimSums = {
+			argumentQuality: 0,
+			criticalThinking: 0,
+			principleExtraction: 0,
+			openness: 0,
+			coherence: 0
+		};
+		let overallSum = 0;
+		const scoreDistribution = [
+			{ range: '1-2', count: 0 },
+			{ range: '2-3', count: 0 },
+			{ range: '3-4', count: 0 },
+			{ range: '4-5', count: 0 }
+		];
+		const needsAttention: Array<{
+			studentName: string;
+			courseTitle: string;
+			overallScore: number;
+			weakestDimension: string;
+		}> = [];
+
+		for (const { userId, assignmentId, assessment } of assessedSubmissions) {
+			const dims = assessment.dimensions;
+			dimSums.argumentQuality += dims.argumentQuality.score;
+			dimSums.criticalThinking += dims.criticalThinking.score;
+			dimSums.principleExtraction += dims.principleExtraction.score;
+			dimSums.openness += dims.openness.score;
+			dimSums.coherence += dims.coherence.score;
+			overallSum += assessment.overallScore;
+
+			const score = assessment.overallScore;
+			if (score < 2) {
+				scoreDistribution[0].count += 1;
+			} else if (score < 3) {
+				scoreDistribution[1].count += 1;
+			} else if (score < 4) {
+				scoreDistribution[2].count += 1;
+			} else {
+				scoreDistribution[3].count += 1;
+			}
+
+			if (score < 2.5) {
+				const dimEntries = Object.entries(dims) as Array<
+					[string, { score: number; feedback: string }]
+				>;
+				const weakest = dimEntries.reduce((min, curr) =>
+					curr[1].score < min[1].score ? curr : min
+				);
+				const courseId = courseIdByAssignment.get(assignmentId) ?? assignmentId;
+				needsAttention.push({
+					studentName: studentNames.get(userId) ?? 'Student',
+					courseTitle: courseId,
+					overallScore: score,
+					weakestDimension: weakest[0]
+				});
+			}
+		}
+
+		const assessmentOverview = {
+			avgScores: {
+				argumentQuality:
+					assessmentCount > 0 ? roundTo(dimSums.argumentQuality / assessmentCount, 2) : 0,
+				criticalThinking:
+					assessmentCount > 0 ? roundTo(dimSums.criticalThinking / assessmentCount, 2) : 0,
+				principleExtraction:
+					assessmentCount > 0 ? roundTo(dimSums.principleExtraction / assessmentCount, 2) : 0,
+				openness: assessmentCount > 0 ? roundTo(dimSums.openness / assessmentCount, 2) : 0,
+				coherence: assessmentCount > 0 ? roundTo(dimSums.coherence / assessmentCount, 2) : 0,
+				overall: assessmentCount > 0 ? roundTo(overallSum / assessmentCount, 2) : 0
+			},
+			scoreDistribution,
+			needsAttention
+		};
 
 		const overview: DashboardOverview = {
 			activeStudents,
@@ -261,7 +385,8 @@ export class AnalyticsService {
 		return {
 			overview,
 			spectrum,
-			wordCloud
+			wordCloud,
+			assessmentOverview
 		};
 	}
 

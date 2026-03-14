@@ -41,6 +41,7 @@
     let deadlineDates = $state<Date[]>([]);
     let lastConversation = $state<Conversation | null>(null);
     let lastConversationTitle = $state("");
+    let lastConversationScore = $state<number | null>(null);
 
     // Loading State
     let loading = $state(true);
@@ -206,6 +207,24 @@
                     if (assignRes.success) {
                         lastConversationTitle = assignRes.data.title;
                     }
+
+                    // Fetch assessment score if conversation is closed
+                    if (lastConversation.state === "closed") {
+                        try {
+                            const subRes = await api.submissions.getMine(
+                                lastConversation.assignmentId,
+                            );
+                            if (
+                                subRes.success &&
+                                subRes.data?.assessment?.overallScore
+                            ) {
+                                lastConversationScore =
+                                    subRes.data.assessment.overallScore;
+                            }
+                        } catch {
+                            // Silently ignore - score badge is optional
+                        }
+                    }
                 }
             }
         } catch (e) {
@@ -270,10 +289,19 @@
             <!-- Right column: Continue + Courses -->
             <div>
                 {#if lastConversation}
-                    <ContinueConversation
-                        onclick={handleContinueConversation}
-                        title={lastConversationTitle}
-                    />
+                    <div class="relative">
+                        {#if lastConversationScore}
+                            <div
+                                class="bg-brand-gold absolute -top-2 -right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-black shadow-lg"
+                            >
+                                {lastConversationScore.toFixed(1)}
+                            </div>
+                        {/if}
+                        <ContinueConversation
+                            onclick={handleContinueConversation}
+                            title={lastConversationTitle}
+                        />
+                    </div>
                 {/if}
 
                 <MyCourses {courses} />

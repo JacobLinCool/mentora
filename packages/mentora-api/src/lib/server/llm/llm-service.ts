@@ -8,7 +8,12 @@
  * accessing dialogue state. Pass userId to ensure authorization checks are enforced.
  */
 
-import { MentoraOrchestrator, type DialogueState, type StageResult } from 'mentora-ai';
+import {
+	MentoraOrchestrator,
+	type DialogueState,
+	type StageAssessmentResult,
+	type StageResult
+} from 'mentora-ai';
 import { DialogueStage } from 'mentora-ai';
 import type { Firestore } from 'fires2rest';
 import { Conversations, joinPath } from 'mentora-firebase';
@@ -198,6 +203,9 @@ export async function processWithLLM(
 	updatedState: DialogueState;
 	ended: boolean;
 	tokenUsage: TokenUsageTotals;
+	assessment?: StageAssessmentResult;
+	assessmentError?: string;
+	stanceSnapshot?: { stance: string };
 }> {
 	// Step 1: Load current state from Firestore (includes ownership validation FIRST)
 	const currentState = await loadDialogueState(firestore, conversationId, userId);
@@ -244,7 +252,10 @@ export async function processWithLLM(
 		aiMessage: result.message,
 		updatedState: result.newState,
 		ended: result.ended || orchestrator.isEnded(result.newState),
-		tokenUsage: usage
+		tokenUsage: usage,
+		assessment: result.assessment,
+		assessmentError: result.assessmentError,
+		stanceSnapshot: result.stanceSnapshot
 	};
 }
 

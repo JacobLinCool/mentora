@@ -2,14 +2,27 @@
  * Stage 4: Closure Handler
  */
 import {
+    assessmentBuilder,
+    type AssessmentOutput,
+} from "../../builder/stage4-assessment.js";
+import {
     closureBuilders,
     type ClosureClassifier,
     type ClosureResponse,
 } from "../../builder/stage4-closure.js";
 import { DialogueStage } from "../../builder/types.js";
 import { formatStageResponse } from "../format.js";
-import { transitionTo } from "../state.js";
-import type { StageContext, StageHandler, StageResult } from "../types.js";
+import {
+    formatPrincipleHistory,
+    formatStanceHistory,
+    transitionTo,
+} from "../state.js";
+import type {
+    StageAssessmentResult,
+    StageContext,
+    StageHandler,
+    StageResult,
+} from "../types.js";
 
 /**
  * Handler for Stage 4: Closure
@@ -88,6 +101,7 @@ export class ClosureHandler implements StageHandler {
             },
             ended: false,
             usage: executor.getTokenUsage(),
+            stanceSnapshot: { stance: "neutral" },
         };
     }
 
@@ -95,16 +109,52 @@ export class ClosureHandler implements StageHandler {
      * Handle confirmation and end conversation (TR_CONFIRM)
      */
     private async handleConfirm(context: StageContext): Promise<StageResult> {
-        const { executor, state } = context;
+        const { executor, state, config } = context;
 
         // Final closing message
         const message = "感謝您的參與！希望這次對話對您的思考有所幫助。";
+
+        // Generate assessment
+        let assessment: StageAssessmentResult | undefined;
+        let assessmentError: string | undefined;
+        try {
+            const assessmentPrompt = await assessmentBuilder.build(
+                state.conversationHistory,
+                {
+                    stanceHistory: formatStanceHistory(state.stanceHistory),
+                    loopCount: String(state.loopCount),
+                    principleHistory: formatPrincipleHistory(
+                        state.principleHistory,
+                    ),
+                },
+            );
+
+            const assessmentOutput = (await executor.execute(
+                assessmentPrompt,
+            )) as AssessmentOutput;
+
+            assessment = {
+                ...assessmentOutput,
+                generatedAt: Date.now(),
+            };
+        } catch (error) {
+            const errorMsg =
+                error instanceof Error ? error.message : String(error);
+            assessmentError = `Assessment generation failed: ${errorMsg}`;
+            config.logger(
+                "Assessment generation failed, ending without assessment",
+                error,
+            );
+        }
 
         return {
             message,
             newState: transitionTo(state, DialogueStage.ENDED),
             ended: true,
             usage: executor.getTokenUsage(),
+            assessment,
+            assessmentError,
+            stanceSnapshot: { stance: "neutral" },
         };
     }
 }

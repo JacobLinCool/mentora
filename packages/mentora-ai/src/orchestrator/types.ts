@@ -10,6 +10,41 @@ import type {
 import type { PromptExecutor, TokenUsage } from "../types.js";
 
 /**
+ * Stance classification for analytics (mirrors MessageStance from firebase)
+ */
+export type StageMessageStance =
+    | "pro-strong"
+    | "pro-weak"
+    | "con-strong"
+    | "con-weak"
+    | "neutral"
+    | "undetermined";
+
+/**
+ * AI-generated dimension score
+ */
+export interface DimensionScore {
+    score: number; // 1-5
+    feedback: string;
+}
+
+/**
+ * AI-generated structured assessment result
+ */
+export interface StageAssessmentResult {
+    dimensions: {
+        argumentQuality: DimensionScore;
+        criticalThinking: DimensionScore;
+        principleExtraction: DimensionScore;
+        openness: DimensionScore;
+        coherence: DimensionScore;
+    };
+    overallScore: number; // 1-5
+    overallFeedback: string;
+    generatedAt: number;
+}
+
+/**
  * Result from processing a stage
  */
 export interface StageResult {
@@ -21,6 +56,12 @@ export interface StageResult {
     ended: boolean;
     /** Token usage for this turn (all LLM calls in this processing step) */
     usage: TokenUsage;
+    /** AI-generated assessment (only present in closure stage) */
+    assessment?: StageAssessmentResult;
+    /** Error message if assessment generation failed */
+    assessmentError?: string;
+    /** Stance snapshot for the current turn (for analytics) */
+    stanceSnapshot?: { stance: StageMessageStance };
 }
 
 // Re-export TokenUsage for convenience
