@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { User } from "firebase/auth";
     import {
         GoogleAuthProvider,
         signInWithPopup,
@@ -9,19 +10,18 @@
     import { m } from "$lib/paraglide/messages";
     import { Button, Card, Alert } from "flowbite-svelte";
     import { LoaderCircle, LogIn } from "@lucide/svelte";
-    import { goto } from "$app/navigation";
-    import { page } from "$app/state";
+
+    interface Props {
+        onSuccess?: (user: User) => void;
+    }
+
+    let { onSuccess }: Props = $props();
 
     let error = $state<string | null>(null);
     let loading = $state(false);
 
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
-    const redirectTo = $derived.by(() => {
-        const next = page.url.searchParams.get("next");
-        if (!next || !next.startsWith("/")) return "/";
-        return next;
-    });
 
     async function ensurePersistence() {
         try {
@@ -36,10 +36,8 @@
         error = null;
         await ensurePersistence();
         try {
-            await signInWithPopup(auth, provider);
-
-            // eslint-disable-next-line svelte/no-navigation-without-resolve
-            await goto(redirectTo, { invalidateAll: true });
+            const result = await signInWithPopup(auth, provider);
+            onSuccess?.(result.user);
         } catch (e: unknown) {
             error = (e as Error)?.message ?? m.auth_sign_in_failed();
         } finally {

@@ -19,14 +19,14 @@
     let savedState = $state({
         courseName: "",
         category: "",
-        visibility: "private" as "public" | "private" | "unlisted",
+        visibility: "private" as "public" | "private",
         thumbnail: "",
         code: "",
     });
 
     let courseName = $state("");
     let category = $state("");
-    let visibility = $state<"public" | "private" | "unlisted">("private");
+    let visibility = $state<"public" | "private">("private");
     let code = $state("");
     let thumbnail = $state("");
 
@@ -163,9 +163,9 @@
     }
 </script>
 
-<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+<div class="grid grid-cols-3 gap-8 max-lg:grid-cols-1">
     <!-- Left Column: Course Details -->
-    <div class="space-y-8 lg:col-span-2">
+    <div class="col-span-2 space-y-8 max-lg:col-span-1">
         <div
             class="rounded-2xl border border-gray-100 bg-[#F5F5F5] p-8 shadow-sm"
         >
@@ -189,7 +189,7 @@
                     />
                 </div>
 
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div class="grid grid-cols-2 gap-6 max-md:grid-cols-1">
                     <!-- Category -->
                     <div class="space-y-2">
                         <label
@@ -241,9 +241,9 @@
                     <span class="text-sm font-medium text-gray-700"
                         >{m.course_settings_thumbnail()}</span
                     >
-                    <div class="flex flex-col gap-6 sm:flex-row">
+                    <div class="flex flex-row gap-6 max-sm:flex-col">
                         <div
-                            class="h-40 w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-100 sm:w-64"
+                            class="h-40 w-64 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 max-sm:w-full"
                         >
                             {#if thumbnail}
                                 <img
@@ -255,7 +255,7 @@
                                 <div
                                     class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-500"
                                 >
-                                    No Image
+                                    {m.course_settings_no_image()}
                                 </div>
                             {/if}
                         </div>
@@ -270,7 +270,7 @@
                             <button
                                 onclick={handleUpload}
                                 disabled={isUploading}
-                                class="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
+                                class="flex w-auto items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 max-sm:w-full"
                             >
                                 <Upload size={16} />
                                 {isUploading
@@ -279,7 +279,7 @@
                             </button>
                             <button
                                 onclick={handleDeleteThumbnail}
-                                class="flex w-full items-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 sm:w-auto"
+                                class="flex w-auto items-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 max-sm:w-full"
                             >
                                 <Trash2 size={16} />
                                 {m.course_settings_delete()}
@@ -397,7 +397,7 @@
                 class="flex cursor-pointer items-center gap-2 rounded-lg bg-black px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-50"
             >
                 {#if loading}
-                    Saving...
+                    {m.saving()}
                 {:else}
                     <Save size={14} />
                     {m.course_settings_save()}

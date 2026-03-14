@@ -302,10 +302,7 @@
             data.code || undefined,
             {
                 description: data.description,
-                visibility: data.visibility as
-                    | "public"
-                    | "private"
-                    | "unlisted",
+                visibility: data.visibility as "public" | "private",
             },
         );
 

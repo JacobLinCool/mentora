@@ -1,23 +1,15 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
-    import { api } from "$lib";
     import { m } from "$lib/paraglide/messages";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
     import { createSettingsState, formatDate } from "$lib/settings.svelte";
-    import {
-        getNextLocale,
-        switchActiveMode,
-    } from "$lib/features/settings/actions";
+    import { getNextLocale } from "$lib/features/settings/actions";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import {
         User,
         Mail,
         Calendar,
-        Wallet,
-        CreditCard,
         ArrowRight,
         LoaderCircle,
         Pencil,
@@ -25,32 +17,12 @@
         Globe,
         LogOut,
     } from "@lucide/svelte";
-    import { slide } from "svelte/transition";
 
     const s = createSettingsState();
-    let switchingMode = $state(false);
 
     onMount(() => {
         document.documentElement.classList.add("dark");
     });
-
-    async function handleSwitchToMentor() {
-        if (switchingMode) return;
-        switchingMode = true;
-        try {
-            const result = await switchActiveMode(api, "mentor");
-            if (!result.success) {
-                console.error("Failed to switch mode:", result.error);
-            }
-
-            await goto(resolve("/dashboard"));
-        } catch (error) {
-            console.error("Failed to switch mode:", error);
-            await goto(resolve("/dashboard"));
-        } finally {
-            switchingMode = false;
-        }
-    }
 </script>
 
 <div
@@ -259,75 +231,6 @@
                         </div>
                     </div>
 
-                    <!-- Credits Section -->
-                    <div
-                        class="animate-slide-up rounded-3xl bg-white/10 p-6 backdrop-blur-md [animation-delay:100ms]"
-                    >
-                        <div class="mb-6 flex items-center justify-between">
-                            <div>
-                                <h2 class="mb-1 text-xl text-white">
-                                    {m.settings_credits()}
-                                </h2>
-                                <p
-                                    class="text-text-secondary text-sm font-light"
-                                >
-                                    {m.settings_credits_description()}
-                                </p>
-                            </div>
-                            <Wallet
-                                class="text-brand-gold h-8 w-8 opacity-60"
-                            />
-                        </div>
-
-                        {#if s.walletLoading}
-                            <div class="flex items-center justify-center py-8">
-                                <LoaderCircle
-                                    class="text-brand-gold h-8 w-8 animate-spin"
-                                />
-                            </div>
-                        {:else if s.walletError}
-                            <div class="py-6 text-center">
-                                <p class="text-text-secondary font-light">
-                                    {s.walletError === "Not authenticated"
-                                        ? m.settings_sign_in_to_view()
-                                        : s.walletError}
-                                </p>
-                            </div>
-                        {:else if s.wallet}
-                            <div
-                                transition:slide
-                                class="flex items-center gap-4"
-                            >
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="bg-brand-gold/10 flex h-12 w-12 items-center justify-center rounded-full"
-                                    >
-                                        <CreditCard
-                                            class="text-brand-gold h-6 w-6"
-                                        />
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-text-secondary text-xs font-medium tracking-wider uppercase"
-                                        >
-                                            {m.settings_balance()}
-                                        </div>
-                                        <div
-                                            class="font-serif text-3xl text-white"
-                                        >
-                                            {s.wallet.balanceCredits.toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {:else}
-                            <div class="py-6 text-center">
-                                <p class="text-text-secondary font-light">
-                                    {m.settings_no_wallet()}
-                                </p>
-                            </div>
-                        {/if}
-                    </div>
                     <div
                         class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                     >
@@ -343,20 +246,6 @@
                                     ? "Switch to 繁體中文"
                                     : "切換為 English"}
                             </span>
-                        </CosmicButton>
-                    </div>
-                    <div
-                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-                    >
-                        <CosmicButton
-                            onclick={handleSwitchToMentor}
-                            disabled={switchingMode}
-                            className="min-w-37.5 bg-white/10 backdrop-blur-md border-none shadow-lg shadow-black/10"
-                        >
-                            {#if switchingMode}
-                                <LoaderCircle class="h-4 w-4 animate-spin" />
-                            {/if}
-                            <span>{m.settings_switch_to_mentor_action()}</span>
                         </CosmicButton>
                     </div>
                     <div

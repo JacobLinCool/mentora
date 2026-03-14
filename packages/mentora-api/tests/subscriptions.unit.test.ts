@@ -99,7 +99,7 @@ describe('Subscription APIs (Unit)', () => {
 				exists: () => true,
 				data: () => ({
 					uid: 'user-1',
-					activeMode: 'student',
+					role: 'student',
 					displayName: 'Student One',
 					email: 'student1@test.local',
 					photoURL: null,
