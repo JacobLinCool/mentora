@@ -44,10 +44,10 @@ async function seed() {
     // 2. Create user profile
     await db.doc(`users/${uid}`).set({
         uid,
+        role: "mentor",
         displayName: TEACHER_NAME,
         email: TEACHER_EMAIL,
         photoURL: null,
-        activeMode: "mentor",
         createdAt: now,
         updatedAt: now,
     });
