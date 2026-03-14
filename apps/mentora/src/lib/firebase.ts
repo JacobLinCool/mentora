@@ -17,7 +17,7 @@ const useEmulator = PUBLIC_USE_FIREBASE_EMULATOR === "true";
 const firebaseConfig = {
     apiKey: PUBLIC_FIREBASE_API_KEY,
     authDomain: PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: useEmulator ? "demo-no-project" : PUBLIC_FIREBASE_PROJECT_ID,
+    projectId: useEmulator ? "mentora-dev" : PUBLIC_FIREBASE_PROJECT_ID,
     appId: PUBLIC_FIREBASE_APP_ID,
 };
 
