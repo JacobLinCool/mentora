@@ -4,12 +4,40 @@
     import { resolve } from "$app/paths";
     import { m } from "$lib/paraglide/messages";
     import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
-    import { api, type Announcement } from "$lib/api";
+    import { api } from "$lib/api";
     import { Bell, CheckCheck, Clock, Megaphone } from "@lucide/svelte";
     import { formatMentoraDateTime } from "$lib/features/datetime/format";
 
+    type Announcement = {
+        id: string;
+        type: "course_announcement" | string;
+        isRead: boolean;
+        createdAt: number;
+        payload: {
+            courseId: string;
+            courseTitle: string;
+            contentPreview: string;
+        };
+    };
+
+    type AnnouncementsApiBridge = {
+        announcements?: {
+            markRead: (
+                announcementId: string,
+            ) => Promise<{ success: boolean; error?: string }>;
+            markAllRead: () => Promise<{ success: boolean; error?: string }>;
+        };
+        announcementsSubscribe?: {
+            subscribeToMine: (
+                state: typeof announcementsState,
+                options?: { limit?: number },
+            ) => void;
+        };
+    };
+
     const announcementsState = api.createState<Announcement[]>();
     const announcements = $derived(announcementsState.value || []);
+    const announcementsApi = api as unknown as AnnouncementsApiBridge;
     let actionError = $state<string | null>(null);
     const unreadCount = $derived(
         announcements.reduce(
@@ -37,11 +65,6 @@
         );
     }
 
-    function getIcon(type: Announcement["type"]) {
-        if (type === "course_announcement") return Megaphone;
-        return Bell;
-    }
-
     function getTypeLabel(type: Announcement["type"]) {
         if (type === "course_announcement") {
             return m.announcements_type_course_announcement();
@@ -56,12 +79,12 @@
     async function openAnnouncement(announcement: Announcement) {
         actionError = null;
         try {
-            if (!announcement.isRead) {
-                const result = await api.announcements.markRead(
+            if (!announcement.isRead && announcementsApi.announcements) {
+                const result = await announcementsApi.announcements.markRead(
                     announcement.id,
                 );
                 if (!result.success) {
-                    actionError = result.error;
+                    actionError = result.error || m.error_generic();
                     console.error(
                         "Failed to mark announcement as read",
                         result.error,
@@ -83,10 +106,11 @@
 
     async function markAllRead() {
         if (unreadCount === 0) return;
+        if (!announcementsApi.announcements) return;
         actionError = null;
-        const result = await api.announcements.markAllRead();
+        const result = await announcementsApi.announcements.markAllRead();
         if (!result.success) {
-            actionError = result.error;
+            actionError = result.error || m.error_generic();
             console.error(
                 "Failed to mark all announcements as read",
                 result.error,
@@ -98,9 +122,14 @@
         let cancelled = false;
 
         const subscribe = () => {
-            api.announcementsSubscribe.subscribeToMine(announcementsState, {
-                limit: 200,
-            });
+            if (announcementsApi.announcementsSubscribe?.subscribeToMine) {
+                announcementsApi.announcementsSubscribe.subscribeToMine(
+                    announcementsState,
+                    {
+                        limit: 200,
+                    },
+                );
+            }
         };
 
         if (api.isAuthenticated) {
@@ -190,12 +219,11 @@
                                                     : "bg-yellow-100 text-yellow-700"
                                             }`}
                                         >
-                                            <svelte:component
-                                                this={getIcon(
-                                                    announcement.type,
-                                                )}
-                                                class="h-5 w-5"
-                                            />
+                                            {#if announcement.type === "course_announcement"}
+                                                <Megaphone class="h-5 w-5" />
+                                            {:else}
+                                                <Bell class="h-5 w-5" />
+                                            {/if}
                                         </div>
 
                                         <div class="min-w-0 flex-1">
@@ -267,12 +295,11 @@
                                         <div
                                             class="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600"
                                         >
-                                            <svelte:component
-                                                this={getIcon(
-                                                    announcement.type,
-                                                )}
-                                                class="h-5 w-5"
-                                            />
+                                            {#if announcement.type === "course_announcement"}
+                                                <Megaphone class="h-5 w-5" />
+                                            {:else}
+                                                <Bell class="h-5 w-5" />
+                                            {/if}
                                         </div>
 
                                         <div class="min-w-0 flex-1">

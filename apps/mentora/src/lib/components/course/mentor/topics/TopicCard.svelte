@@ -62,6 +62,10 @@
 
     // Sync edit state with props
     $effect(() => {
+        if (isEditing) {
+            return;
+        }
+
         editTitle = initialTitle;
         editDescription = initialDescription;
         localAssignments = [...assignments];

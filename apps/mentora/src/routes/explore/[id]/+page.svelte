@@ -74,7 +74,7 @@
 </script>
 
 <svelte:head>
-    <title>{course?.code || "Loading"} - {m.explore_title()} - Mentora</title>
+    <title>{course?.title || "Loading"} - {m.explore_title()} - Mentora</title>
 </svelte:head>
 
 <div class="min-h-screen bg-linear-to-br from-[#404040] to-[#6b6b6b] pb-24">
@@ -127,7 +127,7 @@
                 <h1
                     class="mb-4 font-serif text-4xl font-bold tracking-wide text-white"
                 >
-                    {course.code}
+                    {course.title}
                 </h1>
             </div>
         </div>

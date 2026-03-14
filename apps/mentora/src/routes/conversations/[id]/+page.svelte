@@ -1,5 +1,6 @@
 ﻿<script lang="ts">
     import { m } from "$lib/paraglide/messages";
+    import { SvelteMap } from "svelte/reactivity";
     import { Send, ArrowLeft } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import TypewriterText from "$lib/components/conversation/TypewriterText.svelte";
@@ -20,24 +21,62 @@
 
     let courseId = $state<string | null>(null);
 
-    $effect(() => {
-        if (conversationId && api.isAuthenticated) {
-            api.conversationsSubscribe.subscribe(conversationId, convState);
-            return () => {
-                if (convState) {
-                    convState.cleanup();
-                }
-            };
+    async function subscribeConversation() {
+        if (!api.isAuthenticated) {
+            await api.authReady;
         }
+
+        if (!conversationId) {
+            return;
+        }
+
+        convState.cleanup();
+        api.conversationsSubscribe.subscribe(conversationId, convState);
+    }
+
+    $effect(() => {
+        const id = conversationId;
+        const authed = api.isAuthenticated;
+
+        if (!id) {
+            convState.cleanup();
+            return;
+        }
+
+        let disposed = false;
+
+        (async () => {
+            if (!authed) {
+                await api.authReady;
+            }
+
+            if (disposed || conversationId !== id) {
+                return;
+            }
+
+            await subscribeConversation();
+        })();
+
+        return () => {
+            disposed = true;
+            convState.cleanup();
+        };
     });
 
     $effect(() => {
         const conv = convState.value;
         if (conv && conv.assignmentId && !courseId) {
             api.assignments.get(conv.assignmentId).then((res) => {
-                if (res.success && res.data.courseId) {
-                    courseId = res.data.courseId;
-                } else if (!res.success) {
+                if (res.success) {
+                    if (res.data.courseId) {
+                        courseId = res.data.courseId;
+                    }
+
+                    const intro = resolveConversationIntro(res.data);
+                    if (intro) {
+                        conversationIntro = intro;
+                    }
+                } else {
                     // Fallback: If we can't find the course, we might be in an orphan conversation
                     console.warn(
                         "Could not find linked course for this conversation",
@@ -48,6 +87,7 @@
     });
 
     let conversation = $derived(convState.value);
+    let conversationLoadError = $derived(convState.error);
 
     // UI State
     type Phase = "responding" | "ready";
@@ -63,22 +103,239 @@
     let totalStages = $derived(TOTAL_CONVERSATION_STAGES);
 
     let currentQuestion = $state("");
+    let conversationIntro = $state("");
     let keywords = $state<string[]>([]);
 
     let messageInput = $state("");
     let sending = $state(false);
     let sendError = $state<string | null>(null);
+    const isConversationClosed = $derived(conversation?.state === "closed");
 
     let lastRenderedTurnId = $state<string | null>(null);
+    let currentResponse = $state("");
+    let responseToType = $state("");
+    let questionToType = $state("");
+    let sendErrorCode = $state<string | null>(null);
+
+    function resolveConversationIntro(assignment: unknown): string {
+        if (!assignment || typeof assignment !== "object") {
+            return "";
+        }
+
+        const data = assignment as {
+            introduction?: unknown;
+            question?: unknown;
+            prompt?: unknown;
+        };
+
+        if (
+            typeof data.introduction === "string" &&
+            data.introduction.trim().length > 0
+        ) {
+            return data.introduction.trim();
+        }
+
+        if (
+            typeof data.question === "string" &&
+            data.question.trim().length > 0
+        ) {
+            return data.question.trim();
+        }
+
+        if (typeof data.prompt === "string" && data.prompt.trim().length > 0) {
+            return data.prompt.trim();
+        }
+
+        return "";
+    }
+
+    function extractErrorMessage(error: unknown): string {
+        if (typeof error === "string") {
+            return error;
+        }
+
+        if (!error || typeof error !== "object") {
+            return "";
+        }
+
+        if ("message" in error && typeof error.message === "string") {
+            return error.message;
+        }
+
+        if ("error" in error && typeof error.error === "string") {
+            return error.error;
+        }
+
+        return "";
+    }
+
+    function extractErrorCode(error: unknown): string | null {
+        if (!error || typeof error !== "object") {
+            return null;
+        }
+
+        if ("serverCode" in error && typeof error.serverCode === "string") {
+            return error.serverCode;
+        }
+
+        if ("code" in error && typeof error.code === "string") {
+            return error.code;
+        }
+
+        return null;
+    }
+
+    function isAiTurn(
+        turn: NonNullable<Conversation["turns"]>[number],
+        index: number,
+    ) {
+        if (turn.type === "followup" || turn.type === "summary") {
+            return true;
+        }
+
+        if (
+            turn.type === "idea" ||
+            turn.type === "topic" ||
+            turn.type === "counterpoint"
+        ) {
+            return false;
+        }
+
+        return index % 2 === 1;
+    }
 
     function getLatestAiTurn(turns: NonNullable<Conversation["turns"]>) {
         for (let i = turns.length - 1; i >= 0; i--) {
-            // Turns are appended as user -> AI pairs. Odd indexes are AI turns.
-            if (i % 2 === 1) {
+            if (isAiTurn(turns[i], i)) {
                 return turns[i];
             }
         }
         return null;
+    }
+
+    function splitAiMessage(text: string): {
+        response: string;
+        question: string;
+    } {
+        const normalized = text.trim();
+        if (!normalized) {
+            return { response: "", question: "" };
+        }
+
+        const parts = normalized
+            .split(/\n\s*\n+/)
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0);
+
+        if (parts.length === 1) {
+            return { response: "", question: parts[0] };
+        }
+
+        return {
+            response: parts.slice(0, -1).join("\n\n"),
+            question: parts.at(-1) ?? "",
+        };
+    }
+
+    const KEYWORD_STOP_WORDS = new Set([
+        "the",
+        "and",
+        "for",
+        "that",
+        "with",
+        "this",
+        "have",
+        "from",
+        "your",
+        "about",
+        "into",
+        "they",
+        "them",
+        "you",
+        "are",
+        "was",
+        "were",
+        "will",
+        "can",
+        "not",
+        "but",
+        "all",
+        "any",
+        "our",
+        "out",
+        "too",
+        "its",
+        "than",
+        "then",
+        "what",
+        "when",
+        "where",
+        "who",
+        "why",
+        "how",
+        "also",
+        "very",
+        "just",
+        "like",
+        "there",
+        "their",
+        "been",
+        "being",
+        "more",
+        "most",
+        "only",
+        "each",
+        "much",
+        "many",
+        "some",
+        "such",
+        "does",
+        "did",
+        "done",
+        "could",
+        "should",
+        "would",
+        "might",
+        "must",
+    ]);
+
+    function extractKeywordsFromTurns(
+        turns: NonNullable<Conversation["turns"]>,
+    ): string[] {
+        const freq = new SvelteMap<string, number>();
+        const recentTurns = turns.slice(-10);
+
+        for (const turn of recentTurns) {
+            const text = turn.text?.trim();
+            if (!text) {
+                continue;
+            }
+
+            const hanSegments = text.match(/\p{Script=Han}{2,}/gu) ?? [];
+            for (const token of hanSegments) {
+                if (token.length > 8) {
+                    continue;
+                }
+                freq.set(token, (freq.get(token) ?? 0) + 1);
+            }
+
+            const latinTokens = text
+                .toLowerCase()
+                .replace(/[^\p{L}\p{N}\s]/gu, " ")
+                .split(/\s+/)
+                .filter(
+                    (word) => word.length >= 3 && !KEYWORD_STOP_WORDS.has(word),
+                );
+
+            for (const token of latinTokens) {
+                freq.set(token, (freq.get(token) ?? 0) + 1);
+            }
+        }
+
+        return [...freq.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([text]) => text);
     }
 
     function goBack() {
@@ -91,41 +348,77 @@
 
     $effect(() => {
         const turns = conversation?.turns || [];
+        keywords = extractKeywordsFromTurns(turns);
         const latestAiTurn = getLatestAiTurn(turns);
 
         if (!latestAiTurn) {
             if (turns.length === 0) {
-                currentQuestion = "";
+                currentResponse = "";
+                currentQuestion =
+                    conversationIntro || m.page_conversation_description();
+                responseToType = "";
+                questionToType = "";
                 lastRenderedTurnId = null;
+            } else {
+                const latestTurn = turns.at(-1);
+                currentResponse = "";
+                currentQuestion = latestTurn?.text ?? "";
+                responseToType = "";
+                questionToType = "";
+                phase = "ready";
             }
             return;
         }
 
+        const { response, question } = splitAiMessage(latestAiTurn.text);
+        const normalizedQuestion = question || latestAiTurn.text;
+
         if (lastRenderedTurnId === null) {
             lastRenderedTurnId = latestAiTurn.id;
-            currentQuestion = latestAiTurn.text;
+            currentResponse = response;
+            currentQuestion = normalizedQuestion;
+            responseToType = "";
+            questionToType = "";
             phase = "ready";
             return;
         }
 
         if (latestAiTurn.id !== lastRenderedTurnId) {
-            currentQuestion = latestAiTurn.text;
+            responseToType = response;
+            questionToType = normalizedQuestion;
+            currentResponse = "";
             lastRenderedTurnId = latestAiTurn.id;
             phase = "responding";
-            typingPhase = "question";
+
+            if (responseToType) {
+                typingPhase = "response";
+            } else {
+                typingPhase = "question";
+            }
         }
     });
 
-    /* function handleResponseComplete() {
+    $effect(() => {
+        if (isConversationClosed) {
+            isRecording = false;
+            showTextInput = false;
+        }
+    });
+
+    function handleResponseComplete() {
+        currentResponse = responseToType;
         setTimeout(() => {
             typingPhase = "question";
-        }, 300);
-    } */
+        }, 200);
+    }
 
     function handleQuestionComplete() {
+        currentQuestion = questionToType || currentQuestion;
+        responseToType = "";
+        questionToType = "";
         setTimeout(() => {
             phase = "ready";
-        }, 500);
+        }, 300);
     }
 
     function handleToggleKeywords() {
@@ -133,25 +426,50 @@
     }
 
     async function handleRecordingComplete(blob: Blob) {
-        if (!conversationId) return;
+        if (!conversationId || isConversationClosed) return;
 
         sending = true;
+        showTextInput = false;
         sendError = null;
+        sendErrorCode = null;
         try {
             const audio =
                 blob.type.length > 0
                     ? blob
                     : new Blob([blob], { type: "audio/webm" });
-            const res = await api.conversations.addTurn(conversationId, {
+
+            const formData = new FormData();
+            formData.set(
+                "audio",
                 audio,
-            });
+                `recording.${audio.type.includes("mp4") ? "mp4" : "webm"}`,
+            );
+
+            const res = await api.backend.call(
+                `/conversations/${conversationId}/turns`,
+                {
+                    method: "POST",
+                    body: formData,
+                },
+            );
+
             if (!res.success) {
                 console.error("Failed to add audio turn:", res.error);
-                sendError = m.conversation_voice_send_failed();
+                const detail = extractErrorMessage(res.error);
+                const code = extractErrorCode(res.error);
+                sendErrorCode = code;
+                sendError = detail
+                    ? `${m.conversation_error()} ${detail}`
+                    : m.conversation_error();
             }
         } catch (e) {
             console.error("Error sending audio turn:", e);
-            sendError = m.conversation_voice_send_error();
+            const detail = extractErrorMessage(e);
+            const code = extractErrorCode(e);
+            sendErrorCode = code;
+            sendError = detail
+                ? `${m.conversation_error()} ${detail}`
+                : m.conversation_error();
         } finally {
             sending = false;
         }
@@ -161,37 +479,51 @@
         showTextInput = !showTextInput;
     }
 
+    async function handleRetryLoad() {
+        sendError = null;
+        sendErrorCode = null;
+        await subscribeConversation();
+    }
+
     async function handleSendMessage() {
         const text = messageInput.trim();
-        if (!text || !conversationId) return;
+        if (!text || !conversationId || isConversationClosed) return;
 
         sending = true;
         sendError = null;
+        sendErrorCode = null;
 
         try {
             const res = await api.conversations.addTurn(conversationId, text);
             if (!res.success) {
                 console.error("Failed to add turn:", res.error);
-                let msg = String(res.error);
-                if (
-                    typeof res.error === "object" &&
-                    res.error !== null &&
-                    "message" in res.error
-                ) {
-                    msg = (res.error as { message: string }).message;
-                }
-                sendError = m.conversation_send_failed_with_reason({
-                    reason: msg || m.unknown(),
-                });
+                const msg = extractErrorMessage(res.error);
+                const code = extractErrorCode(res.error);
+                sendErrorCode = code;
+                sendError = `${m.conversation_error()} ${msg || ""}`.trim();
             } else {
                 messageInput = "";
                 showTextInput = false;
             }
         } catch (e) {
             console.error("Error sending message:", e);
-            sendError = m.conversation_send_error();
+            const detail = extractErrorMessage(e);
+            const code = extractErrorCode(e);
+            sendErrorCode = code;
+            sendError = detail
+                ? `${m.conversation_error()} ${detail}`
+                : m.conversation_error();
         } finally {
             sending = false;
+        }
+    }
+
+    function handleMessageInputKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            if (!sending && messageInput.trim()) {
+                void handleSendMessage();
+            }
         }
     }
 </script>
@@ -218,30 +550,59 @@
             <!-- Only show indicator if not in ready phase because ready phase might hide it on mobile? No, always show but positioned -->
         {/if}
 
-        {#if !conversation}
+        {#if !conversation && !conversationLoadError}
             <div class="flex h-full items-center justify-center">
                 <div class="animate-pulse text-white/50">
                     {m.conversation_loading()}
                 </div>
             </div>
+        {:else if !conversation && conversationLoadError}
+            <div class="flex h-full items-center justify-center px-6">
+                <div
+                    class="w-full max-w-xl rounded-2xl border border-white/15 bg-white/8 p-6 text-center backdrop-blur-sm"
+                >
+                    <p class="text-lg text-white">{m.conversation_error()}</p>
+                    <p class="mt-2 text-sm break-words text-white/70">
+                        {conversationLoadError}
+                    </p>
+                    <button
+                        class="mt-4 rounded-lg border border-white/20 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                        onclick={handleRetryLoad}
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
         {:else if phase === "responding"}
             <div class="responding-phase">
                 <div class="text-container">
-                    {#if typingPhase === "response" || typingPhase === "question"}
-                        <div class="response-text">
-                            <!-- TODO: Separate response/question parts logic -->
-                        </div>
-                    {/if}
+                    <div class="turn-content-scroll">
+                        {#if typingPhase === "response" && responseToType}
+                            <div class="response-typing">
+                                <TypewriterText
+                                    text={responseToType}
+                                    speed={22}
+                                    onComplete={handleResponseComplete}
+                                />
+                            </div>
+                        {/if}
 
-                    {#if typingPhase === "question"}
-                        <div class="question-typing">
-                            <TypewriterText
-                                text={currentQuestion}
-                                speed={30}
-                                onComplete={handleQuestionComplete}
-                            />
-                        </div>
-                    {/if}
+                        {#if typingPhase === "question" && currentResponse}
+                            <div class="response-text">
+                                {currentResponse}
+                            </div>
+                        {/if}
+
+                        {#if typingPhase === "question"}
+                            <div class="question-typing">
+                                <TypewriterText
+                                    text={questionToType || currentQuestion}
+                                    speed={30}
+                                    onComplete={handleQuestionComplete}
+                                />
+                            </div>
+                        {/if}
+                    </div>
                 </div>
             </div>
         {:else}
@@ -250,7 +611,12 @@
                 <div class="top-spacer"></div>
 
                 <div class="question-display">
-                    <h2 class="question-text">{currentQuestion}</h2>
+                    <div class="turn-content-scroll">
+                        {#if currentResponse}
+                            <p class="response-text">{currentResponse}</p>
+                        {/if}
+                        <h2 class="question-text">{currentQuestion}</h2>
+                    </div>
                 </div>
 
                 <!-- Keywords Panel (when visible) -->
@@ -272,6 +638,7 @@
                                 placeholder={m.conversation_placeholder()}
                                 rows="2"
                                 disabled={sending}
+                                onkeydown={handleMessageInputKeydown}
                             ></textarea>
                             <button
                                 class="send-btn"
@@ -289,7 +656,11 @@
                 <div class="controls-section">
                     <VoiceControls
                         {showKeywords}
+                        {showTextInput}
                         bind:isRecording
+                        disabled={sending}
+                        recordDisabled={isConversationClosed}
+                        textInputDisabled={isConversationClosed}
                         onToggleKeywords={handleToggleKeywords}
                         onShowTextInput={handleShowTextInput}
                         onRecordingComplete={handleRecordingComplete}
@@ -302,6 +673,11 @@
                         <p class="mb-2 text-center text-sm text-amber-300">
                             {sendError}
                         </p>
+                        {#if sendErrorCode}
+                            <p class="mb-2 text-center text-xs text-white/60">
+                                code: {sendErrorCode}
+                            </p>
+                        {/if}
                     {/if}
                     <StageIndicator {currentStage} {totalStages} />
                 </div>
@@ -388,6 +764,10 @@
         opacity: 0.9;
     }
 
+    .response-typing {
+        margin-bottom: 1.5rem;
+    }
+
     /* Question typing section */
     .question-typing {
         margin-top: 1rem;
@@ -419,6 +799,22 @@
 
     .question-display {
         margin-bottom: 2rem;
+    }
+
+    .turn-content-scroll {
+        max-height: min(42vh, 24rem);
+        overflow-y: auto;
+        padding-right: 0.25rem;
+        scroll-behavior: smooth;
+    }
+
+    .turn-content-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .turn-content-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.22);
+        border-radius: 999px;
     }
 
     .question-text {

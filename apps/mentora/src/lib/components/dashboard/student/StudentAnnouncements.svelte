@@ -95,6 +95,7 @@
 
     <div class="space-y-4">
         {#each announcements as announcement (announcement.id)}
+            {@const Icon = getIcon(announcement.type)}
             <button
                 class="group flex w-full items-start gap-4 text-left transition-opacity hover:opacity-80"
                 onclick={() => openAnnouncement(announcement)}
@@ -106,10 +107,7 @@
                             : "bg-yellow-100 text-yellow-700"
                     }`}
                 >
-                    <svelte:component
-                        this={getIcon(announcement.type)}
-                        class="h-4 w-4"
-                    />
+                    <Icon class="h-4 w-4" />
                 </div>
 
                 <div class="min-w-0 flex-1">

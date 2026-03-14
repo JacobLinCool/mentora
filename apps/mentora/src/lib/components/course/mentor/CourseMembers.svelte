@@ -54,10 +54,12 @@
             }
 
             const roster = res.data.filter(
-                (member) =>
+                (
+                    member,
+                ): member is (typeof res.data)[number] & { id: string } =>
                     (member.status === "active" ||
                         member.status === "invited") &&
-                    member.id,
+                    typeof (member as { id?: unknown }).id === "string",
             );
 
             const mapped = await Promise.all(
@@ -91,8 +93,16 @@
                     let dateInfo = "-";
                     if (member.joinedAt) {
                         dateInfo = new Date(member.joinedAt).toLocaleString();
-                    } else if (member.invitedAt) {
-                        dateInfo = `${m.course_members_invited_date()} ${new Date(member.invitedAt).toLocaleString()}`;
+                    } else {
+                        const invitedAt =
+                            "invitedAt" in member
+                                ? (member as { invitedAt?: number | null })
+                                      .invitedAt
+                                : null;
+
+                        if (invitedAt) {
+                            dateInfo = `${m.course_members_invited_date()} ${new Date(invitedAt).toLocaleString()}`;
+                        }
                     }
 
                     return {

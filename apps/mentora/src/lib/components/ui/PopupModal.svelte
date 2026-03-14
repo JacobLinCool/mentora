@@ -6,6 +6,7 @@
         open: boolean;
         title?: string;
         size?: "xs" | "sm" | "md" | "lg" | "xl";
+        preventCloseOnOutside?: boolean;
         children: Snippet;
         footer?: Snippet;
     }
@@ -14,12 +15,22 @@
         open = $bindable(false),
         title = "",
         size = "md",
+        preventCloseOnOutside = false,
         children,
         footer,
     }: Props = $props();
 </script>
 
-<Modal bind:open {title} {size} autoclose={false} class="popup-modal">
+<Modal
+    bind:open
+    {title}
+    {size}
+    autoclose={false}
+    outsideclose={!preventCloseOnOutside}
+    dismissable={!preventCloseOnOutside}
+    permanent={preventCloseOnOutside}
+    class="popup-modal"
+>
     <div class="popup-modal-content">
         {@render children()}
     </div>
