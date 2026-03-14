@@ -130,7 +130,6 @@
 
     // Dialogue state (for enhanced report)
     let dialogueState = $state<DialogueStateDisplay | null>(null);
-    let dialogueStateLoading = $state(false);
 
     const assessmentDimensions = [
         { key: "argumentQuality", label: "論證品質" },
@@ -207,7 +206,6 @@
     }
 
     async function loadDialogueState(convId: string) {
-        dialogueStateLoading = true;
         try {
             const res = await api.conversations.getDialogueState(convId);
             if (res.success) {
@@ -215,8 +213,6 @@
             }
         } catch (e) {
             console.error("Failed to load dialogue state", e);
-        } finally {
-            dialogueStateLoading = false;
         }
     }
 
@@ -997,7 +993,7 @@
                                     思考演變歷程
                                 </h3>
                                 <div class="space-y-3">
-                                    {#each dialogueState.stanceHistory as stance, i (stance.version)}
+                                    {#each dialogueState.stanceHistory as stance (stance.version)}
                                         <div
                                             class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
                                         >
