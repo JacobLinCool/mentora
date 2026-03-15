@@ -133,7 +133,7 @@ async function extractResponseBody(response: Response): Promise<any> {
 }
 
 describe('ConversationService.addTurn – ASR error handling', () => {
-	const user = { uid: 'user-1' };
+	const user = { uid: 'user-1', email: 'test@example.com', emailVerified: true };
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
