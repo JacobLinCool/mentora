@@ -526,6 +526,31 @@
         showKeywords = !showKeywords;
     }
 
+    function playBase64Audio(base64: string, mimeType: string = "audio/mp3") {
+        try {
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.addEventListener("ended", () => URL.revokeObjectURL(url), {
+                once: true,
+            });
+            audio.addEventListener("error", () => URL.revokeObjectURL(url), {
+                once: true,
+            });
+            audio.play().catch((e) => {
+                console.error("Audio playback failed:", e);
+                URL.revokeObjectURL(url);
+            });
+        } catch (e) {
+            console.error("Failed to play audio response:", e);
+        }
+    }
+
     async function handleRecordingComplete(blob: Blob) {
         if (!conversationId || isConversationClosed) return;
 
@@ -539,20 +564,9 @@
                     ? blob
                     : new Blob([blob], { type: "audio/webm" });
 
-            const formData = new FormData();
-            formData.set(
-                "audio",
+            const res = await api.conversations.addTurn(conversationId, {
                 audio,
-                `recording.${audio.type.includes("mp4") ? "mp4" : "webm"}`,
-            );
-
-            const res = await api.backend.call(
-                `/conversations/${conversationId}/turns`,
-                {
-                    method: "POST",
-                    body: formData,
-                },
-            );
+            });
 
             if (!res.success) {
                 console.error("Failed to add audio turn:", res.error);
@@ -562,6 +576,11 @@
                 sendError = detail
                     ? `${m.conversation_error()} ${detail}`
                     : m.conversation_error();
+            } else if (res.data?.audio) {
+                playBase64Audio(
+                    res.data.audio,
+                    res.data.audioMimeType || "audio/mp3",
+                );
             }
         } catch (e) {
             console.error("Error sending audio turn:", e);
@@ -605,6 +624,12 @@
             } else {
                 messageInput = "";
                 showTextInput = false;
+                if (res.data?.audio) {
+                    playBase64Audio(
+                        res.data.audio,
+                        res.data.audioMimeType || "audio/mp3",
+                    );
+                }
             }
         } catch (e) {
             console.error("Error sending message:", e);
