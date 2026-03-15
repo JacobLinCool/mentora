@@ -298,7 +298,8 @@ export class ConversationService {
 						usage: asrExecutor.getTokenUsage()
 					}
 				]);
-			} catch {
+			} catch (error) {
+				if (error instanceof Response) throw error;
 				throw errorResponse(
 					'Failed to transcribe audio. Please try again or use text input.',
 					HttpStatus.INTERNAL_SERVER_ERROR,
