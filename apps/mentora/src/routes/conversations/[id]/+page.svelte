@@ -476,13 +476,19 @@
         transcriptTouchStartY = null;
     }
 
+    function trackScrollSyncDependencies(...args: unknown[]) {
+        return args.length;
+    }
+
     $effect(() => {
-        transcriptEntries.length;
-        currentResponse;
-        currentQuestion;
-        phase;
-        showUserReplies;
-        historyExpanded;
+        trackScrollSyncDependencies(
+            transcriptEntries.length,
+            currentResponse,
+            currentQuestion,
+            phase,
+            showUserReplies,
+            historyExpanded,
+        );
 
         if (!transcriptScrollEl) {
             return;
