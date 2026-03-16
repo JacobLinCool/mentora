@@ -743,7 +743,11 @@
 
     <div class="content relative">
         {#if courseId}
-            <div class="absolute top-6 left-6 z-50">
+            <div
+                class={isConversationClosed
+                    ? "fixed top-6 left-6 z-50"
+                    : "absolute top-6 left-6 z-50"}
+            >
                 <button
                     class="student-icon-btn cursor-pointer rounded-full hover:-translate-x-0.5"
                     onclick={goBack}
@@ -779,223 +783,8 @@
                     </button>
                 </div>
             </div>
-        {:else if phase === "responding"}
-            <div class="responding-phase">
-                <div class="text-container">
-                    <div class="conversation-scroll-shell">
-                        <div
-                            class="turn-content-scroll space-y-5 pt-6 pb-8"
-                            bind:this={transcriptScrollEl}
-                            role="region"
-                            aria-label={m.conversation_transcript_aria()}
-                            onwheel={handleTranscriptWheel}
-                            ontouchstart={handleTranscriptTouchStart}
-                            ontouchmove={handleTranscriptTouchMove}
-                            ontouchend={handleTranscriptTouchEnd}
-                        >
-                            {#if historyExpanded && transcriptEntries.length > 0}
-                                {#each transcriptEntries as entry (entry.id)}
-                                    {#if entry.role === "user"}
-                                        {#if showUserReplies}
-                                            <div
-                                                class="ml-auto max-w-[85%] text-right"
-                                            >
-                                                <p
-                                                    class="m-0 text-[1rem] leading-[1.8] text-white/74"
-                                                >
-                                                    {entry.text}
-                                                </p>
-                                            </div>
-                                        {/if}
-                                    {:else if entry.variant === "response"}
-                                        <div>
-                                            <p
-                                                class={entry.isLatest
-                                                    ? "response-text"
-                                                    : "history-response-text"}
-                                            >
-                                                {entry.text}
-                                            </p>
-                                        </div>
-                                    {:else}
-                                        <h2
-                                            class={entry.isLatest
-                                                ? "question-text"
-                                                : "history-question-text"}
-                                        >
-                                            {entry.text}
-                                        </h2>
-                                    {/if}
-                                {/each}
-                            {/if}
-
-                            {#if typingPhase === "response" && responseToType}
-                                <div class="response-typing">
-                                    <TypewriterText
-                                        text={responseToType}
-                                        speed={34}
-                                        onComplete={handleResponseComplete}
-                                    />
-                                </div>
-                            {/if}
-
-                            {#if typingPhase === "question" && currentResponse}
-                                <div class="response-text">
-                                    {currentResponse}
-                                </div>
-                            {/if}
-
-                            {#if typingPhase === "question"}
-                                <div class="question-typing">
-                                    <TypewriterText
-                                        text={questionToType || currentQuestion}
-                                        speed={42}
-                                        onComplete={handleQuestionComplete}
-                                    />
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {:else}
-            <!-- Ready Phase -->
-            <div class="ready-phase">
-                <div class="top-spacer"></div>
-
-                <div class="question-display min-h-[24rem]">
-                    {#if awaitingAiReply}
-                        <div
-                            class="flex min-h-[24rem] items-center justify-center"
-                        >
-                            <span
-                                class="thinking-caret text-[3.25rem] leading-none font-light text-white/88"
-                                aria-label={m.conversation_ai_thinking_aria()}
-                                >|</span
-                            >
-                        </div>
-                    {:else}
-                        <div class="conversation-scroll-shell">
-                            <div
-                                class="turn-content-scroll space-y-5 pt-6 pb-8"
-                                bind:this={transcriptScrollEl}
-                                role="region"
-                                aria-label={m.conversation_transcript_aria()}
-                                onwheel={handleTranscriptWheel}
-                                ontouchstart={handleTranscriptTouchStart}
-                                ontouchmove={handleTranscriptTouchMove}
-                                ontouchend={handleTranscriptTouchEnd}
-                            >
-                                {#if historyExpanded && transcriptEntries.length > 0}
-                                    {#each transcriptEntries as entry (entry.id)}
-                                        {#if entry.role === "user"}
-                                            {#if showUserReplies}
-                                                <div
-                                                    class="ml-auto max-w-[85%] text-right"
-                                                >
-                                                    <p
-                                                        class="m-0 text-[1rem] leading-[1.8] text-white/74"
-                                                    >
-                                                        {entry.text}
-                                                    </p>
-                                                </div>
-                                            {/if}
-                                        {:else if entry.variant === "response"}
-                                            <div>
-                                                <p
-                                                    class={entry.isLatest
-                                                        ? "response-text"
-                                                        : "history-response-text"}
-                                                >
-                                                    {entry.text}
-                                                </p>
-                                            </div>
-                                        {:else}
-                                            <h2
-                                                class={entry.isLatest
-                                                    ? "question-text"
-                                                    : "history-question-text"}
-                                            >
-                                                {entry.text}
-                                            </h2>
-                                        {/if}
-                                    {/each}
-                                {:else}
-                                    {#if currentResponse}
-                                        <p class="response-text">
-                                            {currentResponse}
-                                        </p>
-                                    {/if}
-                                    {#if currentQuestion}
-                                        <h2 class="question-text">
-                                            {currentQuestion}
-                                        </h2>
-                                    {/if}
-                                {/if}
-                            </div>
-                        </div>
-                    {/if}
-                </div>
-
-                <!-- Spacer -->
-                <div class="spacer"></div>
-
-                <!-- Text input (when visible) -->
-                {#if showTextInput}
-                    <div class="text-input-section">
-                        <div class="input-wrapper">
-                            <textarea
-                                bind:value={messageInput}
-                                placeholder={m.conversation_placeholder()}
-                                rows="2"
-                                disabled={sending}
-                                onkeydown={handleMessageInputKeydown}
-                            ></textarea>
-                            <button
-                                class="send-btn"
-                                onclick={handleSendMessage}
-                                disabled={sending || !messageInput.trim()}
-                                aria-label={m.conversation_send()}
-                            >
-                                <Send class="send-icon" />
-                            </button>
-                        </div>
-                    </div>
-                {/if}
-
-                <!-- Voice controls -->
-                <div class="controls-section">
-                    <VoiceControls
-                        {showUserReplies}
-                        {showTextInput}
-                        bind:isRecording
-                        disabled={sending}
-                        recordDisabled={isConversationClosed}
-                        textInputDisabled={isConversationClosed}
-                        onToggleUserReplies={handleToggleUserReplies}
-                        onShowTextInput={handleShowTextInput}
-                        onRecordingComplete={handleRecordingComplete}
-                    />
-                </div>
-
-                <div class="controls-section">
-                    {#if sendError}
-                        <p class="text-center text-sm text-white/78">
-                            {sendError}
-                        </p>
-                        {#if sendErrorCode}
-                            <p class="mt-2 text-center text-xs text-white/60">
-                                {m.error_code_label()}: {sendErrorCode}
-                            </p>
-                        {/if}
-                    {/if}
-                </div>
-            </div>
-        {/if}
-
-        <!-- Assessment Results Section (shown when conversation is closed) -->
-        {#if isConversationClosed}
-            <div class="assessment-section">
+        {:else if isConversationClosed}
+            <div class="assessment-section pt-20">
                 {#if assessmentLoading}
                     <div class="flex items-center justify-center py-12">
                         <div class="animate-pulse text-white/50">
@@ -1290,34 +1079,17 @@
                                 <h3 class="mb-3 text-lg font-medium text-white">
                                     {m.conversation_assessment_transcript()}
                                 </h3>
-                                <div class="space-y-2">
+                                <div class="space-y-5">
                                     {#each conversation.turns as turn (turn.id)}
                                         <div
-                                            class="rounded-xl bg-[#5f5f5f] p-4"
+                                            class={turn.type === "idea"
+                                                ? "ml-auto max-w-[82%] text-right"
+                                                : "max-w-[82%] text-left"}
                                         >
-                                            <div
-                                                class="mb-1 flex items-center gap-2"
-                                            >
-                                                <span
-                                                    class="text-xs font-medium {turn.type ===
-                                                    'idea'
-                                                        ? 'text-blue-300'
-                                                        : 'text-white/72'}"
-                                                >
-                                                    {turn.type === "idea"
-                                                        ? m.conversation_assessment_student()
-                                                        : m.conversation_assessment_ai()}
-                                                </span>
-                                                {#if turn.analysis?.stance}
-                                                    <span
-                                                        class="rounded-full bg-[#6a6a6a] px-2 py-0.5 text-xs text-white/55"
-                                                    >
-                                                        {turn.analysis.stance}
-                                                    </span>
-                                                {/if}
-                                            </div>
                                             <p
-                                                class="text-sm leading-relaxed text-white/80"
+                                                class={turn.type === "idea"
+                                                    ? "text-sm leading-relaxed text-white/78"
+                                                    : "text-sm leading-relaxed text-white/86"}
                                             >
                                                 {turn.text}
                                             </p>
@@ -1349,6 +1121,218 @@
                         </div>
                     </div>
                 {/if}
+            </div>
+        {:else if phase === "responding"}
+            <div class="responding-phase">
+                <div class="text-container">
+                    <div class="conversation-scroll-shell">
+                        <div
+                            class="turn-content-scroll space-y-5 pt-6 pb-8"
+                            bind:this={transcriptScrollEl}
+                            role="region"
+                            aria-label={m.conversation_transcript_aria()}
+                            onwheel={handleTranscriptWheel}
+                            ontouchstart={handleTranscriptTouchStart}
+                            ontouchmove={handleTranscriptTouchMove}
+                            ontouchend={handleTranscriptTouchEnd}
+                        >
+                            {#if historyExpanded && transcriptEntries.length > 0}
+                                {#each transcriptEntries as entry (entry.id)}
+                                    {#if entry.role === "user"}
+                                        {#if showUserReplies}
+                                            <div
+                                                class="ml-auto max-w-[85%] text-right"
+                                            >
+                                                <p
+                                                    class="m-0 text-[1rem] leading-[1.8] text-white/74"
+                                                >
+                                                    {entry.text}
+                                                </p>
+                                            </div>
+                                        {/if}
+                                    {:else if entry.variant === "response"}
+                                        <div>
+                                            <p
+                                                class={entry.isLatest
+                                                    ? "response-text"
+                                                    : "history-response-text"}
+                                            >
+                                                {entry.text}
+                                            </p>
+                                        </div>
+                                    {:else}
+                                        <h2
+                                            class={entry.isLatest
+                                                ? "question-text"
+                                                : "history-question-text"}
+                                        >
+                                            {entry.text}
+                                        </h2>
+                                    {/if}
+                                {/each}
+                            {/if}
+
+                            {#if typingPhase === "response" && responseToType}
+                                <div class="response-typing">
+                                    <TypewriterText
+                                        text={responseToType}
+                                        speed={34}
+                                        onComplete={handleResponseComplete}
+                                    />
+                                </div>
+                            {/if}
+
+                            {#if typingPhase === "question" && currentResponse}
+                                <div class="response-text">
+                                    {currentResponse}
+                                </div>
+                            {/if}
+
+                            {#if typingPhase === "question"}
+                                <div class="question-typing">
+                                    <TypewriterText
+                                        text={questionToType || currentQuestion}
+                                        speed={42}
+                                        onComplete={handleQuestionComplete}
+                                    />
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {:else}
+            <!-- Ready Phase -->
+            <div class="ready-phase">
+                <div class="top-spacer"></div>
+
+                <div class="question-display min-h-[24rem]">
+                    {#if awaitingAiReply}
+                        <div
+                            class="flex min-h-[24rem] items-center justify-center"
+                        >
+                            <span
+                                class="thinking-caret text-[3.25rem] leading-none font-light text-white/88"
+                                aria-label={m.conversation_ai_thinking_aria()}
+                                >|</span
+                            >
+                        </div>
+                    {:else}
+                        <div class="conversation-scroll-shell">
+                            <div
+                                class="turn-content-scroll space-y-5 pt-6 pb-8"
+                                bind:this={transcriptScrollEl}
+                                role="region"
+                                aria-label={m.conversation_transcript_aria()}
+                                onwheel={handleTranscriptWheel}
+                                ontouchstart={handleTranscriptTouchStart}
+                                ontouchmove={handleTranscriptTouchMove}
+                                ontouchend={handleTranscriptTouchEnd}
+                            >
+                                {#if historyExpanded && transcriptEntries.length > 0}
+                                    {#each transcriptEntries as entry (entry.id)}
+                                        {#if entry.role === "user"}
+                                            {#if showUserReplies}
+                                                <div
+                                                    class="ml-auto max-w-[85%] text-right"
+                                                >
+                                                    <p
+                                                        class="m-0 text-[1rem] leading-[1.8] text-white/74"
+                                                    >
+                                                        {entry.text}
+                                                    </p>
+                                                </div>
+                                            {/if}
+                                        {:else if entry.variant === "response"}
+                                            <div>
+                                                <p
+                                                    class={entry.isLatest
+                                                        ? "response-text"
+                                                        : "history-response-text"}
+                                                >
+                                                    {entry.text}
+                                                </p>
+                                            </div>
+                                        {:else}
+                                            <h2
+                                                class={entry.isLatest
+                                                    ? "question-text"
+                                                    : "history-question-text"}
+                                            >
+                                                {entry.text}
+                                            </h2>
+                                        {/if}
+                                    {/each}
+                                {:else}
+                                    {#if currentResponse}
+                                        <p class="response-text">
+                                            {currentResponse}
+                                        </p>
+                                    {/if}
+                                    {#if currentQuestion}
+                                        <h2 class="question-text">
+                                            {currentQuestion}
+                                        </h2>
+                                    {/if}
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- Spacer -->
+                <div class="spacer"></div>
+
+                <!-- Text input (when visible) -->
+                {#if showTextInput}
+                    <div class="text-input-section">
+                        <div class="input-wrapper">
+                            <textarea
+                                bind:value={messageInput}
+                                placeholder={m.conversation_placeholder()}
+                                rows="2"
+                                disabled={sending}
+                                onkeydown={handleMessageInputKeydown}
+                            ></textarea>
+                            <button
+                                class="send-btn"
+                                onclick={handleSendMessage}
+                                disabled={sending || !messageInput.trim()}
+                                aria-label={m.conversation_send()}
+                            >
+                                <Send class="send-icon" />
+                            </button>
+                        </div>
+                    </div>
+                {/if}
+
+                <!-- Voice controls -->
+                <div class="controls-section">
+                    <VoiceControls
+                        {showUserReplies}
+                        {showTextInput}
+                        bind:isRecording
+                        disabled={sending}
+                        recordDisabled={isConversationClosed}
+                        textInputDisabled={isConversationClosed}
+                        onToggleUserReplies={handleToggleUserReplies}
+                        onShowTextInput={handleShowTextInput}
+                        onRecordingComplete={handleRecordingComplete}
+                    />
+                </div>
+
+                <div class="controls-section">
+                    {#if sendError}
+                        <p class="text-center text-sm text-white/78">
+                            {sendError}
+                        </p>
+                        {#if sendErrorCode}
+                            <p class="mt-2 text-center text-xs text-white/60">
+                                {m.error_code_label()}: {sendErrorCode}
+                            </p>
+                        {/if}
+                    {/if}
+                </div>
             </div>
         {/if}
     </div>
