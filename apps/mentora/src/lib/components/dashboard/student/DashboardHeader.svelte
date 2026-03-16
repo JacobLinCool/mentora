@@ -5,7 +5,7 @@
         userName?: string;
     }
 
-    let { userName = "user01" }: Props = $props();
+    let { userName = m.unknown() }: Props = $props();
 
     // Get current date
     const now = new Date();

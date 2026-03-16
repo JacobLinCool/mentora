@@ -1,12 +1,11 @@
 ﻿<script lang="ts">
+    import { tick } from "svelte";
     import { m } from "$lib/paraglide/messages";
-    import { SvelteMap, SvelteSet } from "svelte/reactivity";
+    import { SvelteSet } from "svelte/reactivity";
     import { Send, ArrowLeft, ChevronDown, ChevronRight } from "@lucide/svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import TypewriterText from "$lib/components/conversation/TypewriterText.svelte";
-    import KeywordsPanel from "$lib/components/conversation/KeywordsPanel.svelte";
     import VoiceControls from "$lib/components/conversation/VoiceControls.svelte";
-    import StageIndicator from "$lib/components/conversation/StageIndicator.svelte";
     import { page } from "$app/state";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
@@ -15,10 +14,6 @@
         AssessmentResult,
         DialogueStateDisplay,
     } from "mentora-firebase";
-    import {
-        resolveConversationStage,
-        TOTAL_CONVERSATION_STAGES,
-    } from "$lib/features/conversation/stage";
 
     const conversationId = $derived(page.params.id);
     const convState = api.createState<Conversation>();
@@ -98,17 +93,13 @@
     // Initialize to ready so we don't show blank screen if logic fails
     let phase: Phase = $state("ready");
     let typingPhase: "response" | "question" = $state("response");
-    let showKeywords = $state(false);
+    let showUserReplies = $state(false);
     let showTextInput = $state(false);
     let isRecording = $state(false);
-
-    // Data derived
-    let currentStage = $derived(resolveConversationStage(conversation?.state));
-    let totalStages = $derived(TOTAL_CONVERSATION_STAGES);
+    let awaitingAiReply = $state(false);
 
     let currentQuestion = $state("");
     let conversationIntro = $state("");
-    let keywords = $state<string[]>([]);
 
     let messageInput = $state("");
     let sending = $state(false);
@@ -120,6 +111,9 @@
     let responseToType = $state("");
     let questionToType = $state("");
     let sendErrorCode = $state<string | null>(null);
+    let transcriptScrollEl = $state<HTMLDivElement | null>(null);
+    let historyExpanded = $state(false);
+    let transcriptTouchStartY = $state<number | null>(null);
 
     // Assessment state
     let assessmentData = $state<AssessmentResult | null>(null);
@@ -131,13 +125,31 @@
     // Dialogue state (for enhanced report)
     let dialogueState = $state<DialogueStateDisplay | null>(null);
 
-    const assessmentDimensions = [
-        { key: "argumentQuality", label: "論證品質" },
-        { key: "criticalThinking", label: "批判思考" },
-        { key: "principleExtraction", label: "原則提煉" },
-        { key: "openness", label: "開放性" },
-        { key: "coherence", label: "論述連貫性" },
-    ] as const;
+    const assessmentDimensions = $derived.by(
+        () =>
+            [
+                {
+                    key: "argumentQuality",
+                    label: m.conversation_assessment_dimension_argument_quality(),
+                },
+                {
+                    key: "criticalThinking",
+                    label: m.conversation_assessment_dimension_critical_thinking(),
+                },
+                {
+                    key: "principleExtraction",
+                    label: m.conversation_assessment_dimension_principle_extraction(),
+                },
+                {
+                    key: "openness",
+                    label: m.conversation_assessment_dimension_openness(),
+                },
+                {
+                    key: "coherence",
+                    label: m.conversation_assessment_dimension_coherence(),
+                },
+            ] as const,
+    );
 
     function polarToCartesian(
         cx: number,
@@ -338,106 +350,154 @@
         };
     }
 
-    const KEYWORD_STOP_WORDS = new Set([
-        "the",
-        "and",
-        "for",
-        "that",
-        "with",
-        "this",
-        "have",
-        "from",
-        "your",
-        "about",
-        "into",
-        "they",
-        "them",
-        "you",
-        "are",
-        "was",
-        "were",
-        "will",
-        "can",
-        "not",
-        "but",
-        "all",
-        "any",
-        "our",
-        "out",
-        "too",
-        "its",
-        "than",
-        "then",
-        "what",
-        "when",
-        "where",
-        "who",
-        "why",
-        "how",
-        "also",
-        "very",
-        "just",
-        "like",
-        "there",
-        "their",
-        "been",
-        "being",
-        "more",
-        "most",
-        "only",
-        "each",
-        "much",
-        "many",
-        "some",
-        "such",
-        "does",
-        "did",
-        "done",
-        "could",
-        "should",
-        "would",
-        "might",
-        "must",
-    ]);
+    type TranscriptEntry = {
+        id: string;
+        sourceTurnId: string;
+        role: "ai" | "user";
+        variant: "response" | "question" | "user";
+        text: string;
+        isLatest: boolean;
+    };
 
-    function extractKeywordsFromTurns(
+    function buildTranscriptEntries(
         turns: NonNullable<Conversation["turns"]>,
-    ): string[] {
-        const freq = new SvelteMap<string, number>();
-        const recentTurns = turns.slice(-10);
+        includeUserReplies: boolean,
+        latestAiTurnId: string | null,
+        omitAiTurnId: string | null = null,
+    ): TranscriptEntry[] {
+        const entries: TranscriptEntry[] = [];
 
-        for (const turn of recentTurns) {
+        turns.forEach((turn, index) => {
             const text = turn.text?.trim();
-            if (!text) {
-                continue;
-            }
+            if (!text) return;
 
-            const hanSegments = text.match(/\p{Script=Han}{2,}/gu) ?? [];
-            for (const token of hanSegments) {
-                if (token.length > 8) {
-                    continue;
+            const role = isAiTurn(turn, index) ? "ai" : "user";
+
+            if (role === "user") {
+                if (includeUserReplies) {
+                    entries.push({
+                        id: turn.id,
+                        sourceTurnId: turn.id,
+                        role: "user",
+                        variant: "user",
+                        text,
+                        isLatest: false,
+                    });
                 }
-                freq.set(token, (freq.get(token) ?? 0) + 1);
+                return;
             }
 
-            const latinTokens = text
-                .toLowerCase()
-                .replace(/[^\p{L}\p{N}\s]/gu, " ")
-                .split(/\s+/)
-                .filter(
-                    (word) => word.length >= 3 && !KEYWORD_STOP_WORDS.has(word),
-                );
-
-            for (const token of latinTokens) {
-                freq.set(token, (freq.get(token) ?? 0) + 1);
+            if (turn.id === omitAiTurnId) {
+                return;
             }
+
+            const { response, question } = splitAiMessage(text);
+
+            if (response) {
+                entries.push({
+                    id: `${turn.id}-response`,
+                    sourceTurnId: turn.id,
+                    role: "ai",
+                    variant: "response",
+                    text: response,
+                    isLatest: turn.id === latestAiTurnId,
+                });
+            }
+
+            const finalQuestion = question || (!response ? text : "");
+            if (finalQuestion) {
+                entries.push({
+                    id: `${turn.id}-question`,
+                    sourceTurnId: turn.id,
+                    role: "ai",
+                    variant: "question",
+                    text: finalQuestion,
+                    isLatest: turn.id === latestAiTurnId,
+                });
+            }
+        });
+
+        return entries;
+    }
+
+    const transcriptEntries = $derived.by(() => {
+        const turns = conversation?.turns || [];
+        const latestAiTurnId = getLatestAiTurn(turns)?.id ?? null;
+        return buildTranscriptEntries(
+            turns,
+            showUserReplies,
+            latestAiTurnId,
+            phase === "responding" ? lastRenderedTurnId : null,
+        );
+    });
+
+    async function expandHistoryFromGesture() {
+        if (historyExpanded) {
+            return;
         }
 
-        return [...freq.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([text]) => text);
+        historyExpanded = true;
+        await tick();
+
+        if (transcriptScrollEl) {
+            transcriptScrollEl.scrollTop = Math.max(
+                0,
+                transcriptScrollEl.scrollHeight -
+                    transcriptScrollEl.clientHeight -
+                    96,
+            );
+        }
     }
+
+    function handleTranscriptWheel(event: WheelEvent) {
+        if (!historyExpanded && event.deltaY < -6) {
+            event.preventDefault();
+            void expandHistoryFromGesture();
+        }
+    }
+
+    function handleTranscriptTouchStart(event: TouchEvent) {
+        transcriptTouchStartY = event.touches[0]?.clientY ?? null;
+    }
+
+    function handleTranscriptTouchMove(event: TouchEvent) {
+        if (historyExpanded || transcriptTouchStartY === null) {
+            return;
+        }
+
+        const currentY = event.touches[0]?.clientY ?? transcriptTouchStartY;
+        if (currentY - transcriptTouchStartY > 14) {
+            transcriptTouchStartY = null;
+            void expandHistoryFromGesture();
+        }
+    }
+
+    function handleTranscriptTouchEnd() {
+        transcriptTouchStartY = null;
+    }
+
+    $effect(() => {
+        transcriptEntries.length;
+        currentResponse;
+        currentQuestion;
+        phase;
+        showUserReplies;
+        historyExpanded;
+
+        if (!transcriptScrollEl) {
+            return;
+        }
+
+        if (historyExpanded) {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            if (transcriptScrollEl) {
+                transcriptScrollEl.scrollTop = transcriptScrollEl.scrollHeight;
+            }
+        });
+    });
 
     function goBack() {
         if (courseId) {
@@ -449,7 +509,6 @@
 
     $effect(() => {
         const turns = conversation?.turns || [];
-        keywords = extractKeywordsFromTurns(turns);
         const latestAiTurn = getLatestAiTurn(turns);
 
         if (!latestAiTurn) {
@@ -460,6 +519,7 @@
                 responseToType = "";
                 questionToType = "";
                 lastRenderedTurnId = null;
+                awaitingAiReply = false;
             } else {
                 const latestTurn = turns.at(-1);
                 currentResponse = "";
@@ -480,6 +540,7 @@
             currentQuestion = normalizedQuestion;
             responseToType = "";
             questionToType = "";
+            awaitingAiReply = false;
             phase = "ready";
             return;
         }
@@ -489,6 +550,8 @@
             questionToType = normalizedQuestion;
             currentResponse = "";
             lastRenderedTurnId = latestAiTurn.id;
+            awaitingAiReply = false;
+            historyExpanded = false;
             phase = "responding";
 
             if (responseToType) {
@@ -522,8 +585,8 @@
         }, 300);
     }
 
-    function handleToggleKeywords() {
-        showKeywords = !showKeywords;
+    function handleToggleUserReplies() {
+        showUserReplies = !showUserReplies;
     }
 
     function playBase64Audio(base64: string, mimeType: string = "audio/mp3") {
@@ -555,6 +618,7 @@
         if (!conversationId || isConversationClosed) return;
 
         sending = true;
+        awaitingAiReply = true;
         showTextInput = false;
         sendError = null;
         sendErrorCode = null;
@@ -576,6 +640,7 @@
                 sendError = detail
                     ? `${m.conversation_error()} ${detail}`
                     : m.conversation_error();
+                awaitingAiReply = false;
             } else if (res.data?.audio) {
                 playBase64Audio(
                     res.data.audio,
@@ -590,6 +655,7 @@
             sendError = detail
                 ? `${m.conversation_error()} ${detail}`
                 : m.conversation_error();
+            awaitingAiReply = false;
         } finally {
             sending = false;
         }
@@ -610,6 +676,7 @@
         if (!text || !conversationId || isConversationClosed) return;
 
         sending = true;
+        awaitingAiReply = true;
         sendError = null;
         sendErrorCode = null;
 
@@ -621,6 +688,7 @@
                 const code = extractErrorCode(res.error);
                 sendErrorCode = code;
                 sendError = `${m.conversation_error()} ${msg || ""}`.trim();
+                awaitingAiReply = false;
             } else {
                 messageInput = "";
                 showTextInput = false;
@@ -639,6 +707,7 @@
             sendError = detail
                 ? `${m.conversation_error()} ${detail}`
                 : m.conversation_error();
+            awaitingAiReply = false;
         } finally {
             sending = false;
         }
@@ -654,7 +723,10 @@
     }
 </script>
 
-<PageHead title="Conversation" />
+<PageHead
+    title={m.page_conversation_title()}
+    description={m.page_conversation_description()}
+/>
 
 <div
     class={isConversationClosed
@@ -667,9 +739,9 @@
         {#if courseId}
             <div class="absolute top-6 left-6 z-50">
                 <button
-                    class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:-translate-x-0.5 hover:bg-white/15"
+                    class="student-icon-btn cursor-pointer rounded-full hover:-translate-x-0.5"
                     onclick={goBack}
-                    aria-label="Back to course"
+                    aria-label={m.student_back_to_course()}
                 >
                     <ArrowLeft class="h-5 w-5 text-white" />
                 </button>
@@ -688,50 +760,95 @@
             </div>
         {:else if !conversation && conversationLoadError}
             <div class="flex h-full items-center justify-center px-6">
-                <div
-                    class="w-full max-w-xl rounded-2xl border border-white/15 bg-white/8 p-6 text-center backdrop-blur-sm"
-                >
+                <div class="student-panel w-full max-w-xl p-6 text-center">
                     <p class="text-lg text-white">{m.conversation_error()}</p>
                     <p class="mt-2 text-sm break-words text-white/70">
                         {conversationLoadError}
                     </p>
                     <button
-                        class="mt-4 rounded-lg border border-white/20 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                        class="student-btn-ghost mt-4"
                         onclick={handleRetryLoad}
                     >
-                        Retry
+                        {m.conversation_retry()}
                     </button>
                 </div>
             </div>
         {:else if phase === "responding"}
             <div class="responding-phase">
                 <div class="text-container">
-                    <div class="turn-content-scroll">
-                        {#if typingPhase === "response" && responseToType}
-                            <div class="response-typing">
-                                <TypewriterText
-                                    text={responseToType}
-                                    speed={22}
-                                    onComplete={handleResponseComplete}
-                                />
-                            </div>
-                        {/if}
+                    <div class="conversation-scroll-shell">
+                        <div
+                            class="turn-content-scroll space-y-5 pt-6 pb-8"
+                            bind:this={transcriptScrollEl}
+                            role="region"
+                            aria-label={m.conversation_transcript_aria()}
+                            onwheel={handleTranscriptWheel}
+                            ontouchstart={handleTranscriptTouchStart}
+                            ontouchmove={handleTranscriptTouchMove}
+                            ontouchend={handleTranscriptTouchEnd}
+                        >
+                            {#if historyExpanded && transcriptEntries.length > 0}
+                                {#each transcriptEntries as entry (entry.id)}
+                                    {#if entry.role === "user"}
+                                        {#if showUserReplies}
+                                            <div
+                                                class="ml-auto max-w-[85%] text-right"
+                                            >
+                                                <p
+                                                    class="m-0 text-[1rem] leading-[1.8] text-white/74"
+                                                >
+                                                    {entry.text}
+                                                </p>
+                                            </div>
+                                        {/if}
+                                    {:else if entry.variant === "response"}
+                                        <div>
+                                            <p
+                                                class={entry.isLatest
+                                                    ? "response-text"
+                                                    : "history-response-text"}
+                                            >
+                                                {entry.text}
+                                            </p>
+                                        </div>
+                                    {:else}
+                                        <h2
+                                            class={entry.isLatest
+                                                ? "question-text"
+                                                : "history-question-text"}
+                                        >
+                                            {entry.text}
+                                        </h2>
+                                    {/if}
+                                {/each}
+                            {/if}
 
-                        {#if typingPhase === "question" && currentResponse}
-                            <div class="response-text">
-                                {currentResponse}
-                            </div>
-                        {/if}
+                            {#if typingPhase === "response" && responseToType}
+                                <div class="response-typing">
+                                    <TypewriterText
+                                        text={responseToType}
+                                        speed={34}
+                                        onComplete={handleResponseComplete}
+                                    />
+                                </div>
+                            {/if}
 
-                        {#if typingPhase === "question"}
-                            <div class="question-typing">
-                                <TypewriterText
-                                    text={questionToType || currentQuestion}
-                                    speed={30}
-                                    onComplete={handleQuestionComplete}
-                                />
-                            </div>
-                        {/if}
+                            {#if typingPhase === "question" && currentResponse}
+                                <div class="response-text">
+                                    {currentResponse}
+                                </div>
+                            {/if}
+
+                            {#if typingPhase === "question"}
+                                <div class="question-typing">
+                                    <TypewriterText
+                                        text={questionToType || currentQuestion}
+                                        speed={42}
+                                        onComplete={handleQuestionComplete}
+                                    />
+                                </div>
+                            {/if}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -740,21 +857,79 @@
             <div class="ready-phase">
                 <div class="top-spacer"></div>
 
-                <div class="question-display">
-                    <div class="turn-content-scroll">
-                        {#if currentResponse}
-                            <p class="response-text">{currentResponse}</p>
-                        {/if}
-                        <h2 class="question-text">{currentQuestion}</h2>
-                    </div>
+                <div class="question-display min-h-[24rem]">
+                    {#if awaitingAiReply}
+                        <div
+                            class="flex min-h-[24rem] items-center justify-center"
+                        >
+                            <span
+                                class="thinking-caret text-[3.25rem] leading-none font-light text-white/88"
+                                aria-label={m.conversation_ai_thinking_aria()}
+                                >|</span
+                            >
+                        </div>
+                    {:else}
+                        <div class="conversation-scroll-shell">
+                            <div
+                                class="turn-content-scroll space-y-5 pt-6 pb-8"
+                                bind:this={transcriptScrollEl}
+                                role="region"
+                                aria-label={m.conversation_transcript_aria()}
+                                onwheel={handleTranscriptWheel}
+                                ontouchstart={handleTranscriptTouchStart}
+                                ontouchmove={handleTranscriptTouchMove}
+                                ontouchend={handleTranscriptTouchEnd}
+                            >
+                                {#if historyExpanded && transcriptEntries.length > 0}
+                                    {#each transcriptEntries as entry (entry.id)}
+                                        {#if entry.role === "user"}
+                                            {#if showUserReplies}
+                                                <div
+                                                    class="ml-auto max-w-[85%] text-right"
+                                                >
+                                                    <p
+                                                        class="m-0 text-[1rem] leading-[1.8] text-white/74"
+                                                    >
+                                                        {entry.text}
+                                                    </p>
+                                                </div>
+                                            {/if}
+                                        {:else if entry.variant === "response"}
+                                            <div>
+                                                <p
+                                                    class={entry.isLatest
+                                                        ? "response-text"
+                                                        : "history-response-text"}
+                                                >
+                                                    {entry.text}
+                                                </p>
+                                            </div>
+                                        {:else}
+                                            <h2
+                                                class={entry.isLatest
+                                                    ? "question-text"
+                                                    : "history-question-text"}
+                                            >
+                                                {entry.text}
+                                            </h2>
+                                        {/if}
+                                    {/each}
+                                {:else}
+                                    {#if currentResponse}
+                                        <p class="response-text">
+                                            {currentResponse}
+                                        </p>
+                                    {/if}
+                                    {#if currentQuestion}
+                                        <h2 class="question-text">
+                                            {currentQuestion}
+                                        </h2>
+                                    {/if}
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
                 </div>
-
-                <!-- Keywords Panel (when visible) -->
-                {#if showKeywords}
-                    <div class="keywords-section">
-                        <KeywordsPanel {keywords} visible={showKeywords} />
-                    </div>
-                {/if}
 
                 <!-- Spacer -->
                 <div class="spacer"></div>
@@ -785,31 +960,29 @@
                 <!-- Voice controls -->
                 <div class="controls-section">
                     <VoiceControls
-                        {showKeywords}
+                        {showUserReplies}
                         {showTextInput}
                         bind:isRecording
                         disabled={sending}
                         recordDisabled={isConversationClosed}
                         textInputDisabled={isConversationClosed}
-                        onToggleKeywords={handleToggleKeywords}
+                        onToggleUserReplies={handleToggleUserReplies}
                         onShowTextInput={handleShowTextInput}
                         onRecordingComplete={handleRecordingComplete}
                     />
                 </div>
 
-                <!-- Stage indicator -->
-                <div class="stage-section">
+                <div class="controls-section">
                     {#if sendError}
-                        <p class="mb-2 text-center text-sm text-amber-300">
+                        <p class="text-center text-sm text-white/78">
                             {sendError}
                         </p>
                         {#if sendErrorCode}
-                            <p class="mb-2 text-center text-xs text-white/60">
-                                code: {sendErrorCode}
+                            <p class="mt-2 text-center text-xs text-white/60">
+                                {m.error_code_label()}: {sendErrorCode}
                             </p>
                         {/if}
                     {/if}
-                    <StageIndicator {currentStage} {totalStages} />
                 </div>
             </div>
         {/if}
@@ -820,13 +993,15 @@
                 {#if assessmentLoading}
                     <div class="flex items-center justify-center py-12">
                         <div class="animate-pulse text-white/50">
-                            載入評估結果中...
+                            {m.conversation_assessment_loading()}
                         </div>
                     </div>
                 {:else if assessmentData}
                     <div class="mx-auto w-full max-w-2xl px-6 py-8">
-                        <h2 class="mb-6 font-serif text-2xl text-white">
-                            學習評估
+                        <h2
+                            class="font-serif-tc mb-6 text-2xl font-bold text-white"
+                        >
+                            {m.conversation_assessment_title()}
                         </h2>
 
                         <!-- Radar Chart -->
@@ -881,8 +1056,8 @@
                                         points={pts
                                             .map((p) => `${p.x},${p.y}`)
                                             .join(" ")}
-                                        fill="rgba(251, 191, 36, 0.25)"
-                                        stroke="#fbbf24"
+                                        fill="rgba(255, 255, 255, 0.16)"
+                                        stroke="rgba(255,255,255,0.72)"
                                         stroke-width="2"
                                     />
                                     {#each pts as pt, i (i)}
@@ -890,7 +1065,7 @@
                                             cx={pt.x}
                                             cy={pt.y}
                                             r="3"
-                                            fill="#fbbf24"
+                                            fill="rgba(255,255,255,0.86)"
                                         />
                                     {/each}
                                 {/each}
@@ -916,12 +1091,14 @@
 
                         <!-- Overall Score -->
                         <div
-                            class="mb-6 rounded-xl border border-white/10 bg-white/5 p-5 text-center backdrop-blur-sm"
+                            class="mb-6 rounded-xl bg-[#5f5f5f] p-5 text-center"
                         >
                             <div class="mb-1 text-sm text-white/60">
-                                整體分數
+                                {m.conversation_assessment_overall_score()}
                             </div>
-                            <div class="text-brand-gold font-serif text-4xl">
+                            <div
+                                class="font-serif-tc text-4xl font-bold text-white"
+                            >
                                 {assessmentData.overallScore.toFixed(1)}
                                 <span class="text-lg text-white/40">/ 5</span>
                             </div>
@@ -929,13 +1106,11 @@
 
                         <!-- Overall Feedback -->
                         {#if assessmentData.overallFeedback}
-                            <div
-                                class="mb-6 rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm"
-                            >
+                            <div class="mb-6 rounded-xl bg-[#5f5f5f] p-5">
                                 <div
                                     class="mb-2 text-sm font-medium text-white/60"
                                 >
-                                    整體回饋
+                                    {m.conversation_assessment_overall_feedback()}
                                 </div>
                                 <p class="leading-relaxed text-white/90">
                                     {assessmentData.overallFeedback}
@@ -945,13 +1120,11 @@
 
                         <!-- Conversation Summary -->
                         {#if dialogueState?.summary}
-                            <div
-                                class="mb-6 rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm"
-                            >
+                            <div class="mb-6 rounded-xl bg-[#5f5f5f] p-5">
                                 <div
                                     class="mb-2 text-sm font-medium text-white/60"
                                 >
-                                    對話摘要
+                                    {m.conversation_assessment_summary()}
                                 </div>
                                 <p class="leading-relaxed text-white/90">
                                     {dialogueState.summary}
@@ -965,9 +1138,7 @@
                                 {@const dimData =
                                     assessmentData.dimensions[dim.key]}
                                 {#if dimData}
-                                    <div
-                                        class="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm"
-                                    >
+                                    <div class="rounded-xl bg-[#5f5f5f]">
                                         <button
                                             class="flex w-full cursor-pointer items-center justify-between p-4 text-left"
                                             onclick={() =>
@@ -990,7 +1161,7 @@
                                                 >
                                             </div>
                                             <span
-                                                class="text-brand-gold font-serif text-lg"
+                                                class="font-serif-tc text-lg font-bold text-white"
                                                 >{dimData.score}<span
                                                     class="text-sm text-white/40"
                                                     >/5</span
@@ -1017,29 +1188,38 @@
                         {#if dialogueState?.stanceHistory && dialogueState.stanceHistory.length > 0}
                             <div class="mb-6">
                                 <h3 class="mb-3 text-lg font-medium text-white">
-                                    思考演變歷程
+                                    {m.conversation_assessment_stance_history()}
                                 </h3>
                                 <div class="space-y-3">
                                     {#each dialogueState.stanceHistory as stance (stance.version)}
                                         <div
-                                            class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+                                            class="rounded-xl bg-[#5f5f5f] p-4"
                                         >
                                             <div
                                                 class="mb-2 flex items-center justify-between"
                                             >
                                                 <span
-                                                    class="text-brand-gold text-sm font-medium"
+                                                    class="text-sm font-medium text-white/72"
                                                 >
-                                                    立場 V{stance.version}
+                                                    {m.conversation_assessment_stance_version(
+                                                        {
+                                                            version:
+                                                                stance.version,
+                                                        },
+                                                    )}
                                                 </span>
                                                 {#if stance.confidence != null}
                                                     <span
                                                         class="text-xs text-white/40"
                                                     >
-                                                        信心度 {(
-                                                            stance.confidence *
-                                                            100
-                                                        ).toFixed(0)}%
+                                                        {m.conversation_assessment_confidence(
+                                                            {
+                                                                value: (
+                                                                    stance.confidence *
+                                                                    100
+                                                                ).toFixed(0),
+                                                            },
+                                                        )}
                                                     </span>
                                                 {/if}
                                             </div>
@@ -1061,24 +1241,29 @@
                         {#if dialogueState?.principleHistory && dialogueState.principleHistory.length > 0}
                             <div class="mb-6">
                                 <h3 class="mb-3 text-lg font-medium text-white">
-                                    原則提煉歷程
+                                    {m.conversation_assessment_principle_history()}
                                 </h3>
                                 <div class="space-y-3">
                                     {#each dialogueState.principleHistory as principle (principle.version)}
                                         <div
-                                            class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+                                            class="rounded-xl bg-[#5f5f5f] p-4"
                                         >
                                             <div
                                                 class="mb-2 flex items-center justify-between"
                                             >
                                                 <span
-                                                    class="text-brand-gold text-sm font-medium"
+                                                    class="text-sm font-medium text-white/72"
                                                 >
-                                                    原則 V{principle.version}
+                                                    {m.conversation_assessment_principle_version(
+                                                        {
+                                                            version:
+                                                                principle.version,
+                                                        },
+                                                    )}
                                                 </span>
                                                 {#if principle.classification}
                                                     <span
-                                                        class="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60"
+                                                        class="rounded-full bg-[#6a6a6a] px-2 py-0.5 text-xs text-white/70"
                                                     >
                                                         {principle.classification}
                                                     </span>
@@ -1097,12 +1282,12 @@
                         {#if conversation?.turns && conversation.turns.length > 0}
                             <div class="mb-6">
                                 <h3 class="mb-3 text-lg font-medium text-white">
-                                    對話記錄
+                                    {m.conversation_assessment_transcript()}
                                 </h3>
                                 <div class="space-y-2">
                                     {#each conversation.turns as turn (turn.id)}
                                         <div
-                                            class="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+                                            class="rounded-xl bg-[#5f5f5f] p-4"
                                         >
                                             <div
                                                 class="mb-1 flex items-center gap-2"
@@ -1111,15 +1296,15 @@
                                                     class="text-xs font-medium {turn.type ===
                                                     'idea'
                                                         ? 'text-blue-300'
-                                                        : 'text-brand-gold'}"
+                                                        : 'text-white/72'}"
                                                 >
                                                     {turn.type === "idea"
-                                                        ? "學生"
-                                                        : "AI"}
+                                                        ? m.conversation_assessment_student()
+                                                        : m.conversation_assessment_ai()}
                                                 </span>
                                                 {#if turn.analysis?.stance}
                                                     <span
-                                                        class="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/40"
+                                                        class="rounded-full bg-[#6a6a6a] px-2 py-0.5 text-xs text-white/55"
                                                     >
                                                         {turn.analysis.stance}
                                                     </span>
@@ -1137,21 +1322,23 @@
                         {/if}
 
                         <!-- Teacher Score -->
-                        <div
-                            class="rounded-xl border border-white/10 bg-white/5 p-5 text-center backdrop-blur-sm"
-                        >
+                        <div class="rounded-xl bg-[#5f5f5f] p-5 text-center">
                             <div class="mb-1 text-sm text-white/60">
-                                教師評分
+                                {m.conversation_assessment_teacher_score()}
                             </div>
                             {#if assessmentScoreCompletion != null}
-                                <div class="font-serif text-2xl text-white">
+                                <div
+                                    class="font-serif-tc text-2xl font-bold text-white"
+                                >
                                     {assessmentScoreCompletion}
                                     <span class="text-sm text-white/40"
                                         >/ 100</span
                                     >
                                 </div>
                             {:else}
-                                <div class="text-white/40">尚未評分</div>
+                                <div class="text-white/40">
+                                    {m.conversation_assessment_not_graded()}
+                                </div>
                             {/if}
                         </div>
                     </div>
@@ -1242,11 +1429,20 @@
     .response-text {
         font-family: "Noto Serif TC", "Times New Roman", serif;
         font-size: 1.75rem;
-        font-weight: 400;
+        font-weight: 700;
         line-height: 1.6;
         color: white;
         margin: 0 0 1.5rem 0;
         opacity: 0.9;
+    }
+
+    .history-response-text {
+        font-family: "Noto Serif TC", "Times New Roman", serif;
+        font-size: 1.18rem;
+        font-weight: 700;
+        line-height: 1.75;
+        color: rgba(255, 255, 255, 0.8);
+        margin: 0 0 1rem 0;
     }
 
     .response-typing {
@@ -1286,26 +1482,41 @@
         margin-bottom: 2rem;
     }
 
+    .conversation-scroll-shell {
+        position: relative;
+        overflow: hidden;
+    }
+
     .turn-content-scroll {
-        max-height: min(42vh, 24rem);
+        max-height: min(68vh, 46rem);
         overflow-y: auto;
         padding-right: 0.25rem;
         scroll-behavior: smooth;
+        scrollbar-width: none;
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            transparent 0,
+            black 3.4rem,
+            black calc(100% - 3.4rem),
+            transparent 100%
+        );
+        mask-image: linear-gradient(
+            to bottom,
+            transparent 0,
+            black 3.4rem,
+            black calc(100% - 3.4rem),
+            transparent 100%
+        );
     }
 
     .turn-content-scroll::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .turn-content-scroll::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.22);
-        border-radius: 999px;
+        display: none;
     }
 
     .question-text {
         font-family: "Noto Serif TC", "Times New Roman", serif;
         font-size: 1.5rem;
-        font-weight: 400;
+        font-weight: 700;
         line-height: 1.5;
         color: white;
     }
@@ -1316,12 +1527,27 @@
         }
     }
 
-    .keywords-section {
-        margin-bottom: 1rem;
+    .history-question-text {
+        font-family: "Noto Serif TC", "Times New Roman", serif;
+        font-size: 1.16rem;
+        font-weight: 700;
+        line-height: 1.7;
+        color: rgba(255, 255, 255, 0.86);
+        margin: 0;
+    }
+
+    @media (min-width: 768px) {
+        .history-question-text {
+            font-size: 1.3rem;
+        }
     }
 
     .spacer {
         flex: 1;
+    }
+
+    .thinking-caret {
+        animation: blinkCaret 1.1s ease-in-out infinite;
     }
 
     .text-input-section {
@@ -1392,10 +1618,6 @@
     }
 
     .controls-section {
-        margin-bottom: 1.5rem;
-    }
-
-    .stage-section {
         margin-bottom: 2rem; /* Space from bottom */
     }
 
@@ -1416,6 +1638,16 @@
         to {
             transform: translateY(0);
             opacity: 1;
+        }
+    }
+
+    @keyframes blinkCaret {
+        0%,
+        100% {
+            opacity: 0.22;
+        }
+        50% {
+            opacity: 0.95;
         }
     }
 

@@ -228,7 +228,10 @@
     }
 </script>
 
-<PageHead title="問卷作答" description="完成問卷作答" />
+<PageHead
+    title={m.questionnaire_page_title()}
+    description={m.questionnaire_page_description()}
+/>
 
 <div class="questionnaire-container">
     <!-- Background -->
@@ -237,9 +240,9 @@
     {#if courseId}
         <div class="absolute top-6 left-6 z-50">
             <button
-                class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-white/15 bg-white/10 transition-all hover:-translate-x-0.5 hover:bg-white/15"
+                class="student-icon-btn cursor-pointer rounded-full hover:-translate-x-0.5"
                 onclick={goBack}
-                aria-label="Back to course"
+                aria-label={m.student_back_to_course()}
             >
                 <ArrowLeft class="h-5 w-5 text-white" />
             </button>
@@ -278,8 +281,10 @@
                         {:else if currentQuestion.type === "slider"}
                             <SliderQuestion
                                 question={currentQuestion.question}
-                                minLabel={currentQuestion.minLabel ?? "Min"}
-                                maxLabel={currentQuestion.maxLabel ?? "Max"}
+                                minLabel={currentQuestion.minLabel ??
+                                    m.questionnaire_min_label()}
+                                maxLabel={currentQuestion.maxLabel ??
+                                    m.questionnaire_max_label()}
                                 minValue={currentQuestion.minValue ?? 0}
                                 maxValue={currentQuestion.maxValue ?? 10}
                                 step={currentQuestion.step ?? 1}
@@ -296,9 +301,11 @@
                 <div
                     class="flex h-full w-full flex-col items-center justify-center gap-4"
                 >
-                    <p class="text-white/50">No questions available.</p>
+                    <p class="text-white/50">
+                        {m.questionnaire_no_questions()}
+                    </p>
                     <button
-                        class="icon-btn rounded-full bg-white/10 p-2 hover:bg-white/20"
+                        class="student-icon-btn rounded-full"
                         onclick={goBack}
                         aria-label={m.back()}
                     >

@@ -1,40 +1,47 @@
 <script lang="ts">
     interface Props {
-        keywords: string[];
+        entries: Array<{
+            id: string;
+            role: "ai" | "user";
+            text: string;
+        }>;
         visible?: boolean;
     }
 
-    let { keywords, visible = true }: Props = $props();
+    let { entries, visible = true }: Props = $props();
 
-    // Pre-defined positions for scattered layout (organic and varied)
-    const positions = [
-        { left: "5%", top: "0%", size: "small" },
-        { left: "60%", top: "5%", size: "small" },
-        { left: "10%", top: "25%", size: "large" },
-        { left: "65%", top: "35%", size: "small" },
-        { left: "2%", top: "55%", size: "medium" },
-    ];
+    let scrollContainer = $state<HTMLDivElement | null>(null);
+
+    $effect(() => {
+        if (visible && scrollContainer) {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+    });
 </script>
 
 {#if visible}
-    <div class="keywords-panel">
-        {#each keywords as keyword, i (keyword)}
-            {@const pos = positions[i % positions.length]}
-            <span
-                class="keyword {pos.size}"
-                style="left: {pos.left}; top: {pos.top};"
-            >
-                {keyword}
-            </span>
-        {/each}
+    <div class="history-panel" bind:this={scrollContainer}>
+        {#if entries.length === 0}
+            <div class="empty-state">目前還沒有對話紀錄。</div>
+        {:else}
+            {#each entries as entry (entry.id)}
+                <div class="history-entry">
+                    <div class="history-label">
+                        {entry.role === "ai" ? "AI" : "YOU"}
+                    </div>
+                    <p class="history-text">{entry.text}</p>
+                </div>
+            {/each}
+        {/if}
     </div>
 {/if}
 
 <style>
-    .keywords-panel {
-        position: relative;
-        width: 100%;
-        height: 200px;
+    .history-panel {
+        height: 100%;
+        min-height: 12rem;
+        overflow-y: auto;
+        padding-right: 0.25rem;
         opacity: 0;
         animation: fadeIn 0.5s ease-out forwards;
     }
@@ -45,25 +52,43 @@
         }
     }
 
-    .keyword {
-        position: absolute;
+    .history-panel::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .history-panel::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+    }
+
+    .history-entry {
+        margin-bottom: 1rem;
+    }
+
+    .history-label {
+        margin-bottom: 0.4rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        color: rgba(255, 255, 255, 0.45);
+    }
+
+    .history-text {
+        margin: 0;
+        white-space: pre-wrap;
+        line-height: 1.72;
         color: white;
-        font-family: "Noto Serif TC", serif;
-        font-weight: 500;
-        opacity: 0.9;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        font-weight: 700;
+        opacity: 0.88;
     }
 
-    .keyword.small {
-        font-size: 1rem;
-    }
-
-    .keyword.medium {
-        font-size: 1.25rem;
-    }
-
-    .keyword.large {
-        font-size: 1.5rem;
-        font-weight: 600;
+    .empty-state {
+        display: flex;
+        height: 100%;
+        min-height: 12rem;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.45);
     }
 </style>

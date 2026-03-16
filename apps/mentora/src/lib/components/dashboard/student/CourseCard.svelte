@@ -3,7 +3,7 @@
 </script>
 
 <button
-    class="relative h-48 w-full overflow-hidden rounded-3xl transition-transform hover:scale-[1.02] active:scale-[0.98]"
+    class="student-panel student-panel-hover student-clickable relative h-48 w-full overflow-hidden active:scale-[0.98]"
     {onclick}
 >
     <img src={imageUrl} alt={courseName} class="h-full w-full object-cover" />

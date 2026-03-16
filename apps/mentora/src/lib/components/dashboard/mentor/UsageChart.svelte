@@ -91,7 +91,7 @@
                 axisLine: { show: false },
                 axisTick: { show: false },
                 splitLine: { show: false },
-                axisLabel: { show: false }, // Hide Y axis labels to match mockup cleaner look
+                axisLabel: { show: false }, // Keep chart area clean by hiding Y-axis labels
             },
             series: [
                 {

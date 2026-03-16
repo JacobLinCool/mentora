@@ -41,7 +41,7 @@
     }
 
     .stage-segment.current {
-        background: #d4a855;
-        box-shadow: 0 0 8px rgba(212, 168, 85, 0.5);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: none;
     }
 </style>

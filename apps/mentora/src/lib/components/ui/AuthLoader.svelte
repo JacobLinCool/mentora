@@ -9,12 +9,12 @@
     <!-- Animated Logo -->
     <div class="relative mb-8">
         <div
-            class="bg-brand-gold/20 absolute inset-0 animate-ping rounded-full blur-xl"
+            class="absolute inset-0 animate-ping rounded-full bg-white/10 blur-xl"
         ></div>
         <div
-            class="from-brand-gold to-brand-silver relative flex h-20 w-20 items-center justify-center rounded-full bg-linear-to-br shadow-lg"
+            class="relative flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-linear-to-br from-[#7f7f7f] to-[#b3b3b3] shadow-lg"
         >
-            <Sparkles class="h-10 w-10 animate-pulse text-black" />
+            <Sparkles class="h-10 w-10 animate-pulse text-white" />
         </div>
     </div>
 
@@ -29,15 +29,15 @@
     <div class="flex items-center gap-2">
         <div class="flex gap-1">
             <span
-                class="bg-brand-gold h-2 w-2 animate-bounce rounded-full"
+                class="h-2 w-2 animate-bounce rounded-full bg-white/70"
                 style="animation-delay: 0ms;"
             ></span>
             <span
-                class="bg-brand-gold h-2 w-2 animate-bounce rounded-full"
+                class="h-2 w-2 animate-bounce rounded-full bg-white/70"
                 style="animation-delay: 150ms;"
             ></span>
             <span
-                class="bg-brand-gold h-2 w-2 animate-bounce rounded-full"
+                class="h-2 w-2 animate-bounce rounded-full bg-white/70"
                 style="animation-delay: 300ms;"
             ></span>
         </div>

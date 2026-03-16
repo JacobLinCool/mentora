@@ -163,7 +163,7 @@ export function createSettingsState() {
         logoutError = null;
         try {
             await signOut(auth);
-            await goto(resolve("/auth"), { invalidateAll: true });
+            await goto(resolve("/"), { invalidateAll: true });
         } catch (e) {
             logoutError =
                 e instanceof Error ? e.message : m.auth_sign_out_failed();

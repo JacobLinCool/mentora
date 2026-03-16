@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { m } from "$lib/paraglide/messages";
     import { SvelteDate, SvelteMap } from "svelte/reactivity";
     import DashboardHeader from "$lib/components/dashboard/student/DashboardHeader.svelte";
     import UpcomingDeadline from "$lib/components/dashboard/student/UpcomingDeadline.svelte";
@@ -169,20 +170,6 @@
                     type: a.itemType ?? "assignment",
                 }));
 
-                // MOCK DATA ADDED BY REQUEST
-                const mockDate = new Date("2026-02-26T23:59:59+08:00");
-                deadlines.push({
-                    id: "mock-1",
-                    date: mockDate,
-                    title: "Mock Assignment",
-                    course: "Mock Course",
-                    courseId: "mock-course",
-                    assignment: "Mock Assignment",
-                    assignmentId: "mock-1",
-                    dueDate: mockDate,
-                    type: "assignment",
-                });
-
                 // Sort again to ensure correct order
                 deadlines.sort(
                     (a, b) => a.dueDate.getTime() - b.dueDate.getTime(),
@@ -257,13 +244,13 @@
 </script>
 
 <svelte:head>
-    <title>Dashboard - Mentora</title>
+    <title>{m.dashboard_page_title()} - Mentora</title>
 </svelte:head>
 
-<div class="min-h-screen bg-linear-to-br from-[#404040] to-[#858585] pb-24">
-    <div class="mx-auto max-w-md px-6 pt-6 md:max-w-2xl lg:max-w-4xl">
+<div class="student-shell">
+    <div class="student-container pt-6">
         <DashboardHeader
-            userName={profile?.displayName || user?.displayName || "User"}
+            userName={profile?.displayName || user?.displayName || m.unknown()}
         />
 
         <!-- Responsive grid layout for iPad -->
@@ -272,9 +259,9 @@
             <div>
                 {#if loading}
                     <div
-                        class="flex h-64 animate-pulse items-center justify-center rounded-xl bg-white/5 text-white/50"
+                        class="student-panel flex h-64 animate-pulse items-center justify-center text-white/60"
                     >
-                        Loading...
+                        {m.loading()}
                     </div>
                 {:else}
                     <UpcomingDeadline
@@ -292,7 +279,7 @@
                     <div class="relative">
                         {#if lastConversationScore}
                             <div
-                                class="bg-brand-gold absolute -top-2 -right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-black shadow-lg"
+                                class="absolute -top-2 -right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-[#e8e8e8] text-sm font-bold text-[#2f2f2f]"
                             >
                                 {lastConversationScore.toFixed(1)}
                             </div>

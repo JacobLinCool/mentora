@@ -122,58 +122,12 @@
 </script>
 
 <button
-    class="mic-btn"
-    class:recording={isRecording}
+    class="student-icon-btn h-16 w-16 {isRecording
+        ? 'bg-[#6d6d6d] text-white'
+        : 'text-white'}"
     onclick={toggleRecording}
     {disabled}
     aria-label={isRecording ? "Stop recording" : "Start recording"}
 >
     <Mic size={28} />
 </button>
-
-<style>
-    .mic-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        border: none;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .mic-btn:hover {
-        background: rgba(255, 255, 255, 0.25);
-        transform: scale(1.05);
-    }
-
-    .mic-btn.recording {
-        background: #ef4444;
-        animation: pulse 2s infinite;
-        box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
-    }
-
-    .mic-btn:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-        transform: none;
-    }
-
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-        }
-        70% {
-            box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-        }
-    }
-</style>

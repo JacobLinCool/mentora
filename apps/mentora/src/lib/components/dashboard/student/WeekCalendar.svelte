@@ -109,22 +109,20 @@
         const hasDeadlineDate = hasDeadline(dateInfo);
 
         let classes =
-            "w-8 h-8 mx-auto rounded-full flex items-center justify-center transition-all ";
+            "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-all ";
 
         if (isTodayDate) {
             // Today: solid white background
             classes += "bg-white text-canvas-deep font-bold ";
         } else if (isSelectedDate) {
-            // Selected: white outline with transparent background
-            classes +=
-                "border border-white bg-transparent text-white font-bold ";
+            classes += "bg-[#6a6a6a] text-white font-bold ";
         } else {
             // Normal
             classes += "text-text-primary ";
         }
 
         if (hasDeadlineDate) {
-            classes += "cursor-pointer hover:bg-white/20";
+            classes += "cursor-pointer hover:bg-[#666666]";
         } else {
             classes += "cursor-default";
         }
@@ -217,9 +215,7 @@
             onclick={() => navigate(-1)}
             aria-label="Previous week"
         >
-            <div
-                class="pointer-events-none rounded-full border border-white/5 bg-black/40 p-1 shadow-lg backdrop-blur-sm"
-            >
+            <div class="pointer-events-none rounded-full bg-[#5b5b5b] p-1">
                 <ChevronLeft class="size-4 text-white" />
             </div>
         </button>

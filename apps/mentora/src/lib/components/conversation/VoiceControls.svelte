@@ -1,42 +1,46 @@
 <script lang="ts">
+    import { m } from "$lib/paraglide/messages";
     import { Keyboard, FileText, FileX } from "@lucide/svelte";
     import Record from "./Record.svelte";
 
     interface Props {
-        showKeywords?: boolean;
+        showUserReplies?: boolean;
         showTextInput?: boolean;
         isRecording?: boolean;
         disabled?: boolean;
         recordDisabled?: boolean;
         textInputDisabled?: boolean;
-        onToggleKeywords?: () => void;
+        onToggleUserReplies?: () => void;
         onShowTextInput?: () => void;
         onRecordingComplete?: (blob: Blob) => void;
     }
 
     let {
-        showKeywords = false,
+        showUserReplies = false,
         showTextInput = false,
         isRecording = $bindable(false),
         disabled = false,
         recordDisabled = false,
         textInputDisabled = false,
-        onToggleKeywords,
+        onToggleUserReplies,
         onShowTextInput,
         onRecordingComplete = () => {},
     }: Props = $props();
 </script>
 
-<div class="voice-controls">
+<div class="flex items-center justify-center gap-8 py-4">
     <!-- Keywords toggle (left) -->
     <button
-        class="control-btn"
-        class:active={showKeywords}
-        onclick={onToggleKeywords}
+        class="student-icon-btn h-12 w-12 {showUserReplies
+            ? 'bg-[#6a6a6a] text-white'
+            : 'text-white/72'}"
+        onclick={onToggleUserReplies}
         {disabled}
-        aria-label={showKeywords ? "Hide keywords" : "Show keywords"}
+        aria-label={showUserReplies
+            ? m.conversation_toggle_user_replies_hide()
+            : m.conversation_toggle_user_replies_show()}
     >
-        {#if showKeywords}
+        {#if showUserReplies}
             <FileX />
         {:else}
             <FileText />
@@ -52,48 +56,15 @@
 
     <!-- Text input toggle (right) -->
     <button
-        class="control-btn"
-        class:active={showTextInput}
+        class="student-icon-btn h-12 w-12 {showTextInput
+            ? 'bg-[#6a6a6a] text-white'
+            : 'text-white/72'}"
         onclick={onShowTextInput}
         disabled={disabled || textInputDisabled}
-        aria-label={showTextInput ? "Hide text input" : "Show text input"}
+        aria-label={showTextInput
+            ? m.conversation_toggle_text_input_hide()
+            : m.conversation_toggle_text_input_show()}
     >
         <Keyboard />
     </button>
 </div>
-
-<style>
-    .voice-controls {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 3rem;
-        padding: 1rem 0;
-    }
-
-    .control-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 48px;
-        height: 48px;
-        border: none;
-        background: transparent;
-        color: rgba(255, 255, 255, 0.7);
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .control-btn:hover {
-        color: white;
-    }
-
-    .control-btn.active {
-        color: white;
-    }
-
-    .control-btn:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-</style>

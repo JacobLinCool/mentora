@@ -125,6 +125,46 @@
     @apply bg-glass-surface border-glass-border border shadow-lg backdrop-blur-[10px];
 }
 
+@utility student-shell {
+    @apply text-text-primary min-h-screen bg-linear-to-br from-[#3f3f3f] via-[#4a4a4a] to-[#585858] pb-24;
+}
+
+@utility student-container {
+    @apply mx-auto max-w-md px-6 md:max-w-2xl lg:max-w-4xl;
+}
+
+@utility student-panel {
+    @apply rounded-3xl bg-[#5f5f5f];
+}
+
+@utility student-panel-hover {
+    @apply transition-all duration-200 hover:bg-[#686868];
+}
+
+@utility student-clickable {
+    @apply cursor-pointer bg-[#666666] hover:-translate-y-0.5 hover:bg-[#707070] active:translate-y-0;
+}
+
+@utility student-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-[#e6e6e6] px-4 py-2 text-sm font-semibold text-[#2f2f2f] transition hover:bg-[#f0f0f0] active:scale-[0.98];
+}
+
+@utility student-btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-[#5a5a5a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#656565] active:scale-[0.98];
+}
+
+@utility student-icon-btn {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#5f5f5f] text-white transition hover:bg-[#6a6a6a];
+}
+
+@utility student-action-btn {
+    @apply inline-flex w-full items-center justify-between gap-3 rounded-3xl bg-[#666666] px-4 py-3 text-base font-medium text-white transition hover:-translate-y-0.5 hover:bg-[#707070] active:translate-y-0 active:scale-[0.98];
+}
+
+@utility student-action-btn-danger {
+    @apply inline-flex w-full items-center justify-between gap-3 rounded-3xl bg-[#626262] px-4 py-3 text-base font-medium text-white/90 transition hover:-translate-y-0.5 hover:bg-[#6d6d6d] active:translate-y-0 active:scale-[0.98];
+}
+
 body {
     @apply bg-canvas-deep text-text-primary font-sans antialiased;
 }
