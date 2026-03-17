@@ -142,7 +142,7 @@
                             {#if isOverdue}
                                 {formatOverdueDuration(assignment.dueAt)}
                             {:else}
-                                {m.assignments_due()}
+                                {m.assignments_due()}:
                                 {formatDueDate(assignment.dueAt)}
                             {/if}
                         </p>

@@ -184,9 +184,21 @@
             }
 
             // 3. Fetch Last Conversation & Title
-            const convResult = await api.conversations.listMine({ limit: 1 });
+            const convResult = await api.conversations.listMine({ limit: 10 });
             if (convResult.success && convResult.data.length > 0) {
-                lastConversation = convResult.data[0];
+                const activeConversation =
+                    convResult.data.find(
+                        (conversation) => conversation.state !== "closed",
+                    ) ?? null;
+
+                lastConversation = activeConversation;
+                lastConversationTitle = "";
+                lastConversationScore = null;
+
+                if (!lastConversation) {
+                    return;
+                }
+
                 if (lastConversation.assignmentId) {
                     const assignRes = await api.assignments.get(
                         lastConversation.assignmentId,

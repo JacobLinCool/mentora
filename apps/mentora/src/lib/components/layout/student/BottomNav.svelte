@@ -1,6 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+    import { m } from "$lib/paraglide/messages";
     let { activeTab = "home" } = $props();
 </script>
 
@@ -13,7 +14,7 @@
             'explore'
                 ? 'text-white'
                 : 'text-white/45 hover:text-white/75'}"
-            aria-label="Explore"
+            aria-label={m.bottom_nav_explore()}
             onclick={() => goto(resolve("/explore"))}
         >
             <svg
@@ -38,7 +39,7 @@
             'home'
                 ? 'text-white'
                 : 'text-white/45 hover:text-white/75'}"
-            aria-label="Home"
+            aria-label={m.bottom_nav_home()}
             onclick={() => goto(resolve("/dashboard"))}
         >
             <svg
@@ -61,7 +62,7 @@
             'profile'
                 ? 'text-white'
                 : 'text-white/45 hover:text-white/75'}"
-            aria-label="Profile"
+            aria-label={m.bottom_nav_profile()}
             onclick={() => goto(resolve("/settings"))}
         >
             <svg

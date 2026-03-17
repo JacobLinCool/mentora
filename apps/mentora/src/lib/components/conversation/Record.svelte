@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Mic } from "@lucide/svelte";
+    import { m } from "$lib/paraglide/messages";
 
     interface Props {
         onRecordingComplete: (blob: Blob) => void;
@@ -127,7 +128,9 @@
         : 'text-white'}"
     onclick={toggleRecording}
     {disabled}
-    aria-label={isRecording ? "Stop recording" : "Start recording"}
+    aria-label={isRecording
+        ? m.conversation_record_stop_aria()
+        : m.conversation_record_start_aria()}
 >
     <Mic size={28} />
 </button>
