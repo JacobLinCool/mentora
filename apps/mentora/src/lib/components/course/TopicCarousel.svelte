@@ -1,12 +1,6 @@
 <script lang="ts">
-    import {
-        ChevronDown,
-        ChevronUp,
-        ChevronsLeft,
-        ChevronsRight,
-        List,
-        X,
-    } from "@lucide/svelte";
+    import { m } from "$lib/paraglide/messages";
+    import { ChevronDown, ChevronUp, List, X } from "@lucide/svelte";
     import { fade, fly } from "svelte/transition";
 
     interface Topic {
@@ -68,6 +62,7 @@
         if (index >= 0 && index < topics.length) {
             activeIndex = index;
             showTopicList = false;
+            isDescriptionExpanded = false;
             onTopicChange?.(activeIndex);
         }
     }
@@ -85,111 +80,104 @@
 </script>
 
 <div
-    class="relative touch-pan-y overflow-hidden p-6 select-none md:px-12 md:py-8 lg:px-16 lg:py-10"
+    class="student-container relative mx-auto max-w-[42rem] touch-pan-y overflow-hidden pt-2 pb-6 select-none lg:max-w-4xl"
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
     ontouchend={handleTouchEnd}
     role="region"
-    aria-label="Topic carousel"
+    aria-label={m.student_course_topic_carousel_aria()}
 >
-    <!-- Navigation Buttons (Desktop/Tablet) -->
-    <button
-        class="fixed top-1/2 left-0 z-[100] flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-transparent py-6 pr-6 pl-4 text-white/40 transition-all duration-200 hover:text-white/90 disabled:pointer-events-none disabled:opacity-0 md:left-4 md:pl-6 lg:left-8 [&:not(:disabled):hover]:-translate-y-1/2 [&:not(:disabled):hover]:scale-110 [&:not(:disabled):hover]:bg-[radial-gradient(circle,rgba(255,255,255,0.1)_0%,transparent_70%)]"
-        onclick={() => changeTopic(activeIndex - 1)}
-        disabled={activeIndex === 0}
-        aria-label="Previous topic"
-    >
-        <ChevronsLeft size={32} />
-    </button>
+    {#if currentTopic}
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <button
+                class="student-panel student-panel-hover student-clickable inline-flex cursor-pointer items-center rounded-full px-4 py-2 text-[0.72rem] font-semibold tracking-[0.18em] text-white/72 uppercase"
+                onclick={() => (showTopicList = true)}
+            >
+                {m.student_course_topic_button({
+                    number: String(activeIndex + 1).padStart(2, "0"),
+                })}
+                <List size={14} class="ms-2 opacity-70" />
+            </button>
+        </div>
 
-    <button
-        class="fixed top-1/2 right-0 z-[100] flex -translate-y-1/2 cursor-pointer items-center justify-center border-none bg-transparent py-6 pr-4 pl-6 text-white/40 transition-all duration-200 hover:text-white/90 disabled:pointer-events-none disabled:opacity-0 md:right-4 md:pr-6 lg:right-8 [&:not(:disabled):hover]:-translate-y-1/2 [&:not(:disabled):hover]:scale-110 [&:not(:disabled):hover]:bg-[radial-gradient(circle,rgba(255,255,255,0.1)_0%,transparent_70%)]"
-        onclick={() => changeTopic(activeIndex + 1)}
-        disabled={activeIndex === topics.length - 1}
-        aria-label="Next topic"
-    >
-        <ChevronsRight size={32} />
-    </button>
+        <h2 class="mb-3 text-[1.85rem] leading-[1.18] font-semibold text-white">
+            {#key currentTopic.id}
+                <span in:fade={{ duration: 250 }}>{currentTopic.title}</span>
+            {/key}
+        </h2>
 
-    <!-- Topic Number Badge & List Toggle -->
-    <div class="mb-3 text-left">
-        <button
-            class="inline-flex cursor-pointer items-center rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold tracking-widest text-white/80 shadow-black/10 backdrop-blur-md transition-all duration-200 hover:border-white/30 hover:from-white/15 hover:to-white/15"
-            onclick={() => (showTopicList = true)}
-        >
-            TOPIC {String(activeIndex + 1).padStart(2, "0")}
-            <List size={14} class="ms-2 opacity-70" />
-        </button>
-    </div>
+        {#if currentTopic.description}
+            <div class="max-w-[38rem] py-1">
+                <p class="m-0 text-[0.98rem] leading-[1.72] text-white/74">
+                    {truncatedDescription}
+                </p>
 
-    <!-- Topic Title -->
-    <h2
-        class="font-serif-tc mb-4 min-h-[2.4rem] text-[2rem] leading-[1.2] font-bold text-white"
-    >
-        {#key currentTopic?.id}
-            <span in:fade={{ duration: 300 }}>{currentTopic?.title ?? ""}</span>
-        {/key}
-    </h2>
+                {#if currentTopic.description.length > 100}
+                    <button
+                        class="mt-3 inline-flex items-center gap-1 border-none bg-transparent p-0 text-[0.78rem] font-semibold tracking-[0.12em] text-white/46 uppercase transition-colors duration-200 hover:text-white/72"
+                        onclick={() =>
+                            (isDescriptionExpanded = !isDescriptionExpanded)}
+                    >
+                        {#if isDescriptionExpanded}
+                            <span>{m.student_course_topic_collapse()}</span>
+                            <ChevronUp class="h-4 w-4" />
+                        {:else}
+                            <span>{m.student_course_topic_expand()}</span>
+                            <ChevronDown class="h-4 w-4" />
+                        {/if}
+                    </button>
+                {/if}
+            </div>
+        {/if}
 
-    <!-- Topic Description -->
-    {#if currentTopic?.description}
-        <div class="relative mb-6 rounded-2xl bg-white/10 p-4">
-            <p class="m-0 text-[0.95rem] leading-[1.6] text-white/85">
-                {truncatedDescription}
+        <div class="mt-5 flex justify-center">
+            <div class="flex gap-2">
+                {#each topics as topic, index (topic.id)}
+                    <button
+                        class="h-2.5 w-2.5 cursor-pointer rounded-full border-none p-0 transition-all duration-200 {activeIndex ===
+                        index
+                            ? 'scale-110 bg-white'
+                            : 'bg-white/20 hover:bg-white/38'}"
+                        onclick={() => changeTopic(index)}
+                        aria-label={m.student_course_topic_dot_aria({
+                            number: index + 1,
+                        })}
+                    ></button>
+                {/each}
+            </div>
+        </div>
+    {:else}
+        <div class="student-panel rounded-[2rem] p-5">
+            <p class="m-0 text-sm leading-relaxed text-white/55">
+                {m.student_course_topics_empty()}
             </p>
-
-            {#if currentTopic.description.length > 100}
-                <button
-                    class="mt-3 flex items-center gap-1 border-none bg-transparent p-0 text-[0.85rem] text-white/50 transition-colors duration-200 hover:text-white/80"
-                    onclick={() =>
-                        (isDescriptionExpanded = !isDescriptionExpanded)}
-                >
-                    {#if isDescriptionExpanded}
-                        <span>收起</span>
-                        <ChevronUp class="h-4 w-4" />
-                    {:else}
-                        <span>更多</span>
-                        <ChevronDown class="h-4 w-4" />
-                    {/if}
-                </button>
-            {/if}
         </div>
     {/if}
-
-    <!-- Topic Navigation Dots -->
-    <div class="mb-3 flex justify-center gap-2">
-        {#each topics as topic, index (topic.id)}
-            <button
-                class="h-2 w-2 cursor-pointer rounded-full border-none p-0 transition-all duration-300 {activeIndex ===
-                index
-                    ? 'scale-125 bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]'
-                    : 'bg-white/25 hover:bg-white/50'}"
-                onclick={() => changeTopic(index)}
-                aria-label="Go to topic {index + 1}"
-            ></button>
-        {/each}
-    </div>
-
-    <!-- Swipe Hint -->
-    <p class="m-0 text-center text-xs text-white/35">← 左右滑動切換主題 →</p>
 </div>
 
 <!-- Topic List Modal -->
 {#if showTopicList}
     <div
-        class="fixed inset-0 z-40 bg-black/60 backdrop-blur-[4px]"
+        class="fixed inset-0 z-[60] bg-black/55"
         transition:fade={{ duration: 200 }}
         onclick={() => (showTopicList = false)}
         role="presentation"
     ></div>
     <div
-        class="fixed right-0 bottom-0 left-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#2d2d2d] p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.4)] md:right-auto md:bottom-8 md:left-1/2 md:w-full md:max-w-lg md:-translate-x-1/2 md:rounded-2xl"
+        class="student-panel fixed inset-x-4 bottom-[5.75rem] z-[70] max-h-[min(68vh,34rem)] overflow-y-auto rounded-[2rem] p-5 shadow-[0_18px_48px_rgba(0,0,0,0.22)] md:right-auto md:bottom-8 md:left-1/2 md:w-full md:max-w-lg md:-translate-x-1/2"
         transition:fly={{ y: 50, duration: 300 }}
     >
-        <div class="mb-6 flex items-center justify-between">
-            <h3 class="m-0 text-xl font-semibold text-white">所有主題</h3>
+        <div class="mb-5 flex items-center justify-between">
+            <div>
+                <h3 class="m-0 text-xl font-semibold text-white">
+                    {m.student_course_topic_list_title()}
+                </h3>
+                <p class="mt-1 text-sm text-white/44">
+                    {m.student_course_topic_list_description()}
+                </p>
+            </div>
             <button
-                class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-none bg-white/10 text-white/80"
+                class="student-icon-btn h-9 w-9 cursor-pointer rounded-full"
                 onclick={() => (showTopicList = false)}
             >
                 <X size={20} />
@@ -198,19 +186,21 @@
         <div class="flex flex-col gap-2">
             {#each topics as topic, index (topic.id)}
                 <button
-                    class="flex cursor-pointer items-center gap-4 rounded-xl p-4 text-left transition-all duration-200 {activeIndex ===
+                    class="student-panel student-panel-hover student-clickable flex cursor-pointer items-start gap-4 rounded-[1.35rem] p-4 text-left transition-all duration-200 {activeIndex ===
                     index
-                        ? 'border-white/30 bg-white/15 text-white'
-                        : 'border-white/5 bg-white/5 text-white/80 hover:bg-white/10'}"
+                        ? 'bg-white/10 text-white'
+                        : 'text-white/80'}"
                     onclick={() => changeTopic(index)}
                 >
                     <span
-                        class="font-mono text-sm {activeIndex === index
-                            ? 'text-white/100'
+                        class="mt-0.5 font-mono text-sm {activeIndex === index
+                            ? 'text-white'
                             : 'text-white/40'}"
                         >{String(index + 1).padStart(2, "0")}</span
                     >
-                    <span class="font-medium">{topic.title}</span>
+                    <span class="min-w-0">
+                        <span class="block font-medium">{topic.title}</span>
+                    </span>
                 </button>
             {/each}
         </div>

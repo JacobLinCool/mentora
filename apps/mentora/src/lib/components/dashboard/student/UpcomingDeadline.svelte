@@ -2,7 +2,10 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api } from "$lib/api";
+    import { formatMentoraDateTime } from "$lib/features/datetime/format";
     import { openAssignmentTarget } from "$lib/features/course/navigation";
+    import { m } from "$lib/paraglide/messages";
+    import { ChevronRight } from "@lucide/svelte";
     import type { SvelteDate } from "svelte/reactivity";
 
     import WeekCalendar from "./WeekCalendar.svelte";
@@ -42,17 +45,21 @@
 </script>
 
 <div class="mb-6">
-    <div class="mb-6">
-        <WeekCalendar
-            selectedDate={deadline?.date}
-            {deadlineDates}
-            {onDateSelect}
-        />
+    <WeekCalendar
+        selectedDate={deadline?.date}
+        {deadlineDates}
+        {onDateSelect}
+    />
+
+    <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-text-primary font-serif-tc text-2xl font-bold">
+            {m.dashboard_upcoming_deadline()}
+        </h2>
     </div>
 
     {#if deadline}
         <button
-            class="group mb-4 flex w-full cursor-pointer items-center justify-between rounded-2xl bg-white/10 p-4 text-left shadow-lg shadow-black/10 backdrop-blur-md transition-all active:translate-y-0 active:scale-[0.98]"
+            class="student-panel student-panel-hover student-clickable group mb-4 flex w-full items-center justify-between p-4 text-left active:scale-[0.98]"
             onclick={handleEnterAssignment}
         >
             <div class="flex flex-col gap-1 pr-4">
@@ -60,20 +67,27 @@
                     >{deadline.course}</span
                 >
                 <span class="text-sm text-white/60">{deadline.assignment}</span>
+                <span class="text-xs text-white/50">
+                    {m.assignments_due()}:
+                    {formatMentoraDateTime(deadline.dueDate.getTime())}
+                </span>
             </div>
 
-            <div class="flex shrink-0 items-center justify-end">
+            <div class="flex shrink-0 items-center justify-end gap-3">
                 <CountdownTimer targetDate={deadline.dueDate} />
+                <ChevronRight
+                    class="h-5 w-5 text-white/60 transition group-hover:text-white"
+                />
             </div>
         </button>
     {:else}
-        <div
-            class="rounded-2xl border border-white/10 bg-[#4C4C4C] p-8 text-center shadow-sm backdrop-blur-md"
-        >
+        <div class="student-panel p-8 text-center">
             <p class="mb-2 text-lg font-medium text-white/80">
-                No upcoming deadlines
+                {m.dashboard_no_upcoming_deadline_title()}
             </p>
-            <p class="text-sm text-white/50">You are all caught up!</p>
+            <p class="text-sm text-white/50">
+                {m.dashboard_no_upcoming_deadline_description()}
+            </p>
         </div>
     {/if}
 </div>

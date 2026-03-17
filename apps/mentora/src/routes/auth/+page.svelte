@@ -116,7 +116,7 @@
     }
 </script>
 
-<div class="flex min-h-screen items-center justify-center px-4">
+<div class="student-shell flex items-center justify-center px-4">
     <div class="w-full max-w-2xl">
         {#if flowState === "login"}
             <LoginCard onSuccess={handleLoginSuccess} />
@@ -135,7 +135,9 @@
             <div class="flex flex-col items-center gap-8">
                 <!-- Branding -->
                 <div class="text-center">
-                    <h1 class="text-text-primary mb-2 text-4xl font-bold">
+                    <h1
+                        class="font-serif-tc mb-2 text-4xl font-bold text-white"
+                    >
                         {m.auth_welcome()}
                     </h1>
                     <p class="text-text-secondary text-lg">
@@ -147,11 +149,11 @@
                 <div class="grid w-full grid-cols-1 gap-6 sm:grid-cols-2">
                     <!-- Student card -->
                     <button
-                        class="card-glass group hover:border-brand-silver flex flex-col items-center gap-4 rounded-3xl p-8 transition hover:brightness-110"
+                        class="student-panel student-panel-hover student-clickable group flex flex-col items-center gap-4 p-8"
                         onclick={selectStudent}
                     >
                         <div
-                            class="bg-brand-silver/20 text-brand-silver group-hover:bg-brand-silver/30 flex h-16 w-16 items-center justify-center rounded-full transition"
+                            class="flex h-16 w-16 items-center justify-center rounded-full border border-white/22 bg-[#6a6a6a] text-white transition"
                         >
                             <GraduationCap class="h-8 w-8" />
                         </div>
@@ -169,11 +171,11 @@
 
                     <!-- Mentor card -->
                     <button
-                        class="card-glass group hover:border-brand-gold flex flex-col items-center gap-4 rounded-3xl p-8 transition hover:brightness-110"
+                        class="student-panel student-panel-hover student-clickable group flex flex-col items-center gap-4 p-8"
                         onclick={selectMentor}
                     >
                         <div
-                            class="bg-brand-gold/20 text-brand-gold group-hover:bg-brand-gold/30 flex h-16 w-16 items-center justify-center rounded-full transition"
+                            class="flex h-16 w-16 items-center justify-center rounded-full border border-white/22 bg-[#6a6a6a] text-white transition"
                         >
                             <BookOpen class="h-8 w-8" />
                         </div>
@@ -194,7 +196,9 @@
             <!-- Mentor access code verification -->
             <div class="flex flex-col items-center gap-6">
                 <div class="text-center">
-                    <h1 class="text-text-primary mb-2 text-4xl font-bold">
+                    <h1
+                        class="font-serif-tc mb-2 text-4xl font-bold text-white"
+                    >
                         {m.auth_welcome()}
                     </h1>
                     <p class="text-text-secondary text-lg">
@@ -202,14 +206,14 @@
                     </p>
                 </div>
 
-                <div class="card-glass w-full max-w-sm rounded-3xl p-8">
+                <div class="student-panel w-full max-w-sm p-8">
                     <!-- svelte-ignore a11y_no_static_element_interactions -->
                     <div
                         class="flex flex-col gap-4"
                         onkeydown={handleVerifyKeydown}
                     >
                         <input
-                            class="border-glass-border text-text-primary placeholder:text-text-secondary focus:border-brand-gold focus:ring-brand-gold w-full rounded-xl border bg-white/10 px-4 py-3 text-sm focus:ring-1 focus:outline-none"
+                            class="w-full rounded-xl border border-white/24 bg-[#5b5b5b] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-white/42 focus:outline-none"
                             type="password"
                             placeholder={m.auth_verify_code_placeholder()}
                             bind:value={verifyCode}
@@ -222,7 +226,7 @@
                         {/if}
 
                         <button
-                            class="bg-brand-gold flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-gray-900 transition hover:brightness-110 disabled:opacity-50"
+                            class="student-clickable flex w-full items-center justify-center gap-2 rounded-3xl px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
                             onclick={handleVerifyMentor}
                             disabled={verifying || !verifyCode.trim()}
                         >

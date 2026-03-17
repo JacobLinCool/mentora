@@ -11,12 +11,13 @@
 </script>
 
 <script lang="ts">
+    import { m } from "$lib/paraglide/messages";
     import {
         Calendar,
+        ChevronRight,
         MessageSquare,
         FileText,
         Lock,
-        Check,
         Clock,
     } from "@lucide/svelte";
 
@@ -56,104 +57,105 @@
             onAssignmentClick?.(assignment);
         }
     }
+
+    function formatOverdueDuration(timestamp: number): string {
+        const diffMs = Math.max(0, Date.now() - timestamp);
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return m.student_course_overdue_duration({ hours, minutes });
+    }
 </script>
 
-<div class="flex flex-col p-6 backdrop-blur-[12px]">
+<div class="flex flex-col gap-3">
     {#each assignments as assignment, index (assignment.id)}
         {@const Icon = getTypeIcon(assignment.type)}
         {@const isSubmitted =
             assignment.submissionState === "submitted" ||
             assignment.submissionState === "graded_complete" ||
             assignment.completed}
+        {@const isOverdue =
+            !!assignment.dueAt &&
+            assignment.dueAt < Date.now() &&
+            !assignment.completed}
 
         <div
             class="relative flex gap-4 {index !== assignments.length - 1
-                ? 'pb-8'
+                ? 'pb-2'
                 : ''}"
         >
-            <!-- Timeline Column (Line + Dot) -->
             <div
-                class="relative flex w-10 shrink-0 flex-col items-center justify-center"
+                class="relative flex w-8 shrink-0 flex-col items-center justify-start pt-5"
             >
-                <!-- Top Line (connect to previous) -->
                 {#if index > 0}
                     <div
-                        class="absolute top-[-2rem] left-1/2 z-0 h-[calc(50%+2rem)] w-[2px] -translate-x-1/2 bg-white/15 transition-colors duration-300 ease-in-out"
+                        class="absolute top-[-1rem] left-1/2 z-0 h-[calc(50%+1rem)] w-px -translate-x-1/2 bg-white/12"
                     ></div>
                 {/if}
 
-                <!-- Status Dot -->
                 <div
-                    class="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 ease-in-out
-                        {assignment.completed
-                        ? 'bg-linear-to-br from-[#4ade80] to-[#22c55e] shadow-[0_0_12px_rgba(74,222,128,0.4)]'
-                        : 'bg-transparent'}"
+                    class="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#6a6a6a]"
                 >
                     {#if assignment.completed}
-                        <Check class="h-4 w-4 text-white" />
+                        <div class="h-3.5 w-3.5 rounded-full bg-white"></div>
                     {:else if assignment.locked}
-                        <!-- Inactive dot for locked assignments -->
-                        <div class="h-2 w-2 rounded-full bg-white/25"></div>
+                        <Lock class="h-3.5 w-3.5 text-white/42" />
                     {:else}
-                        <!-- Glowing active dot for pending assignments -->
-                        <div
-                            class="h-[10px] w-[10px] rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.6)]"
-                        ></div>
+                        <div class="h-2.5 w-2.5 rounded-full bg-white/90"></div>
                     {/if}
                 </div>
 
-                <!-- Bottom Line (connect to next) -->
                 {#if index < assignments.length - 1}
                     <div
-                        class="absolute top-1/2 bottom-0 left-1/2 z-0 h-[calc(50%+2rem)] w-[2px] -translate-x-1/2 bg-white/15 transition-colors duration-300 ease-in-out"
+                        class="absolute top-7 bottom-[-1rem] left-1/2 z-0 w-px -translate-x-1/2 bg-white/12"
                     ></div>
                 {/if}
             </div>
 
-            <!-- Card Column -->
-            <div class="flex min-w-0 flex-1 items-center">
-                <button
-                    class="relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl bg-white/10 p-4 text-left shadow-black/20 backdrop-blur-md transition-all duration-300 ease-in-out
-                           {assignment.completed
-                        ? 'border-[#4ade80]/30'
-                        : isSubmitted
-                          ? 'border-2 border-[#4ade80] bg-[rgba(74,222,128,0.05)]'
-                          : 'border-white/15 from-white/10 to-white/5'} 
-                           {assignment.locked
-                        ? 'cursor-not-allowed opacity-50'
-                        : 'hover:translate-x-1 hover:border-white/20 hover:from-white/20 hover:to-white/10'}"
-                    onclick={() => handleClick(assignment)}
-                    disabled={assignment.locked}
+            <button
+                class="student-panel student-panel-hover relative flex w-full items-center gap-3 overflow-hidden rounded-[1.5rem] px-4 py-4 text-left transition-all duration-200 {assignment.locked
+                    ? 'cursor-not-allowed opacity-55'
+                    : 'student-clickable active:scale-[0.99]'} {isSubmitted
+                    ? 'bg-[#646464]'
+                    : ''}"
+                onclick={() => handleClick(assignment)}
+                disabled={assignment.locked}
+            >
+                <div
+                    class="flex h-9 w-9 shrink-0 items-center justify-center self-center"
                 >
-                    <div
-                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]"
+                    <Icon class="h-5 w-5 text-white/82" />
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h4
+                        class="m-0 text-[0.98rem] leading-snug font-semibold text-white"
                     >
-                        <Icon class="h-5 w-5 text-white/85" />
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-2">
-                            <h4
-                                class="m-0 text-base leading-tight font-semibold text-white"
-                            >
-                                {assignment.title}
-                            </h4>
-                        </div>
-                        {#if assignment.dueAt}
-                            <p class="mt-1 mb-0 text-xs text-white/50">
-                                <Clock size={12} class="me-1 inline-block" />
-                                {formatDueDate(assignment.dueAt)}
-                            </p>
-                        {/if}
-                    </div>
-                    {#if assignment.locked}
-                        <div
-                            class="pointer-events-none absolute inset-0 flex items-center justify-end pr-4"
+                        {assignment.title}
+                    </h4>
+                    {#if assignment.dueAt}
+                        <p
+                            class="mt-2 mb-0 text-[0.8rem] leading-none {isOverdue
+                                ? 'text-[#ff9e9e]'
+                                : 'text-white/50'}"
                         >
-                            <Lock class="h-5 w-5 text-white/20" />
-                        </div>
+                            <Clock size={12} class="me-1 inline-block" />
+                            {#if isOverdue}
+                                {formatOverdueDuration(assignment.dueAt)}
+                            {:else}
+                                {m.assignments_due()}:
+                                {formatDueDate(assignment.dueAt)}
+                            {/if}
+                        </p>
                     {/if}
-                </button>
-            </div>
+                </div>
+                {#if assignment.locked}
+                    <Lock class="h-5 w-5 shrink-0 self-center text-white/22" />
+                {:else}
+                    <ChevronRight
+                        class="h-5 w-5 shrink-0 self-center text-white/32"
+                    />
+                {/if}
+            </button>
         </div>
     {/each}
 </div>

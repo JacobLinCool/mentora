@@ -11,11 +11,13 @@
         Mail,
         Calendar,
         ArrowRight,
+        Check,
         LoaderCircle,
         Pencil,
         X,
         Globe,
         LogOut,
+        ChevronRight,
     } from "@lucide/svelte";
 
     const s = createSettingsState();
@@ -26,10 +28,10 @@
 </script>
 
 <div
-    class="selection:bg-brand-gold min-h-screen w-full overflow-x-hidden bg-linear-to-br from-[#404040] to-[#858585] pb-24 font-sans text-white selection:text-white"
+    class="student-shell w-full overflow-x-hidden font-sans selection:bg-white/25 selection:text-white"
 >
     <main class="relative z-10 w-full">
-        <div class="mx-auto max-w-md px-6 pt-12 md:max-w-2xl lg:max-w-4xl">
+        <div class="student-container pt-12">
             <div class="mb-8 flex items-center justify-between">
                 <h1
                     class="font-serif-tc text-3xl font-bold text-white md:text-4xl"
@@ -39,9 +41,7 @@
             </div>
 
             {#if !s.user}
-                <div
-                    class="animate-slide-up rounded-3xl border border-white/10 bg-[#4C4C4C] p-6 text-center backdrop-blur-md"
-                >
+                <div class="student-panel animate-slide-up p-6 text-center">
                     <div class="py-8">
                         <User
                             class="text-text-secondary mx-auto mb-4 h-16 w-16 opacity-50"
@@ -52,7 +52,11 @@
                         <p class="text-text-secondary mb-6 font-light">
                             {m.settings_sign_in_prompt()}
                         </p>
-                        <CosmicButton href="/auth" variant="primary">
+                        <CosmicButton
+                            href="/auth"
+                            variant="secondary"
+                            className="student-action-btn !shadow-none"
+                        >
                             <span>{m.settings_sign_in()}</span>
                             <ArrowRight class="h-5 w-5" />
                         </CosmicButton>
@@ -61,56 +65,51 @@
             {:else}
                 <div class="space-y-8 pb-24">
                     <!-- Profile Section -->
-                    <div
-                        class="animate-slide-up rounded-3xl bg-white/10 p-6 backdrop-blur-md"
-                        style="container-type: inline-size"
-                    >
-                        <div class="mb-6 flex items-center justify-between">
-                            <div>
-                                <h2 class="mb-1 text-xl text-white">
-                                    {m.settings_profile()}
-                                </h2>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start gap-3">
-                            <!-- Profile Photo -->
-                            <div class="shrink-0">
-                                {#if s.user.photoURL}
-                                    <img
-                                        src={s.user.photoURL}
-                                        alt="Profile"
-                                        class="border-brand-gold/30 h-16 w-16 rounded-full border-2 object-cover"
-                                    />
-                                {:else}
-                                    <div
-                                        class="from-brand-gold to-brand-silver flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br font-serif text-2xl text-black"
-                                    >
-                                        {(
-                                            s.user.displayName ||
-                                            s.user.email ||
-                                            "U"
-                                        )
-                                            .charAt(0)
-                                            .toUpperCase()}
-                                    </div>
-                                {/if}
-                            </div>
-
-                            <!-- Profile Info -->
-                            <div class="min-w-0 flex-1 space-y-4">
-                                <div class="space-y-2">
-                                    <div
-                                        class="text-text-secondary text-xs font-medium tracking-wider uppercase"
-                                    >
-                                        {m.settings_display_name()}
-                                    </div>
-                                    {#if s.displayNameEditing}
+                    <section>
+                        <h2
+                            class="font-serif-tc mb-4 text-2xl font-bold text-white"
+                        >
+                            {m.settings_profile()}
+                        </h2>
+                        <div
+                            class="animate-slide-up py-2"
+                            style="container-type: inline-size"
+                        >
+                            <div
+                                class="mx-auto flex max-w-[40rem] flex-col gap-6"
+                            >
+                                <div class="flex justify-center">
+                                    {#if s.user.photoURL}
+                                        <img
+                                            src={s.user.photoURL}
+                                            alt={m.settings_profile()}
+                                            class="h-20 w-20 rounded-full object-cover"
+                                        />
+                                    {:else}
                                         <div
-                                            class="flex flex-wrap items-center gap-3"
+                                            class="flex h-20 w-20 items-center justify-center rounded-full bg-[#646464] font-serif text-5xl text-white"
                                         >
+                                            {(
+                                                s.user.displayName ||
+                                                s.user.email ||
+                                                m.unknown()
+                                            )
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <div class="space-y-5 px-4">
+                                    <div>
+                                        <div
+                                            class="mb-2 text-sm font-semibold tracking-[0.14em] text-white/84 uppercase"
+                                        >
+                                            {m.settings_display_name()}
+                                        </div>
+                                        {#if s.displayNameEditing}
                                             <div
-                                                class="focus-within:border-brand-gold/60 flex min-w-55 flex-1 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-white"
+                                                class="flex items-center gap-2 rounded-xl bg-[#5b5b5b] px-4 py-3 text-white"
                                             >
                                                 <User
                                                     class="text-text-secondary h-4 w-4 shrink-0"
@@ -128,149 +127,201 @@
                                                     onkeydown={s.handleDisplayNameKeydown}
                                                 />
                                             </div>
-                                            <CosmicButton
-                                                variant="primary"
-                                                onclick={s.saveDisplayName}
-                                                disabled={!s.displayNameCanSave}
-                                                className="px-5 py-3"
-                                            >
-                                                {#if s.displayNameSaving}
-                                                    <LoaderCircle
-                                                        class="h-4 w-4 animate-spin"
-                                                    />
-                                                    <span>{m.save()}</span>
-                                                {:else}
-                                                    <span>{m.save()}</span>
-                                                {/if}
-                                            </CosmicButton>
-                                            <CosmicButton
-                                                variant="secondary"
-                                                onclick={s.cancelDisplayNameEdit}
-                                                className="px-4 py-3"
-                                            >
-                                                <X class="h-4 w-4" />
-                                                <span>{m.cancel()}</span>
-                                            </CosmicButton>
-                                        </div>
-                                    {:else}
-                                        <div class="flex items-center gap-3">
+                                        {:else}
                                             <div
-                                                class="flex min-w-0 flex-1 items-center gap-2 text-white"
+                                                class="flex items-center gap-3 text-white"
                                             >
                                                 <User
-                                                    class="text-text-secondary h-4 w-4 shrink-0"
+                                                    class="h-5 w-5 shrink-0 text-white/90"
                                                 />
                                                 <span
                                                     class="truncate"
-                                                    style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
+                                                    style="font-size: clamp(0.9rem, 5cqw, 1.25rem)"
                                                 >
                                                     {s.profile?.displayName ||
                                                         s.user.displayName ||
                                                         m.settings_not_set()}
                                                 </span>
                                             </div>
-                                            <button
-                                                class="text-text-secondary flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 transition hover:border-white/30 hover:text-white"
-                                                onclick={s.startDisplayNameEdit}
-                                                aria-label="Edit display name"
+                                        {/if}
+                                        {#if s.displayNameError}
+                                            <p
+                                                class="text-status-error mt-2 text-xs"
                                             >
-                                                <Pencil class="h-3 w-3" />
-                                            </button>
-                                        </div>
-                                    {/if}
-                                    {#if s.displayNameError}
-                                        <p class="text-status-error text-xs">
-                                            {s.displayNameError}
-                                        </p>
-                                    {/if}
-                                </div>
-
-                                <div>
-                                    <div
-                                        class="text-text-secondary mb-1 text-xs font-medium tracking-wider uppercase"
-                                    >
-                                        {m.settings_email()}
+                                                {s.displayNameError}
+                                            </p>
+                                        {/if}
                                     </div>
-                                    <div
-                                        class="flex items-center gap-2 text-white"
-                                    >
-                                        <Mail
-                                            class="text-text-secondary h-4 w-4 shrink-0"
-                                        />
-                                        <span
-                                            class="break-all"
-                                            style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
-                                            >{s.user.email}</span
-                                        >
-                                    </div>
-                                </div>
 
-                                {#if s.profile?.createdAt}
                                     <div>
                                         <div
-                                            class="text-text-secondary mb-1 text-xs font-medium tracking-wider uppercase"
+                                            class="mb-2 text-sm font-semibold tracking-[0.14em] text-white/84 uppercase"
                                         >
-                                            {m.settings_member_since()}
+                                            {m.settings_email()}
                                         </div>
                                         <div
-                                            class="flex items-center gap-2 text-white"
+                                            class="flex items-center gap-3 text-white"
                                         >
-                                            <Calendar
-                                                class="text-text-secondary h-4 w-4 shrink-0"
+                                            <Mail
+                                                class="h-5 w-5 shrink-0 text-white/90"
                                             />
                                             <span
-                                                style="font-size: clamp(0.45rem, 4.5cqw, 1rem)"
-                                                >{formatDate(
-                                                    s.profile.createdAt,
-                                                )}</span
+                                                class="break-all"
+                                                style="font-size: clamp(0.9rem, 5cqw, 1.18rem)"
+                                                >{s.user.email}</span
                                             >
                                         </div>
                                     </div>
+
+                                    {#if s.profile?.createdAt}
+                                        <div>
+                                            <div
+                                                class="mb-2 text-sm font-semibold tracking-[0.14em] text-white/84 uppercase"
+                                            >
+                                                {m.settings_member_since()}
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-3 text-white"
+                                            >
+                                                <Calendar
+                                                    class="h-5 w-5 shrink-0 text-white/90"
+                                                />
+                                                <span
+                                                    style="font-size: clamp(0.9rem, 5cqw, 1.18rem)"
+                                                    >{formatDate(
+                                                        s.profile.createdAt,
+                                                    )}</span
+                                                >
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                {#if s.displayNameEditing}
+                                    <div
+                                        class="flex flex-wrap items-center justify-center gap-3"
+                                    >
+                                        <button
+                                            type="button"
+                                            onclick={s.saveDisplayName}
+                                            disabled={!s.displayNameCanSave}
+                                            class="student-panel student-panel-hover inline-flex min-w-[7.25rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white/90 disabled:cursor-not-allowed disabled:opacity-45"
+                                        >
+                                            {#if s.displayNameSaving}
+                                                <LoaderCircle
+                                                    class="h-4 w-4 animate-spin"
+                                                />
+                                                <span>{m.save()}</span>
+                                            {:else}
+                                                <Check
+                                                    class="h-4 w-4 text-white/80"
+                                                />
+                                                <span>{m.save()}</span>
+                                            {/if}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick={s.cancelDisplayNameEdit}
+                                            class="student-panel student-panel-hover inline-flex min-w-[7.25rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white/90"
+                                        >
+                                            <X class="h-4 w-4 text-white/80" />
+                                            <span>{m.cancel()}</span>
+                                        </button>
+                                    </div>
+                                {:else}
+                                    <button
+                                        class="student-panel student-panel-hover student-clickable flex w-full items-center justify-between rounded-[1.25rem] p-4 text-left active:scale-[0.98]"
+                                        onclick={s.startDisplayNameEdit}
+                                        aria-label={m.settings_edit_display_name_aria()}
+                                    >
+                                        <span
+                                            class="inline-flex items-center gap-2"
+                                        >
+                                            <Pencil
+                                                class="h-4 w-4 text-white/75"
+                                            />
+                                            <span
+                                                class="text-sm font-medium text-white"
+                                            >
+                                                {m.settings_edit_profile()}
+                                            </span>
+                                        </span>
+                                        <ChevronRight
+                                            class="h-5 w-5 text-white/55"
+                                        />
+                                    </button>
                                 {/if}
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    <div
-                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-                    >
-                        <CosmicButton
-                            onclick={() => {
-                                setLocale(getNextLocale(getLocale()));
-                            }}
-                            className="min-w-37.5 bg-white/10 backdrop-blur-md border-none shadow-lg shadow-black/10"
+                    <section>
+                        <h2
+                            class="font-serif-tc mb-4 text-2xl font-bold text-white"
                         >
-                            <Globe class="h-4 w-4" />
-                            <span>
-                                {getLocale() === "en"
-                                    ? "Switch to 繁體中文"
-                                    : "切換為 English"}
-                            </span>
-                        </CosmicButton>
-                    </div>
-                    <div
-                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-                    >
-                        <CosmicButton
-                            onclick={s.handleLogout}
-                            disabled={s.loggingOut}
-                            className="min-w-37.5 bg-white/10 backdrop-blur-md border-none shadow-lg shadow-black/10"
-                        >
-                            {#if s.loggingOut}
-                                <LoaderCircle class="h-4 w-4 animate-spin" />
-                                <span>{m.auth_signing_out()}</span>
-                            {:else}
-                                <LogOut class="h-4 w-4" />
-                                <span>{m.auth_sign_out()}</span>
+                            {m.settings_preferences()}
+                        </h2>
+                        <div class="space-y-3">
+                            <button
+                                class="student-panel student-panel-hover student-clickable flex w-full items-center justify-between p-4 text-left active:scale-[0.98]"
+                                onclick={() => {
+                                    setLocale(getNextLocale(getLocale()));
+                                }}
+                            >
+                                <span class="inline-flex items-center gap-2">
+                                    <Globe class="h-4 w-4" />
+                                    <span
+                                        class="text-base font-medium text-white"
+                                    >
+                                        {getLocale() === "en"
+                                            ? m.settings_switch_to_traditional_chinese()
+                                            : m.settings_switch_to_english()}
+                                    </span>
+                                </span>
+                                <ChevronRight class="h-5 w-5 text-white/65" />
+                            </button>
+                            <button
+                                class="student-panel student-panel-hover student-clickable flex w-full items-center justify-between p-4 text-left active:scale-[0.98]"
+                                onclick={s.handleLogout}
+                                disabled={s.loggingOut}
+                            >
+                                {#if s.loggingOut}
+                                    <span
+                                        class="inline-flex items-center gap-2"
+                                    >
+                                        <LoaderCircle
+                                            class="h-4 w-4 animate-spin"
+                                        />
+                                        <span
+                                            class="text-base font-medium text-white/90"
+                                        >
+                                            {m.auth_signing_out()}
+                                        </span>
+                                    </span>
+                                    <span class="h-5 w-5"></span>
+                                {:else}
+                                    <span
+                                        class="inline-flex items-center gap-2"
+                                    >
+                                        <LogOut class="h-4 w-4 text-white/80" />
+                                        <span
+                                            class="text-base font-medium text-white/90"
+                                        >
+                                            {m.auth_sign_out()}
+                                        </span>
+                                    </span>
+                                    <ChevronRight
+                                        class="h-5 w-5 text-white/55"
+                                    />
+                                {/if}
+                            </button>
+                            {#if s.logoutError}
+                                <p class="text-status-error px-1 text-sm">
+                                    {s.logoutError}
+                                </p>
                             {/if}
-                        </CosmicButton>
-                    </div>
-
-                    {#if s.logoutError}
-                        <p class="text-status-error mt-4 text-sm">
-                            {s.logoutError}
-                        </p>
-                    {/if}
+                        </div>
+                    </section>
                 </div>
 
                 <BottomNav activeTab="profile" />

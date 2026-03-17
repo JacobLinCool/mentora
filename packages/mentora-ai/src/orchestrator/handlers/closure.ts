@@ -140,7 +140,10 @@ export class ClosureHandler implements StageHandler {
         } catch (error) {
             const errorMsg =
                 error instanceof Error ? error.message : String(error);
-            assessmentError = `Assessment generation failed: ${errorMsg}`.slice(0, 1000);
+            assessmentError = `Assessment generation failed: ${errorMsg}`.slice(
+                0,
+                1000,
+            );
             config.logger(
                 "Assessment generation failed, ending without assessment",
                 error,

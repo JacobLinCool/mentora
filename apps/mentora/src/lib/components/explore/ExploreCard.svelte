@@ -3,7 +3,7 @@
 </script>
 
 <button
-    class="relative h-64 w-full overflow-hidden rounded-3xl text-left transition-transform hover:scale-[1.02] active:scale-[0.98]"
+    class="relative h-[15.5rem] w-full overflow-hidden rounded-3xl text-left transition-transform hover:scale-[1.01] active:scale-[0.98]"
     {onclick}
 >
     <!-- Background Image -->
@@ -17,7 +17,7 @@
     <!-- Category Pill -->
     <div class="absolute top-4 left-4">
         <span
-            class="rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-800 shadow-sm backdrop-blur-sm"
+            class="px-2 py-0.5 text-[11px] font-semibold tracking-wide text-white/82 uppercase"
         >
             {category}
         </span>
@@ -31,7 +31,7 @@
 
         <!-- Arrow Button -->
         <div
-            class="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md transition-colors hover:bg-white/30"
+            class="flex h-10 w-10 items-center justify-center rounded-full bg-[#6b6b6b] transition-colors hover:bg-[#757575]"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

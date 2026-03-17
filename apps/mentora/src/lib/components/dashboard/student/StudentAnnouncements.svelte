@@ -4,7 +4,7 @@
     import { resolve } from "$app/paths";
     import { api, type Announcement } from "$lib/api";
     import { m } from "$lib/paraglide/messages";
-    import { Bell, Megaphone } from "@lucide/svelte";
+    import { Bell, ChevronRight, Megaphone } from "@lucide/svelte";
     import { formatMentoraDateTime } from "$lib/features/datetime/format";
 
     const announcementsState = api.createState<Announcement[]>();
@@ -71,7 +71,7 @@
 </script>
 
 <div class="mb-6">
-    <div class="mb-4 flex items-center justify-between">
+    <div class="flex items-center justify-between">
         <h2 class="text-text-primary font-serif-tc text-2xl font-bold">
             {m.announcements_title()}
         </h2>
@@ -79,51 +79,61 @@
 
     {#if announcementsState.error || actionError}
         <div
-            class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+            class="mb-3 rounded-xl border border-red-300/50 bg-red-100/90 px-3 py-2 text-xs text-red-800"
         >
             {actionError || announcementsState.error}
         </div>
     {/if}
 
-    <div class="space-y-4 rounded-3xl bg-white/10 p-6 backdrop-blur-md">
-        {#each announcements as announcement (announcement.id)}
-            {@const Icon = getIcon(announcement.type)}
-            <button
-                class="group flex w-full items-start gap-4 text-left transition-opacity hover:opacity-80"
-                onclick={() => openAnnouncement(announcement)}
-            >
-                <div
-                    class={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                        announcement.isRead
-                            ? "bg-white/5 text-white/40"
-                            : "bg-yellow-100 text-yellow-700"
-                    }`}
+    {#if announcements.length > 0}
+        <div class="rounded-3xl bg-[#5f5f5f] p-4">
+            {#each announcements as announcement (announcement.id)}
+                {@const Icon = getIcon(announcement.type)}
+                <button
+                    class="student-panel-hover student-clickable group flex w-full items-start gap-3 rounded-2xl bg-transparent p-3 text-left"
+                    onclick={() => openAnnouncement(announcement)}
                 >
-                    <Icon class="h-4 w-4" />
-                </div>
-
-                <div class="min-w-0 flex-1">
-                    <div class="flex items-center justify-between gap-2">
-                        <h3 class="text-sm font-medium text-white">
-                            {announcement.payload.courseTitle}
-                        </h3>
-                        <span class="text-xs text-white/40">
-                            {formatTime(announcement.createdAt)}
-                        </span>
-                    </div>
-                    <p
-                        class="mt-0.5 line-clamp-2 text-xs font-light text-white/60"
+                    <div
+                        class={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                            announcement.isRead ? "text-white/50" : "text-white"
+                        }`}
                     >
-                        {announcement.payload.contentPreview}
-                    </p>
-                </div>
-            </button>
-        {/each}
+                        <Icon class="h-4 w-4" />
+                    </div>
 
-        {#if announcements.length === 0}
-            <div class="py-4 text-center text-sm text-white/30">
-                {m.announcements_empty()}
-            </div>
-        {/if}
-    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-sm font-medium text-white/95">
+                                {announcement.payload.courseTitle}
+                            </h3>
+                            <span class="text-xs text-white/40">
+                                {formatTime(announcement.createdAt)}
+                            </span>
+                        </div>
+                        <p
+                            class="mt-0.5 line-clamp-2 text-xs font-light text-white/65"
+                        >
+                            {announcement.payload.contentPreview}
+                        </p>
+                    </div>
+
+                    <div class="mt-1 flex items-center gap-2">
+                        {#if !announcement.isRead}
+                            <span class="h-1.5 w-1.5 rounded-full bg-white"
+                            ></span>
+                        {/if}
+                        <ChevronRight
+                            class="h-4 w-4 shrink-0 text-white/45 transition group-hover:text-white/75"
+                        />
+                    </div>
+                </button>
+            {/each}
+        </div>
+    {:else}
+        <div
+            class="flex min-h-20 flex-col items-center justify-center gap-2 py-3 text-center"
+        >
+            <p class="text-sm text-white">{m.announcements_empty()}</p>
+        </div>
+    {/if}
 </div>

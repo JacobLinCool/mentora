@@ -80,7 +80,9 @@
 
         {#if !editMode && type === "dialogue" && courseId && assignmentId}
             <a
-                href={resolve(`/host/courses/${courseId}/assignments/${assignmentId}/analytics`)}
+                href={resolve(
+                    `/host/courses/${courseId}/assignments/${assignmentId}/analytics`,
+                )}
                 class="p-1 text-gray-400 hover:text-blue-500"
                 title="班級分析"
             >

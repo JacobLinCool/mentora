@@ -51,9 +51,9 @@
         <Alert color="red" class="mb-4">{error}</Alert>
     {/if}
 
-    <div class="card-glass mx-auto max-w-sm rounded-3xl p-8 text-center">
+    <div class="student-panel mx-auto max-w-sm p-8 text-center">
         <div class="flex flex-col items-center gap-4">
-            <div class="text-text-primary text-2xl font-semibold">
+            <div class="font-serif-tc text-3xl font-bold text-white">
                 {m.auth_sign_in_title()}
             </div>
             <p class="text-text-secondary text-sm">
@@ -61,7 +61,7 @@
             </p>
             <button
                 onclick={login}
-                class="bg-brand-gold flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-medium text-gray-900 transition hover:brightness-110 disabled:opacity-50 sm:w-auto"
+                class="student-clickable flex w-full items-center justify-center gap-2 rounded-3xl px-6 py-3 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
                 disabled={loading}
             >
                 {#if loading}

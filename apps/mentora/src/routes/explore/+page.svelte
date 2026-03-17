@@ -60,8 +60,8 @@
     <title>{m.explore_title()} - Mentora</title>
 </svelte:head>
 
-<div class="min-h-screen bg-linear-to-br from-[#404040] to-[#858585] pb-24">
-    <div class="mx-auto max-w-md px-6 pt-12 md:max-w-2xl lg:max-w-4xl">
+<div class="student-shell">
+    <div class="student-container pt-12">
         <!-- Header -->
         <h1
             class="font-serif-tc mb-8 text-3xl font-bold text-white md:text-4xl"
@@ -93,18 +93,18 @@
                 type="text"
                 bind:value={searchQuery}
                 placeholder={m.explore_search_placeholder()}
-                class="w-full rounded-full bg-white/20 py-3 pr-4 pl-12 text-white placeholder-gray-300 backdrop-blur-sm focus:bg-white/30 focus:ring-2 focus:ring-white/50 focus:outline-none"
+                class="w-full rounded-full bg-[#5f5f5f] py-3 pr-4 pl-12 text-white placeholder:text-white/45 focus:bg-[#676767] focus:outline-none"
             />
         </div>
 
         <!-- Category Pills -->
-        <div class="no-scrollbar mb-8 flex space-x-3 overflow-x-auto pb-2">
+        <div class="no-scrollbar mb-8 flex space-x-2.5 overflow-x-auto pb-2">
             {#each categories as category (category)}
                 <button
-                    class="rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors {selectedCategory ===
+                    class="rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors {selectedCategory ===
                     category
-                        ? 'bg-white text-gray-800'
-                        : 'bg-white/20 text-white hover:bg-white/30'}"
+                        ? 'bg-[#ececec] text-[#2f2f2f]'
+                        : 'bg-[#5d5d5d] text-white/80 hover:bg-[#676767]'}"
                     onclick={() => (selectedCategory = category)}
                 >
                     {categoryMap[category]()}
@@ -115,11 +115,11 @@
         <!-- Course List -->
         {#if loading}
             <div class="flex h-64 items-center justify-center text-white/50">
-                Loading...
+                {m.loading()}
             </div>
         {:else if filteredCourses.length === 0}
             <div class="flex h-64 items-center justify-center text-white/50">
-                No courses found
+                {m.explore_no_courses_found()}
             </div>
         {:else}
             <div class="grid gap-6 md:grid-cols-2">

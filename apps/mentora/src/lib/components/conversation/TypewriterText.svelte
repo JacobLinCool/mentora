@@ -51,7 +51,7 @@
     .typewriter {
         font-family: "Noto Serif TC", "Times New Roman", serif;
         font-size: 1.75rem;
-        font-weight: 400;
+        font-weight: 700;
         line-height: 1.6;
         color: white;
     }

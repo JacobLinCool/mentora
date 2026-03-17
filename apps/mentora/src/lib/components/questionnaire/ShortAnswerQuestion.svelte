@@ -21,12 +21,16 @@
     }
 </script>
 
-<div class="short-answer">
-    <h2 class="question-text">{question}</h2>
+<div class="w-full">
+    <h2
+        class="mb-6 text-[1.35rem] leading-[1.45] font-semibold text-white md:text-[1.55rem]"
+    >
+        {question}
+    </h2>
 
-    <div class="input-wrapper">
+    <div class="relative">
         <textarea
-            class="answer-input"
+            class="min-h-[120px] w-full resize-y rounded-xl bg-white/8 px-5 py-4 text-base text-white transition-all duration-200 placeholder:text-white/40 focus:ring-0 focus:outline-none"
             {placeholder}
             maxlength={maxLength}
             {value}
@@ -34,8 +38,12 @@
             rows="4"
         ></textarea>
         {#if maxLength}
-            <div class="char-count">
-                <span class:warning={value.length > maxLength * 0.9}>
+            <div class="absolute right-4 bottom-3 text-xs text-white/40">
+                <span
+                    class={value.length > maxLength * 0.9
+                        ? "text-white/78"
+                        : ""}
+                >
                     {value.length}
                 </span>
                 / {maxLength}
@@ -43,65 +51,3 @@
         {/if}
     </div>
 </div>
-
-<style>
-    .short-answer {
-        width: 100%;
-    }
-
-    .question-text {
-        font-family: "Noto Serif TC", serif;
-        font-size: 1.75rem;
-        font-weight: 400;
-        line-height: 1.5;
-        color: white;
-        margin: 0 0 2rem 0;
-    }
-
-    @media (min-width: 768px) {
-        .question-text {
-            font-size: 2rem;
-        }
-    }
-
-    .input-wrapper {
-        position: relative;
-    }
-
-    .answer-input {
-        width: 100%;
-        padding: 1rem 1.25rem;
-        background: rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        color: white;
-        font-size: 1rem;
-        font-family: inherit;
-        resize: vertical;
-        min-height: 120px;
-        transition: all 0.2s ease;
-    }
-
-    .answer-input::placeholder {
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    .answer-input:focus {
-        outline: none;
-        border-color: #d4a855;
-        box-shadow: 0 0 12px rgba(212, 168, 85, 0.2);
-    }
-
-    .char-count {
-        position: absolute;
-        bottom: 0.75rem;
-        right: 1rem;
-        font-size: 0.75rem;
-        color: rgba(255, 255, 255, 0.4);
-    }
-
-    .char-count .warning {
-        color: #f59e0b;
-    }
-</style>

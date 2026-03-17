@@ -31,7 +31,7 @@
         {m.dashboard_my_courses()}
     </h2>
     {#if courses.length === 0}
-        <div class="rounded-3xl bg-white/5 p-6 text-white">
+        <div class="student-panel p-6 text-white">
             <h3 class="text-xl font-bold">
                 {m.dashboard_courses_empty_title()}
             </h3>
@@ -39,7 +39,7 @@
                 {m.dashboard_courses_empty_description()}
             </p>
             <button
-                class="mt-5 inline-flex items-center rounded-2xl border border-white/20 bg-white px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-85"
+                class="student-btn-primary mt-5"
                 onclick={handleExploreClick}
             >
                 {m.dashboard_courses_empty_cta()}

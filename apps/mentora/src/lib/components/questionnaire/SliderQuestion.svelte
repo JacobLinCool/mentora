@@ -59,17 +59,17 @@
     }
 
     .question-text {
-        font-family: "Noto Serif TC", serif;
-        font-size: 1.75rem;
-        font-weight: 400;
-        line-height: 1.5;
+        font-family: inherit;
+        font-size: 1.35rem;
+        font-weight: 600;
+        line-height: 1.45;
         color: white;
-        margin: 0 0 2rem 0;
+        margin: 0 0 1.5rem 0;
     }
 
     @media (min-width: 768px) {
         .question-text {
-            font-size: 2rem;
+            font-size: 1.55rem;
         }
     }
 
@@ -85,7 +85,7 @@
         text-align: center;
         font-size: 2rem;
         font-weight: 600;
-        color: #d4a855;
+        color: rgba(255, 255, 255, 0.9);
         margin-bottom: 1.25rem;
     }
 
@@ -106,28 +106,28 @@
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        background: #d4a855;
+        background: rgba(255, 255, 255, 0.9);
         border: 2px solid rgba(255, 255, 255, 0.3);
         cursor: pointer;
         transition: box-shadow 0.2s ease;
     }
 
     .slider-input::-webkit-slider-thumb:hover {
-        box-shadow: 0 0 12px rgba(212, 168, 85, 0.4);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.22);
     }
 
     .slider-input::-moz-range-thumb {
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        background: #d4a855;
+        background: rgba(255, 255, 255, 0.9);
         border: 2px solid rgba(255, 255, 255, 0.3);
         cursor: pointer;
         transition: box-shadow 0.2s ease;
     }
 
     .slider-input::-moz-range-thumb:hover {
-        box-shadow: 0 0 12px rgba(212, 168, 85, 0.4);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.22);
     }
 
     .slider-input::-moz-range-track {

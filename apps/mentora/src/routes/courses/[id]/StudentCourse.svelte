@@ -19,6 +19,7 @@
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import PageHead from "$lib/components/PageHead.svelte";
     import { openAssignmentTarget } from "$lib/features/course/navigation";
+    import { m } from "$lib/paraglide/messages";
 
     const courseId = $derived(page.params.id);
 
@@ -159,7 +160,7 @@
                                 ...q,
                                 type: "questionnaire",
                                 question: null,
-                                prompt: "", // Dummy to satisfy interface
+                                prompt: "",
                                 mode: "instant",
                                 classReport: null,
                                 submissionState: sub?.state,
@@ -215,7 +216,7 @@
             let defaultIndex = 0;
             for (let i = 0; i < topics.length; i++) {
                 const topic = topics[i];
-                const topicAssignments = groupedAssignments[topic.id] || [];
+                const topicAssignments = groups[topic.id] || [];
                 const hasActive = topicAssignments.some(
                     (a) => !a.completed && (!a.dueAt || a.dueAt > now),
                 );
@@ -262,23 +263,24 @@
     }
 </script>
 
-<PageHead title={courseTitle || "Course"} description="Course details" />
+<PageHead
+    title={courseTitle || m.page_course_detail_title()}
+    description={m.page_course_detail_description()}
+/>
 
-<div
-    class="min-h-screen bg-linear-to-br from-[#2d2d2d] via-[#404040] to-[#5a5a5a] pb-24"
->
-    <!-- Header -->
+<div class="student-shell">
     <header
-        class="mx-auto flex max-w-[42rem] items-center gap-4 px-6 pt-6 pb-2 lg:max-w-4xl"
+        class="student-container flex max-w-[42rem] items-center gap-4 pt-6 pb-4 lg:max-w-4xl"
     >
         <button
-            class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 transition-all duration-200 ease-in-out hover:-translate-x-[2px] hover:bg-white/15"
+            class="student-icon-btn cursor-pointer rounded-full hover:-translate-x-[2px]"
             onclick={goBack}
+            aria-label={m.back()}
         >
             <ArrowLeft class="h-5 w-5 text-white" />
         </button>
         <h1
-            class="m-0 text-[1.75rem] font-light tracking-[0.05em] text-white uppercase"
+            class="font-serif-tc m-0 text-[1.5rem] font-bold tracking-[0.03em] text-white"
         >
             {courseTitle}
         </h1>
@@ -289,19 +291,19 @@
             <Spinner size="12" color="gray" />
         </div>
     {:else}
-        <!-- Topic Carousel -->
         <TopicCarousel
             {topics}
             currentIndex={currentTopicIndex}
             onTopicChange={handleTopicChange}
         />
 
-        <!-- Assignment Timeline -->
-        <section class="mx-auto max-w-[42rem] px-6 lg:max-w-4xl">
+        <section
+            class="student-container mx-auto max-w-[42rem] pb-28 lg:max-w-4xl"
+        >
             <h3
-                class="mb-4 text-sm font-semibold tracking-[0.05em] text-white/60"
+                class="mb-4 text-sm font-semibold tracking-[0.08em] text-white/55"
             >
-                作業進度
+                {m.student_course_assignment_progress()}
             </h3>
             <AssignmentTimeline
                 assignments={currentAssignments}
@@ -310,6 +312,5 @@
         </section>
     {/if}
 
-    <!-- Bottom Navigation -->
     <BottomNav activeTab="home" />
 </div>

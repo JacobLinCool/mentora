@@ -1,21 +1,20 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+    import { m } from "$lib/paraglide/messages";
     let { activeTab = "home" } = $props();
 </script>
 
 <nav
-    class="bg-canvas-accent border-glass-border fixed right-0 bottom-0 left-0 border-t px-6 py-3"
+    class="fixed right-0 bottom-0 left-0 z-50 border-t border-white/12 bg-[#4a4a4a] px-6 pb-[calc(env(safe-area-inset-bottom)+0.4rem)]"
 >
-    <div
-        class="mx-auto flex max-w-md items-center justify-around md:max-w-2xl lg:max-w-4xl"
-    >
+    <div class="mx-auto grid max-w-sm grid-cols-3 gap-2 py-2 md:max-w-md">
         <button
-            class="flex flex-col items-center transition-colors {activeTab ===
+            class="group relative flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl border border-transparent transition-all duration-200 {activeTab ===
             'explore'
                 ? 'text-white'
-                : 'text-text-secondary'}"
-            aria-label="Explore"
+                : 'text-white/45 hover:text-white/75'}"
+            aria-label={m.bottom_nav_explore()}
             onclick={() => goto(resolve("/explore"))}
         >
             <svg
@@ -36,11 +35,11 @@
             </svg>
         </button>
         <button
-            class="flex flex-col items-center transition-colors {activeTab ===
+            class="group relative flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl border border-transparent transition-all duration-200 {activeTab ===
             'home'
                 ? 'text-white'
-                : 'text-text-secondary'}"
-            aria-label="Home"
+                : 'text-white/45 hover:text-white/75'}"
+            aria-label={m.bottom_nav_home()}
             onclick={() => goto(resolve("/dashboard"))}
         >
             <svg
@@ -59,11 +58,11 @@
             </svg>
         </button>
         <button
-            class="flex flex-col items-center transition-colors {activeTab ===
+            class="group relative flex h-12 w-full cursor-pointer items-center justify-center rounded-2xl border border-transparent transition-all duration-200 {activeTab ===
             'profile'
                 ? 'text-white'
-                : 'text-text-secondary'}"
-            aria-label="Profile"
+                : 'text-white/45 hover:text-white/75'}"
+            aria-label={m.bottom_nav_profile()}
             onclick={() => goto(resolve("/settings"))}
         >
             <svg
