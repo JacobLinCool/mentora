@@ -32,7 +32,12 @@ describe('Wallets Module (Integration)', () => {
 		courseId = fixture.courseId;
 	});
 
+	beforeAll(() => {
+		process.env.MENTORA_ALLOW_UNVERIFIED_TOPUPS = 'true';
+	});
+
 	afterAll(async () => {
+		delete process.env.MENTORA_ALLOW_UNVERIFIED_TOPUPS;
 		if (courseId) {
 			await teacher.courses.delete(courseId);
 		}

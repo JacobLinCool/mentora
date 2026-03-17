@@ -7,6 +7,12 @@ export interface TopupVerificationGateway {
 }
 
 export class DefaultTopupVerificationGateway implements TopupVerificationGateway {
+	private shouldAllowUnverifiedTopup(): boolean {
+		return (
+			process.env.NODE_ENV === 'test' && process.env.MENTORA_ALLOW_UNVERIFIED_TOPUPS === 'true'
+		);
+	}
+
 	async verify(params: {
 		amount: number;
 		paymentRef: string | null;
@@ -18,8 +24,17 @@ export class DefaultTopupVerificationGateway implements TopupVerificationGateway
 		if (params.paymentRef != null && params.paymentRef.trim().length === 0) {
 			return false;
 		}
+		if (this.shouldAllowUnverifiedTopup()) {
+			return true;
+		}
+
+		// Require a payment reference until provider-side verification is implemented.
+		if (!params.paymentRef || !params.paymentRef.startsWith('pi_')) {
+			return false;
+		}
+
 		// Placeholder for payment-provider verification integration.
-		return true;
+		return false;
 	}
 }
 
