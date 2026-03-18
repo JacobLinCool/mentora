@@ -9,6 +9,7 @@ import {
 import { initializeApp } from "firebase/app";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import { connectStorageEmulator, getStorage } from "firebase/storage";
 
 // Connect to emulators in development mode if enabled
 // Set PUBLIC_USE_FIREBASE_EMULATOR=true in .env to use local emulators
@@ -27,6 +28,7 @@ const app = initializeApp(firebaseConfig);
 // Initialize services
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 if (browser && useEmulator) {
     console.log("Connecting to Firebase Emulators");
@@ -34,4 +36,5 @@ if (browser && useEmulator) {
         disableWarnings: true,
     });
     connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    connectStorageEmulator(storage, "127.0.0.1", 9199);
 }

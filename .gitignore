@@ -149,3 +149,6 @@ package-lock.json
 .shared
 
 packages/mentora-api/docs/typedoc/
+
+# Firebase emulator data
+.emulator-data/

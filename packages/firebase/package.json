@@ -11,7 +11,7 @@
     },
     "scripts": {
         "build": "tsup",
-        "dev": "firebase emulators:start --project demo-mentora --only firestore,auth",
+        "dev": "firebase emulators:start --project demo-mentora --only firestore,auth --import .emulator-data --export-on-exit .emulator-data",
         "deploy": "firebase --project $FIREBASE_PROJECT_ID deploy --only firestore:rules,firestore:indexes",
         "test": "firebase emulators:exec --only firestore 'vitest run'",
         "test:watch": "firebase emulators:exec --only firestore 'vitest --watch'",
