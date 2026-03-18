@@ -105,8 +105,8 @@ describe('MentoraClient (Integration)', () => {
 
 		it('should have wallets namespace', () => {
 			expect(client.wallets).toBeDefined();
-			expect(client.wallets.get).toBeDefined();
-			expect(client.wallets.getMine).toBeDefined();
+			expect(client.wallets.getCourseWallet).toBeDefined();
+			expect(client.wallets.createOrUpdate).toBeDefined();
 		});
 
 		it('should have backend namespace', () => {

@@ -93,7 +93,8 @@ describe('Assignments Module (Integration)', () => {
 				startAt: Date.now(),
 				dueAt: null,
 				allowLate: false,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 
 			expect(result.success).toBe(true);
@@ -118,7 +119,8 @@ describe('Assignments Module (Integration)', () => {
 				startAt: Date.now(),
 				dueAt: null,
 				allowLate: true,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 
 			expect(result.success).toBe(true);
@@ -143,7 +145,8 @@ describe('Assignments Module (Integration)', () => {
 				startAt: Date.now(),
 				dueAt: futureDate,
 				allowLate: true,
-				allowResubmit: false
+				allowResubmit: false,
+				studentBudgetUsd: null
 			});
 
 			expect(result.success).toBe(true);
@@ -170,7 +173,8 @@ describe('Assignments Module (Integration)', () => {
 				startAt: Date.now(),
 				dueAt: null,
 				allowLate: true,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 
 			expect(result.success).toBe(true);
@@ -412,7 +416,8 @@ describe('Assignments Module (Integration)', () => {
 				startAt: Date.now() - 60000, // Started 1 minute ago
 				dueAt: null,
 				allowLate: true,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 
 			expect(createResult.success).toBe(true);

@@ -6,6 +6,7 @@
     import CourseMembers from "$lib/components/course/mentor/CourseMembers.svelte";
     import CourseSettings from "$lib/components/course/mentor/CourseSettings.svelte";
     import CourseSubmissions from "$lib/components/course/mentor/CourseSubmissions.svelte";
+    import CourseWallet from "$lib/components/course/mentor/CourseWallet.svelte";
     import { onMount } from "svelte";
     import { api } from "$lib";
     import type { Course } from "$lib/api";
@@ -175,6 +176,8 @@
         <CourseMembers {courseId} />
     {:else if activeTab === "settings"}
         <CourseSettings />
+    {:else if activeTab === "wallet" && courseId}
+        <CourseWallet {courseId} />
     {:else if activeTab === "submissions" && courseId}
         <CourseSubmissions {courseId} />
     {/if}

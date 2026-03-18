@@ -67,7 +67,8 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 				startAt: Date.now() - 60000,
 				dueAt: null,
 				allowLate: true,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 			if (result1.success) {
 				assignmentAllowResubmit = result1.data;
@@ -84,7 +85,8 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 				startAt: Date.now() - 60000,
 				dueAt: null,
 				allowLate: true,
-				allowResubmit: false
+				allowResubmit: false,
+				studentBudgetUsd: null
 			});
 			if (result2.success) {
 				assignmentNoResubmit = result2.data;
@@ -102,7 +104,8 @@ describe('Submissions Module - Advanced Scenarios (Integration)', () => {
 				startAt: Date.now() - 48 * 60 * 60 * 1000,
 				dueAt: pastDueDate,
 				allowLate: true,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 			if (result3.success) {
 				assignmentWithDueDate = result3.data;

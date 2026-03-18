@@ -1,57 +1,93 @@
-import type { AddCreditsInput, AddCreditsResult } from '../../contracts/api.js';
+import { GoogleGenAI } from '@google/genai';
+import type { Wallet, WalletStatus } from 'mentora-firebase';
 import { errorResponse, HttpStatus, ServerErrorCode } from '../types.js';
 import type { IWalletRepository } from '../repositories/ports/wallet-repository.js';
 
-export interface TopupVerificationGateway {
-	verify(params: { amount: number; paymentRef: string | null; userId: string }): Promise<boolean>;
-}
-
-export class DefaultTopupVerificationGateway implements TopupVerificationGateway {
-	async verify(params: {
-		amount: number;
-		paymentRef: string | null;
-		userId: string;
-	}): Promise<boolean> {
-		if (!Number.isFinite(params.amount) || params.amount <= 0) {
-			return false;
-		}
-		if (params.paymentRef != null && params.paymentRef.trim().length === 0) {
-			return false;
-		}
-		// Placeholder for payment-provider verification integration.
-		return true;
-	}
-}
-
 export class WalletService {
-	constructor(
-		private readonly walletRepository: IWalletRepository,
-		private readonly verificationGateway: TopupVerificationGateway
-	) {}
+	constructor(private readonly walletRepository: IWalletRepository) {}
 
-	async addCredits(userId: string, input: AddCreditsInput): Promise<AddCreditsResult> {
-		const verified = await this.verificationGateway.verify({
-			amount: input.amount,
-			paymentRef: input.paymentRef ?? null,
-			userId
-		});
-		if (!verified) {
+	async getWallet(courseId: string): Promise<Wallet | null> {
+		return this.walletRepository.getWallet(courseId);
+	}
+
+	async createOrUpdateWallet(
+		courseId: string,
+		input: { apiKey: string; spendingLimitUsd: number }
+	): Promise<Wallet> {
+		await this.validateApiKey(input.apiKey);
+
+		const existing = await this.walletRepository.getWallet(courseId);
+		const now = Date.now();
+		const apiKeyLastFour = input.apiKey.slice(-4);
+
+		if (existing) {
+			let newStatus: WalletStatus = 'active';
+			if (existing.totalSpentUsd >= input.spendingLimitUsd) {
+				newStatus = 'suspended';
+			}
+
+			await this.walletRepository.updateWallet(courseId, {
+				apiKey: input.apiKey,
+				apiKeyLastFour,
+				spendingLimitUsd: input.spendingLimitUsd,
+				status: newStatus,
+				updatedAt: now
+			});
+
+			return {
+				...existing,
+				apiKey: input.apiKey,
+				apiKeyLastFour,
+				spendingLimitUsd: input.spendingLimitUsd,
+				status: newStatus,
+				updatedAt: now
+			};
+		}
+
+		const wallet: Wallet = {
+			courseId,
+			apiKey: input.apiKey,
+			apiKeyLastFour,
+			spendingLimitUsd: input.spendingLimitUsd,
+			totalSpentUsd: 0,
+			status: 'active',
+			createdAt: now,
+			updatedAt: now
+		};
+
+		await this.walletRepository.createWallet(courseId, wallet);
+		return wallet;
+	}
+
+	async validateApiKey(apiKey: string): Promise<void> {
+		try {
+			const genai = new GoogleGenAI({ apiKey });
+			await genai.models.list({ config: { pageSize: 1 } });
+		} catch {
 			throw errorResponse(
-				'Payment verification failed',
+				'Invalid API key or unable to connect to Gemini API',
 				HttpStatus.BAD_REQUEST,
 				ServerErrorCode.INVALID_INPUT
 			);
 		}
-
-		return this.walletRepository.addCredits({
-			userId,
-			amount: input.amount,
-			idempotencyKey: input.idempotencyKey,
-			paymentRef: input.paymentRef ?? null
-		});
 	}
 
-	async getMyWallet(userId: string) {
-		return this.walletRepository.getUserWallet(userId);
+	async recordSpend(courseId: string, amountUsd: number): Promise<void> {
+		await this.walletRepository.incrementSpend(courseId, amountUsd);
+
+		const status = await this.walletRepository.getWalletStatus(courseId);
+		if (status && status.totalSpentUsd >= status.spendingLimitUsd) {
+			await this.walletRepository.updateWallet(courseId, {
+				status: 'suspended',
+				updatedAt: Date.now()
+			});
+		}
+	}
+
+	async markInvalidKey(courseId: string): Promise<void> {
+		await this.walletRepository.updateWallet(courseId, {
+			status: 'invalid_key',
+			updatedAt: Date.now()
+		});
 	}
 }

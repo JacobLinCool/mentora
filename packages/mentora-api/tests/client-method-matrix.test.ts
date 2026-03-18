@@ -255,22 +255,15 @@ describe('MentoraClient method matrix', () => {
 		};
 
 		const walletsSpies = {
-			getWallet: vi
-				.spyOn(WalletsModule, 'getWallet')
-				.mockResolvedValue({ success: true, data: {} as any }),
-			getMyWallet: vi
-				.spyOn(WalletsModule, 'getMyWallet')
-				.mockResolvedValue({ success: true, data: null }),
-			listWalletEntries: vi
-				.spyOn(WalletsModule, 'listWalletEntries')
-				.mockResolvedValue({ success: true, data: [] }),
 			getCourseWallet: vi
 				.spyOn(WalletsModule, 'getCourseWallet')
-				.mockResolvedValue({ success: true, data: { wallet: {} as any } }),
-			addCredits: vi.spyOn(WalletsModule, 'addCredits').mockResolvedValue({
-				success: true,
-				data: { id: 'entry-1', idempotent: false, newBalance: 100 }
-			})
+				.mockResolvedValue({ success: true, data: null }),
+			createOrUpdateWallet: vi
+				.spyOn(WalletsModule, 'createOrUpdateWallet')
+				.mockResolvedValue({ success: true, data: {} as any }),
+			validateApiKey: vi
+				.spyOn(WalletsModule, 'validateApiKey')
+				.mockResolvedValue({ success: true, data: { valid: true } })
 		};
 
 		const backendSpy = vi.spyOn(BackendModule, 'callBackend').mockResolvedValue({
@@ -298,7 +291,6 @@ describe('MentoraClient method matrix', () => {
 		await client.courses.delete('course-a');
 		await client.courses.updateMember('course-a', 'member-a', { role: 'ta', status: 'active' });
 		await client.courses.removeMember('course-a', 'member-a');
-		await client.courses.getWallet('course-a', { includeLedger: true, ledgerLimit: 5 });
 		await client.courses.copy('course-a', { includeContent: true, includeRoster: false });
 		await client.courses.createAnnouncement('course-a', 'Announcement');
 		await client.announcements.get('announcement-a');
@@ -332,7 +324,8 @@ describe('MentoraClient method matrix', () => {
 			startAt: Date.now(),
 			dueAt: null,
 			allowLate: true,
-			allowResubmit: true
+			allowResubmit: true,
+			studentBudgetUsd: null
 		});
 		await client.assignments.update('assignment-a', { title: 'Assignment Updated' });
 		await client.assignments.delete('assignment-a');
@@ -403,10 +396,9 @@ describe('MentoraClient method matrix', () => {
 			text: 'blob-input'
 		});
 
-		await client.wallets.get('wallet-a');
-		await client.wallets.getMine();
-		await client.wallets.listEntries('wallet-a', { limit: 5 });
-		await client.wallets.addCredits({ amount: 50, idempotencyKey: 'wallet-key' });
+		await client.wallets.getCourseWallet('course-a');
+		await client.wallets.createOrUpdate('course-a', { apiKey: 'key', spendingLimitUsd: 50 });
+		await client.wallets.validateApiKey('test-key');
 
 		await client.backend.call('/health', { method: 'GET' });
 
@@ -466,6 +458,6 @@ describe('MentoraClient method matrix', () => {
 			expect.any(Object),
 			'conversation-a'
 		);
-		expect(walletsSpies.getWallet).toHaveBeenCalledWith(expect.any(Object), 'wallet-a');
+		expect(walletsSpies.getCourseWallet).toHaveBeenCalledWith(expect.any(Object), 'course-a');
 	});
 });

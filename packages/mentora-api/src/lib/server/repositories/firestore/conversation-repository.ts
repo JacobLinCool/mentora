@@ -124,6 +124,18 @@ export class FirestoreConversationRepository implements IConversationRepository 
 			.set(AssignmentSubmissions.schema.parse(submission));
 	}
 
+	async incrementSubmissionSpend(
+		assignmentId: string,
+		userId: string,
+		amountUsd: number
+	): Promise<void> {
+		const docRef = this.firestore.doc(AssignmentSubmissions.docPath(assignmentId, userId));
+		const { FieldValue } = await import('fires2rest');
+		await docRef.update({
+			totalSpentUsd: FieldValue.increment(amountUsd)
+		});
+	}
+
 	async appendTurns(params: {
 		conversationId: string;
 		userId: string;

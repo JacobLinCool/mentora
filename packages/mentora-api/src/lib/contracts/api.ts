@@ -14,16 +14,21 @@ export interface CreateConversationResult {
 	reopened: boolean;
 }
 
-export interface AddCreditsInput {
-	amount: number;
-	idempotencyKey: string;
-	paymentRef?: string | null;
+export interface CreateOrUpdateWalletInput {
+	apiKey: string;
+	spendingLimitUsd: number;
 }
 
-export interface AddCreditsResult {
-	id: string;
-	idempotent: boolean;
-	newBalance: number;
+export interface WalletResponse {
+	courseId: string;
+	apiKeyLastFour: string;
+	spendingLimitUsd: number;
+	totalSpentUsd: number;
+	status: string;
+}
+
+export interface ValidateApiKeyInput {
+	apiKey: string;
 }
 
 export interface JoinCourseResult {

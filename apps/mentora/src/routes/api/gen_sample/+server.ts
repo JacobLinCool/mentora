@@ -254,6 +254,8 @@ export const GET: RequestHandler = async (event) => {
                         notes: null,
                         assessment: null,
                         assessmentError: null,
+                        totalSpentUsd: 0,
+                        budgetExhausted: false,
                     };
 
                     await firestore
@@ -345,6 +347,8 @@ export const GET: RequestHandler = async (event) => {
                         notes: null,
                         assessment: null,
                         assessmentError: null,
+                        totalSpentUsd: 0,
+                        budgetExhausted: false,
                     };
                     await firestore
                         .collection("assignments")

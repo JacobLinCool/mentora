@@ -99,9 +99,10 @@ export function createAssignmentsCommand(
                     prompt: options.prompt,
                     mode: "instant",
                     startAt: parseTime(options.start) || Date.now(),
-                    dueAt: parseTime(options.due),
+                    dueAt: parseTime(options.due) ?? null,
                     allowLate: options.allowLate || false,
                     allowResubmit: options.allowResubmit || false,
+                    studentBudgetUsd: null,
                 });
                 if (result.success) {
                     success(`Assignment created with ID: ${result.data}`);

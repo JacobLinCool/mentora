@@ -29,6 +29,7 @@ export interface IConversationRepository {
 		finalNow: number;
 		usageReport: TokenUsageReport;
 	}): Promise<void>;
+	incrementSubmissionSpend(assignmentId: string, userId: string, amountUsd: number): Promise<void>;
 }
 
 export interface ConversationTokenUsageConverter {

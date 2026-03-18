@@ -18,6 +18,8 @@ import {
 import type { TokenUsageReport } from '../llm/token-usage.js';
 import { errorResponse, HttpStatus, ServerErrorCode, type AuthContext } from '../types.js';
 import type { IConversationRepository } from '../repositories/ports/conversation-repository.js';
+import type { IWalletRepository } from '../repositories/ports/wallet-repository.js';
+import { calculateReportCostUsd } from '../llm/pricing.js';
 import type { IConversationLLMGateway } from './gateways/conversation-llm-gateway.js';
 
 type AddTurnInput = { text: string } | { audioBase64: string; audioMimeType: string };
@@ -65,7 +67,8 @@ function getTokenUsageModels(report: TokenUsageReport): Record<string, string> {
 export class ConversationService {
 	constructor(
 		private readonly conversationRepository: IConversationRepository,
-		private readonly llmGateway: IConversationLLMGateway
+		private readonly llmGateway: IConversationLLMGateway,
+		private readonly walletRepository: IWalletRepository
 	) {}
 
 	private async ensureSubmissionInProgress(assignment: Assignment, userId: string): Promise<void> {
@@ -99,7 +102,9 @@ export class ConversationService {
 			scoreCompletion: null,
 			notes: null,
 			assessment: null,
-			assessmentError: null
+			assessmentError: null,
+			totalSpentUsd: 0,
+			budgetExhausted: false
 		};
 		await this.conversationRepository.saveSubmission(assignment.id, userId, submission);
 	}
@@ -132,7 +137,9 @@ export class ConversationService {
 			scoreCompletion,
 			notes,
 			assessment: (assessmentData?.assessment as Submission['assessment']) ?? null,
-			assessmentError: assessmentData?.assessmentError ?? null
+			assessmentError: assessmentData?.assessmentError ?? null,
+			totalSpentUsd: existing?.totalSpentUsd ?? 0,
+			budgetExhausted: existing?.budgetExhausted ?? false
 		};
 		await this.conversationRepository.saveSubmission(assignment.id, userId, submitted);
 	}
@@ -316,13 +323,77 @@ export class ConversationService {
 		}
 		ensureSubmissionWindow(assignment, Date.now());
 
-		const llmResult = await this.llmGateway.process({
-			conversationId,
-			userId: user.uid,
-			userInputText,
-			question: assignment.question || '',
-			prompt: assignment.prompt || ''
-		});
+		// Budget pre-checks
+		let apiKey: string | undefined;
+		if (assignment.courseId) {
+			const wallet = await this.walletRepository.getWallet(assignment.courseId);
+			if (wallet) {
+				if (wallet.status === 'suspended') {
+					throw errorResponse(
+						'Course budget exhausted. Please contact your instructor.',
+						HttpStatus.FORBIDDEN,
+						ServerErrorCode.PERMISSION_DENIED
+					);
+				}
+				if (wallet.status === 'invalid_key') {
+					throw errorResponse(
+						'Course is temporarily unavailable. Please contact your instructor.',
+						HttpStatus.FORBIDDEN,
+						ServerErrorCode.PERMISSION_DENIED
+					);
+				}
+				apiKey = wallet.apiKey;
+			}
+
+			// Check student budget
+			if (assignment.studentBudgetUsd != null) {
+				const currentSubmission = await this.conversationRepository.getSubmission(
+					assignment.id,
+					user.uid
+				);
+				if (currentSubmission && currentSubmission.totalSpentUsd >= assignment.studentBudgetUsd) {
+					// Budget exhausted - force end the conversation
+					await this.submitSubmission(assignment, user.uid);
+					const endNow = Date.now();
+					await this.conversationRepository.updateConversation(conversationId, {
+						state: 'closed',
+						lastActionAt: endNow,
+						updatedAt: endNow
+					});
+					throw errorResponse(
+						'You have used up your budget for this assignment.',
+						HttpStatus.FORBIDDEN,
+						ServerErrorCode.PERMISSION_DENIED
+					);
+				}
+			}
+		}
+
+		let llmResult: Awaited<ReturnType<IConversationLLMGateway['process']>>;
+		try {
+			llmResult = await this.llmGateway.process({
+				conversationId,
+				userId: user.uid,
+				userInputText,
+				question: assignment.question || '',
+				prompt: assignment.prompt || '',
+				apiKey
+			});
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				assignment.courseId &&
+				(error.message.includes('401') ||
+					error.message.includes('403') ||
+					error.message.includes('API_KEY_INVALID'))
+			) {
+				await this.walletRepository.updateWallet(assignment.courseId, {
+					status: 'invalid_key',
+					updatedAt: Date.now()
+				});
+			}
+			throw error;
+		}
 
 		llmUsageReport = createTokenUsageReport([
 			{
@@ -344,7 +415,19 @@ export class ConversationService {
 					usage: ttsExecutor.getTokenUsage()
 				}
 			]);
-		} catch {
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				assignment.courseId &&
+				(error.message.includes('401') ||
+					error.message.includes('403') ||
+					error.message.includes('API_KEY_INVALID'))
+			) {
+				await this.walletRepository.updateWallet(assignment.courseId, {
+					status: 'invalid_key',
+					updatedAt: Date.now()
+				});
+			}
 			throw errorResponse(
 				'Failed to synthesize speech. Please try again.',
 				HttpStatus.INTERNAL_SERVER_ERROR,
@@ -413,6 +496,47 @@ export class ConversationService {
 				}
 			}
 			throw error;
+		}
+
+		// Post-turn: calculate and record spend
+		const turnCostUsd = calculateReportCostUsd(
+			requestUsageReport.byFeature,
+			getTokenUsageModels(requestUsageReport)
+		);
+
+		if (assignment.courseId && turnCostUsd > 0) {
+			// Increment wallet spend
+			await this.walletRepository.incrementSpend(assignment.courseId, turnCostUsd);
+
+			// Increment submission spend
+			await this.conversationRepository.incrementSubmissionSpend(
+				assignment.id,
+				user.uid,
+				turnCostUsd
+			);
+
+			// Post-check: wallet limit
+			const walletStatus = await this.walletRepository.getWalletStatus(assignment.courseId);
+			if (walletStatus && walletStatus.totalSpentUsd >= walletStatus.spendingLimitUsd) {
+				await this.walletRepository.updateWallet(assignment.courseId, {
+					status: 'suspended',
+					updatedAt: Date.now()
+				});
+			}
+
+			// Post-check: student budget
+			if (assignment.studentBudgetUsd != null) {
+				const updatedSubmission = await this.conversationRepository.getSubmission(
+					assignment.id,
+					user.uid
+				);
+				if (updatedSubmission && updatedSubmission.totalSpentUsd >= assignment.studentBudgetUsd) {
+					await this.conversationRepository.saveSubmission(assignment.id, user.uid, {
+						...updatedSubmission,
+						budgetExhausted: true
+					});
+				}
+			}
 		}
 
 		if (llmResult.ended) {

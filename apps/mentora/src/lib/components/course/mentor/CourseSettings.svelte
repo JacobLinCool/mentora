@@ -8,6 +8,8 @@
         RotateCcw,
         Check,
     } from "@lucide/svelte";
+    import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+    import { storage } from "$lib/firebase";
     import * as m from "$lib/paraglide/messages";
     import { api, type CourseDoc } from "$lib/api";
     import { onMount } from "svelte";
@@ -18,17 +20,16 @@
     // Initial state for revert functionality
     let savedState = $state({
         courseName: "",
-        category: "",
         visibility: "private" as "public" | "private",
         thumbnail: "",
         code: "",
     });
 
     let courseName = $state("");
-    let category = $state("");
     let visibility = $state<"public" | "private">("private");
     let code = $state("");
     let thumbnail = $state("");
+    let selectedFile = $state<File | null>(null);
 
     let isUploading = $state(false);
     let isCopied = $state(false);
@@ -38,7 +39,6 @@
     // Derived state to check for unsaved changes
     let isDirty = $derived(
         courseName !== savedState.courseName ||
-            category !== savedState.category ||
             visibility !== savedState.visibility ||
             thumbnail !== savedState.thumbnail ||
             code !== savedState.code,
@@ -57,7 +57,6 @@
                 const c = res.data;
                 savedState = {
                     courseName: c.title,
-                    category: "", // TODO: add category to schema
                     visibility: c.visibility || "private",
                     thumbnail: c.thumbnail?.url || "",
                     code: c.code || "",
@@ -82,18 +81,27 @@
             };
             // Only update code if changed, it might fail if duplicate
             if (code !== savedState.code) updates.code = code;
-            // If schema supports category/thumbnail:
-            // updates.category = category;
-            // updates.thumbnailUrl = thumbnail;
+
+            // Handle thumbnail upload
+            if (selectedFile) {
+                const storagePath = `courses/${courseId}/thumbnail/${selectedFile.name}`;
+                const storageRef = ref(storage, storagePath);
+                await uploadBytes(storageRef, selectedFile);
+                const url = await getDownloadURL(storageRef);
+                updates.thumbnail = { storagePath, url };
+            } else if (savedState.thumbnail && !thumbnail) {
+                // Thumbnail was cleared
+                updates.thumbnail = null;
+            }
 
             const res = await api.courses.update(courseId, updates);
 
             if (res.success) {
                 savedState.courseName = courseName;
-                savedState.category = category;
                 savedState.visibility = visibility;
                 savedState.thumbnail = thumbnail;
                 savedState.code = code;
+                selectedFile = null;
             } else {
                 saveError = `${m.courses_error()}: ${res.error}`;
             }
@@ -107,10 +115,10 @@
 
     function handleRevert() {
         courseName = savedState.courseName;
-        category = savedState.category;
         visibility = savedState.visibility;
         thumbnail = savedState.thumbnail;
         code = savedState.code;
+        selectedFile = null;
     }
 
     let fileInput: HTMLInputElement;
@@ -123,9 +131,10 @@
         const input = event.target as HTMLInputElement;
         if (input.files && input.files[0]) {
             const file = input.files[0];
+            selectedFile = file;
             isUploading = true;
 
-            // Create a preview URL
+            // Create a data URL for preview
             const reader = new FileReader();
             reader.onload = (e) => {
                 if (e.target?.result) {
@@ -139,6 +148,7 @@
 
     function handleDeleteThumbnail() {
         thumbnail = "";
+        selectedFile = null;
     }
 
     let password = $derived(code || "------");
@@ -189,51 +199,25 @@
                     />
                 </div>
 
-                <div class="grid grid-cols-2 gap-6 max-md:grid-cols-1">
-                    <!-- Category -->
-                    <div class="space-y-2">
-                        <label
-                            for="course-category"
-                            class="text-sm font-medium text-gray-700"
-                            >{m.course_settings_category()}</label
+                <!-- Visibility -->
+                <div class="space-y-2">
+                    <label
+                        for="course-visibility"
+                        class="text-sm font-medium text-gray-700"
+                        >{m.course_settings_visibility()}</label
+                    >
+                    <select
+                        id="course-visibility"
+                        bind:value={visibility}
+                        class="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-gray-900 transition-colors focus:border-gray-900 focus:ring-0 focus:outline-none"
+                    >
+                        <option value="public"
+                            >{m.course_settings_visibility_public()}</option
                         >
-                        <select
-                            id="course-category"
-                            bind:value={category}
-                            class="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-gray-900 transition-colors focus:border-gray-900 focus:ring-0 focus:outline-none"
+                        <option value="private"
+                            >{m.course_settings_visibility_private()}</option
                         >
-                            <option value="" disabled selected></option>
-                            <option value="math"
-                                >{m.course_settings_category_math()}</option
-                            >
-                            <option value="science"
-                                >{m.course_settings_category_science()}</option
-                            >
-                        </select>
-                    </div>
-
-                    <!-- Visibility -->
-                    <div class="space-y-2">
-                        <label
-                            for="course-visibility"
-                            class="text-sm font-medium text-gray-700"
-                            >{m.course_settings_visibility()}</label
-                        >
-                        <div class="relative">
-                            <select
-                                id="course-visibility"
-                                bind:value={visibility}
-                                class="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-gray-900 transition-colors focus:border-gray-900 focus:ring-0 focus:outline-none"
-                            >
-                                <option value="public"
-                                    >{m.course_settings_visibility_public()}</option
-                                >
-                                <option value="private"
-                                    >{m.course_settings_visibility_private()}</option
-                                >
-                            </select>
-                        </div>
-                    </div>
+                    </select>
                 </div>
 
                 <!-- Thumbnail -->
@@ -375,34 +359,32 @@
     </div>
 </div>
 
-{#if isDirty}
-    <div class="fixed top-24 right-8 z-40 flex items-center gap-4">
+<div class="col-span-full flex items-center gap-3 pt-2">
+    <button
+        onclick={handleSave}
+        disabled={loading || !isDirty}
+        class="flex cursor-pointer items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+        {#if loading}
+            {m.saving()}
+        {:else}
+            <Save size={16} />
+            {m.course_settings_save()}
+        {/if}
+    </button>
+    {#if isDirty}
+        <button
+            onclick={handleRevert}
+            class="flex cursor-pointer items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
+        >
+            <RotateCcw size={16} />
+            {m.course_settings_revert()}
+        </button>
         <span class="text-xs font-medium text-gray-500">
             {m.course_settings_unsaved_changes()}
         </span>
-        {#if saveError}
-            <span class="text-xs font-medium text-red-500">{saveError}</span>
-        {/if}
-        <div class="flex items-center gap-2">
-            <button
-                onclick={handleRevert}
-                class="flex cursor-pointer items-center gap-2 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
-            >
-                <RotateCcw size={14} />
-                {m.course_settings_revert()}
-            </button>
-            <button
-                onclick={handleSave}
-                disabled={loading}
-                class="flex cursor-pointer items-center gap-2 rounded-lg bg-black px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-50"
-            >
-                {#if loading}
-                    {m.saving()}
-                {:else}
-                    <Save size={14} />
-                    {m.course_settings_save()}
-                {/if}
-            </button>
-        </div>
-    </div>
-{/if}
+    {/if}
+    {#if saveError}
+        <span class="text-xs font-medium text-red-500">{saveError}</span>
+    {/if}
+</div>

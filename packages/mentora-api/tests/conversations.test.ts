@@ -36,7 +36,8 @@ describe('Conversations Module (Integration)', () => {
 				startAt: Date.now(),
 				dueAt: null,
 				allowLate: false,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 			if (assignmentResult.success) {
 				testAssignmentId = assignmentResult.data;

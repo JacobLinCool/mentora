@@ -23,13 +23,12 @@ export type {
     Conversation,
     CourseDoc,
     CourseMembership,
-    LedgerEntry,
     QueryOptions,
     Submission,
     SubmissionWithId,
     Topic,
     UserProfile,
-    Wallet,
+    WalletDisplayInfo,
     WhereFilterOp,
 } from "mentora-api";
 

@@ -34,8 +34,8 @@ import { normalizeTokenUsage, sumTokenUsageTotals, type TokenUsageTotals } from 
  * - LLM communication via GeminiPromptExecutor
  * - State management (stance history, principles, etc.)
  */
-export function getOrchestrator(): MentoraOrchestrator {
-	const executor = getPromptExecutor();
+export function getOrchestrator(apiKey?: string): MentoraOrchestrator {
+	const executor = getPromptExecutor(apiKey);
 
 	return new MentoraOrchestrator(executor, {
 		maxLoops: 5,
@@ -186,7 +186,8 @@ export async function processWithLLM(
 	userId: string,
 	studentMessage: string,
 	question: string,
-	prompt: string
+	prompt: string,
+	apiKey?: string
 ): Promise<{
 	aiMessage: string;
 	updatedState: DialogueState;
@@ -200,7 +201,7 @@ export async function processWithLLM(
 	const currentState = await loadDialogueState(firestore, conversationId, userId);
 
 	// Step 2: Only initialize orchestrator after authorization is confirmed
-	const orchestrator = getOrchestrator();
+	const orchestrator = getOrchestrator(apiKey);
 
 	// Step 3: Determine if this is first interaction
 	// The orchestrator marks new states with stage === 'awaiting_start'

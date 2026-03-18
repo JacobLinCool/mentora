@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ConversationService } from '../src/lib/server/application/conversation-service.js';
 import type { IConversationRepository } from '../src/lib/server/repositories/ports/conversation-repository.js';
 import type { IConversationLLMGateway } from '../src/lib/server/application/gateways/conversation-llm-gateway.js';
+import type { IWalletRepository } from '../src/lib/server/repositories/ports/wallet-repository.js';
 
 // Mock executors module
 vi.mock('../src/lib/server/llm/executors.js', () => ({
@@ -47,6 +48,7 @@ function createMockAssignment() {
 		dueAt: null,
 		allowLate: false,
 		allowResubmit: false,
+		studentBudgetUsd: null,
 		createdBy: 'teacher-1',
 		createdAt: Date.now(),
 		updatedAt: Date.now(),
@@ -65,6 +67,7 @@ function createMockRepo(overrides?: Partial<IConversationRepository>): IConversa
 		getSubmission: vi.fn().mockResolvedValue(null),
 		saveSubmission: vi.fn(),
 		appendTurns: vi.fn(),
+		incrementSubmissionSpend: vi.fn(),
 		...overrides
 	};
 }
@@ -128,6 +131,16 @@ function createMockTTSExecutor() {
 	};
 }
 
+function createMockWalletRepo(): IWalletRepository {
+	return {
+		getWallet: vi.fn().mockResolvedValue(null),
+		createWallet: vi.fn(),
+		updateWallet: vi.fn(),
+		incrementSpend: vi.fn(),
+		getWalletStatus: vi.fn().mockResolvedValue(null)
+	};
+}
+
 async function extractResponseBody(response: Response): Promise<any> {
 	return JSON.parse(await response.text());
 }
@@ -142,7 +155,7 @@ describe('ConversationService.addTurn – ASR error handling', () => {
 	it('returns 400 "No speech detected" when transcription is empty', async () => {
 		const repo = createMockRepo();
 		const gateway = createMockLLMGateway();
-		const service = new ConversationService(repo, gateway);
+		const service = new ConversationService(repo, gateway, createMockWalletRepo());
 
 		// ASR returns empty/whitespace-only text
 		mockedGetASRExecutor.mockReturnValue(createMockASRExecutor('   ') as any);
@@ -165,7 +178,7 @@ describe('ConversationService.addTurn – ASR error handling', () => {
 	it('returns 500 "Failed to transcribe" when ASR throws a non-Response error', async () => {
 		const repo = createMockRepo();
 		const gateway = createMockLLMGateway();
-		const service = new ConversationService(repo, gateway);
+		const service = new ConversationService(repo, gateway, createMockWalletRepo());
 
 		// ASR throws a regular Error (e.g., API failure)
 		mockedGetASRExecutor.mockReturnValue(
@@ -190,7 +203,7 @@ describe('ConversationService.addTurn – ASR error handling', () => {
 	it('processes audio successfully when ASR returns valid text', async () => {
 		const repo = createMockRepo();
 		const gateway = createMockLLMGateway();
-		const service = new ConversationService(repo, gateway);
+		const service = new ConversationService(repo, gateway, createMockWalletRepo());
 
 		mockedGetASRExecutor.mockReturnValue(createMockASRExecutor('Hello world') as any);
 		mockedGetTTSExecutor.mockReturnValue(createMockTTSExecutor() as any);

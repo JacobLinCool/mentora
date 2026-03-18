@@ -11,6 +11,7 @@ export interface IConversationLLMGateway {
 		userInputText: string;
 		question: string;
 		prompt: string;
+		apiKey?: string;
 	}): Promise<ProcessWithLLMResult>;
 	extractSummary(result: ProcessWithLLMResult): ConversationSummary;
 }
@@ -24,6 +25,7 @@ export class FirestoreConversationLLMGateway implements IConversationLLMGateway 
 		userInputText: string;
 		question: string;
 		prompt: string;
+		apiKey?: string;
 	}): Promise<ProcessWithLLMResult> {
 		return processWithLLM(
 			this.firestore,
@@ -31,7 +33,8 @@ export class FirestoreConversationLLMGateway implements IConversationLLMGateway 
 			params.userId,
 			params.userInputText,
 			params.question,
-			params.prompt
+			params.prompt,
+			params.apiKey
 		);
 	}
 

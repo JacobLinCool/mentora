@@ -153,13 +153,6 @@ async function addTurn(ctx: RouteContext, request: Request): Promise<Response> {
 	} catch (error) {
 		if (error instanceof Response) throw error;
 		if (error instanceof Error) {
-			if (error.message.includes('GOOGLE_GENAI_API_KEY')) {
-				return errorResponse(
-					'LLM service not configured',
-					HttpStatus.INTERNAL_SERVER_ERROR,
-					ServerErrorCode.INTERNAL_ERROR
-				);
-			}
 			if (error.message.includes('API quota')) {
 				return errorResponse(
 					'LLM service rate limited. Please try again later.',

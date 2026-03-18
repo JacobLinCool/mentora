@@ -21,13 +21,12 @@ export type {
 	Assignment,
 	CourseDoc,
 	CourseMembership,
-	LedgerEntry,
 	Submission,
 	Topic,
 	Turn,
 	UserProfile
 } from 'mentora-firebase';
-export type { Announcement, Course, Conversation, Wallet } from './client.js';
+export type { Announcement, Course, Conversation, WalletDisplayInfo } from './client.js';
 export { createState, type ReactiveState } from './state.svelte.js';
 export type {
 	APIResult,

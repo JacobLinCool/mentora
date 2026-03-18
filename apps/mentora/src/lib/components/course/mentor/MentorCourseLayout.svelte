@@ -8,6 +8,7 @@
         Users,
         Settings,
         ClipboardCheck,
+        Wallet,
     } from "@lucide/svelte";
 
     let { activeTab, onTabChange, children, courseTitle } = $props();
@@ -21,6 +22,7 @@
         { id: "topics", label: m.mentor_nav_topics(), icon: MessageSquare },
         { id: "members", label: m.mentor_nav_members(), icon: Users },
         { id: "settings", label: m.mentor_nav_settings(), icon: Settings },
+        { id: "wallet", label: m.mentor_nav_wallet(), icon: Wallet },
         {
             id: "submissions",
             label: m.mentor_nav_submissions(),

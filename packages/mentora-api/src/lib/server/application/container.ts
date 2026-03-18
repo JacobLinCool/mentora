@@ -15,7 +15,7 @@ import { ConversationService } from './conversation-service.js';
 import { CourseService } from './course-service.js';
 import { FirestoreConversationLLMGateway } from './gateways/conversation-llm-gateway.js';
 import { HealthService } from './health-service.js';
-import { DefaultTopupVerificationGateway, WalletService } from './wallet-service.js';
+import { WalletService } from './wallet-service.js';
 
 export function createServiceContainer(ctx: RouteContext) {
 	const courseRepository = new FirestoreCourseRepository(ctx.firestore);
@@ -30,9 +30,10 @@ export function createServiceContainer(ctx: RouteContext) {
 	const catalogService = new CatalogService(courseService, courseRepository);
 	const conversationService = new ConversationService(
 		conversationRepository,
-		new FirestoreConversationLLMGateway(ctx.firestore)
+		new FirestoreConversationLLMGateway(ctx.firestore),
+		walletRepository
 	);
-	const walletService = new WalletService(walletRepository, new DefaultTopupVerificationGateway());
+	const walletService = new WalletService(walletRepository);
 	const analyticsService = new AnalyticsService(analyticsRepository);
 	const healthService = new HealthService(healthRepository);
 	const contentGenerationService = new ContentGenerationService();

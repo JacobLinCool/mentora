@@ -3,7 +3,7 @@ import type { APIResult } from '../src/lib/api/types.js';
 import type { MentoraClient } from '../src/lib/api/client.js';
 import {
 	generateTestId,
-	seedHostWalletWithLedger,
+	seedCourseWallet,
 	setupBothClients,
 	teardownAllClients
 } from './emulator-setup.js';
@@ -83,7 +83,8 @@ describe('Mentora SDK Full Scenario (Integration)', () => {
 				startAt: Date.now() - 1_000,
 				dueAt: Date.now() + 600_000,
 				allowLate: true,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			}),
 			'create assignment'
 		);
@@ -201,29 +202,15 @@ describe('Mentora SDK Full Scenario (Integration)', () => {
 		);
 		expect(graded.state).toBe('graded_complete');
 
-		await seedHostWalletWithLedger(courseId, [
-			{
-				id: `scenario-ledger-${generateTestId()}`,
-				type: 'grant',
-				amountCredits: 25
-			}
-		]);
+		await seedCourseWallet(courseId, { spendingLimitUsd: 100 });
 		const courseWallet = mustSucceed(
-			await teacher.courses.getWallet(courseId, { includeLedger: true, ledgerLimit: 5 }),
+			await teacher.wallets.getCourseWallet(courseId),
 			'get course wallet'
 		);
-		expect(courseWallet.wallet.ownerType).toBe('host');
-		expect(courseWallet.ledger?.length).toBeGreaterThan(0);
-
-		mustSucceed(
-			await student.wallets.addCredits({
-				amount: 50,
-				idempotencyKey: `scenario-wallet-${generateTestId()}`
-			}),
-			'student add credits'
-		);
-		const studentWallet = mustSucceed(await student.wallets.getMine(), 'student get mine wallet');
-		expect(studentWallet).not.toBeNull();
+		expect(courseWallet).not.toBeNull();
+		if (courseWallet) {
+			expect(courseWallet.courseId).toBe(courseId);
+		}
 
 		const copiedCourseId = mustSucceed(
 			await teacher.courses.copy(courseId, {

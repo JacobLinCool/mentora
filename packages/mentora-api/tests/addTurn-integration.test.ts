@@ -54,7 +54,8 @@ describe('addTurn Route Handler (Integration)', () => {
 			startAt: Date.now(),
 			dueAt: null,
 			allowLate: false,
-			allowResubmit: true
+			allowResubmit: true,
+			studentBudgetUsd: null
 		});
 		expect(assignmentResult.success).toBe(true);
 		if (assignmentResult.success) {

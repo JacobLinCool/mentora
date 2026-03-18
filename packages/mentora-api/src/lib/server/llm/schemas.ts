@@ -3,7 +3,6 @@
  */
 
 import { z } from 'zod';
-import type { AddCreditsInput as ContractAddCreditsInput } from '../../contracts/api.js';
 
 // ============ Conversations ============
 
@@ -84,10 +83,13 @@ export const CreateCourseAnnouncementSchema = z.object({
 
 // ============ Wallets ============
 
-export const AddCreditsSchema: z.ZodType<ContractAddCreditsInput> = z.object({
-	amount: z.number().positive('Amount must be positive'),
-	idempotencyKey: z.string().min(1, 'idempotencyKey is required'),
-	paymentRef: z.string().min(1).max(256).nullable().optional().default(null)
+export const CreateOrUpdateWalletSchema = z.object({
+	apiKey: z.string().min(1, 'API key is required').max(256),
+	spendingLimitUsd: z.number().positive('Spending limit must be positive')
+});
+
+export const ValidateApiKeySchema = z.object({
+	apiKey: z.string().min(1, 'API key is required').max(256)
 });
 
 // ============ Type exports ============
@@ -100,4 +102,5 @@ export type CreateCourseInput = z.infer<typeof CreateCourseSchema>;
 export type CopyCourseInput = z.infer<typeof CopyCourseSchema>;
 export type JoinCourseInput = z.infer<typeof JoinCourseSchema>;
 export type CreateCourseAnnouncementInput = z.infer<typeof CreateCourseAnnouncementSchema>;
-export type AddCreditsInput = ContractAddCreditsInput;
+export type CreateOrUpdateWalletInput = z.infer<typeof CreateOrUpdateWalletSchema>;
+export type ValidateApiKeyInput = z.infer<typeof ValidateApiKeySchema>;

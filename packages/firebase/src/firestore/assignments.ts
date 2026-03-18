@@ -82,6 +82,13 @@ export const zAssignment = z
         allowResubmit: z
             .boolean()
             .describe("Whether students may resubmit after submitting."),
+        studentBudgetUsd: z
+            .number()
+            .nonnegative()
+            .nullable()
+            .optional()
+            .default(null)
+            .describe("Per-student budget limit in USD. Null means unlimited."),
         createdBy: z
             .string()
             .max(128)

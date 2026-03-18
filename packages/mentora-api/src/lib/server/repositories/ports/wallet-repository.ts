@@ -1,19 +1,16 @@
-import type { Wallet } from 'mentora-firebase';
-
-export interface AddCreditsParams {
-	userId: string;
-	amount: number;
-	idempotencyKey: string;
-	paymentRef: string | null;
-}
-
-export interface AddCreditsResult {
-	id: string;
-	idempotent: boolean;
-	newBalance: number;
-}
+import type { Wallet, WalletStatus } from 'mentora-firebase';
 
 export interface IWalletRepository {
-	addCredits(params: AddCreditsParams): Promise<AddCreditsResult>;
-	getUserWallet(userId: string): Promise<{ id: string; wallet: Wallet } | null>;
+	getWallet(courseId: string): Promise<Wallet | null>;
+	createWallet(courseId: string, wallet: Wallet): Promise<void>;
+	updateWallet(
+		courseId: string,
+		updates: Partial<
+			Pick<Wallet, 'apiKey' | 'apiKeyLastFour' | 'spendingLimitUsd' | 'status' | 'updatedAt'>
+		>
+	): Promise<void>;
+	incrementSpend(courseId: string, amountUsd: number): Promise<void>;
+	getWalletStatus(
+		courseId: string
+	): Promise<{ status: WalletStatus; totalSpentUsd: number; spendingLimitUsd: number } | null>;
 }
