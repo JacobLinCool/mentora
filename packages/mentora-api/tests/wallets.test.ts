@@ -1,13 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { APIResult } from '../src/lib/api/types.js';
 import type { MentoraClient } from '../src/lib/api/client.js';
-import {
-	createCourseFixture,
-	generateTestId,
-	seedCourseWallet,
-	setupBothClients,
-	teardownAllClients
-} from './emulator-setup.js';
+import { createCourseFixture, setupBothClients, teardownAllClients } from './emulator-setup.js';
 
 function mustSucceed<T>(result: APIResult<T>, label: string): T {
 	if (!result.success) {
@@ -47,22 +41,28 @@ describe('Wallets Module (Integration)', () => {
 		}
 	});
 
-	it('createOrUpdate creates a wallet and getCourseWallet retrieves it', async () => {
-		const created = mustSucceed(
-			await teacher.wallets.createOrUpdate(courseId, {
-				apiKey: 'test-api-key-for-integration',
-				spendingLimitUsd: 50
-			}),
-			'createOrUpdate wallet'
-		);
-		expect(created.courseId).toBe(courseId);
-		expect(created.spendingLimitUsd).toBe(50);
+	it.skipIf(!process.env.GEMINI_API_KEY)(
+		'createOrUpdate creates a wallet and getCourseWallet retrieves it',
+		async () => {
+			const created = mustSucceed(
+				await teacher.wallets.createOrUpdate(courseId, {
+					apiKey: process.env.GEMINI_API_KEY!,
+					spendingLimitUsd: 50
+				}),
+				'createOrUpdate wallet'
+			);
+			expect(created.courseId).toBe(courseId);
+			expect(created.spendingLimitUsd).toBe(50);
 
-		const fetched = mustSucceed(await teacher.wallets.getCourseWallet(courseId), 'getCourseWallet');
-		expect(fetched).not.toBeNull();
-		if (fetched) {
-			expect(fetched.courseId).toBe(courseId);
-			expect(fetched.spendingLimitUsd).toBe(50);
+			const fetched = mustSucceed(
+				await teacher.wallets.getCourseWallet(courseId),
+				'getCourseWallet'
+			);
+			expect(fetched).not.toBeNull();
+			if (fetched) {
+				expect(fetched.courseId).toBe(courseId);
+				expect(fetched.spendingLimitUsd).toBe(50);
+			}
 		}
-	});
+	);
 });
