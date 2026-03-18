@@ -194,17 +194,18 @@ export function createCoursesCommand(
 
     courses
         .command("wallet")
-        .description("Get course wallet (host wallet)")
+        .description("Get course wallet")
         .argument("<courseId>", "Course ID")
-        .option("--ledger", "Include ledger entries")
-        .action(async (courseId: string, options: { ledger?: boolean }) => {
+        .action(async (courseId: string) => {
             const client = await getClient();
-            const result = await client.courses.getWallet(courseId, {
-                includeLedger: options.ledger,
-            });
+            const result = await client.wallets.getCourseWallet(courseId);
 
             if (result.success) {
-                outputData(result.data);
+                if (result.data) {
+                    outputData(result.data);
+                } else {
+                    error("No wallet found for this course.");
+                }
             } else {
                 error(result.error);
                 process.exit(1);
