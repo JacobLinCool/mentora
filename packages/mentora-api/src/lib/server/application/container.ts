@@ -30,7 +30,8 @@ export function createServiceContainer(ctx: RouteContext) {
 	const catalogService = new CatalogService(courseService, courseRepository);
 	const conversationService = new ConversationService(
 		conversationRepository,
-		new FirestoreConversationLLMGateway(ctx.firestore)
+		new FirestoreConversationLLMGateway(ctx.firestore),
+		walletRepository
 	);
 	const walletService = new WalletService(walletRepository);
 	const analyticsService = new AnalyticsService(analyticsRepository);
