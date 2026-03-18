@@ -33,6 +33,7 @@
         introduction?: string;
         type: AssignmentType;
         prompt?: string;
+        studentBudgetUsd?: number | null;
         questions?: Question[];
         startAt?: string;
         dueAt?: string;
@@ -59,6 +60,7 @@
     let introduction = $state("");
     let prompt = $state("");
     let questions = $state<Question[]>([]);
+    let studentBudgetUsd = $state<string>("");
     let startAt = $state("");
     let dueAt = $state("");
 
@@ -125,6 +127,10 @@
             title = assignment.title;
             introduction = assignment.introduction || "";
             prompt = assignment.prompt || "";
+            studentBudgetUsd =
+                assignment.studentBudgetUsd != null
+                    ? String(assignment.studentBudgetUsd)
+                    : "";
             questions = assignment.questions || [];
             startAt = assignment.startAt || "";
             dueAt = assignment.dueAt || "";
@@ -133,6 +139,7 @@
             title = "";
             introduction = "";
             prompt = "";
+            studentBudgetUsd = "";
             questions = [];
             const now = new Date();
             startAt = toDateTimeInputValue(now);
@@ -208,6 +215,9 @@
 
         if (assignmentType === "dialogue") {
             assignmentData.prompt = prompt;
+            assignmentData.studentBudgetUsd = studentBudgetUsd
+                ? parseFloat(studentBudgetUsd)
+                : null;
         } else {
             assignmentData.questions = questions.map((question) => {
                 const normalizedQuestion = { ...question };
@@ -359,6 +369,22 @@
                 {#if errors.prompt}
                     <Helper class="mt-2" color="red">{errors.prompt}</Helper>
                 {/if}
+            </Label>
+
+            <Label>
+                <span class="text-gray-700"
+                    >{m.mentor_assignment_student_budget()}</span
+                >
+                <Input
+                    type="number"
+                    bind:value={studentBudgetUsd}
+                    placeholder={m.mentor_assignment_student_budget_placeholder()}
+                    min="0"
+                    step="0.01"
+                />
+                <Helper class="mt-1"
+                    >{m.mentor_assignment_student_budget_help()}</Helper
+                >
             </Label>
         {/if}
 
