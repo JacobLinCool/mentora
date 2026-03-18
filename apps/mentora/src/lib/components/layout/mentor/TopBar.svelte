@@ -1,7 +1,44 @@
 <script lang="ts">
-    import { CircleUser } from "@lucide/svelte";
+    import { onMount } from "svelte";
+    import { Bell, CircleUser } from "@lucide/svelte";
     import { resolve } from "$app/paths";
+    import { api } from "$lib/api";
     import { m } from "$lib/paraglide/messages";
+
+    const unreadCountState = api.createState<number>();
+    const unreadCount = $derived(unreadCountState.value || 0);
+
+    type ApiWithUnreadSubscription = {
+        announcementsSubscribe?: {
+            subscribeToUnreadCount: (state: typeof unreadCountState) => void;
+        };
+    };
+
+    onMount(() => {
+        let disposed = false;
+        const subApi = api as unknown as ApiWithUnreadSubscription;
+
+        const subscribeUnreadCount = () => {
+            if (subApi.announcementsSubscribe?.subscribeToUnreadCount) {
+                subApi.announcementsSubscribe.subscribeToUnreadCount(
+                    unreadCountState,
+                );
+            } else {
+                unreadCountState.set(0);
+            }
+        };
+
+        api.authReady.then(() => {
+            if (!disposed && api.isAuthenticated) {
+                subscribeUnreadCount();
+            }
+        });
+
+        return () => {
+            disposed = true;
+            unreadCountState.cleanup();
+        };
+    });
 </script>
 
 <div
@@ -14,6 +51,20 @@
         {m.app_name()}
     </a>
     <div class="flex items-center gap-4">
+        <a
+            class="relative cursor-pointer hover:text-gray-200"
+            aria-label={m.announcements()}
+            href={resolve("/announcements")}
+        >
+            <Bell size={20} />
+            {#if unreadCount > 0}
+                <span
+                    class="absolute -top-2 -right-2 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-none font-semibold text-white"
+                >
+                    {Math.min(unreadCount, 99)}
+                </span>
+            {/if}
+        </a>
         <a
             class="cursor-pointer hover:text-gray-200"
             aria-label={m.user_profile()}

@@ -18,9 +18,13 @@ export function isMentorMode(mode: string | null | undefined): boolean {
 }
 
 export function resolveRoleRoute(
-    section: "dashboard" | "settings",
+    section: "dashboard" | "settings" | "announcements",
     mode: string | null | undefined,
 ): string {
+    if (section === "announcements") {
+        return "/announcements";
+    }
+
     const activeMode = getActiveMode(mode);
     return activeMode === "mentor"
         ? section === "dashboard"
