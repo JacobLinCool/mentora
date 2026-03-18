@@ -110,9 +110,10 @@
         const currentAnnouncements = fullCourse.announcements || [];
         const trimmedTitle = title.trim();
         const trimmedContent = content.trim();
+        const safeTitle = trimmedTitle || "Untitled announcement";
         const formattedContent = trimmedContent
-            ? `**${trimmedTitle}**\n${trimmedContent}`
-            : `**${trimmedTitle}**`;
+            ? `**${safeTitle}**\n${trimmedContent}`
+            : `**${safeTitle}**`;
 
         if (id) {
             const now = Date.now();
