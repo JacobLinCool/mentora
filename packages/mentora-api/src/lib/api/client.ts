@@ -49,8 +49,7 @@ export type {
 
 export type Course = CoursesModule.Course;
 export type Conversation = ConversationsModule.Conversation;
-export type Wallet = WalletsModule.Wallet;
-export type LedgerEntry = WalletsModule.LedgerEntry;
+export type WalletDisplayInfo = WalletsModule.WalletDisplayInfo;
 export type Announcement = AnnouncementsModule.Announcement;
 export type {
 	APIResult,
@@ -203,11 +202,6 @@ export class MentoraClient {
 			),
 		removeMember: (courseId: string, memberId: string): Promise<APIResult<void>> =>
 			this.authReadyThen(() => CoursesModule.removeMember(this._config, courseId, memberId)),
-		getWallet: (
-			courseId: string,
-			options?: { includeLedger?: boolean; ledgerLimit?: number }
-		): Promise<APIResult<WalletsModule.CourseWalletResult>> =>
-			this.authReadyThen(() => WalletsModule.getCourseWallet(this._config, courseId, options)),
 
 		copy: (
 			courseId: string,
@@ -477,19 +471,17 @@ export class MentoraClient {
 
 	// ============ Wallets ============
 	wallets = {
-		get: (walletId: string): Promise<APIResult<WalletsModule.Wallet>> =>
-			this.authReadyThen(() => WalletsModule.getWallet(this._config, walletId)),
-		getMine: (): Promise<APIResult<WalletsModule.Wallet | null>> =>
-			this.authReadyThen(() => WalletsModule.getMyWallet(this._config)),
-		listEntries: (
-			walletId: string,
-			options?: QueryOptions
-		): Promise<APIResult<WalletsModule.LedgerEntry[]>> =>
-			this.authReadyThen(() => WalletsModule.listWalletEntries(this._config, walletId, options)),
-		addCredits: (
-			input: WalletsModule.AddCreditsInput
-		): Promise<APIResult<{ id: string; idempotent: boolean; newBalance: number }>> =>
-			this.authReadyThen(() => WalletsModule.addCredits(this._config, input))
+		getCourseWallet: (
+			courseId: string
+		): Promise<APIResult<WalletsModule.WalletDisplayInfo | null>> =>
+			this.authReadyThen(() => WalletsModule.getCourseWallet(this._config, courseId)),
+		createOrUpdate: (
+			courseId: string,
+			input: { apiKey: string; spendingLimitUsd: number }
+		): Promise<APIResult<WalletsModule.WalletDisplayInfo>> =>
+			this.authReadyThen(() => WalletsModule.createOrUpdateWallet(this._config, courseId, input)),
+		validateApiKey: (apiKey: string): Promise<APIResult<{ valid: boolean }>> =>
+			this.authReadyThen(() => WalletsModule.validateApiKey(this._config, apiKey))
 	};
 
 	// ============ Backend ============

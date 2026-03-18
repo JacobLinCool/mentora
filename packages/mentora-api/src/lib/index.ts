@@ -20,8 +20,6 @@ export type {
 	TokenUsageTotals
 } from './api/types.js';
 export type {
-	AddCreditsInput,
-	AddCreditsResult,
 	CreateConversationResult,
 	DelegatedListOptions,
 	JoinCourseResult
@@ -34,10 +32,15 @@ export type {
 	CourseAnnouncement,
 	CourseDoc,
 	CourseMembership,
-	LedgerEntry,
 	Submission,
 	Topic,
 	Turn,
 	UserProfile
 } from 'mentora-firebase';
-export type { Announcement, Course, Conversation, Wallet, SubmissionWithId } from './api/client.js';
+export type {
+	Announcement,
+	Course,
+	Conversation,
+	WalletDisplayInfo,
+	SubmissionWithId
+} from './api/client.js';
