@@ -29,6 +29,30 @@
     }
     let announcements = $state<Announcement[]>([]);
 
+    function parseAnnouncementContent(rawValue: unknown) {
+        const normalized = String(rawValue ?? "")
+            .replace(/\r\n/g, "\n")
+            .trim();
+        const titleMatch = normalized.match(/^\*\*(.*?)\*\*(?:\n|$)/);
+
+        if (titleMatch?.[1]) {
+            const title = titleMatch[1].trim();
+            const body = normalized
+                .slice(titleMatch[0].length)
+                .replace(/^\n+/, "")
+                .trim();
+
+            return { title, body };
+        }
+
+        return {
+            title:
+                normalized.substring(0, 50) +
+                (normalized.length > 50 ? "..." : ""),
+            body: normalized,
+        };
+    }
+
     async function loadCourseData() {
         if (courseId) {
             const courseResult = await api.courses.get(courseId);
@@ -38,27 +62,17 @@
                 // Map API announcements to UI format
                 announcements = (courseResult.data.announcements || []).map(
                     (a) => {
-                        // Try to extract title from bolded first line
-                        const content = a.content || "";
-                        let title = "";
-                        // Simple parser for **Title**\nContent
-                        const match = content.match(/^\*\*(.*?)\*\*\n/);
-                        if (match && match[1]) {
-                            title = match[1];
-                        } else {
-                            title =
-                                content.substring(0, 50) +
-                                (content.length > 50 ? "..." : "");
-                        }
+                        const content =
+                            a.content ??
+                            (typeof a === "object" && a !== null && "title" in a
+                                ? a.title
+                                : "");
+                        const parsed = parseAnnouncementContent(content);
 
                         return {
                             id: a.id,
-                            title,
-                            // Store original content for editing if needed, but UI separates them
-                            // We need to parse content body
-                            content: match
-                                ? content.replace(match[0], "")
-                                : content,
+                            title: parsed.title,
+                            content: parsed.body,
                             createdDate: formatDate(a.createdAt),
                         };
                     },
@@ -95,7 +109,12 @@
         if (!courseId || !fullCourse) return;
 
         const currentAnnouncements = fullCourse.announcements || [];
-        const formattedContent = `**${title}**\n${content}`;
+        const trimmedTitle = title.trim();
+        const trimmedContent = content.trim();
+        const safeTitle = trimmedTitle || "Untitled announcement";
+        const formattedContent = trimmedContent
+            ? `**${safeTitle}**\n${trimmedContent}`
+            : `**${safeTitle}**`;
 
         if (id) {
             const now = Date.now();
@@ -131,7 +150,7 @@
 
         const currentAnnouncements = fullCourse.announcements || [];
         const newAnnouncements = currentAnnouncements.filter(
-            (a) => a.id !== id,
+            (a) => String(a.id) !== String(id),
         );
 
         const res = await api.courses.update(courseId, {

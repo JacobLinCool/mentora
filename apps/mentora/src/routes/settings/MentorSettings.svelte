@@ -48,7 +48,7 @@
                     </p>
                     <a
                         href={resolve("/auth")}
-                        class="mt-6 inline-flex items-center gap-2 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+                        class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
                     >
                         {m.settings_sign_in()}
                         <ArrowRight class="h-4 w-4" />

@@ -172,6 +172,11 @@
         }
 
         if (assignmentType === "questionnaire") {
+            if (questions.length === 0) {
+                addQuestion();
+                return;
+            }
+
             const hasInvalidQuestion = questions.some((question) => {
                 if (!question.question.trim()) {
                     return true;
@@ -314,7 +319,6 @@
         ? m.mentor_topic_add_assignment()
         : m.mentor_topic_edit_assignment()}
     size="lg"
-    preventCloseOnOutside={true}
     {footer}
 >
     <form
@@ -325,6 +329,11 @@
             <Label>
                 <span class="text-gray-700">{m.mentor_assignment_type()}</span>
                 <Select items={typeOptions} bind:value={assignmentType} />
+                <Helper class="mt-2 text-gray-500">
+                    {assignmentType === "dialogue"
+                        ? m.mentor_assignment_type_dialogue_description()
+                        : m.mentor_assignment_type_questionnaire_description()}
+                </Helper>
             </Label>
 
             <Label>
@@ -358,6 +367,9 @@
                 <span class="text-gray-700"
                     >{m.mentor_assignment_ai_prompt()}</span
                 >
+                <Helper class="mt-1 mb-2 text-gray-500">
+                    {m.mentor_assignment_ai_prompt_description()}
+                </Helper>
                 <Textarea
                     bind:value={prompt}
                     rows={4}
@@ -393,6 +405,9 @@
                 <span class="mb-2 block text-sm font-medium text-gray-700"
                     >{m.mentor_assignment_questions()}</span
                 >
+                <p class="mb-3 text-sm text-gray-500">
+                    {m.mentor_assignment_questions_description()}
+                </p>
                 <div
                     class="questions-list space-y-2"
                     use:dndzone={{

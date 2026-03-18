@@ -47,6 +47,10 @@
         border-radius: 12px !important;
     }
 
+    :global(.popup-modal button[aria-label="Close modal"]) {
+        cursor: pointer !important;
+    }
+
     .popup-modal-content {
         padding: 0.5rem 0;
     }
