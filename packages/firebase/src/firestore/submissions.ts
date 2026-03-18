@@ -73,6 +73,21 @@ export const zSubmission = z
             .optional()
             .default(null)
             .describe("Reason if AI assessment generation failed."),
+        totalSpentUsd: z
+            .number()
+            .nonnegative()
+            .optional()
+            .default(0)
+            .describe(
+                "Cumulative USD spend for this student on this assignment.",
+            ),
+        budgetExhausted: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe(
+                "Whether student exceeded their budget and was force-ended.",
+            ),
     })
     .describe(
         "Submission document stored at assignments/{assignmentId}/submissions/{userId}.",

@@ -2,130 +2,43 @@ import { z } from "zod";
 
 import { joinPath, zFirebaseTimestamp } from "./shared";
 
-export const zWalletOwnerType = z
-    .union([z.literal("user"), z.literal("host")])
-    .describe("Owner kind for a wallet.");
-export type WalletOwnerType = z.infer<typeof zWalletOwnerType>;
+export const zWalletStatus = z
+    .union([
+        z.literal("active"),
+        z.literal("suspended"),
+        z.literal("invalid_key"),
+    ])
+    .describe("Wallet operational status.");
+export type WalletStatus = z.infer<typeof zWalletStatus>;
 
 export const zWallet = z
     .object({
-        ownerType: zWalletOwnerType.describe("The type of wallet owner."),
-        ownerId: z
+        courseId: z
             .string()
             .max(128)
-            .describe("UID of the wallet owner (user/host)."),
-        balanceCredits: z
+            .describe("Course this wallet belongs to."),
+        apiKey: z.string().min(1).max(256).describe("Gemini API key."),
+        apiKeyLastFour: z
+            .string()
+            .max(4)
+            .describe("Last 4 chars of API key for display."),
+        spendingLimitUsd: z
             .number()
             .nonnegative()
-            .describe("Cached wallet balance (read model)."),
-        createdAt: zFirebaseTimestamp.describe("Creation timestamp."),
-        updatedAt: zFirebaseTimestamp.describe(
-            "Timestamp of the latest wallet update.",
-        ),
-    })
-    .describe("Wallet document stored at wallets/{walletId}.");
-export type Wallet = z.infer<typeof zWallet>;
-
-export const zLedgerEntryType = z
-    .union([
-        z.literal("topup"),
-        z.literal("charge"),
-        z.literal("refund"),
-        z.literal("grant"),
-        z.literal("adjust"),
-        z.string(),
-    ])
-    .describe("Ledger entry type.");
-export type LedgerEntryType = z.infer<typeof zLedgerEntryType>;
-
-export const zLedgerEntry = z
-    .object({
-        type: zLedgerEntryType.describe("Accounting event type."),
-        amountCredits: z
+            .describe("Course spending limit in USD."),
+        totalSpentUsd: z
             .number()
-            .describe(
-                "Credit delta. Positive for topup/grant/refund, negative for charge.",
-            ),
-        idempotencyKey: z
-            .string()
-            .max(200)
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("Optional idempotency key for de-duplication."),
-        scope: z
-            .object({
-                courseId: z
-                    .string()
-                    .max(128)
-                    .nullable()
-                    .optional()
-                    .default(null),
-                topicId: z
-                    .string()
-                    .max(128)
-                    .nullable()
-                    .optional()
-                    .default(null),
-                assignmentId: z
-                    .string()
-                    .max(128)
-                    .nullable()
-                    .optional()
-                    .default(null),
-                conversationId: z
-                    .string()
-                    .max(128)
-                    .nullable()
-                    .optional()
-                    .default(null),
-            })
-            .describe("Entity scope associated with this event."),
-        provider: z
-            .object({
-                name: z
-                    .union([
-                        z.literal("stripe"),
-                        z.literal("manual"),
-                        z.string(),
-                    ])
-                    .describe("Provider identifier."),
-                ref: z
-                    .string()
-                    .max(200)
-                    .nullable()
-                    .optional()
-                    .default(null)
-                    .describe("Provider reference (e.g., payment intent id)."),
-            })
-            .describe("Payment provider references."),
-        metadata: z
-            .record(z.string(), z.unknown())
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("Optional free-form metadata."),
-        createdBy: z
-            .string()
-            .max(128)
-            .nullable()
-            .optional()
-            .default(null)
-            .describe("UID of actor who created this entry, if applicable."),
+            .nonnegative()
+            .describe("Cumulative spend in USD."),
+        status: zWalletStatus.describe("Wallet operational status."),
         createdAt: zFirebaseTimestamp.describe("Creation timestamp."),
+        updatedAt: zFirebaseTimestamp.describe("Last update timestamp."),
     })
-    .describe("Ledger entry stored at wallets/{walletId}/entries/{entryId}.");
-export type LedgerEntry = z.infer<typeof zLedgerEntry>;
+    .describe("Course wallet document stored at wallets/{courseId}.");
+export type Wallet = z.infer<typeof zWallet>;
 
 export const Wallets = {
     collectionPath: () => "wallets" as const,
-    docPath: (walletId: string) => joinPath("wallets", walletId),
+    docPath: (courseId: string) => joinPath("wallets", courseId),
     schema: zWallet,
-    entries: {
-        collectionPath: (walletId: string) =>
-            joinPath("wallets", walletId, "entries"),
-        docPath: (walletId: string, entryId: string) =>
-            joinPath("wallets", walletId, "entries", entryId),
-        schema: zLedgerEntry,
-    },
 } as const;
