@@ -1,117 +1,49 @@
-import { createHash } from 'node:crypto';
-import type { Firestore } from 'fires2rest';
-import { Wallets, type LedgerEntry, type Wallet } from 'mentora-firebase';
-import type {
-	AddCreditsParams,
-	AddCreditsResult,
-	IWalletRepository
-} from '../ports/wallet-repository.js';
-
-function idempotencyEntryId(idempotencyKey: string): string {
-	return `idemp_${createHash('sha256').update(idempotencyKey).digest('hex')}`;
-}
-
-type FirestoreDocSnapshot = {
-	exists: boolean;
-	data(): unknown;
-};
-
-type FirestoreTransaction = {
-	get(ref: unknown): Promise<FirestoreDocSnapshot>;
-	set(ref: unknown, data: unknown): void;
-	update(ref: unknown, data: unknown): void;
-};
+import { FieldValue, type Firestore } from 'fires2rest';
+import { Wallets, type Wallet, type WalletStatus } from 'mentora-firebase';
+import type { IWalletRepository } from '../ports/wallet-repository.js';
 
 export class FirestoreWalletRepository implements IWalletRepository {
 	constructor(private readonly firestore: Firestore) {}
 
-	async addCredits(params: AddCreditsParams): Promise<AddCreditsResult> {
-		const walletId = `wallet_${params.userId}`;
-		const walletRef = this.firestore.doc(Wallets.docPath(walletId));
-		const entryRef = this.firestore
-			.collection(Wallets.entries.collectionPath(walletId))
-			.doc(idempotencyEntryId(params.idempotencyKey));
-
-		const result = await this.firestore.runTransaction(
-			async (transaction: FirestoreTransaction) => {
-				const now = Date.now();
-
-				const walletDoc = await transaction.get(walletRef);
-				let currentBalance = 0;
-				if (!walletDoc.exists) {
-					transaction.set(walletRef, {
-						ownerType: 'user',
-						ownerId: params.userId,
-						balanceCredits: 0,
-						createdAt: now,
-						updatedAt: now
-					});
-				} else {
-					const wallet = Wallets.schema.parse(walletDoc.data());
-					currentBalance = wallet.balanceCredits;
-				}
-
-				const existingEntryDoc = await transaction.get(entryRef);
-				if (existingEntryDoc.exists) {
-					return {
-						id: entryRef.id,
-						idempotent: true,
-						newBalance: currentBalance
-					};
-				}
-
-				const entry: LedgerEntry = {
-					type: 'topup',
-					amountCredits: params.amount,
-					idempotencyKey: params.idempotencyKey,
-					scope: {
-						courseId: null,
-						topicId: null,
-						assignmentId: null,
-						conversationId: null
-					},
-					provider: {
-						name: params.paymentRef ? 'payment' : 'manual',
-						ref: params.paymentRef
-					},
-					metadata: null,
-					createdBy: params.userId,
-					createdAt: now
-				};
-
-				const newBalance = currentBalance + params.amount;
-				transaction.update(walletRef, {
-					balanceCredits: newBalance,
-					updatedAt: now
-				});
-				transaction.set(entryRef, Wallets.entries.schema.parse(entry));
-
-				return {
-					id: entryRef.id,
-					idempotent: false,
-					newBalance
-				};
-			}
-		);
-
-		return result as AddCreditsResult;
+	async getWallet(courseId: string): Promise<Wallet | null> {
+		const docRef = this.firestore.doc(Wallets.docPath(courseId));
+		const snapshot = await docRef.get();
+		if (!snapshot.exists) return null;
+		return Wallets.schema.parse(snapshot.data());
 	}
 
-	async getUserWallet(userId: string): Promise<{ id: string; wallet: Wallet } | null> {
-		const snapshot = await this.firestore
-			.collection(Wallets.collectionPath())
-			.where('ownerId', '==', userId)
-			.where('ownerType', '==', 'user')
-			.limit(1)
-			.get();
+	async createWallet(courseId: string, wallet: Wallet): Promise<void> {
+		const docRef = this.firestore.doc(Wallets.docPath(courseId));
+		await docRef.set(Wallets.schema.parse(wallet) as unknown as Record<string, unknown>);
+	}
 
-		if (snapshot.empty) {
-			return null;
-		}
-		const doc = snapshot.docs[0];
+	async updateWallet(
+		courseId: string,
+		updates: Partial<
+			Pick<Wallet, 'apiKey' | 'apiKeyLastFour' | 'spendingLimitUsd' | 'status' | 'updatedAt'>
+		>
+	): Promise<void> {
+		const docRef = this.firestore.doc(Wallets.docPath(courseId));
+		await docRef.update(updates as Record<string, unknown>);
+	}
+
+	async incrementSpend(courseId: string, amountUsd: number): Promise<void> {
+		const docRef = this.firestore.doc(Wallets.docPath(courseId));
+		await docRef.update({
+			totalSpentUsd: FieldValue.increment(amountUsd),
+			updatedAt: Date.now()
+		});
+	}
+
+	async getWalletStatus(
+		courseId: string
+	): Promise<{ status: WalletStatus; totalSpentUsd: number; spendingLimitUsd: number } | null> {
+		const wallet = await this.getWallet(courseId);
+		if (!wallet) return null;
 		return {
-			id: doc.id,
-			wallet: Wallets.schema.parse(doc.data())
+			status: wallet.status,
+			totalSpentUsd: wallet.totalSpentUsd,
+			spendingLimitUsd: wallet.spendingLimitUsd
 		};
 	}
 }
