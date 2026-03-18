@@ -1,12 +1,6 @@
 <script lang="ts">
-    import {
-        GripVertical,
-        Pencil,
-        Trash2,
-        Save,
-        Plus,
-        X,
-    } from "@lucide/svelte";
+    import { tick } from "svelte";
+    import { GripVertical, Trash2, Plus } from "@lucide/svelte";
     import {
         dndzone,
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
@@ -34,6 +28,7 @@
         onDelete?: () => void;
         onAddAssignment?: () => void;
         onEditAssignment?: (assignment: Assignment) => void;
+        onSaveAssignmentTitle?: (assignmentId: string, title: string) => void;
         onDeleteAssignment?: (assignmentId: string) => void;
         onAssignmentsReorder?: (assignments: Assignment[]) => void;
     }
@@ -49,6 +44,7 @@
         onDelete,
         onAddAssignment,
         onEditAssignment,
+        onSaveAssignmentTitle,
         onDeleteAssignment,
         onAssignmentsReorder,
     }: Props = $props();
@@ -58,7 +54,8 @@
     let editTitle = $state("");
     let editDescription = $state("");
     let localAssignments = $state<Assignment[]>([]);
-    let isError = $state(false);
+    let cardRef = $state<HTMLDivElement | null>(null);
+    let titleInput = $state<HTMLInputElement | null>(null);
 
     const flipDurationMs = 200;
 
@@ -77,23 +74,63 @@
         editTitle = initialTitle;
         editDescription = initialDescription;
         isEditing = true;
+        void tick().then(() => {
+            titleInput?.focus();
+            titleInput?.select();
+        });
     }
 
-    function handleSave() {
-        if (!editTitle.trim()) {
-            isError = true;
-            return;
+    function commitTopicEdits() {
+        const nextTitle = editTitle.trim() || initialTitle;
+        const nextDescription = editDescription;
+        if (
+            nextTitle !== initialTitle ||
+            nextDescription !== initialDescription
+        ) {
+            onSave?.(nextTitle, nextDescription);
         }
-        isError = false;
-        onSave?.(editTitle, editDescription);
         isEditing = false;
     }
 
-    function handleCancel() {
+    function resetTopicEdits() {
         editTitle = initialTitle;
         editDescription = initialDescription;
         localAssignments = [...assignments];
         isEditing = false;
+    }
+
+    function handleCardPointerDown(event: PointerEvent) {
+        if (!isEditing || !cardRef) return;
+        const target = event.target;
+        if (target instanceof Node && cardRef.contains(target)) {
+            return;
+        }
+        commitTopicEdits();
+    }
+
+    $effect(() => {
+        if (!isEditing) {
+            return;
+        }
+
+        document.addEventListener("pointerdown", handleCardPointerDown, true);
+        return () => {
+            document.removeEventListener(
+                "pointerdown",
+                handleCardPointerDown,
+                true,
+            );
+        };
+    });
+
+    function handleTopicTitleKeydown(event: KeyboardEvent) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            commitTopicEdits();
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            resetTopicEdits();
+        }
     }
 
     function handleAssignmentDndConsider(
@@ -111,6 +148,7 @@
 </script>
 
 <div
+    bind:this={cardRef}
     class="topic-card mb-4 rounded-lg bg-white p-4 shadow-sm focus:ring-0 focus:outline-none"
     class:opacity-50={isDragging}
 >
@@ -133,22 +171,21 @@
                         <input
                             type="text"
                             bind:value={editTitle}
+                            bind:this={titleInput}
                             placeholder={m.mentor_topic_input_title()}
-                            class="w-full rounded-md border px-3 py-1.5 text-sm text-gray-900 focus:outline-none {isError
-                                ? 'border-red-500 ring-1 ring-red-500 focus:ring-red-500'
-                                : 'border-gray-300 focus:ring-1 focus:ring-gray-400'}"
-                            oninput={() => (isError = false)}
+                            class="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:ring-1 focus:ring-gray-400 focus:outline-none"
+                            onkeydown={handleTopicTitleKeydown}
                         />
-                        {#if isError}
-                            <p class="mt-1 text-xs text-red-500">
-                                {m.mentor_assignment_error_title_required()}
-                            </p>
-                        {/if}
                     </div>
                 {:else}
-                    <span class="font-semibold text-gray-900"
-                        >{initialTitle}</span
+                    <button
+                        type="button"
+                        class="cursor-text border-none bg-transparent p-0 text-left font-semibold text-gray-900 transition-colors hover:text-gray-700"
+                        onclick={enterEditMode}
+                        aria-label={m.edit()}
                     >
+                        {initialTitle}
+                    </button>
                 {/if}
             </div>
 
@@ -160,43 +197,27 @@
                     class="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:ring-1 focus:ring-gray-400 focus:outline-none"
                 ></textarea>
             {:else if initialDescription}
-                <p class="text-sm leading-relaxed text-gray-600">
+                <button
+                    type="button"
+                    class="cursor-text border-none bg-transparent p-0 text-left text-sm leading-relaxed text-gray-600 transition-colors hover:text-gray-800"
+                    onclick={enterEditMode}
+                    aria-label={m.edit()}
+                >
                     {initialDescription}
-                </p>
+                </button>
             {/if}
         </div>
 
         <!-- Action buttons -->
         <div class="flex items-center gap-1">
-            {#if isEditing}
-                <button
-                    type="button"
-                    class="cursor-pointer p-1.5 text-gray-500 hover:text-green-600"
-                    title={m.mentor_assignment_save()}
-                    onclick={handleSave}
-                    aria-label={m.mentor_assignment_save()}
-                >
-                    <Save size={18} />
-                </button>
-                <button
-                    type="button"
-                    class="cursor-pointer p-1.5 text-gray-500 hover:text-gray-700"
-                    title={m.mentor_assignment_cancel()}
-                    onclick={handleCancel}
-                    aria-label={m.mentor_assignment_cancel()}
-                >
-                    <X size={18} />
-                </button>
-            {:else}
-                <button
-                    type="button"
-                    class="cursor-pointer p-1.5 text-gray-500 hover:text-gray-700"
-                    onclick={enterEditMode}
-                    aria-label={m.edit()}
-                >
-                    <Pencil size={18} />
-                </button>
-            {/if}
+            <button
+                type="button"
+                class="flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                onclick={onAddAssignment}
+            >
+                <Plus size={16} />
+                <span>{m.mentor_topic_add_assignment()}</span>
+            </button>
             <button
                 type="button"
                 class="cursor-pointer p-1.5 text-gray-500 hover:text-red-500"
@@ -215,7 +236,7 @@
             use:dndzone={{
                 items: localAssignments,
                 flipDurationMs,
-                dragDisabled: !isEditing,
+                dragDisabled: false,
                 type: "assignment",
                 dropTargetStyle: {},
             }}
@@ -233,24 +254,13 @@
                     isDragging={assignment[SHADOW_ITEM_MARKER_PROPERTY_NAME] ??
                         false}
                     isLast={idx === localAssignments.length - 1}
-                    onEdit={() => onEditAssignment?.(assignment)}
+                    onOpenEditor={() => onEditAssignment?.(assignment)}
+                    onSaveTitle={(title) =>
+                        onSaveAssignmentTitle?.(assignment.id, title)}
                     onDelete={() => onDeleteAssignment?.(assignment.id)}
                 />
             {/each}
         </div>
-
-        {#if isEditing}
-            <div class="mt-2 ml-8 pl-4">
-                <button
-                    type="button"
-                    class="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-100"
-                    onclick={onAddAssignment}
-                >
-                    <Plus size={16} />
-                    {m.mentor_topic_add_assignment()}
-                </button>
-            </div>
-        {/if}
     {/if}
 </div>
 

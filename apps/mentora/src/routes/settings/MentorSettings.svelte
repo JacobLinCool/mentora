@@ -51,7 +51,7 @@
                     </p>
                     <a
                         href={resolve("/auth")}
-                        class="mt-6 inline-flex items-center gap-2 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+                        class="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
                     >
                         {m.settings_sign_in()}
                         <ArrowRight class="h-4 w-4" />
@@ -244,10 +244,10 @@
                             >
                                 <div class="flex items-center gap-3">
                                     <div
-                                        class="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-50"
+                                        class="flex h-12 w-12 items-center justify-center rounded-full bg-[#EFEFEF]"
                                     >
                                         <CreditCard
-                                            class="h-6 w-6 text-yellow-600"
+                                            class="h-6 w-6 text-gray-600"
                                         />
                                     </div>
                                     <div>

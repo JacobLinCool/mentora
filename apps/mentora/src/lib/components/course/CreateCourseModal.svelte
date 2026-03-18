@@ -93,70 +93,90 @@
     title={m.courses_create_modal_title()}
     size="xs"
     autoclose={false}
+    class="create-course-modal !rounded-[1.25rem] !border !border-[rgba(95,95,95,0.14)] !bg-[#f5f5f5] !text-[#2f2f2f] !shadow-[0_24px_64px_rgba(0,0,0,0.18)]"
+    headerClass="!rounded-t-[1.25rem] !border-b !border-[rgba(95,95,95,0.12)] !bg-[#f5f5f5] !text-[#2f2f2f]"
+    bodyClass="!bg-[#f5f5f5] !text-[#2f2f2f]"
+    closeBtnClass="!rounded-full !text-[#7a7a7a] hover:!bg-[rgba(95,95,95,0.08)] hover:!text-[#4b4b4b]"
 >
     <form
-        class="custom-form flex flex-col space-y-6"
+        class="custom-form flex flex-col space-y-6 text-[#2f2f2f]"
         onsubmit={(e) => {
             e.preventDefault();
             handleSubmit();
         }}
     >
         <Label>
-            <span>{m.courses_create_title()}</span>
+            <span class="text-sm font-medium text-[#5f5f5f]"
+                >{m.courses_create_title()}</span
+            >
             <Input
                 type="text"
                 name="title"
                 bind:value={title}
                 placeholder={m.courses_create_title_placeholder()}
                 required
+                class="mentor-modal-field mt-2"
             />
         </Label>
 
         <Label>
-            <span>{m.courses_create_code_optional()}</span>
+            <span class="text-sm font-medium text-[#5f5f5f]"
+                >{m.courses_create_code_optional()}</span
+            >
             <Input
                 type="text"
                 name="code"
                 bind:value={code}
                 placeholder={m.courses_create_code_placeholder()}
+                class="mentor-modal-field mt-2"
             />
-            <p class="mt-1 text-xs text-gray-500">
+            <p class="mt-2 text-xs leading-relaxed text-[#767676]">
                 {m.courses_create_code_hint()}
             </p>
         </Label>
 
         <Label>
-            <span>{m.course_settings_visibility()}</span>
-            <Select items={visibilityOptions} bind:value={visibility} />
+            <span class="text-sm font-medium text-[#5f5f5f]"
+                >{m.course_settings_visibility()}</span
+            >
+            <Select
+                items={visibilityOptions}
+                bind:value={visibility}
+                class="mentor-modal-field mt-2"
+            />
         </Label>
 
         <Label>
-            <span>{m.courses_create_description_label()}</span>
+            <span class="text-sm font-medium text-[#5f5f5f]"
+                >{m.courses_create_description_label()}</span
+            >
             <Textarea
                 name="description"
                 bind:value={description}
                 rows={3}
                 placeholder={m.courses_create_description_placeholder()}
-                class="w-full"
+                class="mentor-modal-field mt-2 w-full"
             />
         </Label>
 
         {#if errorMessage}
-            <div class="text-sm text-red-500">{errorMessage}</div>
+            <div class="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+                {errorMessage}
+            </div>
         {/if}
 
         <div class="flex items-center justify-end gap-2">
             <Button
                 color="alternative"
                 onclick={() => (open = false)}
-                class="cursor-pointer text-[#494949] hover:text-[#494949]/90"
+                class="mentor-modal-btn cursor-pointer !rounded-full !border-0 !bg-white !px-5 !py-2.5 !text-[#4b4b4b] !shadow-sm hover:!bg-[#eeeeee]"
             >
                 {m.cancel()}
             </Button>
             <Button
                 type="submit"
                 disabled={loading}
-                class="cursor-pointer bg-[#494949] text-white hover:bg-[#494949]/90"
+                class="mentor-modal-btn cursor-pointer !rounded-full !border-0 !bg-[#4b4b4b] !px-5 !py-2.5 !text-white !shadow-sm hover:!bg-[#3f3f3f] disabled:!bg-[#8a8a8a]"
             >
                 {#if loading}{m.courses_creating()}{:else}{m.courses_create()}{/if}
             </Button>
@@ -165,12 +185,56 @@
 </Modal>
 
 <style>
-    /* Force override Flowbite focus styles within this modal */
+    :global(dialog.create-course-modal::backdrop) {
+        background-color: rgba(0, 0, 0, 0.48) !important;
+        backdrop-filter: blur(2px);
+    }
+
+    :global(dialog.create-course-modal) {
+        background-color: #f5f5f5 !important;
+        color: #2f2f2f !important;
+        border-radius: 1.25rem !important;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18) !important;
+        border: 1px solid rgba(95, 95, 95, 0.14) !important;
+    }
+
+    :global(dialog.create-course-modal h3) {
+        color: #2f2f2f !important;
+        font-weight: 700 !important;
+    }
+
+    :global(dialog.create-course-modal .border-b),
+    :global(
+        dialog.create-course-modal .divide-y > :not([hidden]) ~ :not([hidden])
+    ) {
+        border-color: rgba(95, 95, 95, 0.12) !important;
+    }
+
+    :global(.custom-form .mentor-modal-field),
+    :global(.custom-form .mentor-modal-field input),
+    :global(.custom-form .mentor-modal-field select),
+    :global(.custom-form .mentor-modal-field textarea) {
+        background-color: #ffffff !important;
+        color: #2f2f2f !important;
+        border-color: rgba(95, 95, 95, 0.22) !important;
+        border-radius: 0.9rem !important;
+    }
+
+    :global(.custom-form .mentor-modal-field::placeholder),
+    :global(.custom-form .mentor-modal-field input::placeholder),
+    :global(.custom-form .mentor-modal-field textarea::placeholder) {
+        color: #9a9a9a !important;
+    }
+
     :global(.custom-form input:focus),
     :global(.custom-form select:focus),
     :global(.custom-form textarea:focus) {
-        --tw-ring-color: #494949 !important;
-        border-color: #494949 !important;
-        box-shadow: 0 0 0 1px #494949 !important; /* Fallback/Addition for some ring implementations */
+        --tw-ring-color: #5f5f5f !important;
+        border-color: #5f5f5f !important;
+        box-shadow: 0 0 0 1px #5f5f5f !important;
+    }
+
+    :global(.create-course-modal .mentor-modal-btn span) {
+        color: inherit !important;
     }
 </style>

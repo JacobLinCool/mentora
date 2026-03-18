@@ -221,7 +221,58 @@
         await api.topics.update(topicId, { title, description });
     }
 
-    function askDeleteTopic(topicId: string) {
+    async function updateAssignmentTitle(
+        topicId: string,
+        assignmentId: string,
+        title: string,
+    ) {
+        const topic = topics.find((entry) => entry.id === topicId);
+        const assignment = topic?.assignments.find(
+            (entry) => entry.id === assignmentId,
+        );
+        if (!assignment) return;
+
+        topics = topics.map((entry) =>
+            entry.id === topicId
+                ? {
+                      ...entry,
+                      assignments: entry.assignments.map((item) =>
+                          item.id === assignmentId ? { ...item, title } : item,
+                      ),
+                  }
+                : entry,
+        );
+
+        try {
+            if (assignment.type === "questionnaire") {
+                await api.questionnaires.update(assignmentId, { title });
+            } else {
+                await api.assignments.update(assignmentId, { title });
+            }
+        } catch (e) {
+            console.error(e);
+            errorMessage = m.mentor_assignment_save_failed();
+            await loadData();
+        }
+    }
+
+    async function deleteTopic(topicId: string) {
+        await api.topics.delete(topicId);
+        await loadData();
+    }
+
+    async function askDeleteTopic(topicId: string) {
+        const topic = topics.find((entry) => entry.id === topicId);
+        if (topic && topic.assignments.length === 0) {
+            try {
+                await deleteTopic(topicId);
+            } catch (e) {
+                console.error(e);
+                errorMessage = m.mentor_assignment_delete_failed();
+            }
+            return;
+        }
+
         pendingDelete = { type: "topic", topicId };
         showDeleteModal = true;
     }
@@ -418,9 +469,7 @@
 
         try {
             if (target.type === "topic") {
-                topics = topics.filter((topic) => topic.id !== target.topicId);
-                await api.topics.delete(target.topicId);
-                await loadData();
+                await deleteTopic(target.topicId);
                 pendingDelete = null;
                 showDeleteModal = false;
                 return;
@@ -491,6 +540,8 @@
                 onAddAssignment={() => openAddAssignmentModal(topic.id)}
                 onEditAssignment={(assignment) =>
                     openEditAssignmentModal(topic.id, assignment)}
+                onSaveAssignmentTitle={(assignmentId, title) =>
+                    updateAssignmentTitle(topic.id, assignmentId, title)}
                 onDeleteAssignment={(assignmentId) =>
                     askDeleteAssignment(topic.id, assignmentId)}
                 onAssignmentsReorder={(newAssignments) =>
@@ -530,6 +581,7 @@
         <div class="flex justify-end gap-2">
             <Button
                 color="light"
+                class="cursor-pointer"
                 onclick={() => {
                     pendingDelete = null;
                     showDeleteModal = false;
@@ -537,7 +589,9 @@
             >
                 {m.cancel()}
             </Button>
-            <Button color="red" onclick={confirmDelete}>{m.delete()}</Button>
+            <Button color="red" class="cursor-pointer" onclick={confirmDelete}
+                >{m.delete()}</Button
+            >
         </div>
     {/snippet}
 </PopupModal>

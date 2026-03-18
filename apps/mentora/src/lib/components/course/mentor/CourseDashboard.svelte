@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Pencil, Trash2, Plus, Save } from "@lucide/svelte";
+    import { Trash2, Plus, Save } from "@lucide/svelte";
     import Table from "$lib/components/ui/Table.svelte";
     import * as m from "$lib/paraglide/messages.js";
 
@@ -33,6 +33,32 @@
     let newTitle = $state("");
     let newContent = $state("");
 
+    function normalizeAnnouncement(
+        item: Pick<Announcement, "title" | "content">,
+    ): { title: string; content: string } {
+        const raw = String(item.content ?? item.title ?? "")
+            .replace(/\r\n/g, "\n")
+            .trim();
+        const titleMatch = raw.match(/^\*\*(.*?)\*\*(?:\n|$)/);
+
+        if (titleMatch?.[1]) {
+            return {
+                title: titleMatch[1].trim(),
+                content: raw
+                    .slice(titleMatch[0].length)
+                    .replace(/^\n+/, "")
+                    .trim(),
+            };
+        }
+
+        return {
+            title: String(item.title ?? "")
+                .replace(/^\*\*|\*\*$/g, "")
+                .trim(),
+            content: String(item.content ?? "").trim(),
+        };
+    }
+
     function openModal() {
         modalMode = "create";
         editingId = null;
@@ -44,8 +70,9 @@
     function openEditModal(item: Announcement) {
         modalMode = "edit";
         editingId = item.id;
-        newTitle = item.title;
-        newContent = item.content || "";
+        const normalized = normalizeAnnouncement(item);
+        newTitle = normalized.title;
+        newContent = normalized.content;
         isModalOpen = true;
     }
 
@@ -61,7 +88,7 @@
     }
 
     function confirmDelete() {
-        if (deletingId) {
+        if (deletingId !== null) {
             onDelete?.(deletingId);
         }
         closeDeleteModal();
@@ -95,7 +122,6 @@
         ]}
         data={announcements}
         {renderCell}
-        actions={renderActions}
     />
     <button
         type="button"
@@ -109,27 +135,17 @@
 
 {#snippet renderCell(item: Announcement, key: string)}
     {#if key === "title"}
+        {@const normalized = normalizeAnnouncement(item)}
         <button
             type="button"
             class="cursor-pointer border-none bg-transparent p-0 text-left text-gray-800 hover:underline"
             onclick={() => openEditModal(item)}
         >
-            {item.title}
+            {normalized.title}
         </button>
     {:else}
         <div class="text-gray-600">{item[key]}</div>
     {/if}
-{/snippet}
-
-{#snippet renderActions(item: Announcement)}
-    <button
-        class="cursor-pointer hover:text-gray-800"
-        onclick={() => openEditModal(item)}><Pencil size={18} /></button
-    >
-    <button
-        class="cursor-pointer hover:text-red-600"
-        onclick={() => deleteAnnouncement(item.id)}><Trash2 size={18} /></button
-    >
 {/snippet}
 
 {#if isModalOpen}
@@ -195,9 +211,10 @@
                 {#if editingId}
                     <button
                         onclick={() => {
-                            if (editingId) {
+                            const currentEditingId = editingId;
+                            if (currentEditingId !== null) {
                                 closeModal();
-                                deleteAnnouncement(editingId);
+                                deleteAnnouncement(currentEditingId);
                             }
                         }}
                         class="flex cursor-pointer items-center gap-2 rounded-full bg-white px-8 py-2 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-gray-50"
@@ -243,13 +260,13 @@
             <div class="flex justify-end gap-3">
                 <button
                     onclick={closeDeleteModal}
-                    class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                    class="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
                 >
                     {m.cancel()}
                 </button>
                 <button
                     onclick={confirmDelete}
-                    class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                    class="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
                 >
                     {m.delete()}
                 </button>

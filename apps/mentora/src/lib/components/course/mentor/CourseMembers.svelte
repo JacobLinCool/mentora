@@ -231,7 +231,14 @@
 {/if}
 
 {#if loading}
-    <div class="p-8 text-center text-gray-500">Loading...</div>
+    <div
+        class="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center shadow-sm"
+    >
+        <div class="flex items-center justify-center gap-3 text-gray-500">
+            <LoaderCircle size={18} class="animate-spin" />
+            <span>{m.loading()}</span>
+        </div>
+    </div>
 {:else}
     <!-- Invite Member -->
     <div class="mb-4">
@@ -286,7 +293,7 @@
                         </select>
                     </div>
                     <button
-                        class="flex items-center justify-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        class="flex cursor-pointer items-center justify-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
                         onclick={handleInvite}
                         disabled={inviting || !inviteEmail.trim()}
                     >

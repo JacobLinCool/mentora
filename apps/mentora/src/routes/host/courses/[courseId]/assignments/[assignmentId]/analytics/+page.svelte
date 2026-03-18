@@ -3,7 +3,7 @@
     import { SvelteSet } from "svelte/reactivity";
     import { page } from "$app/state";
     import { resolve } from "$app/paths";
-    import BaseLayout from "$lib/components/layout/BaseLayout.svelte";
+    import MentorLayout from "$lib/components/layout/mentor/MentorLayout.svelte";
     import GlassCard from "$lib/components/ui/GlassCard.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import PageHead from "$lib/components/PageHead.svelte";
@@ -178,16 +178,16 @@
         return escapeHtml(md)
             .replace(
                 /### (.+)/g,
-                '<h3 class="text-lg font-serif text-white mt-4 mb-2">$1</h3>',
+                '<h3 class="mt-4 mb-2 text-lg font-semibold text-gray-900">$1</h3>',
             )
             .replace(
                 /## (.+)/g,
-                '<h2 class="text-xl font-serif text-white mt-6 mb-3">$1</h2>',
+                '<h2 class="mt-6 mb-3 text-xl font-semibold text-gray-900">$1</h2>',
             )
             .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
             .replace(
                 /^- (.+)$/gm,
-                '<li class="ml-4 list-disc text-text-secondary">$1</li>',
+                '<li class="ml-4 list-disc text-gray-600">$1</li>',
             )
             .replace(
                 /(<li[^>]*>.*<\/li>\n?)+/g,
@@ -251,13 +251,13 @@
     description="Per-assignment class analytics for instructors."
 />
 
-<BaseLayout>
-    <div class="container mx-auto max-w-7xl px-4 py-8">
+<MentorLayout>
+    <div class="mentor-analytics mx-auto max-w-7xl px-8 pt-12 pb-24">
         <!-- Header -->
         <div class="mb-8">
             <a
                 href={resolve(`/courses/${courseId}`)}
-                class="text-text-secondary hover:text-brand-gold mb-4 inline-flex items-center gap-2 text-sm transition-colors"
+                class="mb-4 inline-flex cursor-pointer items-center gap-2 text-sm text-gray-500 transition-colors hover:text-black"
             >
                 <ArrowLeft class="h-4 w-4" />
                 返回課程
@@ -267,16 +267,18 @@
                 class="flex flex-col justify-between gap-4 md:flex-row md:items-end"
             >
                 <div>
-                    <h1
-                        class="flex items-center gap-3 font-serif text-3xl text-white"
-                    >
-                        <ChartColumn class="text-brand-gold h-7 w-7" />
-                        {data?.title ?? "載入中..."} - 班級分析
+                    <h1 class="flex items-center gap-3 text-3xl text-black">
+                        <ChartColumn class="h-7 w-7 text-gray-600" />
+                        <span class="font-sans font-semibold text-gray-800">
+                            {data?.title ?? "載入中..."}
+                        </span>
+                        <span class="font-serif-tc font-bold">班級分析</span>
                     </h1>
                 </div>
 
                 <CosmicButton
                     variant="secondary"
+                    className="!rounded-full !border !border-gray-200 !bg-white !px-4 !py-2.5 !text-gray-700 !shadow-none hover:!border-gray-300 hover:!bg-gray-50 hover:!text-black"
                     onclick={() => (showDetail = !showDetail)}
                 >
                     {#if showDetail}
@@ -292,9 +294,13 @@
 
         <!-- Loading state -->
         {#if loading}
-            <div class="flex flex-col items-center justify-center py-32">
-                <Loader2 class="text-brand-gold mb-4 h-8 w-8 animate-spin" />
-                <p class="text-text-secondary">載入中...</p>
+            <div
+                class="rounded-3xl border border-gray-200 bg-white py-24 text-center shadow-sm"
+            >
+                <Loader2
+                    class="mx-auto mb-4 h-8 w-8 animate-spin text-gray-500"
+                />
+                <p class="text-gray-500">載入中...</p>
             </div>
         {:else if error}
             <GlassCard>
@@ -308,7 +314,7 @@
             <div class="mb-8">
                 <GlassCard>
                     <h2
-                        class="mb-4 flex items-center gap-2 font-serif text-xl text-white"
+                        class="mb-4 flex items-center gap-2 text-xl font-semibold text-white"
                     >
                         <FileText class="text-brand-gold h-5 w-5" />
                         作業概覽
@@ -386,7 +392,7 @@
                 <GlassCard className="flex flex-col">
                     <div class="mb-6">
                         <h2
-                            class="flex items-center gap-2 font-serif text-xl text-white"
+                            class="flex items-center gap-2 text-xl font-semibold text-white"
                         >
                             <BarChart3 class="text-brand-gold h-5 w-5" />
                             學生立場光譜圖
@@ -457,7 +463,7 @@
                 <div class="mb-8">
                     <GlassCard>
                         <h2
-                            class="mb-6 flex items-center gap-2 font-serif text-xl text-white"
+                            class="mb-6 flex items-center gap-2 text-xl font-semibold text-white"
                         >
                             <Quote class="text-brand-gold h-5 w-5" />
                             代表性立場摘錄
@@ -524,7 +530,7 @@
             <div class="mb-8">
                 <GlassCard>
                     <h2
-                        class="mb-4 flex items-center gap-2 font-serif text-xl text-white"
+                        class="mb-4 flex items-center gap-2 text-xl font-semibold text-white"
                     >
                         <FileText class="text-brand-gold h-5 w-5" />
                         AI 班級報告
@@ -602,7 +608,7 @@
                 <div class="mb-8">
                     <GlassCard>
                         <h2
-                            class="mb-4 flex items-center gap-2 font-serif text-xl text-white"
+                            class="mb-4 flex items-center gap-2 text-xl font-semibold text-white"
                         >
                             <Users class="text-brand-gold h-5 w-5" />
                             學生成績明細
@@ -892,4 +898,51 @@
             {/if}
         {/if}
     </div>
-</BaseLayout>
+</MentorLayout>
+
+<style>
+    .mentor-analytics :global(.card-glass) {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        backdrop-filter: none;
+    }
+
+    .mentor-analytics :global(.text-white),
+    .mentor-analytics :global(.prose-invert),
+    .mentor-analytics :global(.prose-invert *) {
+        color: #1f2937 !important;
+    }
+
+    .mentor-analytics :global(.text-text-secondary),
+    .mentor-analytics :global(.text-white\/80),
+    .mentor-analytics :global(.text-white\/50) {
+        color: #6b7280 !important;
+    }
+
+    .mentor-analytics :global(.text-brand-gold) {
+        color: #4b5563 !important;
+    }
+
+    .mentor-analytics :global(.bg-brand-gold) {
+        background-color: #6b7280 !important;
+        box-shadow: none !important;
+    }
+
+    .mentor-analytics :global(.border-white\/10) {
+        border-color: rgba(107, 114, 128, 0.16) !important;
+    }
+
+    .mentor-analytics :global(.bg-white\/10) {
+        background-color: rgba(107, 114, 128, 0.08) !important;
+    }
+
+    .mentor-analytics :global(.hover\:text-brand-gold:hover) {
+        color: #111827 !important;
+    }
+
+    .mentor-analytics :global(.prose-invert strong) {
+        color: #111827 !important;
+        font-weight: 700;
+    }
+</style>
