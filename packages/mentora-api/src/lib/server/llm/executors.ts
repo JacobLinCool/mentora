@@ -35,8 +35,15 @@ let genaiInstance: GoogleGenAI | null = null;
 
 /**
  * Get or create the shared GoogleGenAI client
+ *
+ * When apiKey is provided, returns a fresh instance (no singleton)
+ * so each course can use its own Gemini API key.
  */
-export function getGenAIClient(): GoogleGenAI {
+export function getGenAIClient(apiKey?: string): GoogleGenAI {
+	if (apiKey) {
+		return new GoogleGenAI({ apiKey });
+	}
+
 	if (genaiInstance) {
 		return genaiInstance;
 	}
@@ -51,8 +58,8 @@ export function getGenAIClient(): GoogleGenAI {
  * Returns a fresh instance per call to avoid shared mutable token usage state
  * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
-export function getPromptExecutor(): PromptExecutor {
-	const genai = getGenAIClient();
+export function getPromptExecutor(apiKey?: string): PromptExecutor {
+	const genai = getGenAIClient(apiKey);
 	return new GeminiPromptExecutor(genai, EXECUTOR_MODEL.PROMPT);
 }
 
@@ -62,8 +69,8 @@ export function getPromptExecutor(): PromptExecutor {
  * Returns a fresh instance per call to avoid shared mutable token usage state
  * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
-export function getASRExecutor(): ASRExecutor {
-	const genai = getGenAIClient();
+export function getASRExecutor(apiKey?: string): ASRExecutor {
+	const genai = getGenAIClient(apiKey);
 	return new GeminiASRExecutor(genai, EXECUTOR_MODEL.ASR);
 }
 
@@ -73,8 +80,8 @@ export function getASRExecutor(): ASRExecutor {
  * Returns a fresh instance per call to avoid shared mutable token usage state
  * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
-export function getContentExecutor(): ContentExecutor {
-	const genai = getGenAIClient();
+export function getContentExecutor(apiKey?: string): ContentExecutor {
+	const genai = getGenAIClient(apiKey);
 	return new GeminiContentExecutor(genai, EXECUTOR_MODEL.CONTENT);
 }
 
@@ -84,8 +91,8 @@ export function getContentExecutor(): ContentExecutor {
  * Returns a fresh instance per call to avoid shared mutable token usage state
  * across concurrent requests (BaseTokenTracker is not thread-safe).
  */
-export function getTTSExecutor(): TTSExecutor {
-	const genai = getGenAIClient();
+export function getTTSExecutor(apiKey?: string): TTSExecutor {
+	const genai = getGenAIClient(apiKey);
 	return new GeminiTTSExecutor(genai, EXECUTOR_MODEL.TTS);
 }
 
