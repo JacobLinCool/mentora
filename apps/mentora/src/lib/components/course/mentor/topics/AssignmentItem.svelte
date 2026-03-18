@@ -92,14 +92,6 @@
         onOpenEditor?.();
     }
 
-    function handleRowKeydown(event: KeyboardEvent) {
-        if (!onOpenEditor) return;
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onOpenEditor();
-        }
-    }
-
     function stopPropagation(event: Event) {
         event.stopPropagation();
     }
