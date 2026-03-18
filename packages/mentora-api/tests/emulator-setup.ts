@@ -24,7 +24,7 @@ import {
 } from 'firebase/firestore';
 import { Firestore as ServerFirestore } from 'fires2rest';
 import { MentoraClient } from '../src/lib/api/client.js';
-import { Wallets, type LedgerEntry } from 'mentora-firebase';
+import { Wallets } from 'mentora-firebase';
 
 // Emulator configuration
 const FIRESTORE_HOST = '127.0.0.1';
@@ -469,59 +469,27 @@ export async function createQuestionnaireFixture(
 	return { questionnaireId: createResult.data };
 }
 
-export interface HostLedgerSeed {
-	id?: string;
-	type?: LedgerEntry['type'];
-	amountCredits: number;
-	idempotencyKey?: string | null;
-	paymentRef?: string | null;
-	createdBy?: string | null;
-	createdAt?: number;
-}
-
 /**
- * Seed a host wallet and optional ledger entries via server-side emulator access.
+ * Seed a course wallet via server-side emulator access.
  */
-export async function seedHostWalletWithLedger(
+export async function seedCourseWallet(
 	courseId: string,
-	entries: HostLedgerSeed[] = []
-): Promise<{ walletId: string }> {
+	options?: { apiKey?: string; spendingLimitUsd?: number; totalSpentUsd?: number }
+): Promise<void> {
 	const firestore = ServerFirestore.useEmulator({ projectId: 'demo-mentora' });
-	const walletId = `wallet_host_${courseId}`;
 	const now = Date.now();
+	const apiKey = options?.apiKey ?? 'test-api-key-1234';
 
-	await firestore.doc(Wallets.docPath(walletId)).set({
-		ownerType: 'host',
-		ownerId: courseId,
-		balanceCredits: entries.reduce((sum, entry) => sum + entry.amountCredits, 0),
+	await firestore.doc(Wallets.docPath(courseId)).set({
+		courseId,
+		apiKey,
+		apiKeyLastFour: apiKey.slice(-4),
+		spendingLimitUsd: options?.spendingLimitUsd ?? 100,
+		totalSpentUsd: options?.totalSpentUsd ?? 0,
+		status: 'active',
 		createdAt: now,
 		updatedAt: now
 	});
-
-	for (const [index, entry] of entries.entries()) {
-		const entryId = entry.id ?? `entry_${index + 1}`;
-		const createdAt = entry.createdAt ?? now + index;
-		await firestore.doc(Wallets.entries.docPath(walletId, entryId)).set({
-			type: entry.type ?? 'grant',
-			amountCredits: entry.amountCredits,
-			idempotencyKey: entry.idempotencyKey ?? null,
-			scope: {
-				courseId,
-				topicId: null,
-				assignmentId: null,
-				conversationId: null
-			},
-			provider: {
-				name: entry.paymentRef ? 'stripe' : 'manual',
-				ref: entry.paymentRef ?? null
-			},
-			metadata: null,
-			createdBy: entry.createdBy ?? null,
-			createdAt
-		});
-	}
-
-	return { walletId };
 }
 
 /**

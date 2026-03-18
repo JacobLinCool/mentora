@@ -200,7 +200,8 @@ describe('Multi-Account Scenarios', () => {
 				startAt: Date.now() - 60000, // Started 1 minute ago
 				dueAt: null,
 				allowLate: true,
-				allowResubmit: true
+				allowResubmit: true,
+				studentBudgetUsd: null
 			});
 
 			expect(result.success).toBe(true);

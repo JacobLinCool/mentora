@@ -46,11 +46,6 @@ export function createSettingsState() {
         !displayNameSaving && displayNameDraft.trim().length > 0,
     );
 
-    // Wallet state
-    let wallet = $state<{ balanceCredits: number } | null>(null);
-    let walletLoading = $state(true);
-    let walletError = $state<string | null>(null);
-
     // Logout state
     let loggingOut = $state(false);
     let logoutError = $state<string | null>(null);
@@ -72,34 +67,7 @@ export function createSettingsState() {
         }
     });
 
-    $effect(() => {
-        if (user) {
-            loadWallet();
-        } else {
-            wallet = null;
-            walletLoading = false;
-        }
-    });
-
     // Actions
-    async function loadWallet() {
-        walletLoading = true;
-        walletError = null;
-        try {
-            const result = await api.wallets.getMine();
-            if (result.success) {
-                wallet = result.data;
-            } else {
-                walletError = result.error;
-            }
-        } catch (e) {
-            walletError =
-                e instanceof Error ? e.message : "Failed to load wallet";
-        } finally {
-            walletLoading = false;
-        }
-    }
-
     async function saveDisplayName() {
         if (!displayNameCanSave) return;
 
@@ -205,15 +173,6 @@ export function createSettingsState() {
         },
         set displayNameInput(v: HTMLInputElement | null) {
             displayNameInput = v;
-        },
-        get wallet() {
-            return wallet;
-        },
-        get walletLoading() {
-            return walletLoading;
-        },
-        get walletError() {
-            return walletError;
         },
         get loggingOut() {
             return loggingOut;

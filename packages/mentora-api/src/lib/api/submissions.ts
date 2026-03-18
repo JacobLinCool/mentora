@@ -144,7 +144,9 @@ export async function startSubmission(
 			scoreCompletion: null,
 			notes: null,
 			assessment: null,
-			assessmentError: null
+			assessmentError: null,
+			totalSpentUsd: 0,
+			budgetExhausted: false
 		};
 
 		await setDoc(docRef, submission);

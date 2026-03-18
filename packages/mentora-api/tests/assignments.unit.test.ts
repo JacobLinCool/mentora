@@ -109,7 +109,8 @@ describe('Assignments (Unit)', () => {
 				startAt: Date.now(),
 				dueAt: null,
 				allowLate: true,
-				allowResubmit: false
+				allowResubmit: false,
+				studentBudgetUsd: null
 			});
 			expect(result.success).toBe(true);
 			if (result.success) {

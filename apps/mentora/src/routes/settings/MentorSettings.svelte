@@ -12,11 +12,8 @@
         ArrowRight,
         Globe,
         Wallet,
-        CreditCard,
-        LoaderCircle,
         LogOut,
     } from "@lucide/svelte";
-    import { slide } from "svelte/transition";
 
     const s = createSettingsState();
 </script>
@@ -223,54 +220,11 @@
                             <Wallet class="h-8 w-8 text-gray-400" />
                         </div>
 
-                        {#if s.walletLoading}
-                            <div class="flex items-center justify-center py-8">
-                                <LoaderCircle
-                                    class="h-8 w-8 animate-spin text-gray-400"
-                                />
-                            </div>
-                        {:else if s.walletError}
-                            <div class="py-6 text-center">
-                                <p class="font-light text-gray-500">
-                                    {s.walletError === "Not authenticated"
-                                        ? m.settings_sign_in_to_view()
-                                        : s.walletError}
-                                </p>
-                            </div>
-                        {:else if s.wallet}
-                            <div
-                                transition:slide
-                                class="flex items-center gap-4"
-                            >
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-50"
-                                    >
-                                        <CreditCard
-                                            class="h-6 w-6 text-yellow-600"
-                                        />
-                                    </div>
-                                    <div>
-                                        <div
-                                            class="text-xs font-medium tracking-wider text-gray-500 uppercase"
-                                        >
-                                            {m.settings_balance()}
-                                        </div>
-                                        <div
-                                            class="font-serif-tc text-3xl text-gray-900"
-                                        >
-                                            {s.wallet.balanceCredits.toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {:else}
-                            <div class="py-6 text-center">
-                                <p class="font-light text-gray-500">
-                                    {m.settings_no_wallet()}
-                                </p>
-                            </div>
-                        {/if}
+                        <div class="py-6 text-center">
+                            <p class="font-light text-gray-500">
+                                {m.settings_credits_description()}
+                            </p>
+                        </div>
                     </section>
 
                     <!-- Preferences Section -->

@@ -37,12 +37,7 @@ import {
 import { getMySubmission, startSubmission, submitAssignment } from '../src/lib/api/submissions.js';
 import { createTopic, listCourseTopics } from '../src/lib/api/topics.js';
 import { getMyProfile, updateMyProfile } from '../src/lib/api/users.js';
-import {
-	getCourseWallet,
-	getMyWallet,
-	getWallet,
-	listWalletEntries
-} from '../src/lib/api/wallets.js';
+import { getCourseWallet } from '../src/lib/api/wallets.js';
 import type { APIResult, MentoraAPIConfig } from '../src/lib/api/types.js';
 
 function expectFailure<T>(result: APIResult<T>): void {
@@ -82,7 +77,8 @@ describe('API unauthenticated guards', () => {
 					startAt: Date.now(),
 					dueAt: null,
 					allowLate: true,
-					allowResubmit: true
+					allowResubmit: true,
+					studentBudgetUsd: null
 				})
 			);
 		});
@@ -269,18 +265,6 @@ describe('API unauthenticated guards', () => {
 	});
 
 	describe('wallets', () => {
-		it('getWallet rejects unauthenticated', async () => {
-			expectFailure(await getWallet(unauthConfig, 'wallet-1'));
-		});
-
-		it('getMyWallet rejects unauthenticated', async () => {
-			expectFailure(await getMyWallet(unauthConfig));
-		});
-
-		it('listWalletEntries rejects unauthenticated', async () => {
-			expectFailure(await listWalletEntries(unauthConfig, 'wallet-1'));
-		});
-
 		it('getCourseWallet rejects unauthenticated', async () => {
 			expectFailure(await getCourseWallet(unauthConfig, 'course-1'));
 		});

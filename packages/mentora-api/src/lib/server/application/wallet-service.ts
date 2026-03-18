@@ -62,7 +62,7 @@ export class WalletService {
 	async validateApiKey(apiKey: string): Promise<void> {
 		try {
 			const genai = new GoogleGenAI({ apiKey });
-			await genai.models.list({ pageSize: 1 });
+			await genai.models.list({ config: { pageSize: 1 } });
 		} catch {
 			throw errorResponse(
 				'Invalid API key or unable to connect to Gemini API',

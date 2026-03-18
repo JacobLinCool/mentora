@@ -102,7 +102,9 @@ export class ConversationService {
 			scoreCompletion: null,
 			notes: null,
 			assessment: null,
-			assessmentError: null
+			assessmentError: null,
+			totalSpentUsd: 0,
+			budgetExhausted: false
 		};
 		await this.conversationRepository.saveSubmission(assignment.id, userId, submission);
 	}
@@ -135,7 +137,9 @@ export class ConversationService {
 			scoreCompletion,
 			notes,
 			assessment: (assessmentData?.assessment as Submission['assessment']) ?? null,
-			assessmentError: assessmentData?.assessmentError ?? null
+			assessmentError: assessmentData?.assessmentError ?? null,
+			totalSpentUsd: existing?.totalSpentUsd ?? 0,
+			budgetExhausted: existing?.budgetExhausted ?? false
 		};
 		await this.conversationRepository.saveSubmission(assignment.id, userId, submitted);
 	}

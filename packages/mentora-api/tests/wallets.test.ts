@@ -4,7 +4,7 @@ import type { MentoraClient } from '../src/lib/api/client.js';
 import {
 	createCourseFixture,
 	generateTestId,
-	seedHostWalletWithLedger,
+	seedCourseWallet,
 	setupBothClients,
 	teardownAllClients
 } from './emulator-setup.js';
@@ -39,94 +39,30 @@ describe('Wallets Module (Integration)', () => {
 		await teardownAllClients();
 	});
 
-	it('covers addCredits idempotency, getMine, get, and listEntries', async () => {
-		const idempotencyKey = `wallet-idempotency-${generateTestId()}`;
-
-		const firstTopup = mustSucceed(
-			await teacher.wallets.addCredits({
-				amount: 120,
-				idempotencyKey,
-				paymentRef: 'pi_wallet_integration_test'
-			}),
-			'first addCredits'
-		);
-		expect(firstTopup.idempotent).toBe(false);
-		expect(firstTopup.newBalance).toBeGreaterThan(0);
-
-		const secondTopup = mustSucceed(
-			await teacher.wallets.addCredits({
-				amount: 120,
-				idempotencyKey,
-				paymentRef: 'pi_wallet_integration_test'
-			}),
-			'second addCredits'
-		);
-		expect(secondTopup.idempotent).toBe(true);
-		expect(secondTopup.id).toBe(firstTopup.id);
-		expect(secondTopup.newBalance).toBe(firstTopup.newBalance);
-
-		const myWallet = mustSucceed(await teacher.wallets.getMine(), 'getMine');
-		expect(myWallet).not.toBeNull();
-		if (!myWallet) {
-			throw new Error('Expected user wallet to exist after addCredits');
+	it('getCourseWallet returns null when no wallet exists', async () => {
+		const result = await teacher.wallets.getCourseWallet(courseId);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data).toBeNull();
 		}
-
-		const byId = mustSucceed(await teacher.wallets.get(myWallet.id), 'get wallet by id');
-		expect(byId.id).toBe(myWallet.id);
-		expect(byId.ownerType).toBe('user');
-
-		const entries = mustSucceed(
-			await teacher.wallets.listEntries(myWallet.id, { limit: 10 }),
-			'list wallet entries'
-		);
-		expect(entries.length).toBeGreaterThan(0);
-		expect(entries.some((entry) => entry.id === firstTopup.id)).toBe(true);
 	});
 
-	it('covers course host wallet retrieval with ledger and missing wallet failure', async () => {
-		const seeded = await seedHostWalletWithLedger(courseId, [
-			{
-				id: `ledger-${generateTestId()}-grant`,
-				type: 'grant',
-				amountCredits: 50
-			},
-			{
-				id: `ledger-${generateTestId()}-charge`,
-				type: 'charge',
-				amountCredits: -15
-			}
-		]);
-
-		const courseWallet = mustSucceed(
-			await teacher.courses.getWallet(courseId, {
-				includeLedger: true,
-				ledgerLimit: 10
+	it('createOrUpdate creates a wallet and getCourseWallet retrieves it', async () => {
+		const created = mustSucceed(
+			await teacher.wallets.createOrUpdate(courseId, {
+				apiKey: 'test-api-key-for-integration',
+				spendingLimitUsd: 50
 			}),
-			'courses.getWallet include ledger'
+			'createOrUpdate wallet'
 		);
-		expect(courseWallet.wallet.id).toBe(seeded.walletId);
-		expect(courseWallet.wallet.ownerType).toBe('host');
-		expect(courseWallet.wallet.ownerId).toBe(courseId);
-		expect(courseWallet.ledger).toBeDefined();
-		expect(courseWallet.ledger?.length).toBe(2);
+		expect(created.courseId).toBe(courseId);
+		expect(created.spendingLimitUsd).toBe(50);
 
-		const emptyCourseId = mustSucceed(
-			await teacher.courses.create(
-				`Wallet Empty Course ${generateTestId()}`,
-				`WC${Date.now().toString().slice(-6)}`,
-				{ visibility: 'private' }
-			),
-			'create empty wallet course'
-		);
-
-		const missingCourseWallet = await teacher.courses.getWallet(emptyCourseId, {
-			includeLedger: true
-		});
-		expect(missingCourseWallet.success).toBe(false);
-		if (!missingCourseWallet.success) {
-			expect(missingCourseWallet.error).toContain('Wallet not found');
+		const fetched = mustSucceed(await teacher.wallets.getCourseWallet(courseId), 'getCourseWallet');
+		expect(fetched).not.toBeNull();
+		if (fetched) {
+			expect(fetched.courseId).toBe(courseId);
+			expect(fetched.spendingLimitUsd).toBe(50);
 		}
-
-		mustSucceed(await teacher.courses.delete(emptyCourseId), 'delete empty wallet course');
 	});
 });

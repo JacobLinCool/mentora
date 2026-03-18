@@ -325,6 +325,7 @@
                         dueAt,
                         allowLate: true,
                         allowResubmit: true,
+                        studentBudgetUsd: null,
                     });
                     if (createResult.success) newItemId = createResult.data;
                 }

@@ -163,6 +163,7 @@
                                 prompt: "",
                                 mode: "instant",
                                 classReport: null,
+                                studentBudgetUsd: null,
                                 submissionState: sub?.state,
                                 completed: isCompleted, // Correctly setting completed based on submission
                                 locked: q.startAt
