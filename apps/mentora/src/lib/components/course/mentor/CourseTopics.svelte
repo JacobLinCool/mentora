@@ -257,7 +257,6 @@
     }
 
     async function deleteTopic(topicId: string) {
-        topics = topics.filter((topic) => topic.id !== topicId);
         await api.topics.delete(topicId);
         await loadData();
     }
