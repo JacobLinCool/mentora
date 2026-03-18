@@ -111,9 +111,6 @@
         class:opacity-50={isDragging}
         class:cursor-pointer={!!onOpenEditor}
         onclick={handleRowClick}
-        onkeydown={handleRowKeydown}
-        role="button"
-        tabindex="0"
     >
         <button
             type="button"
