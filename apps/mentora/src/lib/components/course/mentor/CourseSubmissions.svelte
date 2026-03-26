@@ -579,7 +579,7 @@
                 </h4>
                 {#if gradingAssessment}
                     <div class="mb-3 space-y-2">
-                        {#each Object.entries(gradingAssessment.dimensions) as [key, dim]}
+                        {#each Object.entries(gradingAssessment.dimensions) as [key, dim] (key)}
                             <div class="flex items-start gap-3">
                                 <div class="w-28 shrink-0">
                                     <span
@@ -588,9 +588,9 @@
                                     >
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    {#each Array(5) as _, i}
+                                    {#each [0, 1, 2, 3, 4] as dot (dot)}
                                         <div
-                                            class="h-2.5 w-2.5 rounded-full {i <
+                                            class="h-2.5 w-2.5 rounded-full {dot <
                                             dim.score
                                                 ? 'bg-gray-800'
                                                 : 'bg-gray-200'}"
@@ -633,7 +633,7 @@
                 </h4>
                 {#if gradingConversationTurns.length > 0}
                     <div class="max-h-64 space-y-3 overflow-y-auto pr-1">
-                        {#each gradingConversationTurns as turn, i}
+                        {#each gradingConversationTurns as turn, i (turn.id)}
                             {@const isStudent = i % 2 === 0}
                             <div
                                 class="flex gap-2 {isStudent
