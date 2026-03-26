@@ -31,6 +31,21 @@ export const CaseChallengeClassifierSchema = z.object({
                 .string()
                 .optional()
                 .describe("New or updated reasoning if applicable"),
+            stance_category: z
+                .enum([
+                    "pro-strong",
+                    "pro-weak",
+                    "con-strong",
+                    "con-weak",
+                    "neutral",
+                ])
+                .optional()
+                .describe(
+                    "Classify the user's CURRENT effective stance after this response. " +
+                        "'pro' = agrees with the proposition, 'con' = disagrees. " +
+                        "'strong' = firm/definitive, 'weak' = tentative/partial. " +
+                        "'neutral' = genuinely undecided or balanced.",
+                ),
         })
         .describe("選填：若有提取到關鍵資訊放在這裡"),
 });
@@ -89,6 +104,13 @@ Rules:
 1. **TR_CLARIFY**: The answer is off-topic, too short, or logically unclear.
 2. **TR_SCAFFOLD**: The user's answer contradicts their \`previous_stance\`, shows hesitation ("Maybe I was wrong"), or admits the counter-example is valid, implying a need to update their stance.
 3. **TR_CASE_COMPLETED**: The user defends their stance logically, OR successfully integrates the case into their existing view without contradiction.
+
+For ALL intents (not just TR_SCAFFOLD), you MUST classify the user's current effective stance in extracted_data.stance_category:
+- "pro-strong": Firmly agrees with the proposition
+- "pro-weak": Tentatively agrees
+- "con-strong": Firmly disagrees
+- "con-weak": Tentatively disagrees
+- "neutral": Genuinely undecided or balanced
 
 Context:
 Previous Stance: ${previousStance}

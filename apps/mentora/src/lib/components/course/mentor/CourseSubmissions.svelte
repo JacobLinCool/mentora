@@ -9,6 +9,8 @@
         Questionnaire,
         QuestionnaireResponse,
     } from "$lib/api";
+    import type { AssessmentResult, Turn } from "mentora-firebase";
+    import type { DialogueStateDisplay } from "mentora-firebase";
     import { formatMentoraDateTime } from "$lib/features/datetime/format";
     import { onMount } from "svelte";
     import { SvelteMap } from "svelte/reactivity";
@@ -69,6 +71,10 @@
     let gradingSaving = $state(false);
     let gradingSuccess = $state<string | null>(null);
     let gradingError = $state<string | null>(null);
+    let gradingLoading = $state(false);
+    let gradingAssessment = $state<AssessmentResult | null>(null);
+    let gradingDialogueState = $state<DialogueStateDisplay | null>(null);
+    let gradingConversationTurns = $state<Turn[]>([]);
 
     // Response viewer modal state
     let viewResponseOpen = $state(false);
@@ -230,7 +236,36 @@
         gradingNotes = sub?.notes ?? "";
         gradingSuccess = null;
         gradingError = null;
+        gradingAssessment = sub?.assessment ?? null;
+        gradingDialogueState = null;
+        gradingConversationTurns = [];
+        gradingLoading = true;
         gradingOpen = true;
+
+        // Fetch conversation data in background
+        void loadGradingDetails(row.userId);
+    }
+
+    async function loadGradingDetails(userId: string) {
+        try {
+            const convRes = await api.conversations.getForAssignment(
+                selectedItemId,
+                userId,
+            );
+            if (convRes.success) {
+                gradingConversationTurns = convRes.data.turns;
+                const stateRes = await api.conversations.getDialogueState(
+                    convRes.data.id,
+                );
+                if (stateRes.success) {
+                    gradingDialogueState = stateRes.data;
+                }
+            }
+        } catch {
+            // Non-critical: grading still works without conversation details
+        } finally {
+            gradingLoading = false;
+        }
     }
 
     async function saveGrade() {
@@ -294,6 +329,18 @@
         } finally {
             viewResponseLoading = false;
         }
+    }
+
+    function dimensionLabel(key: string): string {
+        const labels: Record<string, () => string> = {
+            argumentQuality: m.mentor_submissions_dimension_argumentQuality,
+            criticalThinking: m.mentor_submissions_dimension_criticalThinking,
+            principleExtraction:
+                m.mentor_submissions_dimension_principleExtraction,
+            openness: m.mentor_submissions_dimension_openness,
+            coherence: m.mentor_submissions_dimension_coherence,
+        };
+        return labels[key]?.() ?? key;
     }
 
     function statusLabel(state: string): string {
@@ -490,7 +537,11 @@
 {/if}
 
 <!-- Grading Modal -->
-<PopupModal bind:open={gradingOpen} title={m.mentor_submissions_grade_title()}>
+<PopupModal
+    bind:open={gradingOpen}
+    title={m.mentor_submissions_grade_title()}
+    size="xl"
+>
     <div class="space-y-4">
         <div>
             <span class="mb-1 block text-sm font-medium text-gray-700">
@@ -499,36 +550,158 @@
             <div class="text-sm text-gray-600">{gradingStudentName}</div>
         </div>
 
-        <div>
-            <label
-                for="grade-score"
-                class="mb-1 block text-sm font-medium text-gray-700"
-            >
-                {m.mentor_submissions_score_label()}
-            </label>
-            <input
-                id="grade-score"
-                type="number"
-                min="0"
-                max="100"
-                bind:value={gradingScore}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
-            />
-        </div>
+        {#if gradingLoading}
+            <div class="flex items-center justify-center p-4 text-gray-500">
+                <LoaderCircle size={20} class="mr-2 animate-spin" />
+                {m.loading()}
+            </div>
+        {:else}
+            <!-- Summary -->
+            <div class="rounded-lg border border-gray-200 bg-white p-4">
+                <h4 class="mb-2 text-sm font-semibold text-gray-800">
+                    {m.mentor_submissions_summary()}
+                </h4>
+                {#if gradingDialogueState?.summary}
+                    <p class="text-sm leading-relaxed text-gray-600">
+                        {gradingDialogueState.summary}
+                    </p>
+                {:else}
+                    <p class="text-sm text-gray-400 italic">
+                        {m.mentor_submissions_no_summary()}
+                    </p>
+                {/if}
+            </div>
 
-        <div>
-            <label
-                for="grade-notes"
-                class="mb-1 block text-sm font-medium text-gray-700"
-            >
-                {m.mentor_submissions_notes_label()}
-            </label>
-            <textarea
-                id="grade-notes"
-                rows="3"
-                bind:value={gradingNotes}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
-            ></textarea>
+            <!-- AI Assessment -->
+            <div class="rounded-lg border border-gray-200 bg-white p-4">
+                <h4 class="mb-3 text-sm font-semibold text-gray-800">
+                    {m.mentor_submissions_ai_assessment()}
+                </h4>
+                {#if gradingAssessment}
+                    <div class="mb-3 space-y-2">
+                        {#each Object.entries(gradingAssessment.dimensions) as [key, dim]}
+                            <div class="flex items-start gap-3">
+                                <div class="w-28 shrink-0">
+                                    <span
+                                        class="text-xs font-medium text-gray-700"
+                                        >{dimensionLabel(key)}</span
+                                    >
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    {#each Array(5) as _, i}
+                                        <div
+                                            class="h-2.5 w-2.5 rounded-full {i <
+                                            dim.score
+                                                ? 'bg-gray-800'
+                                                : 'bg-gray-200'}"
+                                        ></div>
+                                    {/each}
+                                    <span class="ml-1 text-xs text-gray-500"
+                                        >{dim.score}/5</span
+                                    >
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    {dim.feedback}
+                                </p>
+                            </div>
+                        {/each}
+                    </div>
+                    <div
+                        class="border-t border-gray-100 pt-2 text-sm text-gray-700"
+                    >
+                        <span class="font-medium"
+                            >{m.mentor_submissions_overall()}:
+                            {gradingAssessment.overallScore}/5</span
+                        >
+                        {#if gradingAssessment.overallFeedback}
+                            <span class="ml-2 text-gray-500"
+                                >— {gradingAssessment.overallFeedback}</span
+                            >
+                        {/if}
+                    </div>
+                {:else}
+                    <p class="text-sm text-gray-400 italic">
+                        {m.mentor_submissions_no_assessment()}
+                    </p>
+                {/if}
+            </div>
+
+            <!-- Conversation History -->
+            <div class="rounded-lg border border-gray-200 bg-white p-4">
+                <h4 class="mb-3 text-sm font-semibold text-gray-800">
+                    {m.mentor_submissions_conversation()}
+                </h4>
+                {#if gradingConversationTurns.length > 0}
+                    <div class="max-h-64 space-y-3 overflow-y-auto pr-1">
+                        {#each gradingConversationTurns as turn, i}
+                            {@const isStudent = i % 2 === 0}
+                            <div
+                                class="flex gap-2 {isStudent
+                                    ? ''
+                                    : 'flex-row-reverse'}"
+                            >
+                                <div
+                                    class="max-w-[80%] rounded-lg px-3 py-2 text-sm {isStudent
+                                        ? 'bg-blue-50 text-blue-900'
+                                        : 'bg-gray-100 text-gray-800'}"
+                                >
+                                    <div
+                                        class="mb-0.5 text-[10px] font-semibold tracking-wide uppercase {isStudent
+                                            ? 'text-blue-500'
+                                            : 'text-gray-400'}"
+                                    >
+                                        {isStudent
+                                            ? m.mentor_submissions_student_label()
+                                            : m.mentor_submissions_ai_label()}
+                                    </div>
+                                    {turn.text}
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <p class="text-sm text-gray-400 italic">
+                        {m.mentor_submissions_no_conversation()}
+                    </p>
+                {/if}
+            </div>
+        {/if}
+
+        <!-- Grading Form -->
+        <div class="border-t border-gray-200 pt-4">
+            <div class="space-y-4">
+                <div>
+                    <label
+                        for="grade-score"
+                        class="mb-1 block text-sm font-medium text-gray-700"
+                    >
+                        {m.mentor_submissions_score_label()}
+                    </label>
+                    <input
+                        id="grade-score"
+                        type="number"
+                        min="0"
+                        max="100"
+                        bind:value={gradingScore}
+                        class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
+                    />
+                </div>
+
+                <div>
+                    <label
+                        for="grade-notes"
+                        class="mb-1 block text-sm font-medium text-gray-700"
+                    >
+                        {m.mentor_submissions_notes_label()}
+                    </label>
+                    <textarea
+                        id="grade-notes"
+                        rows="3"
+                        bind:value={gradingNotes}
+                        class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
+                    ></textarea>
+                </div>
+            </div>
         </div>
 
         {#if gradingError}

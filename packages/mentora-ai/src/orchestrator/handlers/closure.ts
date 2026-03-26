@@ -101,7 +101,6 @@ export class ClosureHandler implements StageHandler {
             },
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "neutral" },
         };
     }
 
@@ -157,7 +156,6 @@ export class ClosureHandler implements StageHandler {
             usage: executor.getTokenUsage(),
             assessment,
             assessmentError,
-            stanceSnapshot: { stance: "neutral" },
         };
     }
 }

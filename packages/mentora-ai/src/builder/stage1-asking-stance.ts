@@ -23,6 +23,21 @@ export const AskingStanceClassifierSchema = z.object({
         .object({
             stance: z.string().optional().describe("The user's stated stance"),
             reasoning: z.string().optional().describe("The user's reasoning"),
+            stance_category: z
+                .enum([
+                    "pro-strong",
+                    "pro-weak",
+                    "con-strong",
+                    "con-weak",
+                    "neutral",
+                ])
+                .optional()
+                .describe(
+                    "Classify the user's stance relative to the topic question. " +
+                        "'pro' = agrees with the proposition, 'con' = disagrees. " +
+                        "'strong' = firm/definitive, 'weak' = tentative/partial. " +
+                        "'neutral' = genuinely undecided or balanced.",
+                ),
         })
         .describe("選填：若有提取到關鍵資訊放在這裡"),
 });
@@ -70,6 +85,13 @@ Goal: Determine if the student has clearly expressed their initial stance (Yes/N
 Rules:
 1. If the input is too short, vague, irrelevant, or does not answer the specific question -> Output "TR_CLARIFY".
 2. If the user expresses a clear stance (even if simple) -> Output "TR_V1_ESTABLISHED".
+
+When outputting "TR_V1_ESTABLISHED", you MUST also classify the stance:
+- "pro-strong": The user clearly and firmly agrees with the proposition (e.g., "Yes, absolutely", "I strongly support this")
+- "pro-weak": The user leans toward agreeing but is tentative (e.g., "I think so", "Probably yes")
+- "con-strong": The user clearly and firmly disagrees (e.g., "No, absolutely not", "I'm strongly against this")
+- "con-weak": The user leans toward disagreeing but is tentative (e.g., "I don't think so", "Probably not")
+- "neutral": The user is genuinely undecided or presents a balanced view
 
 Analyze the user input below:
 Question: ${input.currentQuestion}
