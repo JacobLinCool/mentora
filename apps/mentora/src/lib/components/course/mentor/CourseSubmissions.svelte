@@ -101,7 +101,6 @@
     // Response data (questionnaires)
     let responseRows = $state<ResponseRow[]>([]);
     let rawResponses = $state<QuestionnaireResponse[]>([]);
-    let selectedQuestionnaire = $state<Questionnaire | null>(null);
     let questionnaireView = $state<QuestionnaireView>("summary");
     let questionnaireSummaryCards = $state<QuestionnaireSummaryCard[]>([]);
     let expandedResponseRowId = $state<string | null>(null);
@@ -191,7 +190,6 @@
             responseRows = [];
             rawSubmissions = [];
             rawResponses = [];
-            selectedQuestionnaire = null;
             questionnaireSummaryCards = [];
             expandedResponseRowId = null;
             return;
@@ -216,7 +214,6 @@
 
     async function loadSubmissions(assignmentId: string) {
         rawResponses = [];
-        selectedQuestionnaire = null;
         questionnaireSummaryCards = [];
         expandedResponseRowId = null;
         const res = await api.submissions.listForAssignment(assignmentId);
@@ -260,7 +257,6 @@
             return;
         }
 
-        selectedQuestionnaire = questionnaireRes.data;
         rawResponses = responsesRes.data;
 
         const userIds = [
