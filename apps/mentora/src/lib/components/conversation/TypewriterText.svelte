@@ -53,7 +53,7 @@
         font-size: 1.75rem;
         font-weight: 700;
         line-height: 1.6;
-        color: white;
+        color: inherit;
     }
 
     .text {
@@ -61,7 +61,7 @@
     }
 
     .cursor {
-        color: white;
+        color: inherit;
         font-weight: 300;
         margin-left: 2px;
     }

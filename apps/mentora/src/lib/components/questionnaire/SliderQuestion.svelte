@@ -63,7 +63,7 @@
         font-size: 1.35rem;
         font-weight: 600;
         line-height: 1.45;
-        color: white;
+        color: var(--color-student-text-primary);
         margin: 0 0 1.5rem 0;
     }
 
@@ -85,7 +85,7 @@
         text-align: center;
         font-size: 2rem;
         font-weight: 600;
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--color-student-text-secondary);
         margin-bottom: 1.25rem;
     }
 
@@ -144,6 +144,6 @@
 
     .slider-label {
         font-size: 0.875rem;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--color-student-text-muted);
     }
 </style>

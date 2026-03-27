@@ -123,14 +123,61 @@
 </script>
 
 <button
-    class="student-icon-btn h-16 w-16 {isRecording
-        ? 'bg-[#6d6d6d] text-white'
+    class="record-button student-icon-btn h-16 w-16 {isRecording
+        ? 'recording bg-[#d45a5a] text-white shadow-[0_0_0_6px_rgba(212,90,90,0.16)]'
         : 'text-white'}"
     onclick={toggleRecording}
     {disabled}
+    aria-pressed={isRecording}
     aria-label={isRecording
         ? m.conversation_record_stop_aria()
         : m.conversation_record_start_aria()}
 >
     <Mic size={28} />
 </button>
+
+<style>
+    .record-button {
+        position: relative;
+        transition:
+            background-color 0.18s ease,
+            box-shadow 0.18s ease,
+            transform 0.18s ease;
+    }
+
+    .record-button.recording {
+        animation: recordPulse 1.2s ease-in-out infinite;
+    }
+
+    .record-button.recording::after {
+        content: "";
+        position: absolute;
+        inset: -0.55rem;
+        border-radius: 9999px;
+        border: 1px solid rgba(212, 90, 90, 0.35);
+        animation: recordRing 1.4s ease-out infinite;
+    }
+
+    @keyframes recordPulse {
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.04);
+        }
+    }
+
+    @keyframes recordRing {
+        0% {
+            opacity: 0.7;
+            transform: scale(0.96);
+        }
+
+        100% {
+            opacity: 0;
+            transform: scale(1.16);
+        }
+    }
+</style>

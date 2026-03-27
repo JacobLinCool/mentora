@@ -38,7 +38,7 @@
         <div class="h-12 w-12 shrink-0"></div>
     {/if}
 
-    <div class="text-sm font-medium text-white/60">
+    <div class="text-sm font-medium text-[#e3e3e3]">
         {currentIndex + 1} / {totalQuestions}
     </div>
 

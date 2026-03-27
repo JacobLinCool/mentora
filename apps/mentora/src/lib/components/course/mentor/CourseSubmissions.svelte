@@ -1,5 +1,10 @@
 <script lang="ts">
-    import { LoaderCircle, Eye, PenLine } from "@lucide/svelte";
+    import {
+        ChevronDown,
+        ChevronRight,
+        LoaderCircle,
+        PenLine,
+    } from "@lucide/svelte";
     import * as m from "$lib/paraglide/messages.js";
     import Table from "$lib/components/ui/Table.svelte";
     import PopupModal from "$lib/components/ui/PopupModal.svelte";
@@ -39,8 +44,47 @@
         userId: string;
         student: string;
         submittedAt: string;
-        responseCount: number;
+        responsePreview: string;
+        answeredCount: number;
+        responseItems: Array<{
+            questionLabel: string;
+            questionText: string;
+            answer: string;
+        }>;
         [key: string]: unknown;
+    };
+
+    type QuestionnaireView = "summary" | "individual";
+
+    type QuestionnaireSummaryOption = {
+        label: string;
+        count: number;
+        percentage: number;
+    };
+
+    type QuestionnaireTextAnswer = {
+        student: string;
+        submittedAt: string;
+        answer: string;
+    };
+
+    type QuestionnaireSummaryCard = {
+        id: string;
+        title: string;
+        type:
+            | "single_answer_choice"
+            | "multiple_answer_choice"
+            | "short_answer"
+            | "slider_answer";
+        required: boolean;
+        answeredCount: number;
+        options: QuestionnaireSummaryOption[];
+        textAnswers: QuestionnaireTextAnswer[];
+        sliderAverage: number | null;
+        sliderMin: number | null;
+        sliderMax: number | null;
+        sliderMinLabel?: string;
+        sliderMaxLabel?: string;
     };
 
     // --- State ---
@@ -56,6 +100,11 @@
 
     // Response data (questionnaires)
     let responseRows = $state<ResponseRow[]>([]);
+    let rawResponses = $state<QuestionnaireResponse[]>([]);
+    let selectedQuestionnaire = $state<Questionnaire | null>(null);
+    let questionnaireView = $state<QuestionnaireView>("summary");
+    let questionnaireSummaryCards = $state<QuestionnaireSummaryCard[]>([]);
+    let expandedResponseRowId = $state<string | null>(null);
 
     // User name cache
     const userNameCache = new SvelteMap<string, string>();
@@ -69,13 +118,6 @@
     let gradingSaving = $state(false);
     let gradingSuccess = $state<string | null>(null);
     let gradingError = $state<string | null>(null);
-
-    // Response viewer modal state
-    let viewResponseOpen = $state(false);
-    let viewResponseStudentName = $state("");
-    let viewResponseLoading = $state(false);
-    let viewResponseQuestionnaire = $state<Questionnaire | null>(null);
-    let viewResponseData = $state<QuestionnaireResponse | null>(null);
 
     // --- Derived ---
     let selectedItem = $derived(items.find((i) => i.id === selectedItemId));
@@ -148,6 +190,10 @@
             submissionRows = [];
             responseRows = [];
             rawSubmissions = [];
+            rawResponses = [];
+            selectedQuestionnaire = null;
+            questionnaireSummaryCards = [];
+            expandedResponseRowId = null;
             return;
         }
 
@@ -169,6 +215,10 @@
     }
 
     async function loadSubmissions(assignmentId: string) {
+        rawResponses = [];
+        selectedQuestionnaire = null;
+        questionnaireSummaryCards = [];
+        expandedResponseRowId = null;
         const res = await api.submissions.listForAssignment(assignmentId);
         if (!res.success) {
             error = res.error;
@@ -195,30 +245,57 @@
     }
 
     async function loadResponses(questionnaireId: string) {
-        const res =
-            await api.questionnaireResponses.listForQuestionnaire(
-                questionnaireId,
-            );
-        if (!res.success) {
-            error = res.error;
+        const [responsesRes, questionnaireRes] = await Promise.all([
+            api.questionnaireResponses.listForQuestionnaire(questionnaireId),
+            api.questionnaires.get(questionnaireId),
+        ]);
+
+        if (!responsesRes.success) {
+            error = responsesRes.error;
             return;
         }
 
+        if (!questionnaireRes.success) {
+            error = questionnaireRes.error;
+            return;
+        }
+
+        selectedQuestionnaire = questionnaireRes.data;
+        rawResponses = responsesRes.data;
+
         const userIds = [
-            ...new Set(res.data.map((r: QuestionnaireResponse) => r.userId)),
+            ...new Set(
+                responsesRes.data.map((r: QuestionnaireResponse) => r.userId),
+            ),
         ];
         await Promise.all(userIds.map(resolveUserName));
 
-        responseRows = res.data.map(
-            (r: QuestionnaireResponse, idx: number) => ({
-                id: `${r.userId}-${idx}`,
-                userId: r.userId,
-                student:
-                    userNameCache.get(r.userId) || r.userId.substring(0, 8),
-                submittedAt: formatMentoraDateTime(r.submittedAt),
-                responseCount: r.responses.length,
-            }),
+        responseRows = responsesRes.data.map(
+            (r: QuestionnaireResponse, idx: number) => {
+                const responseSummary = summarizeQuestionnaireResponse(
+                    questionnaireRes.data,
+                    r,
+                );
+
+                return {
+                    id: `${r.userId}-${idx}`,
+                    userId: r.userId,
+                    student:
+                        userNameCache.get(r.userId) || r.userId.substring(0, 8),
+                    submittedAt: formatMentoraDateTime(r.submittedAt),
+                    responsePreview: responseSummary.preview,
+                    answeredCount: responseSummary.items.length,
+                    responseItems: responseSummary.items,
+                };
+            },
         );
+
+        questionnaireSummaryCards = buildQuestionnaireSummary(
+            questionnaireRes.data,
+            responsesRes.data,
+        );
+        questionnaireView = "summary";
+        expandedResponseRowId = responseRows[0]?.id ?? null;
     }
 
     // --- Grading ---
@@ -269,33 +346,6 @@
         }
     }
 
-    // --- Response Viewer ---
-    async function openResponseViewer(row: ResponseRow) {
-        viewResponseStudentName = row.student;
-        viewResponseLoading = true;
-        viewResponseQuestionnaire = null;
-        viewResponseData = null;
-        viewResponseOpen = true;
-
-        try {
-            const [qRes, rRes] = await Promise.all([
-                api.questionnaires.get(selectedItemId),
-                api.questionnaireResponses.get(selectedItemId, row.userId),
-            ]);
-
-            if (qRes.success) {
-                viewResponseQuestionnaire = qRes.data;
-            }
-            if (rRes.success) {
-                viewResponseData = rRes.data;
-            }
-        } catch {
-            // Error handled by null checks in the template
-        } finally {
-            viewResponseLoading = false;
-        }
-    }
-
     function statusLabel(state: string): string {
         switch (state) {
             case "in_progress":
@@ -320,6 +370,207 @@
             default:
                 return "bg-gray-100 text-gray-800";
         }
+    }
+
+    function toPercentage(count: number, total: number): number {
+        if (total <= 0) return 0;
+        return Math.round((count / total) * 1000) / 10;
+    }
+
+    function getSelectableItemLabel(item: SelectableItem): string {
+        return `[${
+            item.type === "dialogue"
+                ? m.mentor_submissions_type_dialogue()
+                : m.mentor_submissions_type_questionnaire()
+        }] ${item.title}`;
+    }
+
+    function getQuestionTypeLabel(
+        type: QuestionnaireSummaryCard["type"],
+    ): string {
+        switch (type) {
+            case "single_answer_choice":
+                return "單選題";
+            case "multiple_answer_choice":
+                return "多選題";
+            case "short_answer":
+                return "簡答題";
+            case "slider_answer":
+                return "量表題";
+            default:
+                return type;
+        }
+    }
+
+    function toggleResponseRow(rowId: string) {
+        expandedResponseRowId = expandedResponseRowId === rowId ? null : rowId;
+    }
+
+    function buildQuestionnaireSummary(
+        questionnaire: Questionnaire,
+        responses: QuestionnaireResponse[],
+    ): QuestionnaireSummaryCard[] {
+        return questionnaire.questions.map((entry, questionIndex) => {
+            const question = entry.question;
+            const answers = responses
+                .map((response) => {
+                    const matched = response.responses.find(
+                        (item) => item.questionIndex === questionIndex,
+                    );
+                    if (!matched) return null;
+
+                    return {
+                        answer: matched.answer,
+                        student:
+                            userNameCache.get(response.userId) ||
+                            response.userId.substring(0, 8),
+                        submittedAt: formatMentoraDateTime(
+                            response.submittedAt,
+                        ),
+                    };
+                })
+                .filter(
+                    (
+                        item,
+                    ): item is {
+                        answer: QuestionnaireResponse["responses"][number]["answer"];
+                        student: string;
+                        submittedAt: string;
+                    } => item !== null,
+                );
+
+            const baseCard: QuestionnaireSummaryCard = {
+                id: `summary-${questionIndex}`,
+                title: question.questionText,
+                type: question.type,
+                required: entry.required,
+                answeredCount: answers.length,
+                options: [],
+                textAnswers: [],
+                sliderAverage: null,
+                sliderMin: null,
+                sliderMax: null,
+            };
+
+            if (question.type === "single_answer_choice") {
+                baseCard.options = question.options.map((option) => {
+                    const count = answers.filter(
+                        (item) => item.answer.response === option,
+                    ).length;
+                    return {
+                        label: option,
+                        count,
+                        percentage: toPercentage(count, answers.length),
+                    };
+                });
+                return baseCard;
+            }
+
+            if (question.type === "multiple_answer_choice") {
+                baseCard.options = question.options.map((option) => {
+                    const count = answers.filter((item) => {
+                        return (
+                            Array.isArray(item.answer.response) &&
+                            item.answer.response.includes(option)
+                        );
+                    }).length;
+
+                    return {
+                        label: option,
+                        count,
+                        percentage: toPercentage(count, answers.length),
+                    };
+                });
+                return baseCard;
+            }
+
+            if (question.type === "short_answer") {
+                baseCard.textAnswers = answers.map((item) => ({
+                    student: item.student,
+                    submittedAt: item.submittedAt,
+                    answer: String(item.answer.response),
+                }));
+                return baseCard;
+            }
+
+            const sliderValues = answers
+                .map((item) =>
+                    typeof item.answer.response === "number"
+                        ? item.answer.response
+                        : null,
+                )
+                .filter((value): value is number => value !== null);
+
+            if (sliderValues.length > 0) {
+                const uniqueValues = Array.from(new Set(sliderValues)).sort(
+                    (a, b) => a - b,
+                );
+
+                baseCard.options = uniqueValues.map((value) => {
+                    const count = sliderValues.filter(
+                        (item) => item === value,
+                    ).length;
+                    return {
+                        label: String(value),
+                        count,
+                        percentage: toPercentage(count, sliderValues.length),
+                    };
+                });
+                baseCard.sliderAverage =
+                    Math.round(
+                        (sliderValues.reduce((sum, value) => sum + value, 0) /
+                            sliderValues.length) *
+                            10,
+                    ) / 10;
+                baseCard.sliderMin = Math.min(...sliderValues);
+                baseCard.sliderMax = Math.max(...sliderValues);
+            }
+
+            baseCard.sliderMinLabel = question.minLabel;
+            baseCard.sliderMaxLabel = question.maxLabel;
+            return baseCard;
+        });
+    }
+
+    function summarizeQuestionnaireResponse(
+        questionnaire: Questionnaire,
+        response: QuestionnaireResponse,
+    ): {
+        preview: string;
+        items: Array<{
+            questionLabel: string;
+            questionText: string;
+            answer: string;
+        }>;
+    } {
+        const items = response.responses
+            .sort((a, b) => a.questionIndex - b.questionIndex)
+            .map((item) => {
+                const question = questionnaire.questions[item.questionIndex];
+                const answerText = formatAnswer(item.answer, question);
+                if (!answerText.trim()) return null;
+                return {
+                    questionLabel: `Q${item.questionIndex + 1}`,
+                    questionText: question?.question.questionText ?? "",
+                    answer: answerText,
+                };
+            })
+            .filter(
+                (
+                    item,
+                ): item is {
+                    questionLabel: string;
+                    questionText: string;
+                    answer: string;
+                } => Boolean(item),
+            );
+
+        return {
+            preview: items
+                .map((item) => `${item.questionLabel}: ${item.answer}`)
+                .join("｜"),
+            items,
+        };
     }
 
     function formatAnswer(
@@ -389,15 +640,11 @@
             id="item-select"
             bind:value={selectedItemId}
             onchange={handleItemChange}
-            class="w-full max-w-md rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
+            class="w-full max-w-md rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
         >
             <option value="">{m.mentor_submissions_select()}</option>
             {#each items as item (item.id)}
-                <option value={item.id}>
-                    [{item.type === "dialogue"
-                        ? m.mentor_submissions_type_dialogue()
-                        : m.mentor_submissions_type_questionnaire()}] {item.title}
-                </option>
+                <option value={item.id}>{getSelectableItemLabel(item)}</option>
             {/each}
         </select>
     </div>
@@ -454,37 +701,281 @@
             {/if}
         {:else if selectedItem?.type === "questionnaire"}
             <!-- Response Table -->
-            {#if responseRows.length === 0}
-                <div class="p-8 text-center text-gray-500">
-                    {m.mentor_submissions_no_results()}
-                </div>
-            {:else}
+            <div class="space-y-4">
                 <div
-                    class="overflow-hidden rounded-lg border border-gray-200 bg-white"
+                    class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
                 >
-                    <Table
-                        columns={[
-                            {
-                                key: "student",
-                                label: m.mentor_submissions_student(),
-                                sortable: true,
-                            },
-                            {
-                                key: "submittedAt",
-                                label: m.mentor_submissions_submitted_at(),
-                                sortable: true,
-                            },
-                            {
-                                key: "responseCount",
-                                label: m.mentor_submissions_response_count(),
-                                sortable: true,
-                            },
-                        ]}
-                        data={responseRows}
-                        actions={renderResponseActions}
-                    />
+                    <div
+                        class="inline-flex w-fit rounded-full border border-gray-200 bg-white p-1 shadow-sm"
+                    >
+                        <button
+                            type="button"
+                            class={questionnaireView === "summary"
+                                ? "cursor-pointer rounded-full bg-[#4b4b4b] px-4 py-2 text-sm font-medium text-white"
+                                : "cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"}
+                            onclick={() => (questionnaireView = "summary")}
+                        >
+                            統整摘要
+                        </button>
+                        <button
+                            type="button"
+                            class={questionnaireView === "individual"
+                                ? "cursor-pointer rounded-full bg-[#4b4b4b] px-4 py-2 text-sm font-medium text-white"
+                                : "cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"}
+                            onclick={() => (questionnaireView = "individual")}
+                        >
+                            個別回覆
+                        </button>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        共 {rawResponses.length} 份回覆
+                    </div>
                 </div>
-            {/if}
+
+                {#if responseRows.length === 0}
+                    <div class="p-8 text-center text-gray-500">
+                        {m.mentor_submissions_no_results()}
+                    </div>
+                {:else if questionnaireView === "individual"}
+                    <div class="space-y-3">
+                        {#each responseRows as row (row.id)}
+                            <section
+                                class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+                            >
+                                <button
+                                    type="button"
+                                    class="flex w-full cursor-pointer items-start justify-between gap-4 px-5 py-4 text-left hover:bg-gray-50"
+                                    onclick={() => toggleResponseRow(row.id)}
+                                >
+                                    <div class="min-w-0 flex-1">
+                                        <div
+                                            class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between"
+                                        >
+                                            <div
+                                                class="text-base font-semibold text-gray-900"
+                                            >
+                                                {row.student}
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                {row.submittedAt}
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="mt-2 flex flex-wrap items-center gap-2"
+                                        >
+                                            <span
+                                                class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600"
+                                            >
+                                                已回答 {row.answeredCount} 題
+                                            </span>
+                                            {#each row.responseItems.slice(0, 2) as responseItem (responseItem.questionLabel + responseItem.answer)}
+                                                <span
+                                                    class="inline-flex max-w-[18rem] items-center gap-1 rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-600"
+                                                >
+                                                    <span
+                                                        class="font-semibold text-gray-500"
+                                                    >
+                                                        {responseItem.questionLabel}
+                                                    </span>
+                                                    <span class="truncate">
+                                                        {responseItem.answer}
+                                                    </span>
+                                                </span>
+                                            {/each}
+                                            {#if row.responseItems.length > 2}
+                                                <span
+                                                    class="text-xs text-gray-400"
+                                                >
+                                                    +{row.responseItems.length -
+                                                        2} 題
+                                                </span>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                    <div class="mt-0.5 shrink-0 text-gray-400">
+                                        {#if expandedResponseRowId === row.id}
+                                            <ChevronDown size={18} />
+                                        {:else}
+                                            <ChevronRight size={18} />
+                                        {/if}
+                                    </div>
+                                </button>
+
+                                {#if expandedResponseRowId === row.id}
+                                    <div
+                                        class="border-t border-gray-100 bg-[#fafafa] px-3 py-4 md:px-4"
+                                    >
+                                        <div class="space-y-3">
+                                            {#each row.responseItems as responseItem (responseItem.questionLabel + responseItem.answer)}
+                                                <article
+                                                    class="rounded-xl border border-gray-200 bg-white px-3 py-3"
+                                                >
+                                                    <h4
+                                                        class="text-sm font-semibold text-gray-900"
+                                                    >
+                                                        {responseItem.questionLabel}
+                                                        {#if responseItem.questionText}
+                                                            {` ${responseItem.questionText}`}
+                                                        {/if}
+                                                    </h4>
+                                                    <p
+                                                        class="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-gray-700"
+                                                    >
+                                                        {responseItem.answer}
+                                                    </p>
+                                                </article>
+                                            {/each}
+                                        </div>
+                                    </div>
+                                {/if}
+                            </section>
+                        {/each}
+                    </div>
+                {:else}
+                    <div class="grid gap-4">
+                        {#each questionnaireSummaryCards as card (card.id)}
+                            <section
+                                class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+                            >
+                                <div
+                                    class="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between"
+                                >
+                                    <div>
+                                        <h3
+                                            class="text-base font-semibold text-gray-900"
+                                        >
+                                            {card.title}
+                                        </h3>
+                                        <p class="mt-1 text-sm text-gray-500">
+                                            {getQuestionTypeLabel(card.type)}
+                                            {card.required
+                                                ? "・必填"
+                                                : "・選填"}
+                                            ・已回答 {card.answeredCount} 份
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {#if card.type === "short_answer"}
+                                    <div class="space-y-3">
+                                        {#each card.textAnswers as answer, index (answer.student + answer.submittedAt + index)}
+                                            <article
+                                                class="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                                            >
+                                                <div
+                                                    class="mb-2 flex flex-col gap-1 text-sm text-gray-500 md:flex-row md:items-center md:justify-between"
+                                                >
+                                                    <span
+                                                        class="font-medium text-gray-700"
+                                                        >{answer.student}</span
+                                                    >
+                                                    <span
+                                                        >{answer.submittedAt}</span
+                                                    >
+                                                </div>
+                                                <p
+                                                    class="text-sm leading-relaxed whitespace-pre-wrap text-gray-800"
+                                                >
+                                                    {answer.answer}
+                                                </p>
+                                            </article>
+                                        {/each}
+                                    </div>
+                                {:else}
+                                    {#if card.type === "slider_answer" && card.sliderAverage != null}
+                                        <div
+                                            class="mb-4 grid gap-3 md:grid-cols-3"
+                                        >
+                                            <div
+                                                class="rounded-xl bg-gray-50 px-4 py-3"
+                                            >
+                                                <div
+                                                    class="text-xs font-medium tracking-wide text-gray-500 uppercase"
+                                                >
+                                                    平均
+                                                </div>
+                                                <div
+                                                    class="mt-1 text-2xl font-semibold text-gray-900"
+                                                >
+                                                    {card.sliderAverage}
+                                                </div>
+                                            </div>
+                                            <div
+                                                class="rounded-xl bg-gray-50 px-4 py-3"
+                                            >
+                                                <div
+                                                    class="text-xs font-medium tracking-wide text-gray-500 uppercase"
+                                                >
+                                                    最低
+                                                </div>
+                                                <div
+                                                    class="mt-1 text-2xl font-semibold text-gray-900"
+                                                >
+                                                    {card.sliderMin}
+                                                </div>
+                                                {#if card.sliderMinLabel}
+                                                    <div
+                                                        class="mt-1 text-xs text-gray-500"
+                                                    >
+                                                        {card.sliderMinLabel}
+                                                    </div>
+                                                {/if}
+                                            </div>
+                                            <div
+                                                class="rounded-xl bg-gray-50 px-4 py-3"
+                                            >
+                                                <div
+                                                    class="text-xs font-medium tracking-wide text-gray-500 uppercase"
+                                                >
+                                                    最高
+                                                </div>
+                                                <div
+                                                    class="mt-1 text-2xl font-semibold text-gray-900"
+                                                >
+                                                    {card.sliderMax}
+                                                </div>
+                                                {#if card.sliderMaxLabel}
+                                                    <div
+                                                        class="mt-1 text-xs text-gray-500"
+                                                    >
+                                                        {card.sliderMaxLabel}
+                                                    </div>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    {/if}
+
+                                    <div class="space-y-3">
+                                        {#each card.options as option (option.label)}
+                                            <div class="space-y-1">
+                                                <div
+                                                    class="flex items-center justify-between gap-4 text-sm"
+                                                >
+                                                    <span
+                                                        class="font-medium text-gray-700"
+                                                        >{option.label}</span
+                                                    >
+                                                    <span class="text-gray-500"
+                                                        >{option.count} 人 ({option.percentage}%)</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    class="h-2.5 overflow-hidden rounded-full bg-gray-100"
+                                                >
+                                                    <div
+                                                        class="h-full rounded-full bg-[#4b4b4b]"
+                                                        style={`width: ${option.percentage}%`}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </section>
+                        {/each}
+                    </div>
+                {/if}
+            </div>
         {/if}
     {/if}
 {/if}
@@ -559,57 +1050,6 @@
     </div>
 </PopupModal>
 
-<!-- Response Viewer Modal -->
-<PopupModal
-    bind:open={viewResponseOpen}
-    title={m.mentor_submissions_view_response()}
-    size="lg"
->
-    <div class="space-y-4">
-        <div class="text-sm font-medium text-gray-700">
-            {m.mentor_submissions_student()}: {viewResponseStudentName}
-        </div>
-
-        {#if viewResponseLoading}
-            <div class="flex items-center justify-center p-4 text-gray-500">
-                <LoaderCircle size={20} class="mr-2 animate-spin" />
-                {m.loading()}
-            </div>
-        {:else if viewResponseQuestionnaire && viewResponseData}
-            <div class="space-y-4">
-                {#each viewResponseData.responses as resp, idx (idx)}
-                    {@const questionDef =
-                        viewResponseQuestionnaire.questions[resp.questionIndex]}
-                    <div
-                        class="rounded-lg border border-gray-200 bg-gray-50 p-4"
-                    >
-                        <div class="mb-2 text-sm font-medium text-gray-800">
-                            Q{resp.questionIndex + 1}.
-                            {questionDef?.question.questionText ?? ""}
-                        </div>
-                        <div class="text-sm text-gray-600">
-                            {formatAnswer(resp.answer, questionDef)}
-                        </div>
-                    </div>
-                {/each}
-            </div>
-        {:else}
-            <div class="text-sm text-gray-500">
-                {m.mentor_submissions_no_results()}
-            </div>
-        {/if}
-
-        <div class="flex justify-end">
-            <button
-                class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                onclick={() => (viewResponseOpen = false)}
-            >
-                {m.done()}
-            </button>
-        </div>
-    </div>
-</PopupModal>
-
 {#snippet renderSubmissionCell(item: SubmissionRow, key: string)}
     {#if key === "state"}
         <span
@@ -641,15 +1081,5 @@
     >
         <PenLine size={14} />
         {m.mentor_submissions_grade()}
-    </button>
-{/snippet}
-
-{#snippet renderResponseActions(item: ResponseRow)}
-    <button
-        class="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-        onclick={() => openResponseViewer(item)}
-    >
-        <Eye size={14} />
-        {m.mentor_submissions_view()}
     </button>
 {/snippet}
