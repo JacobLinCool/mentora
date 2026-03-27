@@ -386,13 +386,13 @@
     ): string {
         switch (type) {
             case "single_answer_choice":
-                return "單選題";
+                return m.mentor_submissions_question_type_single_choice();
             case "multiple_answer_choice":
-                return "多選題";
+                return m.mentor_submissions_question_type_multiple_choice();
             case "short_answer":
-                return "簡答題";
+                return m.mentor_submissions_question_type_short_answer();
             case "slider_answer":
-                return "量表題";
+                return m.mentor_submissions_question_type_slider();
             default:
                 return type;
         }
@@ -711,7 +711,7 @@
                                 : "cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"}
                             onclick={() => (questionnaireView = "summary")}
                         >
-                            統整摘要
+                            {m.mentor_submissions_view_summary()}
                         </button>
                         <button
                             type="button"
@@ -720,11 +720,13 @@
                                 : "cursor-pointer rounded-full px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"}
                             onclick={() => (questionnaireView = "individual")}
                         >
-                            個別回覆
+                            {m.mentor_submissions_view_individual()}
                         </button>
                     </div>
                     <div class="text-sm text-gray-500">
-                        共 {rawResponses.length} 份回覆
+                        {m.mentor_submissions_total_responses({
+                            count: rawResponses.length,
+                        })}
                     </div>
                 </div>
 
@@ -762,7 +764,11 @@
                                             <span
                                                 class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600"
                                             >
-                                                已回答 {row.answeredCount} 題
+                                                {m.mentor_submissions_answered_questions(
+                                                    {
+                                                        count: row.answeredCount,
+                                                    },
+                                                )}
                                             </span>
                                             {#each row.responseItems.slice(0, 2) as responseItem (responseItem.questionLabel + responseItem.answer)}
                                                 <span
@@ -782,8 +788,14 @@
                                                 <span
                                                     class="text-xs text-gray-400"
                                                 >
-                                                    +{row.responseItems.length -
-                                                        2} 題
+                                                    {m.mentor_submissions_more_questions(
+                                                        {
+                                                            count:
+                                                                row
+                                                                    .responseItems
+                                                                    .length - 2,
+                                                        },
+                                                    )}
                                                 </span>
                                             {/if}
                                         </div>
@@ -844,10 +856,14 @@
                                         </h3>
                                         <p class="mt-1 text-sm text-gray-500">
                                             {getQuestionTypeLabel(card.type)}
-                                            {card.required
-                                                ? "・必填"
-                                                : "・選填"}
-                                            ・已回答 {card.answeredCount} 份
+                                            ・{card.required
+                                                ? m.mentor_submissions_required()
+                                                : m.mentor_submissions_optional()}
+                                            ・{m.mentor_submissions_answered_responses(
+                                                {
+                                                    count: card.answeredCount,
+                                                },
+                                            )}
                                         </p>
                                     </div>
                                 </div>
@@ -888,7 +904,7 @@
                                                 <div
                                                     class="text-xs font-medium tracking-wide text-gray-500 uppercase"
                                                 >
-                                                    平均
+                                                    {m.mentor_submissions_average()}
                                                 </div>
                                                 <div
                                                     class="mt-1 text-2xl font-semibold text-gray-900"
@@ -902,7 +918,7 @@
                                                 <div
                                                     class="text-xs font-medium tracking-wide text-gray-500 uppercase"
                                                 >
-                                                    最低
+                                                    {m.mentor_submissions_min()}
                                                 </div>
                                                 <div
                                                     class="mt-1 text-2xl font-semibold text-gray-900"
@@ -923,7 +939,7 @@
                                                 <div
                                                     class="text-xs font-medium tracking-wide text-gray-500 uppercase"
                                                 >
-                                                    最高
+                                                    {m.mentor_submissions_max()}
                                                 </div>
                                                 <div
                                                     class="mt-1 text-2xl font-semibold text-gray-900"
@@ -952,7 +968,13 @@
                                                         >{option.label}</span
                                                     >
                                                     <span class="text-gray-500"
-                                                        >{option.count} 人 ({option.percentage}%)</span
+                                                        >{m.mentor_submissions_people_percentage(
+                                                            {
+                                                                count: option.count,
+                                                                percentage:
+                                                                    option.percentage,
+                                                            },
+                                                        )}</span
                                                     >
                                                 </div>
                                                 <div
