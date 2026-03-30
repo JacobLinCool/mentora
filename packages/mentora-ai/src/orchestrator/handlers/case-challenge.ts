@@ -61,7 +61,7 @@ export class CaseChallengeHandler implements StageHandler {
                 return this.handleScaffold(context, classification);
 
             case "TR_CASE_COMPLETED":
-                return this.handleCaseCompleted(context);
+                return this.handleCaseCompleted(context, classification);
         }
     }
 
@@ -133,16 +133,15 @@ export class CaseChallengeHandler implements StageHandler {
             );
         }
 
-        const stanceSnapshot = classification.extracted_data?.stance
-            ? { stance: "neutral" as const }
-            : { stance: "undetermined" as const };
-
         return {
             message,
             newState,
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot,
+            stanceSnapshot: {
+                stance:
+                    classification.extracted_data?.stance_category || "neutral",
+            },
         };
     }
 
@@ -151,6 +150,7 @@ export class CaseChallengeHandler implements StageHandler {
      */
     private async handleCaseCompleted(
         context: StageContext,
+        classification: CaseChallengeClassifier,
     ): Promise<StageResult> {
         const { executor, state } = context;
 
@@ -180,7 +180,10 @@ export class CaseChallengeHandler implements StageHandler {
             },
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "neutral" },
+            stanceSnapshot: {
+                stance:
+                    classification.extracted_data?.stance_category || "neutral",
+            },
         };
     }
 }

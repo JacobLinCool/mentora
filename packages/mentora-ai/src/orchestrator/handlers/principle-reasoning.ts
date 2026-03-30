@@ -95,7 +95,6 @@ export class PrincipleReasoningHandler implements StageHandler {
             newState: transitionTo(state, DialogueStage.PRINCIPLE_REASONING),
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "undetermined" },
         };
     }
 
@@ -127,7 +126,6 @@ export class PrincipleReasoningHandler implements StageHandler {
             newState: transitionTo(state, DialogueStage.PRINCIPLE_REASONING),
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "neutral" },
         };
     }
 
@@ -179,7 +177,6 @@ export class PrincipleReasoningHandler implements StageHandler {
             },
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "neutral" },
         };
     }
 
@@ -234,7 +231,6 @@ export class PrincipleReasoningHandler implements StageHandler {
             },
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "neutral" },
         };
     }
 }
