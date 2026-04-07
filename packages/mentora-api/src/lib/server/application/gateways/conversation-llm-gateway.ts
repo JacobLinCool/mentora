@@ -17,7 +17,10 @@ export interface IConversationLLMGateway {
 }
 
 export class FirestoreConversationLLMGateway implements IConversationLLMGateway {
-	constructor(private readonly firestore: Firestore) {}
+	constructor(
+		private readonly firestore: Firestore,
+		private readonly defaultApiKey?: string
+	) {}
 
 	async process(params: {
 		conversationId: string;
@@ -34,7 +37,7 @@ export class FirestoreConversationLLMGateway implements IConversationLLMGateway 
 			params.userInputText,
 			params.question,
 			params.prompt,
-			params.apiKey
+			params.apiKey ?? this.defaultApiKey
 		);
 	}
 

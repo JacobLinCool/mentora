@@ -212,6 +212,7 @@ export class MentoraServerHandler {
 		const ctx: RouteContext = {
 			firestore: this.config.firestore,
 			projectId: this.config.projectId,
+			geminiApiKey: this.config.geminiApiKey,
 			user,
 			params,
 			query

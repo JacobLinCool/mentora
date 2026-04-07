@@ -25,6 +25,7 @@ async function getBackendHandler() {
 
 			return createServerHandler({
 				firestore: Firestore.useEmulator({ projectId: 'demo-mentora' }),
+				geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
 				projectId: 'demo-mentora',
 				useEmulator: true
 			});

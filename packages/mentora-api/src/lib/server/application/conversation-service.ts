@@ -68,7 +68,8 @@ export class ConversationService {
 	constructor(
 		private readonly conversationRepository: IConversationRepository,
 		private readonly llmGateway: IConversationLLMGateway,
-		private readonly walletRepository: IWalletRepository
+		private readonly walletRepository: IWalletRepository,
+		private readonly geminiApiKey?: string
 	) {}
 
 	private async ensureSubmissionInProgress(assignment: Assignment, userId: string): Promise<void> {
@@ -279,44 +280,6 @@ export class ConversationService {
 			);
 		}
 
-		const now = Date.now();
-		const userTurnId = randomUUID();
-		let asrUsageReport = createTokenUsageReport([]);
-		let llmUsageReport = createTokenUsageReport([]);
-		let ttsUsageReport = createTokenUsageReport([]);
-		let userInputText: string;
-
-		if ('audioBase64' in input) {
-			try {
-				const asrExecutor = getASRExecutor();
-				asrExecutor.resetTokenUsage();
-				userInputText = await asrExecutor.transcribe(input.audioBase64, input.audioMimeType);
-				userInputText = userInputText.trim();
-				if (!userInputText) {
-					throw errorResponse(
-						'No speech detected in the audio. Please try again or use text input.',
-						HttpStatus.BAD_REQUEST,
-						ServerErrorCode.INVALID_INPUT
-					);
-				}
-				asrUsageReport = createTokenUsageReport([
-					{
-						feature: TOKEN_USAGE_FEATURES.CONVERSATION_ASR,
-						usage: asrExecutor.getTokenUsage()
-					}
-				]);
-			} catch (error) {
-				if (error instanceof Response) throw error;
-				throw errorResponse(
-					'Failed to transcribe audio. Please try again or use text input.',
-					HttpStatus.INTERNAL_SERVER_ERROR,
-					ServerErrorCode.INTERNAL_ERROR
-				);
-			}
-		} else {
-			userInputText = input.text;
-		}
-
 		const assignment = await this.conversationRepository.getAssignment(conversation.assignmentId);
 		if (!assignment) {
 			throw errorResponse('Assignment not found', HttpStatus.NOT_FOUND, ServerErrorCode.NOT_FOUND);
@@ -369,6 +332,46 @@ export class ConversationService {
 			}
 		}
 
+		const requestApiKey = apiKey ?? this.geminiApiKey;
+
+		const now = Date.now();
+		const userTurnId = randomUUID();
+		let asrUsageReport = createTokenUsageReport([]);
+		let llmUsageReport = createTokenUsageReport([]);
+		let ttsUsageReport = createTokenUsageReport([]);
+		let userInputText: string;
+
+		if ('audioBase64' in input) {
+			try {
+				const asrExecutor = getASRExecutor(requestApiKey);
+				asrExecutor.resetTokenUsage();
+				userInputText = await asrExecutor.transcribe(input.audioBase64, input.audioMimeType);
+				userInputText = userInputText.trim();
+				if (!userInputText) {
+					throw errorResponse(
+						'No speech detected in the audio. Please try again or use text input.',
+						HttpStatus.BAD_REQUEST,
+						ServerErrorCode.INVALID_INPUT
+					);
+				}
+				asrUsageReport = createTokenUsageReport([
+					{
+						feature: TOKEN_USAGE_FEATURES.CONVERSATION_ASR,
+						usage: asrExecutor.getTokenUsage()
+					}
+				]);
+			} catch (error) {
+				if (error instanceof Response) throw error;
+				throw errorResponse(
+					'Failed to transcribe audio. Please try again or use text input.',
+					HttpStatus.INTERNAL_SERVER_ERROR,
+					ServerErrorCode.INTERNAL_ERROR
+				);
+			}
+		} else {
+			userInputText = input.text;
+		}
+
 		let llmResult: Awaited<ReturnType<IConversationLLMGateway['process']>>;
 		try {
 			llmResult = await this.llmGateway.process({
@@ -377,12 +380,13 @@ export class ConversationService {
 				userInputText,
 				question: assignment.question || '',
 				prompt: assignment.prompt || '',
-				apiKey
+				apiKey: requestApiKey
 			});
 		} catch (error) {
 			if (
 				error instanceof Error &&
 				assignment.courseId &&
+				apiKey &&
 				(error.message.includes('401') ||
 					error.message.includes('403') ||
 					error.message.includes('API_KEY_INVALID'))
@@ -406,7 +410,7 @@ export class ConversationService {
 		let aiAudioBase64: string;
 		const aiAudioMimeType = 'audio/mp3';
 		try {
-			const ttsExecutor = getTTSExecutor();
+			const ttsExecutor = getTTSExecutor(requestApiKey);
 			ttsExecutor.resetTokenUsage();
 			aiAudioBase64 = await ttsExecutor.synthesize(llmResult.aiMessage);
 			ttsUsageReport = createTokenUsageReport([
@@ -419,6 +423,7 @@ export class ConversationService {
 			if (
 				error instanceof Error &&
 				assignment.courseId &&
+				apiKey &&
 				(error.message.includes('401') ||
 					error.message.includes('403') ||
 					error.message.includes('API_KEY_INVALID'))

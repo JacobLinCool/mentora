@@ -226,4 +226,54 @@ describe('ConversationService.addTurn – ASR error handling', () => {
 			expect.objectContaining({ userInputText: 'Hello world' })
 		);
 	});
+
+	it('uses the course wallet API key for ASR, LLM, and TTS when available', async () => {
+		const repo = createMockRepo();
+		const gateway = createMockLLMGateway();
+		const walletRepository = createMockWalletRepo();
+		walletRepository.getWallet = vi.fn().mockResolvedValue({
+			status: 'active',
+			apiKey: 'course-api-key'
+		} as any);
+		const service = new ConversationService(repo, gateway, walletRepository, 'global-api-key');
+
+		mockedGetASRExecutor.mockReturnValue(createMockASRExecutor('Hello world') as any);
+		mockedGetTTSExecutor.mockReturnValue(createMockTTSExecutor() as any);
+
+		await service.addTurn(user, 'conv-1', {
+			audioBase64: 'dGVzdA==',
+			audioMimeType: 'audio/webm'
+		});
+
+		expect(mockedGetASRExecutor).toHaveBeenCalledWith('course-api-key');
+		expect(gateway.process).toHaveBeenCalledWith(
+			expect.objectContaining({ apiKey: 'course-api-key', userInputText: 'Hello world' })
+		);
+		expect(mockedGetTTSExecutor).toHaveBeenCalledWith('course-api-key');
+	});
+
+	it('falls back to the configured global API key when no course wallet key exists', async () => {
+		const repo = createMockRepo();
+		const gateway = createMockLLMGateway();
+		const service = new ConversationService(
+			repo,
+			gateway,
+			createMockWalletRepo(),
+			'global-api-key'
+		);
+
+		mockedGetASRExecutor.mockReturnValue(createMockASRExecutor('Hello world') as any);
+		mockedGetTTSExecutor.mockReturnValue(createMockTTSExecutor() as any);
+
+		await service.addTurn(user, 'conv-1', {
+			audioBase64: 'dGVzdA==',
+			audioMimeType: 'audio/webm'
+		});
+
+		expect(mockedGetASRExecutor).toHaveBeenCalledWith('global-api-key');
+		expect(gateway.process).toHaveBeenCalledWith(
+			expect.objectContaining({ apiKey: 'global-api-key', userInputText: 'Hello world' })
+		);
+		expect(mockedGetTTSExecutor).toHaveBeenCalledWith('global-api-key');
+	});
 });
