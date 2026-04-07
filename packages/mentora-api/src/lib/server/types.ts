@@ -34,6 +34,8 @@ export interface AuthContext {
 export interface ServerConfig {
 	firestore: Firestore;
 	projectId: string;
+	/** Default Gemini API key used when a request does not provide a course-specific key. */
+	geminiApiKey?: string;
 	/** Set to true when running against Firebase Emulators (skips JWT signature verification) */
 	useEmulator?: boolean;
 }
@@ -46,6 +48,8 @@ export interface RouteContext {
 	firestore: Firestore;
 	/** Firebase project ID (for JWT verification) */
 	projectId: string;
+	/** Default Gemini API key used when no course-specific key is available. */
+	geminiApiKey?: string;
 	/** Authenticated user (null if not authenticated) */
 	user: AuthContext | null;
 	/** URL path parameters (e.g., { id: "abc123" }) */

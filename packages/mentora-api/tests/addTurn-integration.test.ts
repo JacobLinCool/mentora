@@ -151,17 +151,20 @@ describe('addTurn Route Handler (Integration)', () => {
 	describe('Turn Addition and Response', () => {
 		// REMOVED: "should accept first turn from authorized user" - requires LLM API key
 
-		it.skipIf(!process.env.GOOGLE_GENAI_API_KEY)('should accept subsequent turns', async () => {
-			// First turn already added in previous test
-			// Add second turn
-			const result = await studentClient.conversations.addTurn(
-				testConversationId,
-				'However, I also consider the collective perspective',
-				'followup'
-			);
+		it.skipIf(!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY)(
+			'should accept subsequent turns',
+			async () => {
+				// First turn already added in previous test
+				// Add second turn
+				const result = await studentClient.conversations.addTurn(
+					testConversationId,
+					'However, I also consider the collective perspective',
+					'followup'
+				);
 
-			expect(result.success).toBe(true);
-		});
+				expect(result.success).toBe(true);
+			}
+		);
 
 		it('should handle empty text gracefully', async () => {
 			const result = await studentClient.conversations.addTurn(testConversationId, '', 'idea');
@@ -188,7 +191,7 @@ describe('addTurn Route Handler (Integration)', () => {
 	});
 
 	describe('Conversation State', () => {
-		it.skipIf(!process.env.GOOGLE_GENAI_API_KEY)(
+		it.skipIf(!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY)(
 			'should transition conversation state based on dialogue progress',
 			async () => {
 				// Create a fresh conversation to test state transitions
@@ -227,7 +230,7 @@ describe('addTurn Route Handler (Integration)', () => {
 			}
 		);
 
-		it.skipIf(!process.env.GOOGLE_GENAI_API_KEY)(
+		it.skipIf(!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY)(
 			'should persist turns in conversation history',
 			async () => {
 				// Create a fresh conversation

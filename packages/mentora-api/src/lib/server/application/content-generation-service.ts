@@ -2,8 +2,10 @@ import { EXECUTOR_MODEL, getContentExecutor } from '../llm/executors.js';
 import { TOKEN_USAGE_FEATURES, createTokenUsageReport } from '../llm/token-usage.js';
 
 export class ContentGenerationService {
+	constructor(private readonly geminiApiKey?: string) {}
+
 	async generateAssignmentContent(question: string) {
-		const contentExecutor = getContentExecutor();
+		const contentExecutor = getContentExecutor(this.geminiApiKey);
 		contentExecutor.resetTokenUsage();
 		const generatedContent = await contentExecutor.generateContent(question);
 		const tokenUsage = createTokenUsageReport([

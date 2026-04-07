@@ -30,13 +30,14 @@ export function createServiceContainer(ctx: RouteContext) {
 	const catalogService = new CatalogService(courseService, courseRepository);
 	const conversationService = new ConversationService(
 		conversationRepository,
-		new FirestoreConversationLLMGateway(ctx.firestore),
-		walletRepository
+		new FirestoreConversationLLMGateway(ctx.firestore, ctx.geminiApiKey),
+		walletRepository,
+		ctx.geminiApiKey
 	);
 	const walletService = new WalletService(walletRepository);
 	const analyticsService = new AnalyticsService(analyticsRepository);
 	const healthService = new HealthService(healthRepository);
-	const contentGenerationService = new ContentGenerationService();
+	const contentGenerationService = new ContentGenerationService(ctx.geminiApiKey);
 
 	return {
 		announcementService,
