@@ -119,7 +119,10 @@ function createMockASRExecutor(transcribeResult: string | Error) {
 function createMockTTSExecutor() {
 	return {
 		resetTokenUsage: vi.fn(),
-		synthesize: vi.fn().mockResolvedValue('base64-audio-data'),
+		synthesize: vi.fn().mockResolvedValue({
+			audioBase64: 'base64-audio-data',
+			mimeType: 'audio/wav'
+		}),
 		getTokenUsage: vi.fn().mockReturnValue({
 			cachedContentTokenCount: 0,
 			candidatesTokenCount: 10,
@@ -215,7 +218,7 @@ describe('ConversationService.addTurn – ASR error handling', () => {
 
 		expect(result.text).toBe('AI response');
 		expect(result.audio).toBe('base64-audio-data');
-		expect(result.audioMimeType).toBe('audio/mp3');
+		expect(result.audioMimeType).toBe('audio/wav');
 
 		// Verify ASR was called with correct params
 		const asrExecutor = mockedGetASRExecutor.mock.results[0].value;

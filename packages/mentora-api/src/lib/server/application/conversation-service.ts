@@ -408,11 +408,13 @@ export class ConversationService {
 
 		const aiTurnId = randomUUID();
 		let aiAudioBase64: string;
-		const aiAudioMimeType = 'audio/mp3';
+		let aiAudioMimeType: string;
 		try {
 			const ttsExecutor = getTTSExecutor(requestApiKey);
 			ttsExecutor.resetTokenUsage();
-			aiAudioBase64 = await ttsExecutor.synthesize(llmResult.aiMessage);
+			const synthesizedAudio = await ttsExecutor.synthesize(llmResult.aiMessage);
+			aiAudioBase64 = synthesizedAudio.audioBase64;
+			aiAudioMimeType = synthesizedAudio.mimeType;
 			ttsUsageReport = createTokenUsageReport([
 				{
 					feature: TOKEN_USAGE_FEATURES.CONVERSATION_TTS,

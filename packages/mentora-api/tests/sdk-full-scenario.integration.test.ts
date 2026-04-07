@@ -151,7 +151,7 @@ describe('Mentora SDK Full Scenario (Integration)', () => {
 					JSON.stringify({
 						text: 'Mocked assistant response',
 						audio: 'ZmFrZS1hdWRpby1kYXRh',
-						audioMimeType: 'audio/mp3',
+						audioMimeType: 'audio/wav',
 						tokenUsage: {
 							byFeature: {
 								conversation_llm: {
