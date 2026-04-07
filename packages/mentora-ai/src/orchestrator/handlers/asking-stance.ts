@@ -129,7 +129,10 @@ export class AskingStanceHandler implements StageHandler {
             newState,
             ended: false,
             usage: executor.getTokenUsage(),
-            stanceSnapshot: { stance: "neutral" },
+            stanceSnapshot: {
+                stance:
+                    classification.extracted_data?.stance_category || "neutral",
+            },
         };
     }
 }

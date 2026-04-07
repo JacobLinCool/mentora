@@ -13,6 +13,7 @@
         "lint": "eslint .",
         "test": "vitest",
         "test:integration": "vitest run --config vitest.integration.config.ts",
+        "test:e2e": "npx playwright test --config playwright.config.ts",
         "storybook": "storybook dev -p 6006",
         "build-storybook": "storybook build"
     },
