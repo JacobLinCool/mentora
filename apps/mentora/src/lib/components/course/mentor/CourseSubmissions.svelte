@@ -124,13 +124,6 @@
     let gradingDialogueState = $state<DialogueStateDisplay | null>(null);
     let gradingConversationTurns = $state<Turn[]>([]);
 
-    // Response viewer modal state
-    let viewResponseOpen = $state(false);
-    let viewResponseStudentName = $state("");
-    let viewResponseLoading = $state(false);
-    let viewResponseQuestionnaire = $state<Questionnaire | null>(null);
-    let viewResponseData = $state<QuestionnaireResponse | null>(null);
-
     // --- Derived ---
     let selectedItem = $derived(items.find((i) => i.id === selectedItemId));
 
@@ -381,33 +374,6 @@
             gradingError = m.mentor_submissions_grade_failed();
         } finally {
             gradingSaving = false;
-        }
-    }
-
-    // --- Response Viewer ---
-    async function openResponseViewer(row: ResponseRow) {
-        viewResponseStudentName = row.student;
-        viewResponseLoading = true;
-        viewResponseQuestionnaire = null;
-        viewResponseData = null;
-        viewResponseOpen = true;
-
-        try {
-            const [qRes, rRes] = await Promise.all([
-                api.questionnaires.get(selectedItemId),
-                api.questionnaireResponses.get(selectedItemId, row.userId),
-            ]);
-
-            if (qRes.success) {
-                viewResponseQuestionnaire = qRes.data;
-            }
-            if (rRes.success) {
-                viewResponseData = rRes.data;
-            }
-        } catch {
-            // Error handled by null checks in the template
-        } finally {
-            viewResponseLoading = false;
         }
     }
 
