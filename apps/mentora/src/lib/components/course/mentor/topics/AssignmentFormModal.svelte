@@ -300,13 +300,13 @@
         <Button
             color="alternative"
             onclick={handleCancel}
-            class="cursor-pointer text-[#494949] hover:text-[#494949]/90"
+            class="mentor-modal-btn cursor-pointer !rounded-full !border-0 !bg-white !px-5 !py-2.5 !text-[#4b4b4b] !shadow-sm hover:!bg-[#eeeeee]"
         >
             {m.mentor_assignment_cancel()}
         </Button>
         <Button
             onclick={handleSubmit}
-            class="cursor-pointer bg-[#494949] text-white hover:bg-[#494949]/90"
+            class="mentor-modal-btn cursor-pointer !rounded-full !border-0 !bg-[#4b4b4b] !px-5 !py-2.5 !text-white !shadow-sm hover:!bg-[#3f3f3f]"
         >
             {m.mentor_assignment_save()}
         </Button>
@@ -322,13 +322,17 @@
     {footer}
 >
     <form
-        class="custom-form flex flex-col space-y-4"
+        class="custom-form mentor-assignment-form flex flex-col space-y-4 text-[#2f2f2f]"
         onsubmit={(e) => e.preventDefault()}
     >
         <div class="grid grid-cols-2 gap-4">
             <Label>
                 <span class="text-gray-700">{m.mentor_assignment_type()}</span>
-                <Select items={typeOptions} bind:value={assignmentType} />
+                <Select
+                    items={typeOptions}
+                    bind:value={assignmentType}
+                    class="mentor-modal-field"
+                />
                 <Helper class="mt-2 text-gray-500">
                     {assignmentType === "dialogue"
                         ? m.mentor_assignment_type_dialogue_description()
@@ -343,6 +347,7 @@
                     bind:value={title}
                     placeholder={m.mentor_assignment_name()}
                     color={errors.title ? "red" : undefined}
+                    class="mentor-modal-field"
                 />
                 {#if errors.title}
                     <Helper class="mt-2" color="red">{errors.title}</Helper>
@@ -357,7 +362,7 @@
             <Textarea
                 bind:value={introduction}
                 rows={3}
-                class="w-full"
+                class="mentor-modal-field w-full"
                 placeholder={m.mentor_assignment_introduction_placeholder()}
             />
         </Label>
@@ -374,7 +379,7 @@
                     bind:value={prompt}
                     rows={4}
                     placeholder={m.mentor_assignment_ai_prompt()}
-                    class="w-full {errors.prompt
+                    class="mentor-modal-field w-full {errors.prompt
                         ? 'border-red-500 ring-red-500 focus:ring-red-500'
                         : ''}"
                 />
@@ -393,6 +398,7 @@
                     placeholder={m.mentor_assignment_student_budget_placeholder()}
                     min="0"
                     step="0.01"
+                    class="mentor-modal-field"
                 />
                 <Helper class="mt-1"
                     >{m.mentor_assignment_student_budget_help()}</Helper
@@ -448,7 +454,11 @@
                 <span class="text-gray-700"
                     >{m.mentor_assignment_start_time()}</span
                 >
-                <Input type="datetime-local" bind:value={startAt} />
+                <Input
+                    type="datetime-local"
+                    bind:value={startAt}
+                    class="mentor-modal-field"
+                />
             </Label>
 
             <Label>
@@ -459,6 +469,7 @@
                     type="datetime-local"
                     bind:value={dueAt}
                     color={errors.dates ? "red" : undefined}
+                    class="mentor-modal-field"
                 />
             </Label>
         </div>
@@ -469,11 +480,31 @@
 </PopupModal>
 
 <style>
-    :global(.custom-form input:focus),
-    :global(.custom-form select:focus),
-    :global(.custom-form textarea:focus) {
-        --tw-ring-color: #494949 !important;
-        border-color: #494949 !important;
-        box-shadow: 0 0 0 1px #494949 !important;
+    :global(.mentor-assignment-form .mentor-modal-field),
+    :global(.mentor-assignment-form .mentor-modal-field input),
+    :global(.mentor-assignment-form .mentor-modal-field select),
+    :global(.mentor-assignment-form .mentor-modal-field textarea) {
+        background-color: #ffffff !important;
+        color: #2f2f2f !important;
+        border-color: rgba(95, 95, 95, 0.22) !important;
+        border-radius: 0.9rem !important;
+    }
+
+    :global(.mentor-assignment-form .mentor-modal-field::placeholder),
+    :global(.mentor-assignment-form .mentor-modal-field input::placeholder),
+    :global(.mentor-assignment-form .mentor-modal-field textarea::placeholder) {
+        color: #9a9a9a !important;
+    }
+
+    :global(.mentor-assignment-form input:focus),
+    :global(.mentor-assignment-form select:focus),
+    :global(.mentor-assignment-form textarea:focus) {
+        --tw-ring-color: #5f5f5f !important;
+        border-color: #5f5f5f !important;
+        box-shadow: 0 0 0 1px #5f5f5f !important;
+    }
+
+    :global(.mentor-modal-btn span) {
+        color: inherit !important;
     }
 </style>

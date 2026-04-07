@@ -1343,6 +1343,10 @@
         position: fixed;
         inset: 0;
         overflow: hidden;
+        --conversation-text-primary: var(--color-student-text-primary);
+        --conversation-text-secondary: var(--color-student-text-secondary);
+        --conversation-text-muted: var(--color-student-text-muted);
+        --conversation-text-subtle: var(--color-student-text-subtle);
     }
 
     .conversation-container.conversation-closed {
@@ -1421,7 +1425,7 @@
         font-size: 1.75rem;
         font-weight: 700;
         line-height: 1.6;
-        color: white;
+        color: var(--conversation-text-primary);
         margin: 0 0 1.5rem 0;
         opacity: 0.9;
     }
@@ -1431,7 +1435,7 @@
         font-size: 1.18rem;
         font-weight: 700;
         line-height: 1.75;
-        color: rgba(255, 255, 255, 0.8);
+        color: var(--conversation-text-secondary);
         margin: 0 0 1rem 0;
     }
 
@@ -1508,7 +1512,7 @@
         font-size: 1.5rem;
         font-weight: 700;
         line-height: 1.5;
-        color: white;
+        color: var(--conversation-text-primary);
     }
 
     @media (min-width: 768px) {
@@ -1522,7 +1526,7 @@
         font-size: 1.16rem;
         font-weight: 700;
         line-height: 1.7;
-        color: rgba(255, 255, 255, 0.86);
+        color: var(--conversation-text-secondary);
         margin: 0;
     }
 
@@ -1559,7 +1563,7 @@
         flex: 1;
         background: transparent;
         border: none;
-        color: white;
+        color: var(--conversation-text-primary);
         resize: none;
         padding: 0.75rem 1rem;
         font-size: 1rem;
@@ -1569,7 +1573,7 @@
     }
 
     .input-wrapper textarea::placeholder {
-        color: rgba(255, 255, 255, 0.4);
+        color: var(--conversation-text-muted);
     }
 
     /* Custom scrollbar for textarea */
@@ -1609,6 +1613,33 @@
 
     .controls-section {
         margin-bottom: 2rem; /* Space from bottom */
+    }
+
+    .conversation-container :global(.text-white) {
+        color: var(--conversation-text-primary) !important;
+    }
+
+    .conversation-container :global(.text-white\/90),
+    .conversation-container :global(.text-white\/88),
+    .conversation-container :global(.text-white\/86),
+    .conversation-container :global(.text-white\/80),
+    .conversation-container :global(.text-white\/78),
+    .conversation-container :global(.text-white\/74),
+    .conversation-container :global(.text-white\/72),
+    .conversation-container :global(.text-white\/70) {
+        color: var(--conversation-text-secondary) !important;
+    }
+
+    .conversation-container :global(.text-white\/65),
+    .conversation-container :global(.text-white\/62),
+    .conversation-container :global(.text-white\/60),
+    .conversation-container :global(.text-white\/55),
+    .conversation-container :global(.text-white\/50),
+    .conversation-container :global(.text-white\/45),
+    .conversation-container :global(.text-white\/44),
+    .conversation-container :global(.text-white\/42),
+    .conversation-container :global(.text-white\/40) {
+        color: var(--conversation-text-muted) !important;
     }
 
     @keyframes fadeIn {

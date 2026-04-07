@@ -72,8 +72,8 @@
     }
 </script>
 
-<div class="table-container {className}">
-    <table class="w-full text-left text-sm">
+<div class="table-container text-gray-900 {className}">
+    <table class="w-full text-left text-sm text-gray-700">
         <thead>
             <tr class="border-b border-gray-300">
                 {#each columns as column (column.key)}
@@ -115,7 +115,7 @@
             {#each paginatedData as row, idx (getRowKey ? getRowKey(row, idx) : (((row as { id?: string | number }).id ?? `${currentPage}-${idx}`) as string | number))}
                 <tr class="transition-colors hover:bg-gray-100">
                     {#each columns as column (column.key)}
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3 text-gray-700">
                             {#if renderCell}
                                 {@render renderCell(row, column.key)}
                             {:else}
