@@ -595,7 +595,7 @@
         showUserReplies = !showUserReplies;
     }
 
-    function playBase64Audio(base64: string, mimeType: string = "audio/mp3") {
+    function playBase64Audio(base64: string, mimeType: string) {
         try {
             const binary = atob(base64);
             const bytes = new Uint8Array(binary.length);
@@ -648,10 +648,7 @@
                     : m.conversation_error();
                 awaitingAiReply = false;
             } else if (res.data?.audio) {
-                playBase64Audio(
-                    res.data.audio,
-                    res.data.audioMimeType || "audio/mp3",
-                );
+                playBase64Audio(res.data.audio, res.data.audioMimeType);
             }
         } catch (e) {
             console.error("Error sending audio turn:", e);
@@ -699,10 +696,7 @@
                 messageInput = "";
                 showTextInput = false;
                 if (res.data?.audio) {
-                    playBase64Audio(
-                        res.data.audio,
-                        res.data.audioMimeType || "audio/mp3",
-                    );
+                    playBase64Audio(res.data.audio, res.data.audioMimeType);
                 }
             }
         } catch (e) {

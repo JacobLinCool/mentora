@@ -70,6 +70,16 @@ export interface TokenTracker {
 }
 
 /**
+ * Synthesized audio payload ready for downstream consumers
+ */
+export interface SynthesizedAudio {
+    /** Base64 encoded audio bytes */
+    audioBase64: string;
+    /** IANA MIME type for the audio payload */
+    mimeType: string;
+}
+
+/**
  * Executor interface for running prompts against an LLM
  */
 export interface PromptExecutor extends TokenTracker {
@@ -113,7 +123,7 @@ export interface TTSExecutor extends TokenTracker {
     /**
      * Synthesize text to speech
      * @param text - Text to synthesize
-     * @returns Base64 encoded audio string
+     * @returns Base64 encoded audio payload and MIME type
      */
-    synthesize(text: string): Promise<string>;
+    synthesize(text: string): Promise<SynthesizedAudio>;
 }

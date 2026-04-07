@@ -2,8 +2,45 @@
  * GeminiTTSExecutor implements text-to-speech using Google Gemini API
  */
 import type { GoogleGenAI } from "@google/genai";
-import type { TTSExecutor } from "../types.js";
+import type { SynthesizedAudio, TTSExecutor } from "../types.js";
 import { BaseTokenTracker } from "./token-tracker.js";
+import { encodePcm16AsWav } from "./wav.js";
+
+const PCM_MIME_TYPES = new Set(["audio/l16", "audio/pcm"]);
+
+function normalizeGeminiAudioResponse(audioPart: {
+    data?: string;
+    mimeType?: string;
+}): SynthesizedAudio {
+    const { data } = audioPart;
+    if (!data) {
+        throw new Error("No audio data received from TTS model");
+    }
+
+    const normalizedMimeType = audioPart.mimeType
+        ?.toLowerCase()
+        .split(";")[0]
+        ?.trim();
+
+    if (
+        normalizedMimeType === "audio/wav" ||
+        normalizedMimeType === "audio/wave"
+    ) {
+        return {
+            audioBase64: data,
+            mimeType: "audio/wav",
+        };
+    }
+
+    // Gemini preview TTS returns raw 24 kHz 16-bit mono PCM by default.
+    if (!normalizedMimeType || PCM_MIME_TYPES.has(normalizedMimeType)) {
+        return encodePcm16AsWav(data);
+    }
+
+    throw new Error(
+        `Unsupported TTS audio MIME type: ${audioPart.mimeType ?? "<missing>"}`,
+    );
+}
 
 /**
  * Gemini-based TTS Executor
@@ -20,9 +57,9 @@ export class GeminiTTSExecutor extends BaseTokenTracker implements TTSExecutor {
     /**
      * Synthesize text to speech
      * @param text - Text to synthesize
-     * @returns Base64 encoded audio (MP3 format)
+     * @returns Base64 encoded browser-playable audio
      */
-    async synthesize(text: string): Promise<string> {
+    async synthesize(text: string): Promise<SynthesizedAudio> {
         try {
             const response = await this.genai.models.generateContent({
                 model: this.model,
@@ -48,13 +85,9 @@ export class GeminiTTSExecutor extends BaseTokenTracker implements TTSExecutor {
             this.accumulateUsage(response.usageMetadata);
 
             const speech =
-                response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
 
-            if (!speech) {
-                throw new Error("No audio data received from TTS model");
-            }
-
-            return speech;
+            return normalizeGeminiAudioResponse(speech ?? {});
         } catch (error) {
             console.error(
                 "[GeminiTTSExecutor] Error synthesizing speech:",

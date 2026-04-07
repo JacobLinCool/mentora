@@ -810,7 +810,7 @@ export const apiModules: APIModule[] = [
 					response: {
 						text: 'Can you explain your reasoning in more detail?',
 						audio: '<base64>',
-						audioMimeType: 'audio/mp3'
+						audioMimeType: 'audio/wav'
 					}
 				}
 			}
