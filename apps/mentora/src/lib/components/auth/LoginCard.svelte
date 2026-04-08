@@ -10,6 +10,7 @@
     import { m } from "$lib/paraglide/messages";
     import { Alert } from "flowbite-svelte";
     import { LoaderCircle, LogIn } from "@lucide/svelte";
+    import posthog from "posthog-js";
 
     interface Props {
         onSuccess?: (user: User) => void;
@@ -37,8 +38,14 @@
         await ensurePersistence();
         try {
             const result = await signInWithPopup(auth, provider);
+            posthog.identify(result.user.uid, {
+                email: result.user.email ?? undefined,
+                name: result.user.displayName ?? undefined,
+            });
+            posthog.capture("user_signed_in", { provider: "google" });
             onSuccess?.(result.user);
         } catch (e: unknown) {
+            posthog.captureException(e);
             error = (e as Error)?.message ?? m.auth_sign_in_failed();
         } finally {
             loading = false;

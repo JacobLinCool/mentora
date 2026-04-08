@@ -6,6 +6,7 @@
     import { getNextLocale } from "$lib/features/settings/actions";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
+    import posthog from "posthog-js";
     import {
         User,
         Mail,
@@ -265,7 +266,12 @@
                             <button
                                 class="student-panel student-panel-hover student-clickable flex w-full items-center justify-between p-4 text-left active:scale-[0.98]"
                                 onclick={() => {
-                                    setLocale(getNextLocale(getLocale()));
+                                    const next = getNextLocale(getLocale());
+                                    posthog.capture("language_changed", {
+                                        from: getLocale(),
+                                        to: next,
+                                    });
+                                    setLocale(next);
                                 }}
                             >
                                 <span class="inline-flex items-center gap-2">

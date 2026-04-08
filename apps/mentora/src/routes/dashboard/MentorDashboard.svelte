@@ -12,6 +12,7 @@
     import CreateCourseModal from "$lib/components/course/CreateCourseModal.svelte";
     import UsageChart from "$lib/components/dashboard/mentor/UsageChart.svelte";
     import { api, type Course } from "$lib/api";
+    import posthog from "posthog-js";
 
     let isCreateModalOpen = $state(false);
     let showArchivedCourses = $state(false);
@@ -377,7 +378,15 @@
                 <div class="flex gap-4">
                     <button
                         class="flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
-                        onclick={() => (isCreateModalOpen = true)}
+                        onclick={() => {
+                            posthog.capture(
+                                "mentor_create_course_modal_opened",
+                                {
+                                    source: "dashboard",
+                                },
+                            );
+                            isCreateModalOpen = true;
+                        }}
                     >
                         <Plus size={16} />
                         {m.mentor_dashboard_create()}
@@ -388,7 +397,14 @@
                             class:bg-[#5A5A5A]={showArchivedCourses}
                             class:text-white={showArchivedCourses}
                             onclick={() => {
-                                showArchivedCourses = !showArchivedCourses;
+                                const next = !showArchivedCourses;
+                                posthog.capture(
+                                    "mentor_archived_courses_toggled",
+                                    {
+                                        show_archived: next,
+                                    },
+                                );
+                                showArchivedCourses = next;
                             }}
                         >
                             {m.mentor_dashboard_show_archived()}
@@ -447,8 +463,18 @@
                             {#each visibleCourses as course (course.id)}
                                 <tr
                                     class="cursor-pointer transition-colors hover:bg-[#F5F5F5]"
-                                    onclick={() =>
-                                        goto(resolve(`/courses/${course.id}`))}
+                                    onclick={() => {
+                                        posthog.capture(
+                                            "mentor_course_opened",
+                                            {
+                                                course_id: course.id,
+                                                visibility: course.visibility,
+                                                is_archived:
+                                                    isArchivedCourse(course),
+                                            },
+                                        );
+                                        goto(resolve(`/courses/${course.id}`));
+                                    }}
                                 >
                                     <td class="px-6 py-4 text-gray-900"
                                         >{course.title}</td

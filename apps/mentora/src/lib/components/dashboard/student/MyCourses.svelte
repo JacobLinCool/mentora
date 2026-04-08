@@ -2,6 +2,7 @@
     import { m } from "$lib/paraglide/messages";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+    import posthog from "posthog-js";
     import CourseCard from "./CourseCard.svelte";
 
     interface Course {
@@ -17,11 +18,17 @@
     let { courses = [] }: Props = $props();
 
     function handleCourseClick(courseId: string): void {
-        // Navigate to course detail page
+        posthog.capture("dashboard_course_opened", {
+            course_id: courseId,
+            source: "my_courses",
+        });
         goto(resolve(`/courses/${courseId}`));
     }
 
     function handleExploreClick(): void {
+        posthog.capture("dashboard_explore_clicked", {
+            source: "my_courses_empty_state",
+        });
         goto(resolve("/explore"));
     }
 </script>

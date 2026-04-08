@@ -5,6 +5,7 @@ import { auth } from "$lib/firebase";
 import { m } from "$lib/paraglide/messages";
 import { getLocale } from "$lib/paraglide/runtime";
 import { signOut } from "firebase/auth";
+import posthog from "posthog-js";
 import { tick } from "svelte";
 import { SvelteDate } from "svelte/reactivity";
 
@@ -89,6 +90,9 @@ export function createSettingsState() {
             return;
         }
 
+        posthog.capture("display_name_updated", {
+            had_previous_value: displayNameInitial.length > 0,
+        });
         displayNameEditing = false;
         displayNameDirty = false;
         displayNameSaving = false;
@@ -130,6 +134,8 @@ export function createSettingsState() {
         loggingOut = true;
         logoutError = null;
         try {
+            posthog.capture("signed_out");
+            posthog.reset();
             await signOut(auth);
             await goto(resolve("/"), { invalidateAll: true });
         } catch (e) {

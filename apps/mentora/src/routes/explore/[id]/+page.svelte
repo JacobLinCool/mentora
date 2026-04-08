@@ -7,6 +7,7 @@
     import { m } from "$lib/paraglide/messages";
     import BottomNav from "$lib/components/layout/student/BottomNav.svelte";
     import { api, type Course, type Topic } from "$lib/api";
+    import posthog from "posthog-js";
 
     const courseId = $derived(page.params.id);
 
@@ -59,6 +60,10 @@
         if (!course) return;
 
         if (isEnrolled) {
+            posthog.capture("course_entered", {
+                course_id: course.id,
+                source: "explore_detail",
+            });
             goto(resolve(`/courses/${course.id}`));
             return;
         }
@@ -67,9 +72,19 @@
         const result = await api.courses.joinByCode(course.code || "");
 
         if (result.success) {
+            posthog.capture("course_enrolled", {
+                course_id: course.id,
+                course_title: course.title,
+                source: "explore_detail",
+            });
             isEnrolled = true;
             goto(resolve(`/courses/${course.id}`));
         } else {
+            posthog.capture("course_join_failed", {
+                course_id: course.id,
+                source: "explore_detail",
+                error: result.error ?? "unknown_error",
+            });
             console.error(result.error);
         }
         joining = false;

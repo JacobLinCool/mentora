@@ -4,6 +4,7 @@
     import { page } from "$app/state";
     import { api, type QuestionnaireResponse } from "$lib/api";
     import { m } from "$lib/paraglide/messages";
+    import posthog from "posthog-js";
     import { ArrowLeft } from "@lucide/svelte";
     import {
         mapAnswersFromApi,
@@ -27,6 +28,7 @@
     let answers = $state<UiAnswerMap>({});
     let submitting = $state(false);
     let questions = $state<UiQuestion[]>([]);
+    let questionnaireOpenTrackedFor = $state<string | null>(null);
 
     // Navigation state
     let courseId = $state<string | null>(null);
@@ -40,6 +42,7 @@
 
     async function loadData() {
         if (!assignmentId) return;
+        hasExistingResponse = false;
         try {
             // Load questionnaire and submission details
             const [questionnaireRes, myResponseRes] = await Promise.all([
@@ -63,9 +66,11 @@
                         qa.questions,
                     );
                     questions = mappedQuestions;
+                    const resumed =
+                        myResponseRes.success && Boolean(myResponseRes.data);
 
                     // Restore existing answers from QuestionnaireResponse
-                    if (myResponseRes.success && myResponseRes.data) {
+                    if (resumed && myResponseRes.data) {
                         hasExistingResponse = true;
                         answers = mapAnswersFromApi(
                             myResponseRes.data.responses,
@@ -75,6 +80,16 @@
                 } else {
                     questions = [];
                     answers = {};
+                }
+
+                if (questionnaireOpenTrackedFor !== assignmentId) {
+                    questionnaireOpenTrackedFor = assignmentId;
+                    posthog.capture("questionnaire_opened", {
+                        assignment_id: assignmentId,
+                        course_id: qa.courseId ?? null,
+                        question_count: mappedQuestions.length,
+                        resumed,
+                    });
                 }
             } else {
                 console.error(
@@ -201,12 +216,20 @@
         }
 
         submitting = true;
+        const resumed = hasExistingResponse;
 
         try {
             // Save final answers
             await saveAnswers();
             // Submit assignment (updates status to 'submitted')
             await api.submissions.submit(assignmentId);
+
+            posthog.capture("questionnaire_submitted", {
+                assignment_id: assignmentId,
+                course_id: courseId,
+                question_count: totalQuestions,
+                resumed,
+            });
 
             // Navigate back
             if (courseId) {
@@ -215,6 +238,7 @@
                 goto(resolve("/dashboard"));
             }
         } catch (e) {
+            posthog.captureException(e);
             console.error("Failed to submit", e);
         } finally {
             submitting = false;

@@ -6,6 +6,7 @@
     import { api } from "$lib";
     import { m } from "$lib/paraglide/messages";
     import { Alert, Spinner } from "flowbite-svelte";
+    import posthog from "posthog-js";
 
     const joinCode = $derived((page.params.code || "").trim().toUpperCase());
     let errorMessage = $state<string | null>(null);
@@ -22,6 +23,9 @@
 
         if (!api.isAuthenticated) {
             const next = `/join/${joinCode}`;
+            posthog.capture("join_link_auth_redirected", {
+                has_join_code: joinCode.length > 0,
+            });
             // eslint-disable-next-line svelte/no-navigation-without-resolve
             await goto(`${resolve("/auth")}?next=${encodeURIComponent(next)}`, {
                 replaceState: true,
@@ -32,6 +36,11 @@
         const result = await api.courses.joinByCode(joinCode);
 
         if (result.success) {
+            posthog.capture("course_joined", {
+                course_id: result.data.courseId,
+                join_code: joinCode,
+                source: "join_link",
+            });
             await goto(resolve(`/courses/${result.data.courseId}`), {
                 replaceState: true,
             });
@@ -39,6 +48,10 @@
         }
 
         loading = false;
+        posthog.capture("course_join_failed", {
+            source: "join_link",
+            error: result.error ?? "unknown_error",
+        });
         errorMessage = result.error ?? m.join_failed();
     });
 </script>

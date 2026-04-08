@@ -10,6 +10,7 @@
     import Table from "$lib/components/ui/Table.svelte";
     import { api } from "$lib/api";
     import { onMount } from "svelte";
+    import posthog from "posthog-js";
 
     let { courseId }: { courseId: string } = $props();
 
@@ -149,6 +150,12 @@
                 return;
             }
 
+            posthog.capture("course_member_role_changed", {
+                course_id: courseId,
+                member_role_from: member.role,
+                member_role_to: nextRole,
+                member_status: member.status,
+            });
             await loadMembers();
         } catch (e) {
             error = e instanceof Error ? e.message : "Failed to update member";
@@ -172,6 +179,11 @@
                 return;
             }
 
+            posthog.capture("course_member_removed", {
+                course_id: courseId,
+                member_role: member.role,
+                member_status: member.status,
+            });
             await loadMembers();
         } catch (e) {
             error = e instanceof Error ? e.message : "Failed to remove member";
@@ -205,6 +217,10 @@
                 return;
             }
 
+            posthog.capture("course_member_invited", {
+                course_id: courseId,
+                invite_role: inviteRole,
+            });
             inviteSuccess = true;
             inviteEmail = "";
             inviteRole = "student";

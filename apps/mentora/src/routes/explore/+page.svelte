@@ -6,11 +6,13 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api, type Course } from "$lib/api";
+    import posthog from "posthog-js";
 
     let allCourses = $state<Course[]>([]);
     let loading = $state(true);
     let searchQuery = $state("");
     let selectedCategory = $state("All");
+    let lastTrackedCategory = $state<string | null>(null);
 
     onMount(async () => {
         const result = await api.courses.listPublic();
@@ -51,7 +53,34 @@
         }),
     );
 
+    // Debounced search tracking
+    let searchTimeout: ReturnType<typeof setTimeout>;
+    $effect(() => {
+        const query = searchQuery;
+        clearTimeout(searchTimeout);
+        if (query.trim()) {
+            searchTimeout = setTimeout(() => {
+                posthog.capture("course_searched", {
+                    query,
+                    results_count: filteredCourses.length,
+                });
+            }, 800);
+        }
+    });
+
+    $effect(() => {
+        const category = selectedCategory;
+        if (!category || category === lastTrackedCategory) return;
+        lastTrackedCategory = category;
+        posthog.capture("explore_category_selected", {
+            category,
+            has_search_query: searchQuery.trim().length > 0,
+            results_count: filteredCourses.length,
+        });
+    });
+
     function handleCourseClick(id: string): void {
+        posthog.capture("course_detail_viewed", { course_id: id });
         goto(resolve(`/explore/${id}`));
     }
 </script>

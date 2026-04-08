@@ -11,6 +11,7 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
     import { api, type Course, type Conversation } from "$lib/api";
+    import posthog from "posthog-js";
 
     // Data State
     let courses = $state<Course[]>([]);
@@ -250,6 +251,11 @@
 
     function handleContinueConversation() {
         if (lastConversation) {
+            posthog.capture("dashboard_continue_conversation_clicked", {
+                conversation_id: lastConversation.id,
+                assignment_id: lastConversation.assignmentId ?? null,
+                state: lastConversation.state,
+            });
             goto(resolve(`/conversations/${lastConversation.id}`));
         }
     }

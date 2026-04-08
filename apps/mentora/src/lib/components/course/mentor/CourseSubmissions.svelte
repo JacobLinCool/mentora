@@ -9,6 +9,7 @@
     import Table from "$lib/components/ui/Table.svelte";
     import PopupModal from "$lib/components/ui/PopupModal.svelte";
     import { api } from "$lib/api";
+    import posthog from "posthog-js";
     import type {
         SubmissionWithId,
         Questionnaire,
@@ -364,6 +365,10 @@
                 return;
             }
 
+            posthog.capture("submission_graded", {
+                assignment_id: selectedItemId,
+                score: gradingScore,
+            });
             gradingSuccess = m.mentor_submissions_grade_success();
             // Reload after short delay so user sees success message
             setTimeout(async () => {

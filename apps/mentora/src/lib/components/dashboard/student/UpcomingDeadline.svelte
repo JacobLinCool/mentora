@@ -6,6 +6,7 @@
     import { openAssignmentTarget } from "$lib/features/course/navigation";
     import { m } from "$lib/paraglide/messages";
     import { ChevronRight } from "@lucide/svelte";
+    import posthog from "posthog-js";
     import type { SvelteDate } from "svelte/reactivity";
 
     import WeekCalendar from "./WeekCalendar.svelte";
@@ -39,6 +40,11 @@
             preferCourseRoute: true,
         });
         if (target) {
+            posthog.capture("dashboard_deadline_opened", {
+                course_id: deadline.courseId ?? null,
+                assignment_id: deadline.assignmentId,
+                assignment_type: deadline.type,
+            });
             goto(resolve(target.route, target.params));
         }
     }

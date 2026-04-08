@@ -8,6 +8,7 @@
         Textarea,
     } from "flowbite-svelte";
     import * as m from "$lib/paraglide/messages";
+    import posthog from "posthog-js";
 
     type CreateCoursePayload = {
         title: string;
@@ -73,6 +74,12 @@
                 visibility,
             });
 
+            posthog.capture("course_created", {
+                visibility,
+                has_description: !!description,
+                has_code: !!code.trim(),
+            });
+
             open = false;
             // Reset form
             title = "";
@@ -80,6 +87,7 @@
             description = "";
             visibility = "private";
         } catch (e) {
+            posthog.captureException(e);
             errorMessage =
                 e instanceof Error ? e.message : m.courses_create_error();
         } finally {

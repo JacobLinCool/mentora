@@ -16,6 +16,7 @@
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
     } from "svelte-dnd-action";
     import { startVisibilityPolling } from "$lib/features/polling/visibility";
+    import posthog from "posthog-js";
     import {
         mapMentorQuestionsFromApi,
         mapMentorQuestionsToApi,
@@ -186,11 +187,20 @@
 
     async function handleTopicDndFinalize(e: CustomEvent<{ items: Topic[] }>) {
         topics = e.detail.items;
+        const didReorder = topics.some((topic, index) => topic.order !== index);
+        if (!didReorder) {
+            return;
+        }
 
         for (let index = 0; index < topics.length; index++) {
             if (topics[index].order === index) continue;
             await api.topics.update(topics[index].id, { order: index });
         }
+
+        posthog.capture("topics_reordered", {
+            course_id: courseId,
+            topic_count: topics.length,
+        });
     }
 
     async function addTopic() {
@@ -206,6 +216,11 @@
         });
 
         if (res.success) {
+            posthog.capture("topic_created", {
+                course_id: courseId,
+                topic_id: res.data,
+                topic_index: topics.length,
+            });
             await loadData();
         }
     }
@@ -219,6 +234,11 @@
             topic.id === topicId ? { ...topic, title, description } : topic,
         );
         await api.topics.update(topicId, { title, description });
+        posthog.capture("topic_updated", {
+            course_id: courseId,
+            topic_id: topicId,
+            has_description: description.trim().length > 0,
+        });
     }
 
     async function updateAssignmentTitle(
@@ -249,6 +269,14 @@
             } else {
                 await api.assignments.update(assignmentId, { title });
             }
+
+            posthog.capture("assignment_updated", {
+                course_id: courseId,
+                topic_id: topicId,
+                assignment_id: assignmentId,
+                assignment_type: assignment.type,
+                update_surface: "inline_title",
+            });
         } catch (e) {
             console.error(e);
             errorMessage = m.mentor_assignment_save_failed();
@@ -257,7 +285,13 @@
     }
 
     async function deleteTopic(topicId: string) {
+        const topic = topics.find((entry) => entry.id === topicId);
         await api.topics.delete(topicId);
+        posthog.capture("topic_deleted", {
+            course_id: courseId,
+            topic_id: topicId,
+            assignment_count: topic?.assignments.length ?? 0,
+        });
         await loadData();
     }
 
@@ -412,6 +446,16 @@
                 }
             }
 
+            posthog.capture(
+                assignmentModalMode === "create"
+                    ? "assignment_created"
+                    : "assignment_updated",
+                {
+                    course_id: courseId,
+                    topic_id: currentTopicId,
+                    assignment_type: assignmentData.type,
+                },
+            );
             showAssignmentModal = false;
             await loadData();
         } catch (e) {
@@ -457,6 +501,12 @@
                 await api.assignments.delete(assignmentId);
             }
 
+            posthog.capture("assignment_deleted", {
+                course_id: courseId,
+                topic_id: topicId,
+                assignment_id: assignmentId,
+                assignment_type: assignment.type,
+            });
             await loadData();
         } catch (e) {
             console.error(e);
@@ -489,6 +539,12 @@
         topicId: string,
         newAssignments: Assignment[],
     ) {
+        const currentAssignments =
+            topics.find((topic) => topic.id === topicId)?.assignments ?? [];
+        const didReorder = currentAssignments.some(
+            (assignment, index) => assignment.id !== newAssignments[index]?.id,
+        );
+
         topics = topics.map((topic) =>
             topic.id === topicId
                 ? {
@@ -497,6 +553,10 @@
                   }
                 : topic,
         );
+
+        if (!didReorder) {
+            return;
+        }
 
         const contents = newAssignments.map((assignment) => assignment.id);
         const contentTypes = newAssignments.map((assignment) =>
@@ -508,6 +568,12 @@
         await api.topics.update(topicId, {
             contents,
             contentTypes,
+        });
+
+        posthog.capture("assignments_reordered", {
+            course_id: courseId,
+            topic_id: topicId,
+            item_count: newAssignments.length,
         });
     }
 </script>
