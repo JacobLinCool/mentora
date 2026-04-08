@@ -1,9 +1,20 @@
 /**
  * Questionnaire operations
  */
-import { collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+	collection,
+	deleteDoc,
+	doc,
+	getDoc,
+	onSnapshot,
+	query,
+	setDoc,
+	updateDoc,
+	where
+} from 'firebase/firestore';
 import { Questionnaires, type Questionnaire } from 'mentora-firebase';
 import { callBackend } from './backend.js';
+import type { ReactiveState } from './state.svelte.js';
 import {
 	failure,
 	tryCatch,
@@ -29,6 +40,41 @@ export async function getQuestionnaire(
 
 		return Questionnaires.schema.parse(snapshot.data());
 	});
+}
+
+/**
+ * Subscribe to questionnaires for a course
+ */
+export function subscribeToCourseQuestionnaires(
+	config: MentoraAPIConfig,
+	courseId: string,
+	state: ReactiveState<Questionnaire[]>
+): void {
+	state.setLoading(true);
+	const q = query(
+		collection(config.db, Questionnaires.collectionPath()),
+		where('courseId', '==', courseId)
+	);
+
+	const unsubscribe = onSnapshot(
+		q,
+		(snapshot) => {
+			try {
+				const data = snapshot.docs.map((doc) => Questionnaires.schema.parse(doc.data()));
+				state.set(data);
+				state.setError(null);
+			} catch (error) {
+				state.setError(error instanceof Error ? error.message : 'Parse error');
+			}
+			state.setLoading(false);
+		},
+		(error) => {
+			state.setError(error.message);
+			state.setLoading(false);
+		}
+	);
+
+	state.attachUnsubscribe(unsubscribe);
 }
 
 /**

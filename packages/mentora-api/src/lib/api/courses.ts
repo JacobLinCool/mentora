@@ -62,6 +62,43 @@ export async function getCourse(
 }
 
 /**
+ * Subscribe to a single course's changes
+ */
+export function subscribeToCourse(
+	config: MentoraAPIConfig,
+	courseId: string,
+	state: ReactiveState<Course>
+): void {
+	state.setLoading(true);
+	const docRef = doc(config.db, Courses.docPath(courseId));
+
+	const unsubscribe = onSnapshot(
+		docRef,
+		(snapshot) => {
+			if (snapshot.exists()) {
+				try {
+					const data = Courses.schema.parse(snapshot.data());
+					state.set({ id: snapshot.id, ...data });
+					state.setError(null);
+				} catch (error) {
+					state.setError(error instanceof Error ? error.message : 'Parse error');
+				}
+			} else {
+				state.set(null);
+				state.setError('Course not found');
+			}
+			state.setLoading(false);
+		},
+		(error) => {
+			state.setError(error.message);
+			state.setLoading(false);
+		}
+	);
+
+	state.attachUnsubscribe(unsubscribe);
+}
+
+/**
  * List courses owned by current user
  */
 export async function listMyCourses(

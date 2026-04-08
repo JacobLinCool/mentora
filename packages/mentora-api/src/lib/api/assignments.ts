@@ -1,9 +1,20 @@
 /**
  * Assignment operations
  */
-import { collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+	collection,
+	deleteDoc,
+	doc,
+	getDoc,
+	onSnapshot,
+	query,
+	setDoc,
+	updateDoc,
+	where
+} from 'firebase/firestore';
 import { Assignments, type Assignment } from 'mentora-firebase';
 import { callBackend } from './backend.js';
+import type { ReactiveState } from './state.svelte.js';
 import {
 	failure,
 	tryCatch,
@@ -30,6 +41,41 @@ export async function getAssignment(
 
 		return Assignments.schema.parse(snapshot.data());
 	});
+}
+
+/**
+ * Subscribe to assignments for a course
+ */
+export function subscribeToCourseAssignments(
+	config: MentoraAPIConfig,
+	courseId: string,
+	state: ReactiveState<Assignment[]>
+): void {
+	state.setLoading(true);
+	const q = query(
+		collection(config.db, Assignments.collectionPath()),
+		where('courseId', '==', courseId)
+	);
+
+	const unsubscribe = onSnapshot(
+		q,
+		(snapshot) => {
+			try {
+				const data = snapshot.docs.map((doc) => Assignments.schema.parse(doc.data()));
+				state.set(data);
+				state.setError(null);
+			} catch (error) {
+				state.setError(error instanceof Error ? error.message : 'Parse error');
+			}
+			state.setLoading(false);
+		},
+		(error) => {
+			state.setError(error.message);
+			state.setLoading(false);
+		}
+	);
+
+	state.attachUnsubscribe(unsubscribe);
 }
 
 /**

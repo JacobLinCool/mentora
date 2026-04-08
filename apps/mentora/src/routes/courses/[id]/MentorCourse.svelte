@@ -7,19 +7,18 @@
     import CourseSettings from "$lib/components/course/mentor/CourseSettings.svelte";
     import CourseSubmissions from "$lib/components/course/mentor/CourseSubmissions.svelte";
     import CourseWallet from "$lib/components/course/mentor/CourseWallet.svelte";
-    import { onMount } from "svelte";
     import { api } from "$lib";
     import type { Course } from "$lib/api";
     import { formatMentoraDateTime } from "$lib/features/datetime/format";
-    import { startVisibilityPolling } from "$lib/features/polling/visibility";
 
     // Props
     const courseId = $derived(page.params.id);
 
     // State
     let activeTab = $state("dashboard"); // dashboard, topics, members, settings
-    let courseTitle = $state("Loading...");
-    let fullCourse = $state<Course | null>(null);
+    const courseState = api.createState<Course>();
+    const fullCourse = $derived(courseState.value);
+    const courseTitle = $derived(courseState.value?.title ?? "Loading...");
 
     interface Announcement {
         id: string;
@@ -27,7 +26,6 @@
         createdDate: string;
         [key: string]: unknown;
     }
-    let announcements = $state<Announcement[]>([]);
 
     function parseAnnouncementContent(rawValue: unknown) {
         const normalized = String(rawValue ?? "")
@@ -53,48 +51,51 @@
         };
     }
 
-    async function loadCourseData() {
-        if (courseId) {
-            const courseResult = await api.courses.get(courseId);
-            if (courseResult.success) {
-                fullCourse = courseResult.data;
-                courseTitle = courseResult.data.title;
-                // Map API announcements to UI format
-                announcements = (courseResult.data.announcements || []).map(
-                    (a) => {
-                        const content =
-                            a.content ??
-                            (typeof a === "object" && a !== null && "title" in a
-                                ? a.title
-                                : "");
-                        const parsed = parseAnnouncementContent(content);
-
-                        return {
-                            id: a.id,
-                            title: parsed.title,
-                            content: parsed.body,
-                            createdDate: formatDate(a.createdAt),
-                        };
-                    },
-                ) as Announcement[];
-            }
-        }
-    }
-
     function formatDate(
         ts: number | Date | { toDate: () => Date } | null | undefined,
     ) {
         return formatMentoraDateTime(ts);
     }
 
-    onMount(() => {
-        const stopPolling = startVisibilityPolling(() => loadCourseData(), {
-            intervalMs: 5000,
-            runImmediately: true,
-            onError: (error) =>
-                console.error("Failed to refresh course", error),
-        });
-        return () => stopPolling();
+    const announcements = $derived<Announcement[]>(
+        (courseState.value?.announcements ?? []).map((a) => {
+            const content =
+                a.content ??
+                (typeof a === "object" && a !== null && "title" in a
+                    ? (a as { title: string }).title
+                    : "");
+            const parsed = parseAnnouncementContent(content);
+
+            return {
+                id: a.id,
+                title: parsed.title,
+                content: parsed.body,
+                createdDate: formatDate(a.createdAt),
+            };
+        }),
+    );
+
+    $effect(() => {
+        const id = courseId;
+        if (!id) {
+            courseState.cleanup();
+            return;
+        }
+
+        let disposed = false;
+
+        (async () => {
+            if (!api.isAuthenticated) {
+                await api.authReady;
+            }
+            if (disposed || courseId !== id) return;
+            api.coursesSubscribe.get(id, courseState);
+        })();
+
+        return () => {
+            disposed = true;
+            courseState.cleanup();
+        };
     });
 
     function handleTabChange(tab: string) {
@@ -118,30 +119,19 @@
 
         if (id) {
             const now = Date.now();
-            let newAnnouncements = [...currentAnnouncements];
-            // Edit
-            newAnnouncements = newAnnouncements.map((a) =>
+            // Edit existing announcement
+            const newAnnouncements = currentAnnouncements.map((a) =>
                 a.id === id
                     ? { ...a, content: formattedContent, updatedAt: now }
                     : a,
             );
 
-            const res = await api.courses.update(courseId, {
+            await api.courses.update(courseId, {
                 announcements: newAnnouncements,
             });
-
-            if (res.success) {
-                loadCourseData();
-            }
         } else {
-            // Create
-            const res = await api.courses.createAnnouncement(
-                courseId,
-                formattedContent,
-            );
-            if (res.success) {
-                loadCourseData();
-            }
+            // Create new announcement via backend
+            await api.courses.createAnnouncement(courseId, formattedContent);
         }
     }
 
@@ -153,13 +143,9 @@
             (a) => String(a.id) !== String(id),
         );
 
-        const res = await api.courses.update(courseId, {
+        await api.courses.update(courseId, {
             announcements: newAnnouncements,
         });
-
-        if (res.success) {
-            loadCourseData();
-        }
     }
 </script>
 
