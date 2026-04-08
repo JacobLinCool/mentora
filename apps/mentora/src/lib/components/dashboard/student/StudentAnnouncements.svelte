@@ -6,6 +6,7 @@
     import { m } from "$lib/paraglide/messages";
     import { Bell, ChevronRight, Megaphone } from "@lucide/svelte";
     import { formatMentoraDateTime } from "$lib/features/datetime/format";
+    import posthog from "posthog-js";
 
     const announcementsState = api.createState<Announcement[]>();
     const announcements = $derived(announcementsState.value || []);
@@ -23,6 +24,13 @@
     async function openAnnouncement(announcement: Announcement) {
         actionError = null;
         try {
+            posthog.capture("announcement_opened", {
+                announcement_id: announcement.id,
+                course_id: announcement.payload.courseId,
+                type: announcement.type,
+                source: "student_dashboard",
+                already_read: announcement.isRead,
+            });
             if (!announcement.isRead) {
                 const result = await api.announcements.markRead(
                     announcement.id,

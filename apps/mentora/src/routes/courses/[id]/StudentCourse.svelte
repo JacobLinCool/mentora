@@ -20,6 +20,7 @@
     import PageHead from "$lib/components/PageHead.svelte";
     import { openAssignmentTarget } from "$lib/features/course/navigation";
     import { m } from "$lib/paraglide/messages";
+    import posthog from "posthog-js";
 
     const courseId = $derived(page.params.id);
 
@@ -246,6 +247,14 @@
 
     function handleTopicChange(index: number) {
         currentTopicIndex = index;
+        const topic = topics[index];
+        if (topic) {
+            posthog.capture("topic_changed", {
+                course_id: courseId,
+                topic_id: topic.id,
+                topic_index: index,
+            });
+        }
     }
 
     async function handleAssignmentClick(item: TimelineAssignment) {
@@ -255,6 +264,11 @@
             type: item.type,
         });
         if (target) {
+            posthog.capture("assignment_started", {
+                assignment_id: item.id,
+                assignment_type: item.type,
+                course_id: courseId,
+            });
             goto(resolve(target.route, target.params));
         }
     }

@@ -14,6 +14,7 @@
         AssessmentResult,
         DialogueStateDisplay,
     } from "mentora-firebase";
+    import posthog from "posthog-js";
 
     const conversationId = $derived(page.params.id);
     const convState = api.createState<Conversation>();
@@ -114,6 +115,7 @@
     let transcriptScrollEl = $state<HTMLDivElement | null>(null);
     let historyExpanded = $state(false);
     let transcriptTouchStartY = $state<number | null>(null);
+    let lastTrackedConversationOpenId = $state<string | null>(null);
 
     // Assessment state
     let assessmentData = $state<AssessmentResult | null>(null);
@@ -199,6 +201,22 @@
         }
     });
 
+    $effect(() => {
+        const conv = conversation;
+        if (!conv || conv.id === lastTrackedConversationOpenId) {
+            return;
+        }
+
+        lastTrackedConversationOpenId = conv.id;
+        posthog.capture("conversation_opened", {
+            conversation_id: conv.id,
+            assignment_id: conv.assignmentId ?? null,
+            course_id: courseId,
+            state: conv.state,
+            turn_count: conv.turns?.length ?? 0,
+        });
+    });
+
     async function loadAssessment(assignmentId: string) {
         assessmentLoading = true;
         assessmentLoadAttempted = true;
@@ -207,6 +225,11 @@
             if (res.success && res.data) {
                 if (res.data.assessment) {
                     assessmentData = res.data.assessment;
+                    posthog.capture("conversation_completed", {
+                        conversation_id: conversationId,
+                        assignment_id: assignmentId,
+                        has_assessment: true,
+                    });
                 }
                 if (res.data.scoreCompletion != null) {
                     assessmentScoreCompletion = res.data.scoreCompletion;
@@ -642,18 +665,34 @@
                 console.error("Failed to add audio turn:", res.error);
                 const detail = extractErrorMessage(res.error);
                 const code = extractErrorCode(res.error);
+                posthog.capture("conversation_send_failed", {
+                    conversation_id: conversationId,
+                    input_mode: "voice",
+                    error_code: code,
+                });
                 sendErrorCode = code;
                 sendError = detail
                     ? `${m.conversation_error()} ${detail}`
                     : m.conversation_error();
                 awaitingAiReply = false;
-            } else if (res.data?.audio) {
-                playBase64Audio(res.data.audio, res.data.audioMimeType);
+            } else {
+                posthog.capture("conversation_message_sent", {
+                    conversation_id: conversationId,
+                    input_mode: "voice",
+                });
+                if (res.data?.audio) {
+                    playBase64Audio(res.data.audio, res.data.audioMimeType);
+                }
             }
         } catch (e) {
             console.error("Error sending audio turn:", e);
             const detail = extractErrorMessage(e);
             const code = extractErrorCode(e);
+            posthog.capture("conversation_send_failed", {
+                conversation_id: conversationId,
+                input_mode: "voice",
+                error_code: code,
+            });
             sendErrorCode = code;
             sendError = detail
                 ? `${m.conversation_error()} ${detail}`
@@ -689,10 +728,19 @@
                 console.error("Failed to add turn:", res.error);
                 const msg = extractErrorMessage(res.error);
                 const code = extractErrorCode(res.error);
+                posthog.capture("conversation_send_failed", {
+                    conversation_id: conversationId,
+                    input_mode: "text",
+                    error_code: code,
+                });
                 sendErrorCode = code;
                 sendError = `${m.conversation_error()} ${msg || ""}`.trim();
                 awaitingAiReply = false;
             } else {
+                posthog.capture("conversation_message_sent", {
+                    conversation_id: conversationId,
+                    input_mode: "text",
+                });
                 messageInput = "";
                 showTextInput = false;
                 if (res.data?.audio) {
@@ -703,6 +751,11 @@
             console.error("Error sending message:", e);
             const detail = extractErrorMessage(e);
             const code = extractErrorCode(e);
+            posthog.capture("conversation_send_failed", {
+                conversation_id: conversationId,
+                input_mode: "text",
+                error_code: code,
+            });
             sendErrorCode = code;
             sendError = detail
                 ? `${m.conversation_error()} ${detail}`

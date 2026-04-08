@@ -21,6 +21,7 @@
     import GlassCard from "$lib/components/ui/GlassCard.svelte";
     import CosmicButton from "$lib/components/ui/CosmicButton.svelte";
     import { goto } from "$app/navigation";
+    import posthog from "posthog-js";
 
     // --- Dashboard State (Existing) ---
     $effect(() => {
@@ -90,6 +91,10 @@
                     href={resolve("/auth")}
                     class="cta-float flex items-center justify-center gap-2 rounded-full border border-white/5 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-all duration-200 hover:bg-white/20"
                     class:cta-hidden={!showTopCta}
+                    onclick={() =>
+                        posthog.capture("landing_cta_clicked", {
+                            location: "top_bar",
+                        })}
                 >
                     {m.landing_cta_start()}
                 </a>
@@ -140,6 +145,10 @@
                                 href="/auth"
                                 variant="primary"
                                 className="bg-white/10! text-white! border-none! backdrop-blur-md min-w-45 justify-center"
+                                onclick={() =>
+                                    posthog.capture("landing_cta_clicked", {
+                                        location: "hero",
+                                    })}
                             >
                                 {m.landing_cta_start()}
                             </CosmicButton>

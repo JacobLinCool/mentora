@@ -5,6 +5,7 @@
     import { resolve } from "$app/paths";
     import { getLocale, setLocale } from "$lib/paraglide/runtime";
     import { getNextLocale } from "$lib/features/settings/actions";
+    import posthog from "posthog-js";
     import {
         User,
         Mail,
@@ -237,7 +238,12 @@
                                 <button
                                     class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-gray-100 p-4 transition hover:border-gray-300 hover:bg-gray-50"
                                     onclick={() => {
-                                        setLocale(getNextLocale(getLocale()));
+                                        const next = getNextLocale(getLocale());
+                                        posthog.capture("language_changed", {
+                                            from: getLocale(),
+                                            to: next,
+                                        });
+                                        setLocale(next);
                                     }}
                                 >
                                     <div class="flex items-center gap-3">

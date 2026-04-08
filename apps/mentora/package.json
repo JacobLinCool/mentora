@@ -64,6 +64,8 @@
     },
     "dependencies": {
         "echarts": "^6.0.0",
+        "posthog-js": "^1.365.1",
+        "posthog-node": "^5.29.1",
         "svelte-dnd-action": "^0.9.69"
     }
 }

@@ -10,6 +10,7 @@
         BookOpen,
         ArrowLeft,
     } from "@lucide/svelte";
+    import posthog from "posthog-js";
 
     type FlowState = "login" | "checking" | "role-select" | "verify-mentor";
 
@@ -53,8 +54,10 @@
                 creatingProfile = false;
                 return;
             }
+            posthog.capture("role_selected", { role: "student" });
             await goto(resolve("/dashboard"), { replaceState: true });
         } catch (error) {
+            posthog.captureException(error);
             console.error("Failed to create student profile:", error);
             creatingProfile = false;
         }
@@ -80,6 +83,7 @@
             const data = await res.json();
 
             if (!data.success) {
+                posthog.capture("mentor_verification_failed");
                 verifyError = m.auth_verify_error();
                 return;
             }
@@ -93,8 +97,11 @@
                 creatingProfile = false;
                 return;
             }
+            posthog.capture("mentor_verified");
+            posthog.capture("role_selected", { role: "mentor" });
             await goto(resolve("/dashboard"), { replaceState: true });
         } catch (error) {
+            posthog.captureException(error);
             console.error("Verification failed:", error);
             verifyError = m.auth_verify_error();
         } finally {

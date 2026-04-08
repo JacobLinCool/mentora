@@ -7,6 +7,7 @@
     import { api } from "$lib/api";
     import { Bell, CheckCheck, Clock, Megaphone } from "@lucide/svelte";
     import { formatMentoraDateTime } from "$lib/features/datetime/format";
+    import posthog from "posthog-js";
 
     type Announcement = {
         id: string;
@@ -79,6 +80,13 @@
     async function openAnnouncement(announcement: Announcement) {
         actionError = null;
         try {
+            posthog.capture("announcement_opened", {
+                announcement_id: announcement.id,
+                course_id: announcement.payload.courseId,
+                type: announcement.type,
+                source: "mentor_announcements",
+                already_read: announcement.isRead,
+            });
             if (!announcement.isRead && announcementsApi.announcements) {
                 const result = await announcementsApi.announcements.markRead(
                     announcement.id,
@@ -108,6 +116,10 @@
         if (unreadCount === 0) return;
         if (!announcementsApi.announcements) return;
         actionError = null;
+        posthog.capture("announcements_marked_all_read", {
+            unread_count: unreadCount,
+            source: "mentor_announcements",
+        });
         const result = await announcementsApi.announcements.markAllRead();
         if (!result.success) {
             actionError = result.error || m.error_generic();

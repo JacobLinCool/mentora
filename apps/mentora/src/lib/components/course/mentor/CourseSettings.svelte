@@ -13,6 +13,7 @@
     import * as m from "$lib/paraglide/messages";
     import { api, type CourseDoc } from "$lib/api";
     import { onMount } from "svelte";
+    import posthog from "posthog-js";
     import { page } from "$app/state";
 
     let { courseId = page.params.id } = $props();
@@ -97,6 +98,11 @@
             const res = await api.courses.update(courseId, updates);
 
             if (res.success) {
+                posthog.capture("course_settings_saved", {
+                    course_id: courseId,
+                    visibility,
+                    has_thumbnail: !!thumbnail || !!selectedFile,
+                });
                 savedState.courseName = courseName;
                 savedState.visibility = visibility;
                 savedState.thumbnail = thumbnail;
@@ -160,12 +166,19 @@
         code = Array.from(buffer, (value) => chars[value % chars.length]).join(
             "",
         );
+        posthog.capture("course_join_code_regenerated", {
+            course_id: courseId,
+        });
     }
 
     function handleCopyLink() {
         const joinCode = code || courseId;
         const origin = window.location.origin;
         navigator.clipboard.writeText(`${origin}/join/${joinCode}`);
+        posthog.capture("course_invite_link_copied", {
+            course_id: courseId,
+            has_custom_code: Boolean(code),
+        });
         isCopied = true;
         setTimeout(() => {
             isCopied = false;
