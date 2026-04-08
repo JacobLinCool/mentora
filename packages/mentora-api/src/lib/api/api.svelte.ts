@@ -3,14 +3,17 @@
  * Extends base MentoraClient with $state reactivity and subscriptions
  */
 import type { User } from 'firebase/auth';
-import type { UserProfile } from 'mentora-firebase';
+import type { Assignment, Questionnaire, Topic, UserProfile } from 'mentora-firebase';
 import * as AnnouncementsModule from './announcements.js';
+import * as AssignmentsModule from './assignments.js';
 import { MentoraClient, type MentoraClientConfig } from './client.js';
 import * as CoursesModule from './courses.js';
 import * as ConversationsModule from './conversations.js';
 import { ProfileWatcher } from './profile.svelte.js';
+import * as QuestionnairesModule from './questionnaires.js';
 import type { ReactiveState } from './state.svelte.js';
 import { createState } from './state.svelte.js';
+import * as TopicsModule from './topics.js';
 import * as UsersModule from './users.js';
 import type { Conversation } from './conversations.js';
 import type { Announcement } from './announcements.js';
@@ -95,7 +98,24 @@ export class MentoraAPI extends MentoraClient {
 
 	coursesSubscribe = {
 		listMine: (state: ReactiveState<Course[]>, options?: import('./types.js').QueryOptions): void =>
-			CoursesModule.subscribeToMyCourses(this._config, state, options)
+			CoursesModule.subscribeToMyCourses(this._config, state, options),
+		get: (courseId: string, state: ReactiveState<Course>): void =>
+			CoursesModule.subscribeToCourse(this._config, courseId, state)
+	};
+
+	topicsSubscribe = {
+		listForCourse: (courseId: string, state: ReactiveState<Topic[]>): void =>
+			TopicsModule.subscribeToCourseTopics(this._config, courseId, state)
+	};
+
+	assignmentsSubscribe = {
+		listForCourse: (courseId: string, state: ReactiveState<Assignment[]>): void =>
+			AssignmentsModule.subscribeToCourseAssignments(this._config, courseId, state)
+	};
+
+	questionnairesSubscribe = {
+		listForCourse: (courseId: string, state: ReactiveState<Questionnaire[]>): void =>
+			QuestionnairesModule.subscribeToCourseQuestionnaires(this._config, courseId, state)
 	};
 
 	announcementsSubscribe = {

@@ -1,9 +1,21 @@
 /**
  * Topic operations
  */
-import { collection, deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+	collection,
+	deleteDoc,
+	doc,
+	getDoc,
+	onSnapshot,
+	orderBy,
+	query,
+	setDoc,
+	updateDoc,
+	where
+} from 'firebase/firestore';
 import { Topics, type Topic } from 'mentora-firebase';
 import { callBackend } from './backend.js';
+import type { ReactiveState } from './state.svelte.js';
 import {
 	failure,
 	tryCatch,
@@ -29,6 +41,42 @@ export async function getTopic(
 
 		return Topics.schema.parse(snapshot.data());
 	});
+}
+
+/**
+ * Subscribe to topics for a course
+ */
+export function subscribeToCourseTopics(
+	config: MentoraAPIConfig,
+	courseId: string,
+	state: ReactiveState<Topic[]>
+): void {
+	state.setLoading(true);
+	const q = query(
+		collection(config.db, Topics.collectionPath()),
+		where('courseId', '==', courseId),
+		orderBy('order', 'asc')
+	);
+
+	const unsubscribe = onSnapshot(
+		q,
+		(snapshot) => {
+			try {
+				const data = snapshot.docs.map((doc) => Topics.schema.parse(doc.data()));
+				state.set(data);
+				state.setError(null);
+			} catch (error) {
+				state.setError(error instanceof Error ? error.message : 'Parse error');
+			}
+			state.setLoading(false);
+		},
+		(error) => {
+			state.setError(error.message);
+			state.setLoading(false);
+		}
+	);
+
+	state.attachUnsubscribe(unsubscribe);
 }
 
 /**

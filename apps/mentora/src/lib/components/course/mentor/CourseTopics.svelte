@@ -5,8 +5,8 @@
         api,
         type Assignment as ApiAssignment,
         type Questionnaire as ApiQuestionnaire,
+        type Topic as ApiTopic,
     } from "$lib/api";
-    import { onMount } from "svelte";
     import TopicCard from "./topics/TopicCard.svelte";
     import AssignmentFormModal from "./topics/AssignmentFormModal.svelte";
     import PopupModal from "$lib/components/ui/PopupModal.svelte";
@@ -15,7 +15,6 @@
         dndzone,
         SHADOW_ITEM_MARKER_PROPERTY_NAME,
     } from "svelte-dnd-action";
-    import { startVisibilityPolling } from "$lib/features/polling/visibility";
     import posthog from "posthog-js";
     import {
         mapMentorQuestionsFromApi,
@@ -63,7 +62,10 @@
     let currentAssignment = $state<Assignment | undefined>(undefined);
     let topics = $state<Topic[]>([]);
 
-    let stopPolling: (() => void) | null = null;
+    const topicsState = api.createState<ApiTopic[]>();
+    const assignmentsState = api.createState<ApiAssignment[]>();
+    const questionnairesState = api.createState<ApiQuestionnaire[]>();
+
     let errorMessage = $state<string | null>(null);
     let showDeleteModal = $state(false);
     let pendingDelete = $state<{
@@ -72,113 +74,129 @@
         assignmentId?: string;
     } | null>(null);
 
-    onMount(() => {
-        stopPolling = startVisibilityPolling(() => loadData(), {
-            intervalMs: 5000,
-            runImmediately: true,
-            onError: (error) =>
-                console.error("Failed to refresh topics", error),
-        });
+    $effect(() => {
+        const id = courseId;
+        if (!id) {
+            topicsState.cleanup();
+            assignmentsState.cleanup();
+            questionnairesState.cleanup();
+            return;
+        }
+
+        let disposed = false;
+
+        (async () => {
+            if (!api.isAuthenticated) {
+                await api.authReady;
+            }
+            if (disposed || courseId !== id) return;
+            api.topicsSubscribe.listForCourse(id, topicsState);
+            api.assignmentsSubscribe.listForCourse(id, assignmentsState);
+            api.questionnairesSubscribe.listForCourse(id, questionnairesState);
+        })();
 
         return () => {
-            stopPolling?.();
-            stopPolling = null;
+            disposed = true;
+            topicsState.cleanup();
+            assignmentsState.cleanup();
+            questionnairesState.cleanup();
         };
+    });
+
+    // Combine the three subscriptions into the UI topics shape whenever any
+    // of them changes. DnD writes to `topics` directly during a drag; once the
+    // drop is finalized and persisted via api.topics.update, the subscription
+    // fires and re-runs this effect with the canonical order.
+    $effect(() => {
+        const remoteTopics = topicsState.value;
+        const remoteAssignments = assignmentsState.value;
+        const remoteQuestionnaires = questionnairesState.value;
+
+        if (!remoteTopics || !remoteAssignments || !remoteQuestionnaires) {
+            return;
+        }
+
+        errorMessage = null;
+
+        const assignmentsMap: Record<string, ApiAssignment> = {};
+        remoteAssignments.forEach((assignment) => {
+            assignmentsMap[assignment.id] = assignment;
+        });
+
+        const questionnairesMap: Record<string, ApiQuestionnaire> = {};
+        remoteQuestionnaires.forEach((questionnaire) => {
+            questionnairesMap[questionnaire.id] = questionnaire;
+        });
+
+        topics = [...remoteTopics]
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .map((topic) => {
+                const items: Assignment[] = [];
+
+                if (topic.contents && topic.contentTypes) {
+                    topic.contents.forEach((id, index) => {
+                        const type = topic.contentTypes?.[index];
+                        if (!type) return;
+
+                        if (type === "questionnaire") {
+                            const questionnaire = questionnairesMap[id];
+                            if (!questionnaire) return;
+
+                            items.push({
+                                id: questionnaire.id,
+                                title: questionnaire.title,
+                                type: "questionnaire",
+                                dueAt: toIso(questionnaire.dueAt),
+                                startAt: toIso(questionnaire.startAt),
+                                topicId: topic.id,
+                                questions: mapMentorQuestionsFromApi(
+                                    questionnaire.questions,
+                                ),
+                            });
+                            return;
+                        }
+
+                        const assignment = assignmentsMap[id];
+                        if (!assignment) return;
+
+                        items.push({
+                            id: assignment.id,
+                            title: assignment.title,
+                            type: "dialogue",
+                            dueAt: toIso(assignment.dueAt),
+                            startAt: toIso(assignment.startAt),
+                            topicId: topic.id,
+                            introduction: assignment.question ?? "",
+                            prompt: assignment.prompt,
+                        });
+                    });
+                }
+
+                return {
+                    id: topic.id,
+                    title: topic.title,
+                    description: topic.description || "",
+                    assignments: items,
+                    order: topic.order || 0,
+                };
+            });
+    });
+
+    $effect(() => {
+        const error =
+            topicsState.error ??
+            assignmentsState.error ??
+            questionnairesState.error;
+        if (error) {
+            console.error("Failed to load topics", error);
+            errorMessage = m.mentor_topic_load_failed();
+        }
     });
 
     function toIso(timestamp: number | null | undefined): string | undefined {
         return timestamp
             ? new Date(timestamp).toISOString().slice(0, 16)
             : undefined;
-    }
-
-    async function loadData() {
-        if (!courseId) return;
-
-        errorMessage = null;
-        try {
-            const [topicsRes, assignRes, questRes] = await Promise.all([
-                api.topics.listForCourse(courseId),
-                api.assignments.listForCourse(courseId),
-                api.questionnaires.listForCourse(courseId),
-            ]);
-
-            if (!topicsRes.success || !assignRes.success || !questRes.success) {
-                return;
-            }
-
-            const assignmentsMap: Record<string, ApiAssignment> = {};
-            assignRes.data.forEach((assignment) => {
-                assignmentsMap[assignment.id] = assignment;
-            });
-
-            const questionnairesMap: Record<string, ApiQuestionnaire> = {};
-            questRes.data.forEach((questionnaire) => {
-                questionnairesMap[questionnaire.id] = questionnaire;
-            });
-
-            topics = topicsRes.data
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map((topic) => {
-                    const items: Assignment[] = [];
-
-                    if (topic.contents && topic.contentTypes) {
-                        topic.contents.forEach((id, index) => {
-                            const type = topic.contentTypes?.[index];
-                            if (!type) {
-                                return;
-                            }
-
-                            if (type === "questionnaire") {
-                                const questionnaire = questionnairesMap[id];
-                                if (!questionnaire) {
-                                    return;
-                                }
-
-                                items.push({
-                                    id: questionnaire.id,
-                                    title: questionnaire.title,
-                                    type: "questionnaire",
-                                    dueAt: toIso(questionnaire.dueAt),
-                                    startAt: toIso(questionnaire.startAt),
-                                    topicId: topic.id,
-                                    questions: mapMentorQuestionsFromApi(
-                                        questionnaire.questions,
-                                    ),
-                                });
-                                return;
-                            }
-
-                            const assignment = assignmentsMap[id];
-                            if (!assignment) {
-                                return;
-                            }
-
-                            items.push({
-                                id: assignment.id,
-                                title: assignment.title,
-                                type: "dialogue",
-                                dueAt: toIso(assignment.dueAt),
-                                startAt: toIso(assignment.startAt),
-                                topicId: topic.id,
-                                introduction: assignment.question ?? "",
-                                prompt: assignment.prompt,
-                            });
-                        });
-                    }
-
-                    return {
-                        id: topic.id,
-                        title: topic.title,
-                        description: topic.description || "",
-                        assignments: items,
-                        order: topic.order || 0,
-                    };
-                });
-        } catch (e) {
-            console.error("Failed to load topics", e);
-            errorMessage = m.mentor_topic_load_failed();
-        }
     }
 
     function handleTopicDndConsider(e: CustomEvent<{ items: Topic[] }>) {
@@ -221,7 +239,6 @@
                 topic_id: res.data,
                 topic_index: topics.length,
             });
-            await loadData();
         }
     }
 
@@ -280,7 +297,6 @@
         } catch (e) {
             console.error(e);
             errorMessage = m.mentor_assignment_save_failed();
-            await loadData();
         }
     }
 
@@ -292,7 +308,6 @@
             topic_id: topicId,
             assignment_count: topic?.assignments.length ?? 0,
         });
-        await loadData();
     }
 
     async function askDeleteTopic(topicId: string) {
@@ -457,7 +472,6 @@
                 },
             );
             showAssignmentModal = false;
-            await loadData();
         } catch (e) {
             console.error(e);
             errorMessage = m.mentor_assignment_save_failed();
@@ -507,7 +521,6 @@
                 assignment_id: assignmentId,
                 assignment_type: assignment.type,
             });
-            await loadData();
         } catch (e) {
             console.error(e);
             errorMessage = m.mentor_assignment_delete_failed();
