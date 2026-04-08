@@ -55,6 +55,8 @@
             if (questionnaireRes.success) {
                 const qa = questionnaireRes.data;
                 courseId = qa.courseId ?? null;
+                const resumed =
+                    myResponseRes.success && Boolean(myResponseRes.data);
 
                 // Ensure submission exists (Start it if not)
                 if (!submissionRes.success || !submissionRes.data) {
@@ -66,8 +68,6 @@
                         qa.questions,
                     );
                     questions = mappedQuestions;
-                    const resumed =
-                        myResponseRes.success && Boolean(myResponseRes.data);
 
                     // Restore existing answers from QuestionnaireResponse
                     if (resumed && myResponseRes.data) {
@@ -87,7 +87,7 @@
                     posthog.capture("questionnaire_opened", {
                         assignment_id: assignmentId,
                         course_id: qa.courseId ?? null,
-                        question_count: mappedQuestions.length,
+                        question_count: questions.length,
                         resumed,
                     });
                 }
