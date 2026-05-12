@@ -237,11 +237,27 @@ export async function processWithLLM(
 	// Step 4: Save updated state to Firestore (includes ownership validation)
 	await saveDialogueState(firestore, conversationId, userId, result.newState);
 
+	const endedFromHandler = result.ended;
+	const endedFromState = orchestrator.isEnded(result.newState);
+	const combinedEnded = endedFromHandler || endedFromState;
+	console.log('[MentoraLLM] processWithLLM outcome', {
+		conversationId,
+		stage: result.newState.stage,
+		resultEnded: endedFromHandler,
+		isEndedNewState: endedFromState,
+		combinedEnded
+	});
+	if (result.newState.stage === DialogueStage.ENDED && !combinedEnded) {
+		console.warn('[MentoraLLM] stage is ended but combined ended flag is false (unexpected)', {
+			conversationId
+		});
+	}
+
 	// Step 5: Return formatted result
 	return {
 		aiMessage: result.message,
 		updatedState: result.newState,
-		ended: result.ended || orchestrator.isEnded(result.newState),
+		ended: combinedEnded,
 		tokenUsage: usage,
 		assessment: result.assessment,
 		assessmentError: result.assessmentError,

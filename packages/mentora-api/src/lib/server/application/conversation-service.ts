@@ -115,6 +115,10 @@ export class ConversationService {
 		userId: string,
 		assessmentData?: { assessment?: unknown; assessmentError?: string }
 	): Promise<void> {
+		console.log('[ConversationService:submitSubmission]', {
+			assignmentId: assignment.id,
+			userId
+		});
 		const existing = await this.conversationRepository.getSubmission(assignment.id, userId);
 		const submittedAt = Date.now();
 		ensureSubmissionWindow(assignment, submittedAt);
@@ -399,6 +403,16 @@ export class ConversationService {
 			throw error;
 		}
 
+		console.log(
+			'[ConversationService:addTurn] after processWithLLM (dialogue state already saved)',
+			{
+				conversationId,
+				assignmentId: assignment.id,
+				llmEnded: llmResult.ended,
+				dialogueStage: llmResult.updatedState.stage
+			}
+		);
+
 		llmUsageReport = createTokenUsageReport([
 			{
 				feature: TOKEN_USAGE_FEATURES.CONVERSATION_LLM,
@@ -435,6 +449,15 @@ export class ConversationService {
 					updatedAt: Date.now()
 				});
 			}
+			console.error(
+				'[ConversationService:addTurn] TTS failed after LLM (submission not updated yet)',
+				{
+					conversationId,
+					assignmentId: assignment.id,
+					llmEnded: llmResult.ended,
+					dialogueStage: llmResult.updatedState.stage
+				}
+			);
 			throw errorResponse(
 				'Failed to synthesize speech. Please try again.',
 				HttpStatus.INTERNAL_SERVER_ERROR,
@@ -474,11 +497,17 @@ export class ConversationService {
 				conversationId,
 				userId: user.uid,
 				turns: [userTurn, aiTurn],
-				ended: llmResult.ended,
 				finalNow,
 				usageReport: requestUsageReport
 			});
 		} catch (error) {
+			console.error('[ConversationService:addTurn] appendTurns failed', {
+				conversationId,
+				assignmentId: assignment.id,
+				llmEnded: llmResult.ended,
+				dialogueStage: llmResult.updatedState.stage,
+				error: error instanceof Error ? error.message : String(error)
+			});
 			if (error instanceof Error) {
 				if (error.message === 'Conversation not found') {
 					throw errorResponse(
@@ -504,6 +533,16 @@ export class ConversationService {
 			}
 			throw error;
 		}
+
+		console.log('[ConversationService:addTurn] after appendTurns', {
+			conversationId,
+			assignmentId: assignment.id,
+			llmEnded: llmResult.ended,
+			dialogueStage: llmResult.updatedState.stage,
+			stageEndedButNotClosed: llmResult.updatedState.stage === 'ended' && !llmResult.ended
+		});
+
+		const conversationShouldClose = llmResult.ended || llmResult.updatedState.stage === 'ended';
 
 		// Post-turn: calculate and record spend
 		const turnCostUsd = calculateReportCostUsd(
@@ -546,10 +585,22 @@ export class ConversationService {
 			}
 		}
 
-		if (llmResult.ended) {
+		if (conversationShouldClose) {
+			console.log('[ConversationService:addTurn] closing conversation + submitting', {
+				conversationId,
+				assignmentId: assignment.id,
+				llmEnded: llmResult.ended,
+				dialogueStage: llmResult.updatedState.stage
+			});
 			await this.submitSubmission(assignment, user.uid, {
 				assessment: llmResult.assessment ?? undefined,
 				assessmentError: llmResult.assessmentError
+			});
+			const closeNow = Date.now();
+			await this.conversationRepository.updateConversation(conversationId, {
+				state: 'closed',
+				lastActionAt: closeNow,
+				updatedAt: closeNow
 			});
 		}
 
@@ -561,7 +612,7 @@ export class ConversationService {
 			conversationId,
 			userTurnId,
 			aiTurnId,
-			conversationEnded: llmResult.ended,
+			conversationEnded: conversationShouldClose,
 			stage: summary.stage,
 			stance: summary.currentStance,
 			principle: summary.currentPrinciple,

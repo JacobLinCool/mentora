@@ -25,7 +25,6 @@ export interface IConversationRepository {
 		conversationId: string;
 		userId: string;
 		turns: Turn[];
-		ended: boolean;
 		finalNow: number;
 		usageReport: TokenUsageReport;
 	}): Promise<void>;

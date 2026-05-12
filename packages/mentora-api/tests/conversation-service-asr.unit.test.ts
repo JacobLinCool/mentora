@@ -35,6 +35,22 @@ function createMockConversation() {
 	};
 }
 
+function createMockSubmission() {
+	return {
+		userId: 'user-1',
+		state: 'in_progress' as const,
+		startedAt: Date.now() - 1000,
+		submittedAt: null,
+		late: false,
+		scoreCompletion: null,
+		notes: null,
+		assessment: null,
+		assessmentError: null,
+		totalSpentUsd: 0,
+		budgetExhausted: false
+	};
+}
+
 function createMockAssignment() {
 	return {
 		id: 'assignment-1',
@@ -278,5 +294,113 @@ describe('ConversationService.addTurn – ASR error handling', () => {
 			expect.objectContaining({ apiKey: 'global-api-key', userInputText: 'Hello world' })
 		);
 		expect(mockedGetTTSExecutor).toHaveBeenCalledWith('global-api-key');
+	});
+});
+
+describe('ConversationService.addTurn – conversation completion', () => {
+	const user = { uid: 'user-1', email: 'test@example.com', emailVerified: true };
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('submits and closes the conversation when dialogue stage reaches ended even if ended flag is false', async () => {
+		const repo = createMockRepo({
+			getSubmission: vi.fn().mockResolvedValue(createMockSubmission())
+		});
+		const gateway = createMockLLMGateway();
+		vi.mocked(gateway.process).mockResolvedValue({
+			aiMessage: 'Final AI response',
+			ended: false,
+			stanceSnapshot: null,
+			updatedState: { stage: 'ended' },
+			assessment: {
+				dimensions: {
+					argumentQuality: { score: 4, feedback: 'Strong reasoning' },
+					criticalThinking: { score: 4, feedback: 'Thoughtful analysis' },
+					principleExtraction: { score: 4, feedback: 'Clear principle' },
+					openness: { score: 4, feedback: 'Shows openness' },
+					coherence: { score: 4, feedback: 'Well structured' }
+				},
+				overallScore: 4,
+				overallFeedback: 'Good work',
+				generatedAt: Date.now()
+			},
+			assessmentError: null,
+			tokenUsage: {
+				cachedContentTokenCount: 0,
+				candidatesTokenCount: 10,
+				promptTokenCount: 5,
+				thoughtsTokenCount: 0,
+				toolUsePromptTokenCount: 0,
+				totalTokenCount: 15
+			}
+		});
+		const service = new ConversationService(repo, gateway, createMockWalletRepo());
+
+		mockedGetTTSExecutor.mockReturnValue(createMockTTSExecutor() as any);
+
+		const result = await service.addTurn(user, 'conv-1', {
+			text: 'Here is my final answer'
+		});
+
+		expect(result.conversationEnded).toBe(true);
+		expect(repo.saveSubmission).toHaveBeenCalledWith(
+			'assignment-1',
+			'user-1',
+			expect.objectContaining({
+				state: 'submitted',
+				assessment: expect.objectContaining({
+					overallScore: 4,
+					overallFeedback: 'Good work'
+				}),
+				assessmentError: null
+			})
+		);
+		expect(repo.updateConversation).toHaveBeenCalledWith(
+			'conv-1',
+			expect.objectContaining({ state: 'closed' })
+		);
+	});
+
+	it('still reports completion when ended flag is true', async () => {
+		const repo = createMockRepo({
+			getSubmission: vi.fn().mockResolvedValue(createMockSubmission())
+		});
+		const gateway = createMockLLMGateway();
+		vi.mocked(gateway.process).mockResolvedValue({
+			aiMessage: 'Final AI response',
+			ended: true,
+			stanceSnapshot: null,
+			updatedState: { stage: 'adding_final_summary' },
+			assessment: null,
+			assessmentError: null,
+			tokenUsage: {
+				cachedContentTokenCount: 0,
+				candidatesTokenCount: 10,
+				promptTokenCount: 5,
+				thoughtsTokenCount: 0,
+				toolUsePromptTokenCount: 0,
+				totalTokenCount: 15
+			}
+		});
+		const service = new ConversationService(repo, gateway, createMockWalletRepo());
+
+		mockedGetTTSExecutor.mockReturnValue(createMockTTSExecutor() as any);
+
+		const result = await service.addTurn(user, 'conv-1', {
+			text: 'Wrap this up'
+		});
+
+		expect(result.conversationEnded).toBe(true);
+		expect(repo.saveSubmission).toHaveBeenCalledWith(
+			'assignment-1',
+			'user-1',
+			expect.objectContaining({ state: 'submitted' })
+		);
+		expect(repo.updateConversation).toHaveBeenCalledWith(
+			'conv-1',
+			expect.objectContaining({ state: 'closed' })
+		);
 	});
 });

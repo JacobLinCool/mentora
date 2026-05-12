@@ -140,7 +140,6 @@ export class FirestoreConversationRepository implements IConversationRepository 
 		conversationId: string;
 		userId: string;
 		turns: Turn[];
-		ended: boolean;
 		finalNow: number;
 		usageReport: TokenUsageReport;
 	}): Promise<void> {
@@ -159,7 +158,6 @@ export class FirestoreConversationRepository implements IConversationRepository 
 				throw new Error('Conversation is closed');
 			}
 
-			const conversationState = params.ended ? 'closed' : latestConversation.state;
 			const conversationTokenUsage = toConversationTokenUsage(
 				latestConversation.tokenUsage,
 				params.usageReport,
@@ -168,7 +166,7 @@ export class FirestoreConversationRepository implements IConversationRepository 
 
 			transaction.update(conversationRef, {
 				turns: [...latestConversation.turns, ...params.turns],
-				state: conversationState,
+				state: latestConversation.state,
 				lastActionAt: params.finalNow,
 				updatedAt: params.finalNow,
 				tokenUsage: conversationTokenUsage
