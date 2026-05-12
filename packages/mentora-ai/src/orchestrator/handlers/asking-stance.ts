@@ -12,6 +12,7 @@ import {
     type CaseChallengeResponse,
 } from "../../builder/stage2-case-challenge.js";
 import { DialogueStage } from "../../builder/types.js";
+import { NoopObserver, type LLMSpan } from "../../observability/observer.js";
 import { formatStageResponse } from "../format.js";
 import { createStanceVersion, transitionTo } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
@@ -29,33 +30,49 @@ export class AskingStanceHandler implements StageHandler {
 
     async handle(context: StageContext): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
+        const span =
+            context.parent?.child(`stage.${this.stage}`) ??
+            NoopObserver.startSpan(`stage.${this.stage}`);
 
-        // Step 1: Classify user input using Classifier
-        const classifierPrompt = await askingStanceBuilders.classifier.build(
-            state.conversationHistory,
-            {
-                currentQuestion: state.topic,
-                userInput: studentMessage,
-            },
-        );
+        try {
+            // Step 1: Classify user input using Classifier
+            const classifierPrompt =
+                await askingStanceBuilders.classifier.build(
+                    state.conversationHistory,
+                    {
+                        currentQuestion: state.topic,
+                        userInput: studentMessage,
+                    },
+                );
 
-        const classification = (await executor.execute(
-            classifierPrompt,
-        )) as AskingStanceClassifier;
+            const classification = (await executor.execute(
+                classifierPrompt,
+                span,
+            )) as AskingStanceClassifier;
 
-        // Step 2: Route based on detected intent
-        if (classification.detected_intent === "TR_CLARIFY") {
-            return this.handleClarify(context);
+            // Step 2: Route based on detected intent
+            if (classification.detected_intent === "TR_CLARIFY") {
+                return await this.handleClarify(context, span);
+            }
+
+            return await this.handleConfirmStance(
+                context,
+                classification,
+                span,
+            );
+        } finally {
+            span.end();
         }
-
-        return this.handleConfirmStance(context, classification);
     }
 
     /**
      * Handle clarification when stance is unclear (TR_CLARIFY)
      * Uses the initial builder to re-ask the question
      */
-    private async handleClarify(context: StageContext): Promise<StageResult> {
+    private async handleClarify(
+        context: StageContext,
+        span: LLMSpan,
+    ): Promise<StageResult> {
         const { executor, state } = context;
 
         const clarifyPrompt = await askingStanceBuilders.initial.build(
@@ -67,6 +84,7 @@ export class AskingStanceHandler implements StageHandler {
 
         const response = (await executor.execute(
             clarifyPrompt,
+            span,
         )) as AskingStanceResponse;
 
         const message = formatStageResponse(response);
@@ -86,6 +104,7 @@ export class AskingStanceHandler implements StageHandler {
     private async handleConfirmStance(
         context: StageContext,
         classification: AskingStanceClassifier,
+        span: LLMSpan,
     ): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
 
@@ -113,6 +132,7 @@ export class AskingStanceHandler implements StageHandler {
 
         const response = (await executor.execute(
             casePrompt,
+            span,
         )) as CaseChallengeResponse;
 
         const message = formatStageResponse(response);

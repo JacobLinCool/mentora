@@ -6,6 +6,7 @@
  */
 import { askingStanceBuilders } from "../builder/stage1-asking-stance.js";
 import { DialogueStage } from "../builder/types.js";
+import { NoopObserver, type LLMSpan } from "../observability/observer.js";
 import type { PromptExecutor } from "../types.js";
 import { formatStageResponse, type StageResponseFields } from "./format.js";
 import {
@@ -90,43 +91,55 @@ export class MentoraOrchestrator {
     async startConversation(
         state: DialogueState,
         topicContext: string = "",
+        parent?: LLMSpan,
     ): Promise<StageResult> {
         this.log("Starting conversation");
 
         // Reset usage counter for this turn
         this.executor.resetTokenUsage();
 
-        const prompt = await askingStanceBuilders.initial.build([], {
-            topic: state.topic,
-            topicDescription: topicContext,
-        });
+        const span =
+            parent?.child("orchestrator.startConversation", {
+                topic: state.topic,
+            }) ??
+            NoopObserver.startSpan("orchestrator.startConversation", {
+                topic: state.topic,
+            });
+        try {
+            const prompt = await askingStanceBuilders.initial.build([], {
+                topic: state.topic,
+                topicDescription: topicContext,
+            });
 
-        const response = await this.executor.execute(prompt);
+            const response = await this.executor.execute(prompt, span);
 
-        // Format message from response (for structured output)
-        const message =
-            typeof response === "string"
-                ? response
-                : formatStageResponse(response as StageResponseFields);
+            // Format message from response (for structured output)
+            const message =
+                typeof response === "string"
+                    ? response
+                    : formatStageResponse(response as StageResponseFields);
 
-        const newState = addToHistory(
-            {
-                ...state,
-                stage: DialogueStage.ASKING_STANCE,
-            },
-            "model",
-            message,
-        );
+            const newState = addToHistory(
+                {
+                    ...state,
+                    stage: DialogueStage.ASKING_STANCE,
+                },
+                "model",
+                message,
+            );
 
-        // Get usage for this turn
-        const usage = this.executor.getTokenUsage();
+            // Get usage for this turn
+            const usage = this.executor.getTokenUsage();
 
-        return {
-            message,
-            newState,
-            ended: false,
-            usage,
-        };
+            return {
+                message,
+                newState,
+                ended: false,
+                usage,
+            };
+        } finally {
+            span.end();
+        }
     }
 
     /**
@@ -135,6 +148,7 @@ export class MentoraOrchestrator {
     async processStudentInput(
         state: DialogueState,
         studentMessage: string,
+        parent?: LLMSpan,
     ): Promise<StageResult> {
         this.log(`Processing input for stage: ${state.stage}`);
 
@@ -150,31 +164,44 @@ export class MentoraOrchestrator {
             throw new Error(`No handler registered for stage: ${state.stage}`);
         }
 
-        // Create context and execute handler
-        const context: StageContext = {
-            executor: this.executor,
-            state: stateWithMessage,
-            studentMessage,
-            config: this.config,
-        };
+        const span =
+            parent?.child("orchestrator.processStudentInput", {
+                stage: state.stage,
+            }) ??
+            NoopObserver.startSpan("orchestrator.processStudentInput", {
+                stage: state.stage,
+            });
 
-        const result = await handler.handle(context);
+        try {
+            // Create context and execute handler
+            const context: StageContext = {
+                executor: this.executor,
+                state: stateWithMessage,
+                studentMessage,
+                config: this.config,
+                parent: span,
+            };
 
-        // Add AI response to history
-        const finalState = addToHistory(
-            result.newState,
-            "model",
-            result.message,
-        );
+            const result = await handler.handle(context);
 
-        this.log(
-            `Stage result - ended: ${result.ended}, new stage: ${finalState.stage}`,
-        );
+            // Add AI response to history
+            const finalState = addToHistory(
+                result.newState,
+                "model",
+                result.message,
+            );
 
-        return {
-            ...result,
-            newState: finalState,
-        };
+            this.log(
+                `Stage result - ended: ${result.ended}, new stage: ${finalState.stage}`,
+            );
+
+            return {
+                ...result,
+                newState: finalState,
+            };
+        } finally {
+            span.end();
+        }
     }
 
     /**

@@ -236,9 +236,13 @@ describe('ConversationService.addTurn – ASR error handling', () => {
 		expect(result.audio).toBe('base64-audio-data');
 		expect(result.audioMimeType).toBe('audio/wav');
 
-		// Verify ASR was called with correct params
+		// Verify ASR was called with correct params (+ optional langfuse span)
 		const asrExecutor = mockedGetASRExecutor.mock.results[0].value;
-		expect(asrExecutor.transcribe).toHaveBeenCalledWith('dGVzdA==', 'audio/webm');
+		expect(asrExecutor.transcribe).toHaveBeenCalledWith(
+			'dGVzdA==',
+			'audio/webm',
+			expect.anything()
+		);
 
 		// Verify LLM gateway received transcribed text
 		expect(gateway.process).toHaveBeenCalledWith(

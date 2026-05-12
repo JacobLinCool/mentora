@@ -1,5 +1,6 @@
 import type { Content } from "@google/genai";
 import type { ZodType } from "zod";
+import type { LLMSpan } from "./observability/observer.js";
 
 /**
  * JSON-compatible value type for structured outputs
@@ -88,6 +89,7 @@ export interface PromptExecutor extends TokenTracker {
      */
     execute<O extends Record<string, JsonValue> | null>(
         prompt: Prompt<O>,
+        parent?: LLMSpan,
     ): Promise<O extends null ? string : O>;
 }
 
@@ -101,7 +103,11 @@ export interface ASRExecutor extends TokenTracker {
      * @param mimeType - MIME type of the audio (default: audio/mp3)
      * @returns Transcribed text
      */
-    transcribe(audioBase64: string, mimeType?: string): Promise<string>;
+    transcribe(
+        audioBase64: string,
+        mimeType?: string,
+        parent?: LLMSpan,
+    ): Promise<string>;
 }
 
 /**
@@ -113,7 +119,7 @@ export interface ContentExecutor extends TokenTracker {
      * @param question - The question or prompt to generate reference content for
      * @returns Generated reference content as a string
      */
-    generateContent(question: string): Promise<string>;
+    generateContent(question: string, parent?: LLMSpan): Promise<string>;
 }
 
 /**
@@ -125,5 +131,5 @@ export interface TTSExecutor extends TokenTracker {
      * @param text - Text to synthesize
      * @returns Base64 encoded audio payload and MIME type
      */
-    synthesize(text: string): Promise<SynthesizedAudio>;
+    synthesize(text: string, parent?: LLMSpan): Promise<SynthesizedAudio>;
 }

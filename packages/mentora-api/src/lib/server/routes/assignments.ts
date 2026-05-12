@@ -66,7 +66,9 @@ async function generateContent(ctx: RouteContext, request: Request): Promise<Res
 
 	try {
 		const { contentGenerationService } = createServiceContainer(ctx);
-		const result = await contentGenerationService.generateAssignmentContent(question);
+		const result = await contentGenerationService.generateAssignmentContent(question, {
+			userId: ctx.user?.uid
+		});
 
 		return jsonResponse(result, HttpStatus.OK);
 	} catch (error) {

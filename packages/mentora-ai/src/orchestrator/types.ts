@@ -7,6 +7,7 @@ import type {
     PrincipleVersion,
     StanceVersion,
 } from "../builder/types.js";
+import type { LLMSpan } from "../observability/observer.js";
 import type { PromptExecutor, TokenUsage } from "../types.js";
 
 /**
@@ -79,6 +80,8 @@ export interface StageContext {
     studentMessage: string;
     /** Orchestrator configuration */
     config: Required<OrchestratorConfig>;
+    /** Optional parent observation span for LLM tracing (Langfuse, etc.) */
+    parent?: LLMSpan;
 }
 
 /**

@@ -11,6 +11,7 @@
 import {
 	MentoraOrchestrator,
 	type DialogueState,
+	type LLMSpan,
 	type StageAssessmentResult,
 	type StageResult
 } from 'mentora-ai';
@@ -187,7 +188,8 @@ export async function processWithLLM(
 	studentMessage: string,
 	question: string,
 	prompt: string,
-	apiKey?: string
+	apiKey?: string,
+	parent?: LLMSpan
 ): Promise<{
 	aiMessage: string;
 	updatedState: DialogueState;
@@ -219,18 +221,18 @@ export async function processWithLLM(
 		const topicContext = `問題：${question}\n\n參考內容：\n${prompt}`;
 
 		// Step 3a: Call startConversation to transition from awaiting_start to asking_stance
-		const initResult = await orchestrator.startConversation(currentState, topicContext);
+		const initResult = await orchestrator.startConversation(currentState, topicContext, parent);
 
 		// Step 3b: Immediately process the student's first message
 		console.log(`[MentoraLLM] Processing student's first message`);
-		result = await orchestrator.processStudentInput(initResult.newState, studentMessage);
+		result = await orchestrator.processStudentInput(initResult.newState, studentMessage, parent);
 
 		// First interaction uses two LLM calls. Both must be included in token accounting.
 		usage = sumTokenUsageTotals(initResult.usage, result.usage);
 	} else {
 		// Subsequent interactions: process the student's input
 		console.log(`[MentoraLLM] Processing student input at stage: ${currentState.stage}`);
-		result = await orchestrator.processStudentInput(currentState, studentMessage);
+		result = await orchestrator.processStudentInput(currentState, studentMessage, parent);
 		usage = normalizeTokenUsage(result.usage);
 	}
 

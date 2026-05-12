@@ -14,6 +14,13 @@ const handler = createServerHandler({
     geminiApiKey: env.GEMINI_API_KEY || env.GOOGLE_API_KEY,
     projectId: useEmulator ? "demo-mentora" : PUBLIC_FIREBASE_PROJECT_ID,
     useEmulator,
+    langfuse: {
+        publicKey: env.LANGFUSE_PUBLIC_KEY,
+        secretKey: env.LANGFUSE_SECRET_KEY,
+        host: env.LANGFUSE_HOST || env.LANGFUSE_BASE_URL,
+        environment: env.LANGFUSE_TRACING_ENVIRONMENT,
+        release: env.LANGFUSE_RELEASE,
+    },
 });
 
 export const fallback: RequestHandler = async ({ params, request }) => {

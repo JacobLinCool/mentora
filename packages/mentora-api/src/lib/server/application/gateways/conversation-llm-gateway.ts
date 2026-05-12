@@ -1,4 +1,5 @@
 import type { Firestore } from 'fires2rest';
+import type { LLMSpan } from 'mentora-ai';
 import { extractConversationSummary, processWithLLM } from '../../llm/llm-service.js';
 
 type ProcessWithLLMResult = Awaited<ReturnType<typeof processWithLLM>>;
@@ -12,6 +13,7 @@ export interface IConversationLLMGateway {
 		question: string;
 		prompt: string;
 		apiKey?: string;
+		parent?: LLMSpan;
 	}): Promise<ProcessWithLLMResult>;
 	extractSummary(result: ProcessWithLLMResult): ConversationSummary;
 }
@@ -29,6 +31,7 @@ export class FirestoreConversationLLMGateway implements IConversationLLMGateway 
 		question: string;
 		prompt: string;
 		apiKey?: string;
+		parent?: LLMSpan;
 	}): Promise<ProcessWithLLMResult> {
 		return processWithLLM(
 			this.firestore,
@@ -37,7 +40,8 @@ export class FirestoreConversationLLMGateway implements IConversationLLMGateway 
 			params.userInputText,
 			params.question,
 			params.prompt,
-			params.apiKey ?? this.defaultApiKey
+			params.apiKey ?? this.defaultApiKey,
+			params.parent
 		);
 	}
 

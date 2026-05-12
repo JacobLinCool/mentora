@@ -5,6 +5,7 @@
 
 import { Firestore } from 'fires2rest';
 import { authenticateRequest } from './auth.js';
+import { initLangfuse } from './observability/langfuse.js';
 import {
 	errorResponse,
 	HttpStatus,
@@ -279,6 +280,7 @@ function sanitizeErrorMessage(message: string): string {
  * Create a new server handler instance
  */
 export function createServerHandler(config: ServerConfig): MentoraServerHandler {
+	initLangfuse(config.langfuse);
 	const handler = new MentoraServerHandler(config);
 	handler.registerAll(allRoutes);
 	return handler;

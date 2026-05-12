@@ -20,6 +20,8 @@ import { errorResponse, HttpStatus, ServerErrorCode, type AuthContext } from '..
 import type { IConversationRepository } from '../repositories/ports/conversation-repository.js';
 import type { IWalletRepository } from '../repositories/ports/wallet-repository.js';
 import { calculateReportCostUsd } from '../llm/pricing.js';
+import { flushLangfuse } from '../observability/langfuse.js';
+import { createTrace } from '../observability/langfuse-observer.js';
 import type { IConversationLLMGateway } from './gateways/conversation-llm-gateway.js';
 
 type AddTurnInput = { text: string } | { audioBase64: string; audioMimeType: string };
@@ -290,6 +292,35 @@ export class ConversationService {
 		}
 		ensureSubmissionWindow(assignment, Date.now());
 
+		const inputType = 'audioBase64' in input ? 'audio' : 'text';
+		const trace = createTrace('conversation.addTurn', {
+			userId: user.uid,
+			sessionId: conversationId,
+			tags: ['conversation', `input:${inputType}`],
+			metadata: {
+				assignmentId: assignment.id,
+				courseId: assignment.courseId ?? '',
+				inputType
+			}
+		});
+
+		try {
+			return await trace.run((rootSpan) =>
+				this.addTurnInternal(user, conversationId, input, conversation, assignment, rootSpan)
+			);
+		} finally {
+			await flushLangfuse();
+		}
+	}
+
+	private async addTurnInternal(
+		user: AuthContext,
+		conversationId: string,
+		input: AddTurnInput,
+		conversation: Conversation,
+		assignment: Assignment,
+		traceSpan: import('mentora-ai').LLMSpan
+	) {
 		// Budget pre-checks
 		let apiKey: string | undefined;
 		if (assignment.courseId) {
@@ -346,10 +377,15 @@ export class ConversationService {
 		let userInputText: string;
 
 		if ('audioBase64' in input) {
+			const asrSpan = traceSpan.child('asr');
 			try {
 				const asrExecutor = getASRExecutor(requestApiKey);
 				asrExecutor.resetTokenUsage();
-				userInputText = await asrExecutor.transcribe(input.audioBase64, input.audioMimeType);
+				userInputText = await asrExecutor.transcribe(
+					input.audioBase64,
+					input.audioMimeType,
+					asrSpan
+				);
 				userInputText = userInputText.trim();
 				if (!userInputText) {
 					throw errorResponse(
@@ -365,6 +401,7 @@ export class ConversationService {
 					}
 				]);
 			} catch (error) {
+				asrSpan.end({ error });
 				if (error instanceof Response) throw error;
 				throw errorResponse(
 					'Failed to transcribe audio. Please try again or use text input.',
@@ -372,6 +409,7 @@ export class ConversationService {
 					ServerErrorCode.INTERNAL_ERROR
 				);
 			}
+			asrSpan.end();
 		} else {
 			userInputText = input.text;
 		}
@@ -384,7 +422,8 @@ export class ConversationService {
 				userInputText,
 				question: assignment.question || '',
 				prompt: assignment.prompt || '',
-				apiKey: requestApiKey
+				apiKey: requestApiKey,
+				parent: traceSpan
 			});
 		} catch (error) {
 			if (
@@ -413,6 +452,13 @@ export class ConversationService {
 			}
 		);
 
+		// Set meaningful trace I/O so the trace is readable in the Langfuse UI:
+		// the actual student input and the AI's reply (not internal request args).
+		traceSpan.setIO({
+			input: { studentMessage: userInputText },
+			output: { aiMessage: llmResult.aiMessage, ended: llmResult.ended }
+		});
+
 		llmUsageReport = createTokenUsageReport([
 			{
 				feature: TOKEN_USAGE_FEATURES.CONVERSATION_LLM,
@@ -423,10 +469,11 @@ export class ConversationService {
 		const aiTurnId = randomUUID();
 		let aiAudioBase64: string;
 		let aiAudioMimeType: string;
+		const ttsSpan = traceSpan.child('tts');
 		try {
 			const ttsExecutor = getTTSExecutor(requestApiKey);
 			ttsExecutor.resetTokenUsage();
-			const synthesizedAudio = await ttsExecutor.synthesize(llmResult.aiMessage);
+			const synthesizedAudio = await ttsExecutor.synthesize(llmResult.aiMessage, ttsSpan);
 			aiAudioBase64 = synthesizedAudio.audioBase64;
 			aiAudioMimeType = synthesizedAudio.mimeType;
 			ttsUsageReport = createTokenUsageReport([
@@ -436,6 +483,7 @@ export class ConversationService {
 				}
 			]);
 		} catch (error) {
+			ttsSpan.end({ error });
 			if (
 				error instanceof Error &&
 				assignment.courseId &&
@@ -464,6 +512,7 @@ export class ConversationService {
 				ServerErrorCode.INTERNAL_ERROR
 			);
 		}
+		ttsSpan.end();
 
 		const finalNow = Date.now();
 		const aiTurnUsageReport = mergeTokenUsageReports(llmUsageReport, ttsUsageReport);

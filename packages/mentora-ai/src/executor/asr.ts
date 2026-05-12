@@ -1,5 +1,6 @@
 import type { GoogleGenAI } from "@google/genai";
 
+import { NoopObserver, type LLMSpan } from "../observability/observer.js";
 import type { ASRExecutor } from "../types.js";
 import { BaseTokenTracker } from "./token-tracker.js";
 
@@ -23,6 +24,7 @@ export class GeminiASRExecutor extends BaseTokenTracker implements ASRExecutor {
     async transcribe(
         audioBase64: string,
         mimeType: string = "audio/mp3",
+        parent?: LLMSpan,
     ): Promise<string> {
         const contents = [
             { text: "請將以下音訊語音辨識成繁體中文文字" },
@@ -34,21 +36,47 @@ export class GeminiASRExecutor extends BaseTokenTracker implements ASRExecutor {
             },
         ];
 
+        const observer = parent ?? NoopObserver.startSpan("asr");
+
         return this.executeWithRetry(async () => {
-            const response = await this.genai.models.generateContent({
+            const generation = observer.generation("gemini.generateContent", {
                 model: this.model,
-                contents: contents,
+                input: {
+                    task: "asr",
+                    mimeType,
+                    audioBytes: audioBase64.length,
+                },
             });
+            let usage:
+                | Awaited<
+                      ReturnType<typeof this.genai.models.generateContent>
+                  >["usageMetadata"]
+                | undefined;
+            try {
+                const response = await this.genai.models.generateContent({
+                    model: this.model,
+                    contents: contents,
+                });
+                usage = response.usageMetadata;
 
-            // Accumulate token usage
-            this.accumulateUsage(response.usageMetadata);
+                // Accumulate token usage
+                this.accumulateUsage(usage);
 
-            const text = response.text;
-            if (!text?.trim()) {
-                throw new Error("Empty response from ASR model");
+                const text = response.text;
+                if (!text?.trim()) {
+                    throw new Error("Empty response from ASR model");
+                }
+
+                generation.end({
+                    output: text,
+                    usage,
+                    model: this.model,
+                });
+                return text;
+            } catch (error) {
+                generation.end({ error, usage, model: this.model });
+                throw error;
             }
-
-            return text;
         }, "ASR transcription");
     }
 }

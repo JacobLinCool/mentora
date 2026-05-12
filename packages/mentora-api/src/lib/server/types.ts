@@ -4,6 +4,7 @@
  */
 
 import type { Firestore } from 'fires2rest';
+import type { LangfuseConfig } from './observability/langfuse.js';
 
 /**
  * Standard error codes matching client-side APIErrorCode
@@ -38,6 +39,12 @@ export interface ServerConfig {
 	geminiApiKey?: string;
 	/** Set to true when running against Firebase Emulators (skips JWT signature verification) */
 	useEmulator?: boolean;
+	/**
+	 * Langfuse tracing config. Required for the SvelteKit dev server, where
+	 * `.env` values live only in `$env/dynamic/private` and not in `process.env`.
+	 * Omit to fall back to `process.env`-based init (works in pure Node).
+	 */
+	langfuse?: LangfuseConfig;
 }
 
 /**

@@ -11,6 +11,7 @@ import {
     type PrincipleReasoningResponse,
 } from "../../builder/stage3-principle-reasoning.js";
 import { DialogueStage } from "../../builder/types.js";
+import { NoopObserver, type LLMSpan } from "../../observability/observer.js";
 import { formatStageResponse } from "../format.js";
 import { formatStanceHistory, transitionTo, updateStance } from "../state.js";
 import type { StageContext, StageHandler, StageResult } from "../types.js";
@@ -30,38 +31,56 @@ export class CaseChallengeHandler implements StageHandler {
     async handle(context: StageContext): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
         const currentStance = state.currentStance!;
+        const span =
+            context.parent?.child(`stage.${this.stage}`) ??
+            NoopObserver.startSpan(`stage.${this.stage}`);
 
-        // Get the last case challenge (from model's previous message)
-        const lastModelMessage =
-            state.conversationHistory
-                .slice()
-                .reverse()
-                .find((msg) => msg.role === "model")?.parts?.[0]?.text || "";
+        try {
+            // Get the last case challenge (from model's previous message)
+            const lastModelMessage =
+                state.conversationHistory
+                    .slice()
+                    .reverse()
+                    .find((msg) => msg.role === "model")?.parts?.[0]?.text ||
+                "";
 
-        // Step 1: Classify user input using Classifier
-        const classifierPrompt = await caseChallengeBuilders.classifier.build(
-            state.conversationHistory,
-            {
-                previousStance: `${currentStance.position} (理由: ${currentStance.reason})`,
-                currentCase: lastModelMessage,
-                userInput: studentMessage,
-            },
-        );
+            // Step 1: Classify user input using Classifier
+            const classifierPrompt =
+                await caseChallengeBuilders.classifier.build(
+                    state.conversationHistory,
+                    {
+                        previousStance: `${currentStance.position} (理由: ${currentStance.reason})`,
+                        currentCase: lastModelMessage,
+                        userInput: studentMessage,
+                    },
+                );
 
-        const classification = (await executor.execute(
-            classifierPrompt,
-        )) as CaseChallengeClassifier;
+            const classification = (await executor.execute(
+                classifierPrompt,
+                span,
+            )) as CaseChallengeClassifier;
 
-        // Step 2: Route based on detected intent
-        switch (classification.detected_intent) {
-            case "TR_CLARIFY":
-                return this.handleClarify(context);
+            // Step 2: Route based on detected intent
+            switch (classification.detected_intent) {
+                case "TR_CLARIFY":
+                    return await this.handleClarify(context, span);
 
-            case "TR_SCAFFOLD":
-                return this.handleScaffold(context, classification);
+                case "TR_SCAFFOLD":
+                    return await this.handleScaffold(
+                        context,
+                        classification,
+                        span,
+                    );
 
-            case "TR_CASE_COMPLETED":
-                return this.handleCaseCompleted(context, classification);
+                case "TR_CASE_COMPLETED":
+                    return await this.handleCaseCompleted(
+                        context,
+                        classification,
+                        span,
+                    );
+            }
+        } finally {
+            span.end();
         }
     }
 
@@ -69,7 +88,10 @@ export class CaseChallengeHandler implements StageHandler {
      * Handle clarification for unclear response (TR_CLARIFY)
      * Re-presents the case challenge
      */
-    private async handleClarify(context: StageContext): Promise<StageResult> {
+    private async handleClarify(
+        context: StageContext,
+        span: LLMSpan,
+    ): Promise<StageResult> {
         const { executor, state } = context;
         const currentStance = state.currentStance!;
 
@@ -84,6 +106,7 @@ export class CaseChallengeHandler implements StageHandler {
 
         const response = (await executor.execute(
             clarifyPrompt,
+            span,
         )) as CaseChallengeResponse;
 
         const message = formatStageResponse(response);
@@ -104,6 +127,7 @@ export class CaseChallengeHandler implements StageHandler {
     private async handleScaffold(
         context: StageContext,
         classification: CaseChallengeClassifier,
+        span: LLMSpan,
     ): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
         const currentStance = state.currentStance!;
@@ -118,6 +142,7 @@ export class CaseChallengeHandler implements StageHandler {
 
         const response = (await executor.execute(
             scaffoldPrompt,
+            span,
         )) as CaseChallengeResponse;
 
         const message = formatStageResponse(response);
@@ -151,6 +176,7 @@ export class CaseChallengeHandler implements StageHandler {
     private async handleCaseCompleted(
         context: StageContext,
         classification: CaseChallengeClassifier,
+        span: LLMSpan,
     ): Promise<StageResult> {
         const { executor, state } = context;
 
@@ -168,6 +194,7 @@ export class CaseChallengeHandler implements StageHandler {
 
         const response = (await executor.execute(
             principlePrompt,
+            span,
         )) as PrincipleReasoningResponse;
 
         const message = formatStageResponse(response);

@@ -11,6 +11,7 @@ import {
     type ClosureResponse,
 } from "../../builder/stage4-closure.js";
 import { DialogueStage } from "../../builder/types.js";
+import { NoopObserver, type LLMSpan } from "../../observability/observer.js";
 import { formatStageResponse } from "../format.js";
 import {
     formatPrincipleHistory,
@@ -37,40 +38,52 @@ export class ClosureHandler implements StageHandler {
 
     async handle(context: StageContext): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
+        const span =
+            context.parent?.child(`stage.${this.stage}`) ??
+            NoopObserver.startSpan(`stage.${this.stage}`);
 
-        // Get the last model message (the summary that was presented)
-        const lastModelMessage =
-            state.conversationHistory
-                .slice()
-                .reverse()
-                .find((msg) => msg.role === "model")?.parts?.[0]?.text || "";
+        try {
+            // Get the last model message (the summary that was presented)
+            const lastModelMessage =
+                state.conversationHistory
+                    .slice()
+                    .reverse()
+                    .find((msg) => msg.role === "model")?.parts?.[0]?.text ||
+                "";
 
-        // Step 1: Classify user input using Classifier
-        const classifierPrompt = await closureBuilders.classifier.build(
-            state.conversationHistory,
-            {
-                generatedSummary: lastModelMessage,
-                userInput: studentMessage,
-            },
-        );
+            // Step 1: Classify user input using Classifier
+            const classifierPrompt = await closureBuilders.classifier.build(
+                state.conversationHistory,
+                {
+                    generatedSummary: lastModelMessage,
+                    userInput: studentMessage,
+                },
+            );
 
-        const classification = (await executor.execute(
-            classifierPrompt,
-        )) as ClosureClassifier;
+            const classification = (await executor.execute(
+                classifierPrompt,
+                span,
+            )) as ClosureClassifier;
 
-        // Step 2: Route based on detected intent
-        if (classification.detected_intent === "TR_CLARIFY") {
-            return this.handleClarify(context);
+            // Step 2: Route based on detected intent
+            if (classification.detected_intent === "TR_CLARIFY") {
+                return await this.handleClarify(context, span);
+            }
+
+            return await this.handleConfirm(context, span);
+        } finally {
+            span.end();
         }
-
-        return this.handleConfirm(context);
     }
 
     /**
      * Handle clarification/correction of summary (TR_CLARIFY)
      * Re-generates the summary with corrections
      */
-    private async handleClarify(context: StageContext): Promise<StageResult> {
+    private async handleClarify(
+        context: StageContext,
+        span: LLMSpan,
+    ): Promise<StageResult> {
         const { executor, state } = context;
 
         // Get stance evolution for corrected summary
@@ -89,6 +102,7 @@ export class ClosureHandler implements StageHandler {
 
         const response = (await executor.execute(
             summaryPrompt,
+            span,
         )) as ClosureResponse;
 
         const message = formatStageResponse(response);
@@ -107,7 +121,10 @@ export class ClosureHandler implements StageHandler {
     /**
      * Handle confirmation and end conversation (TR_CONFIRM)
      */
-    private async handleConfirm(context: StageContext): Promise<StageResult> {
+    private async handleConfirm(
+        context: StageContext,
+        span: LLMSpan,
+    ): Promise<StageResult> {
         const { executor, state, config } = context;
 
         // Final closing message
@@ -130,6 +147,7 @@ export class ClosureHandler implements StageHandler {
 
             const assessmentOutput = (await executor.execute(
                 assessmentPrompt,
+                span,
             )) as AssessmentOutput;
 
             assessment = {

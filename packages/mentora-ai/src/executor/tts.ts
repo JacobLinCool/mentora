@@ -2,6 +2,7 @@
  * GeminiTTSExecutor implements text-to-speech using Google Gemini API
  */
 import type { GoogleGenAI } from "@google/genai";
+import { NoopObserver, type LLMSpan } from "../observability/observer.js";
 import type { SynthesizedAudio, TTSExecutor } from "../types.js";
 import { BaseTokenTracker } from "./token-tracker.js";
 import { encodePcm16AsWav } from "./wav.js";
@@ -59,7 +60,20 @@ export class GeminiTTSExecutor extends BaseTokenTracker implements TTSExecutor {
      * @param text - Text to synthesize
      * @returns Base64 encoded browser-playable audio
      */
-    async synthesize(text: string): Promise<SynthesizedAudio> {
+    async synthesize(
+        text: string,
+        parent?: LLMSpan,
+    ): Promise<SynthesizedAudio> {
+        const observer = parent ?? NoopObserver.startSpan("tts");
+        const generation = observer.generation("gemini.generateContent", {
+            model: this.model,
+            input: { task: "tts", text },
+        });
+        let usage:
+            | Awaited<
+                  ReturnType<typeof this.genai.models.generateContent>
+              >["usageMetadata"]
+            | undefined;
         try {
             const response = await this.genai.models.generateContent({
                 model: this.model,
@@ -80,15 +94,26 @@ export class GeminiTTSExecutor extends BaseTokenTracker implements TTSExecutor {
                     },
                 },
             });
+            usage = response.usageMetadata;
 
             // Accumulate token usage
-            this.accumulateUsage(response.usageMetadata);
+            this.accumulateUsage(usage);
 
             const speech =
                 response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
 
-            return normalizeGeminiAudioResponse(speech ?? {});
+            const audio = normalizeGeminiAudioResponse(speech ?? {});
+            generation.end({
+                output: {
+                    mimeType: audio.mimeType,
+                    byteLength: audio.audioBase64.length,
+                },
+                usage,
+                model: this.model,
+            });
+            return audio;
         } catch (error) {
+            generation.end({ error, usage, model: this.model });
             console.error(
                 "[GeminiTTSExecutor] Error synthesizing speech:",
                 error,

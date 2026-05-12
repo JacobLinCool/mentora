@@ -15,6 +15,7 @@ import {
     type ClosureResponse,
 } from "../../builder/stage4-closure.js";
 import { DialogueStage } from "../../builder/types.js";
+import { NoopObserver, type LLMSpan } from "../../observability/observer.js";
 import { formatStageResponse } from "../format.js";
 import {
     formatStanceHistory,
@@ -39,41 +40,64 @@ export class PrincipleReasoningHandler implements StageHandler {
     async handle(context: StageContext): Promise<StageResult> {
         const { executor, state, studentMessage } = context;
         const currentStance = state.currentStance!;
+        const span =
+            context.parent?.child(`stage.${this.stage}`) ??
+            NoopObserver.startSpan(`stage.${this.stage}`);
 
-        // Step 1: Classify user input using Classifier
-        const classifierPrompt =
-            await principleReasoningBuilders.classifier.build(
-                state.conversationHistory,
-                {
-                    currentStance: currentStance.position,
-                    userInput: studentMessage,
-                },
-            );
+        try {
+            // Step 1: Classify user input using Classifier
+            const classifierPrompt =
+                await principleReasoningBuilders.classifier.build(
+                    state.conversationHistory,
+                    {
+                        currentStance: currentStance.position,
+                        userInput: studentMessage,
+                    },
+                );
 
-        const classification = (await executor.execute(
-            classifierPrompt,
-        )) as PrincipleReasoningClassifier;
+            const classification = (await executor.execute(
+                classifierPrompt,
+                span,
+            )) as PrincipleReasoningClassifier;
 
-        // Step 2: Route based on detected intent
-        switch (classification.detected_intent) {
-            case "TR_CLARIFY":
-                return this.handleClarify(context);
+            // Step 2: Route based on detected intent
+            switch (classification.detected_intent) {
+                case "TR_CLARIFY":
+                    return await this.handleClarify(context, span);
 
-            case "TR_SCAFFOLD":
-                return this.handleScaffold(context, studentMessage);
+                case "TR_SCAFFOLD":
+                    return await this.handleScaffold(
+                        context,
+                        studentMessage,
+                        span,
+                    );
 
-            case "TR_NEXT_CASE":
-                return this.handleNextCase(context, classification);
+                case "TR_NEXT_CASE":
+                    return await this.handleNextCase(
+                        context,
+                        classification,
+                        span,
+                    );
 
-            case "TR_COMPLETE":
-                return this.handleComplete(context, classification);
+                case "TR_COMPLETE":
+                    return await this.handleComplete(
+                        context,
+                        classification,
+                        span,
+                    );
+            }
+        } finally {
+            span.end();
         }
     }
 
     /**
      * Handle clarification for unclear principle (TR_CLARIFY)
      */
-    private async handleClarify(context: StageContext): Promise<StageResult> {
+    private async handleClarify(
+        context: StageContext,
+        span: LLMSpan,
+    ): Promise<StageResult> {
         const { executor, state } = context;
 
         // Re-ask using the reasoning builder
@@ -86,6 +110,7 @@ export class PrincipleReasoningHandler implements StageHandler {
 
         const response = (await executor.execute(
             clarifyPrompt,
+            span,
         )) as PrincipleReasoningResponse;
 
         const message = formatStageResponse(response);
@@ -104,6 +129,7 @@ export class PrincipleReasoningHandler implements StageHandler {
     private async handleScaffold(
         context: StageContext,
         userPrinciple: string,
+        span: LLMSpan,
     ): Promise<StageResult> {
         const { executor, state } = context;
 
@@ -117,6 +143,7 @@ export class PrincipleReasoningHandler implements StageHandler {
 
         const response = (await executor.execute(
             scaffoldPrompt,
+            span,
         )) as PrincipleReasoningResponse;
 
         const message = formatStageResponse(response);
@@ -135,13 +162,14 @@ export class PrincipleReasoningHandler implements StageHandler {
     private async handleNextCase(
         context: StageContext,
         classification: PrincipleReasoningClassifier,
+        span: LLMSpan,
     ): Promise<StageResult> {
         const { executor, state } = context;
         const currentStance = state.currentStance!;
 
         // Check if we've reached max loops
         if (state.loopCount >= context.config.maxLoops) {
-            return this.handleComplete(context, classification);
+            return this.handleComplete(context, classification, span);
         }
 
         // Save the principle before looping back
@@ -165,6 +193,7 @@ export class PrincipleReasoningHandler implements StageHandler {
 
         const response = (await executor.execute(
             casePrompt,
+            span,
         )) as CaseChallengeResponse;
 
         const message = formatStageResponse(response);
@@ -186,12 +215,13 @@ export class PrincipleReasoningHandler implements StageHandler {
     private async handleComplete(
         context: StageContext,
         classification: PrincipleReasoningClassifier,
+        span: LLMSpan,
     ): Promise<StageResult> {
         const { executor, state } = context;
 
         // Check if we haven't met min loops requirement
         if (state.loopCount < context.config.minLoopsForClosure) {
-            return this.handleNextCase(context, classification);
+            return this.handleNextCase(context, classification, span);
         }
 
         // Save final principle
@@ -218,6 +248,7 @@ export class PrincipleReasoningHandler implements StageHandler {
 
         const response = (await executor.execute(
             closurePrompt,
+            span,
         )) as ClosureResponse;
 
         const message = formatStageResponse(response);
