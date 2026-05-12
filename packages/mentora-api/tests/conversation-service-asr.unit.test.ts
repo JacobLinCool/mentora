@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { DialogueStage } from 'mentora-ai';
 import { ConversationService } from '../src/lib/server/application/conversation-service.js';
 import type { IConversationRepository } from '../src/lib/server/repositories/ports/conversation-repository.js';
 import type { IConversationLLMGateway } from '../src/lib/server/application/gateways/conversation-llm-gateway.js';
@@ -312,8 +313,8 @@ describe('ConversationService.addTurn – conversation completion', () => {
 		vi.mocked(gateway.process).mockResolvedValue({
 			aiMessage: 'Final AI response',
 			ended: false,
-			stanceSnapshot: null,
-			updatedState: { stage: 'ended' },
+			stanceSnapshot: undefined,
+			updatedState: { stage: DialogueStage.ENDED } as never,
 			assessment: {
 				dimensions: {
 					argumentQuality: { score: 4, feedback: 'Strong reasoning' },
@@ -326,13 +327,15 @@ describe('ConversationService.addTurn – conversation completion', () => {
 				overallFeedback: 'Good work',
 				generatedAt: Date.now()
 			},
-			assessmentError: null,
+			assessmentError: undefined,
 			tokenUsage: {
 				cachedContentTokenCount: 0,
 				candidatesTokenCount: 10,
 				promptTokenCount: 5,
 				thoughtsTokenCount: 0,
 				toolUsePromptTokenCount: 0,
+				inputTokenCount: 5,
+				outputTokenCount: 10,
 				totalTokenCount: 15
 			}
 		});
@@ -371,16 +374,18 @@ describe('ConversationService.addTurn – conversation completion', () => {
 		vi.mocked(gateway.process).mockResolvedValue({
 			aiMessage: 'Final AI response',
 			ended: true,
-			stanceSnapshot: null,
-			updatedState: { stage: 'adding_final_summary' },
-			assessment: null,
-			assessmentError: null,
+			stanceSnapshot: undefined,
+			updatedState: { stage: DialogueStage.CLOSURE } as never,
+			assessment: undefined,
+			assessmentError: undefined,
 			tokenUsage: {
 				cachedContentTokenCount: 0,
 				candidatesTokenCount: 10,
 				promptTokenCount: 5,
 				thoughtsTokenCount: 0,
 				toolUsePromptTokenCount: 0,
+				inputTokenCount: 5,
+				outputTokenCount: 10,
 				totalTokenCount: 15
 			}
 		});
